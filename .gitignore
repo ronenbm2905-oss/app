@@ -1,0 +1,29 @@
+# --- סודות ומשתני סביבה ---
+.env
+.env.local
+.env.*.local
+
+# הקובץ .env.example כן נשמר ב-git
+!.env.example
+
+# --- תלויות ---
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# --- לוגים וקבצים זמניים ---
+*.log
+logs/
+tmp/
+.cache/
+
+# --- קבצי מערכת ---
+.DS_Store
+Thumbs.db
+
+# --- קבצי עורך/IDE ---
+.vscode/
+.idea/
+*.swp
