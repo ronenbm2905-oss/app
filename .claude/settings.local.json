@@ -4,7 +4,9 @@
       "Bash(git config *)",
       "Bash(git init *)",
       "Bash(git remote *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -q -m 'Initial commit — landing page agent team project *)",
+      "Bash(git push *)"
     ]
   }
 }

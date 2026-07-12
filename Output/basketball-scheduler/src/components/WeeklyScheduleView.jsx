@@ -1,0 +1,284 @@
+import { useState, useMemo } from "react";
+import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
+import { timeToMinutes, getWeekDates, formatDate } from "../utils/dates";
+import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
+import { Select } from "./ui/Select";
+import { IconDownload } from "./ui/icons";
+
+export function WeeklyScheduleView({ data, save, canEdit }) {
+  const [filterDays, setFilterDays] = useState([...DAYS]);
+  const [title, setTitle] = useState("לוח אימונים שבועי");
+  const [mode, setMode] = useState("team"); // "team" | "hall"
+  const [selectedHallId, setSelectedHallId] = useState("");
+  const [sundayDate, setSundayDate] = useState(() => {
+    const today = new Date();
+    const day = today.getDay(); // 0=Sun
+    const diff = day === 0 ? 0 : 7 - day;
+    const next = new Date(today);
+    next.setDate(today.getDate() + diff);
+    return next.toISOString().slice(0, 10);
+  });
+
+  const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
+
+  const toggleDay = (day) => {
+    setFilterDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...DAYS.filter((d) => prev.includes(d) || d === day)]));
+  };
+
+  const activeDays = DAYS.filter((d) => filterDays.includes(d));
+  const weekDates = getWeekDates(sundayDate);
+
+  const typeColor = (type) => sessionTypeColor(type);
+
+  const cellSessions = (teamId, day) =>
+    data.sessions.filter((s) => s.teamId === teamId && s.day === day).sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+
+  const hallSessions = useMemo(() => {
+    if (!selectedHallId) return [];
+    return data.sessions
+      .filter((s) => s.hallId === selectedHallId)
+      .sort((a, b) => {
+        const di = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
+        if (di !== 0) return di;
+        return timeToMinutes(a.start) - timeToMinutes(b.start);
+      });
+  }, [selectedHallId, data.sessions]);
+
+  const selectedHallName = nameOf(data.halls, selectedHallId);
+
+  return (
+    <div className="space-y-4" dir="rtl">
+      {/* Controls */}
+      <div className="no-print space-y-3">
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 w-48"
+              placeholder="כותרת הלוח"
+              dir="rtl"
+            />
+            <div className="flex gap-1 bg-stone-200/70 rounded-lg p-0.5">
+              <button onClick={() => setMode("team")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${mode === "team" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>
+                לפי קבוצה
+              </button>
+              <button onClick={() => setMode("hall")} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${mode === "hall" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>
+                דוח אולם
+              </button>
+            </div>
+            {mode === "hall" && (
+              <div className="flex items-center gap-2">
+                <Select value={selectedHallId} onChange={setSelectedHallId} options={data.halls} placeholder="בחר אולם" className="w-40" />
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs text-stone-500 shrink-0">יום ראשון:</label>
+                  <input type="date" value={sundayDate} onChange={(e) => setSundayDate(e.target.value)} className="bg-white border border-stone-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                </div>
+              </div>
+            )}
+          </div>
+          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">
+            <IconDownload size={15} /> הדפסה / שמור PDF
+          </button>
+        </div>
+
+        {mode === "team" && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-xs text-stone-500 self-center">ימים:</span>
+            {DAYS.map((day) => (
+              <button key={day} onClick={() => toggleDay(day)} className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${filterDays.includes(day) ? "bg-orange-600 text-white border-orange-600" : "bg-white text-stone-500 border-stone-300 hover:bg-stone-50"}`}>
+                {day}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-stone-400">לחץ "הדפסה / שמור PDF" ובחלון ההדפסה בחר "שמור כ-PDF". מומלץ: כיוון דף לרוחב (Landscape).</p>
+      </div>
+
+      {/* TEAM MODE */}
+      {mode === "team" && (
+        <>
+          <div className="print-only text-center mb-3 text-xl font-bold text-stone-800">{title}</div>
+          <div className="bg-white rounded-xl border border-stone-200 overflow-auto weekly-table-wrap">
+            {data.teams.length === 0 ? (
+              <div className="p-8 text-center text-stone-400 text-sm">אין קבוצות רשומות עדיין.</div>
+            ) : (
+              <table className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 130 + 110 }}>
+                <thead>
+                  <tr>
+                    <th className="border border-stone-200 bg-stone-50 px-3 py-2 text-right text-xs font-semibold text-stone-600 w-28">קבוצה</th>
+                    {activeDays.map((day) => (
+                      <th key={day} className="border border-stone-200 bg-stone-50 px-3 py-2 text-center text-xs font-semibold text-stone-600">
+                        יום {day}
+                        {weekDates[day] && <div className="font-normal text-stone-400">{formatDate(weekDates[day])}</div>}
+                      </th>
+                    ))}
+                    <th className="border border-stone-200 bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700 w-32">קבוצה משחקת</th>
+                    <th className="border border-stone-200 bg-purple-50 px-3 py-2 text-center text-xs font-semibold text-purple-700 w-32">קבוצה מזכירות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.teams.map((team) => {
+                    const assignKey = `${sundayDate}__${team.id}`;
+                    const assignment = (data.weeklyAssignments || {})[assignKey] || { playing: "", secretary: "" };
+                    const rowColor = colorForTeamByCoach(team, data.teams);
+                    return (
+                      <tr key={team.id} style={{ backgroundColor: `${rowColor}12` }}>
+                        <td className="border border-stone-200 px-3 py-2" style={{ backgroundColor: `${rowColor}20` }}>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: rowColor }} />
+                            <span className="font-medium text-xs" style={{ color: rowColor }}>{team.name}</span>
+                          </div>
+                          {team.coachId && <div className="text-xs text-stone-500 mt-0.5 pr-4">{nameOf(data.coaches, team.coachId)}</div>}
+                        </td>
+                        {activeDays.map((day) => {
+                          const sessions = cellSessions(team.id, day);
+                          return (
+                            <td key={day} className="border border-stone-200 px-2 py-1.5 align-top">
+                              {sessions.length === 0 ? (
+                                <span className="text-stone-200 text-xs">—</span>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {sessions.map((s) => {
+                                    const color = typeColor(s.type || "אימון");
+                                    return (
+                                      <div key={s.id} className="rounded px-1.5 py-1 text-xs leading-tight" style={{ backgroundColor: `${color}15`, borderRight: `3px solid ${color}` }}>
+                                        <div className="font-semibold tabular-nums" style={{ color }}>{s.start}–{s.end}</div>
+                                        <div className="text-stone-600 mt-0.5">{nameOf(data.halls, s.hallId)}</div>
+                                        {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
+                                        {s.notes && <div className="text-stone-400 mt-0.5">{s.notes}</div>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        {/* Playing team column */}
+                        <td className="border border-stone-200 px-2 py-1.5 align-top bg-blue-50/30">
+                          {canEdit ? (
+                            <select
+                              value={assignment.playing}
+                              onChange={(e) => {
+                                const next = { ...(data.weeklyAssignments || {}), [assignKey]: { ...assignment, playing: e.target.value } };
+                                save({ ...data, weeklyAssignments: next });
+                              }}
+                              className="no-print w-full text-xs bg-transparent border border-stone-200 rounded px-1 py-1 focus:outline-none focus:border-blue-400"
+                              dir="rtl"
+                            >
+                              <option value="">—</option>
+                              {data.teams.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="text-xs text-stone-700">{assignment.playing ? nameOf(data.teams, assignment.playing) : "—"}</div>
+                          )}
+                          <div className="print-only text-xs text-stone-700">{assignment.playing ? nameOf(data.teams, assignment.playing) : "—"}</div>
+                        </td>
+                        {/* Secretary team column */}
+                        <td className="border border-stone-200 px-2 py-1.5 align-top bg-purple-50/30">
+                          {canEdit ? (
+                            <select
+                              value={assignment.secretary}
+                              onChange={(e) => {
+                                const next = { ...(data.weeklyAssignments || {}), [assignKey]: { ...assignment, secretary: e.target.value } };
+                                save({ ...data, weeklyAssignments: next });
+                              }}
+                              className="no-print w-full text-xs bg-transparent border border-stone-200 rounded px-1 py-1 focus:outline-none focus:border-purple-400"
+                              dir="rtl"
+                            >
+                              <option value="">—</option>
+                              {data.teams.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="text-xs text-stone-700">{assignment.secretary ? nameOf(data.teams, assignment.secretary) : "—"}</div>
+                          )}
+                          <div className="print-only text-xs text-stone-700">{assignment.secretary ? nameOf(data.teams, assignment.secretary) : "—"}</div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <div className="no-print flex flex-wrap gap-3 text-xs text-stone-500">
+            {SESSION_TYPES.map((t) => (
+              <span key={t.id} className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: t.color }} />
+                {t.name}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* HALL MODE */}
+      {mode === "hall" && (
+        <>
+          <div className="print-only text-center mb-2 text-xl font-bold text-stone-800">
+            {title} — אולם {selectedHallName}
+          </div>
+          {!selectedHallId ? (
+            <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-400 text-sm no-print">בחר אולם כדי להציג את הדוח.</div>
+          ) : hallSessions.length === 0 ? (
+            <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-400 text-sm">אין אימונים באולם זה בשבוע הנבחר.</div>
+          ) : (
+            <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+              <div className="px-4 py-2.5 bg-stone-700 text-white text-sm font-bold flex items-center justify-between">
+                <span>אולם {selectedHallName}</span>
+                {sundayDate && (
+                  <span className="text-stone-300 text-xs font-normal">
+                    {formatDate(new Date(sundayDate + "T00:00:00"))} — {formatDate(new Date(new Date(sundayDate + "T00:00:00").setDate(new Date(sundayDate + "T00:00:00").getDate() + 6)))}
+                  </span>
+                )}
+              </div>
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-stone-50">
+                    <th className="border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-600">תאריך</th>
+                    <th className="border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-600">יום</th>
+                    <th className="border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-600">קבוצה</th>
+                    <th className="border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-600">מאמן</th>
+                    <th className="border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-600">שעות</th>
+                    <th className="border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-600">סוג / הערות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hallSessions.map((s, i) => {
+                    const dayIdx = DAYS.indexOf(s.day);
+                    const bg = DAY_BG_COLORS[dayIdx] || "#ffffff";
+                    const date = weekDates[s.day];
+                    return (
+                      <tr key={s.id || i} style={{ backgroundColor: bg }}>
+                        <td className="border border-stone-200 px-3 py-2 text-sm tabular-nums font-medium text-stone-700">{date ? formatDate(date) : "—"}</td>
+                        <td className="border border-stone-200 px-3 py-2 text-sm text-stone-600">{s.day}</td>
+                        <td className="border border-stone-200 px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colorFor(s.teamId, data.teams.map((t) => t.id)) }} />
+                            <span className="text-sm font-medium text-stone-700">{nameOf(data.teams, s.teamId)}</span>
+                          </div>
+                        </td>
+                        <td className="border border-stone-200 px-3 py-2 text-sm text-stone-600">{nameOf(data.coaches, s.coachId)}</td>
+                        <td className="border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums text-stone-700">{s.start}–{s.end}</td>
+                        <td className="border border-stone-200 px-3 py-2 text-xs text-stone-500">
+                          {s.type && s.type !== "אימון" && <span className="font-medium" style={{ color: typeColor(s.type) }}>{s.type} </span>}
+                          {s.notes || ""}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

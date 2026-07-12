@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 4px;
+}
+
+@media print {
+  body {
+    background: white !important;
+    font-family: Arial, sans-serif;
+  }
+  #root > div > div > header,
+  #root > div > div > div.flex.gap-1,
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-table-wrap {
+    display: block !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  /* Scale down table to fit all 7 days on one A4 landscape page */
+  .weekly-table-wrap {
+    overflow: visible !important;
+  }
+  .weekly-table-wrap table {
+    width: 100% !important;
+    min-width: unset !important;
+    font-size: 9px !important;
+    table-layout: fixed !important;
+  }
+  .weekly-table-wrap table th,
+  .weekly-table-wrap table td {
+    padding: 3px 4px !important;
+    word-break: break-word !important;
+  }
+  .weekly-table-wrap table td > div {
+    font-size: 9px !important;
+  }
+  .weekly-table-wrap table td .rounded {
+    padding: 2px 4px !important;
+    font-size: 8px !important;
+  }
+}
+.print-only {
+  display: none;
+}
+
+/* Screen: always allow horizontal scroll on the weekly table */
+.weekly-table-wrap {
+  overflow-x: auto;
+}

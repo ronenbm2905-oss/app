@@ -5,4 +5,4 @@
 
 ## Topics
 
-- (עדיין אין נושאים — יתווספו בסיום משימות)
+- [[basketball-scheduler-cloud-migration]] — המרת scheduler.html לאפליקציית ענן (Vite+React+Firebase) עם fallback מקומי
