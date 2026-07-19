@@ -6,3 +6,4 @@
 ## Topics
 
 - [[basketball-scheduler-cloud-migration]] — המרת scheduler.html לאפליקציית ענן (Vite+React+Firebase) עם fallback מקומי
+- [[personal-caricatures]] — קריקטורות/איורים אישיים של איתי (מתנות לחברים) דרך gpt-image-gen

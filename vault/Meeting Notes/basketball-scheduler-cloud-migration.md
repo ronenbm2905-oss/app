@@ -13,10 +13,14 @@ SheetJS + Firebase (Firestore/Auth/Hosting)**, JavaScript (לא TS). הכלי מ
 מנהל/מאמן לפי מערך `admins` במסמך `clubs/main`.
 
 ## Open Questions
-- הקמת Firebase (יצירת פרויקט, הפעלת Firestore/Auth/Hosting, deploy, יצירת admin ראשון) נותרה
-  למשתמש — אימות מלא של מסלול הענן (Google login, סנכרון רב-מכשירי, הרשאות) טרם בוצע בפועל.
+- **Deploy ל-Firebase Hosting טרם בוצע** — האפליקציה רצה מקומית (`npm run dev`) מול Firebase ענן,
+  אבל אין עדיין URL ציבורי קבוע. השלב הבא: `firebase deploy`.
+- קובץ `.env` קיים רק במחשב הבית — במחשב המשרד צריך ליצור אותו ידנית (לא עובר דרך git).
 - ייבוא xlsx מהאיגוד אומת דרך העברת קוד נאמנה בלבד, לא עם קובץ אמיתי (לא היה קובץ דגימה בסשן).
 - זיהוי בית/חוץ בפורמט החדש מקודד לפי מילות-מפתח "קרית אונו" (מהמקור) — יצטרך התאמה למועדון אחר.
+
+פרטי הפרויקט של המשתמש: Firebase project `basketball-schedule-f0f57`, מסמך `clubs/main`,
+admin = `ronenbm2905@gmail.com`.
 
 ## Session Log
 
@@ -43,3 +47,16 @@ SheetJS + Firebase (Firestore/Auth/Hosting)**, JavaScript (לא TS). הכלי מ
   הפרות), משחקים (מצב ריק), קבוצות ואילוצים (רינדור). אפס שגיאות קונסול. localStorage שרד רענון.
 - **Notes / Caveats:** מסלול Firebase עצמו לא נבדק בפועל (דורש פרויקט של המשתמש) — ראה Open Questions.
 - **Related:** [[agent-omer]], [[dir-output]], [[skill-obsidian-vault-workflow]]
+
+### 2026-07-11 — הקמת Firebase + תיקון באג טעינה במצב ענן [shipped]
+- **What was done:** ליוויתי את המשתמש בהקמת Firebase מלאה (project `basketball-schedule-f0f57`:
+  Firestore ב-eur3 production mode, Auth Google, רישום Web app, כללי אבטחה פורסמו, מסמך
+  `clubs/main` עם admin). נוצר `.env` עם המפתחות + עודכן `.firebaserc`. האפליקציה עברה למצב ענן.
+- **Bug fixed:** במצב ענn ה-`onSnapshot` ב-`useClubData` נרשם ב-mount עם deps `[]` — כלומר
+  **לפני** שההתחברות הושלמה (request.auth=null) → הכללים חסמו → "טעינת הנתונים נכשלה", וללא
+  re-subscribe אחרי login. תוקן: ה-effect ממתין ל-`user` ותלוי ב-`user?.uid`, כך שנרשם רק כשמחובר
+  ומתחבר-מחדש אחרי login. אומת בדפדפן: אין באנר שגיאה, admin מזוהה, כפתורי עריכה מופיעים, נתונים נטענים.
+- **Decisions:** מפתחות Firebase Web נשמרו ב-`.env` (הם ציבוריים ממילא; ההגנה האמיתית = firestore.rules).
+- **Notes / Caveats:** התיקון ב-`useClubData.js` עדיין לא עבר commit/push — צריך לפני deploy ולפני
+  pull במחשב המשרד.
+- **Related:** [[basketball-scheduler-cloud-migration#2026-07-11]], [[push-workflow]]

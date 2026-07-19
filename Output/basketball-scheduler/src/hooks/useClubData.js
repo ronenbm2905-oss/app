@@ -47,6 +47,13 @@ function useCloudClubData(user) {
 
   useEffect(() => {
     if (!isFirebaseConfigured) return; // local mode: this hook's effect is inert
+    // Wait until the user is authenticated before subscribing — the security rules
+    // require request.auth != null, so listening while signed-out would be denied.
+    if (!user) {
+      setLoaded(false);
+      return;
+    }
+    setError(null);
     const ref = doc(db, "clubs", CLUB_ID);
     const unsub = onSnapshot(
       ref,
@@ -60,7 +67,7 @@ function useCloudClubData(user) {
       }
     );
     return unsub;
-  }, []);
+  }, [user?.uid]);
 
   const isAdmin = Boolean(
     user?.email &&
