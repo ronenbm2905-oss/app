@@ -37,6 +37,13 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
+  // Picking a team auto-fills its coach (each team has a fixed coach); still editable for substitutes.
+  const handleTeamChange = (newTeamId) => {
+    setTeamId(newTeamId);
+    const team = data.teams.find((t) => t.id === newTeamId);
+    if (team?.coachId) setCoachId(team.coachId);
+  };
+
   const wouldConflict = useMemo(() => {
     if (!valid) return null;
     const others = data.sessions.filter((s) => s.id !== initial?.id && (s.weekOf || "") === (weekOf || ""));
@@ -76,7 +83,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-stone-500 mb-1 block">קבוצה</label>
-          <Select value={teamId} onChange={setTeamId} options={data.teams} placeholder="בחר קבוצה" />
+          <Select value={teamId} onChange={handleTeamChange} options={data.teams} placeholder="בחר קבוצה" />
         </div>
         <div>
           <label className="text-xs text-stone-500 mb-1 block">מאמן</label>
