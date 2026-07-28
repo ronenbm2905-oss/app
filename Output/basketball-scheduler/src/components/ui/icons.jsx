@@ -12,6 +12,7 @@ export {
   MapPin as IconMapPin,
   Calendar as IconCalendar,
   ChevronDown as IconChevronDown,
+  ChevronUp as IconChevronUp,
   Pencil as IconPencil,
   Check as IconCheck,
   ShieldAlert as IconShield,

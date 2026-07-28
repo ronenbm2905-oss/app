@@ -4,7 +4,7 @@ import { uid } from "../utils/dates";
 import { Select } from "./ui/Select";
 import {
   IconPlus, IconTrash, IconPencil, IconCheck, IconAlert, IconX,
-  IconUsers, IconUserPlus, IconBuilding,
+  IconUsers, IconUserPlus, IconBuilding, IconChevronUp, IconChevronDown,
 } from "./ui/icons";
 
 function NameForm({ initial, label, onSave, onCancel }) {
@@ -156,7 +156,7 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
   );
 }
 
-function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, canEdit }) {
+function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, canEdit }) {
   const [editingId, setEditingId] = useState(null);
   const coachName = (id) => coaches.find((c) => c.id === id)?.name || "—";
 
@@ -192,7 +192,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, canEdit 
         <div className="p-6 text-center text-stone-600 text-sm">אין עדיין קבוצות רשומות.</div>
       ) : (
         <div className="divide-y divide-stone-100">
-          {items.map((item) => {
+          {items.map((item, idx) => {
             const inUse = usageCount(item.id);
             const isEditing = editingId === item.id;
             return (
@@ -211,6 +211,26 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, canEdit 
                     {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
                       <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex flex-col -my-1">
+                          <button
+                            onClick={() => onMove(item.id, "up")}
+                            disabled={idx === 0}
+                            className="p-0.5 rounded hover:bg-stone-100 text-stone-500 disabled:opacity-30 disabled:hover:bg-transparent"
+                            aria-label="הזז למעלה"
+                            title="הזז למעלה"
+                          >
+                            <IconChevronUp size={14} />
+                          </button>
+                          <button
+                            onClick={() => onMove(item.id, "down")}
+                            disabled={idx === items.length - 1}
+                            className="p-0.5 rounded hover:bg-stone-100 text-stone-500 disabled:opacity-30 disabled:hover:bg-transparent"
+                            aria-label="הזז למטה"
+                            title="הזז למטה"
+                          >
+                            <IconChevronDown size={14} />
+                          </button>
+                        </div>
                         <button onClick={() => setEditingId(item.id)} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500" aria-label="ערוך">
                           <IconPencil size={14} />
                         </button>
@@ -260,6 +280,15 @@ export function RostersView({ data, save, canEdit }) {
     const next = exists ? data.teams.map((t) => (t.id === item.id ? item : t)) : [...data.teams, item];
     save({ ...data, teams: next });
   };
+  const handleMoveTeam = (id, dir) => {
+    const idx = data.teams.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const swap = dir === "up" ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= data.teams.length) return;
+    const next = [...data.teams];
+    [next[idx], next[swap]] = [next[swap], next[idx]];
+    save({ ...data, teams: next });
+  };
 
   const handleDeleteCoach = (id, inUse) => {
     if (inUse > 0) {
@@ -296,7 +325,7 @@ export function RostersView({ data, save, canEdit }) {
         </div>
       )}
       <div className="grid sm:grid-cols-3 gap-4">
-        <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} canEdit={canEdit} />
+        <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
         <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} />
         <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} />
       </div>

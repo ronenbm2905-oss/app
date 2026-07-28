@@ -104,7 +104,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
             {data.teams.length === 0 ? (
               <div className="p-8 text-center text-stone-600 text-sm">אין קבוצות רשומות עדיין.</div>
             ) : (
-              <table className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 130 + 110 }}>
+              <table className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 112 + 100 }}>
                 <thead>
                   <tr>
                     <th className="border border-stone-200 bg-stone-50 px-3 py-2 text-right text-xs font-semibold text-stone-600 w-28">קבוצה</th>

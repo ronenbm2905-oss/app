@@ -42,7 +42,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50" dir="rtl">
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className={`${tab === "weekly" ? "max-w-7xl" : "max-w-4xl"} mx-auto px-4 py-6`}>
         <header className="mb-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
