@@ -200,7 +200,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
               onClick={() => onSaveAndAddNext(currentSession)}
               className="px-3 py-1.5 text-sm rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 disabled:opacity-40 flex items-center gap-1.5"
             >
-              <IconPlus size={15} /> שמור והוסף אימון נוסף למאמן זה
+              <IconPlus size={15} /> שמור והוסף אימון נוסף לקבוצה זו
             </button>
           )}
           <button

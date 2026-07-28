@@ -14,6 +14,14 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
+  // "TeamName – CoachName" for the playing/secretary columns (falls back to team name only).
+  const teamWithCoach = (teamId) => {
+    const team = data.teams.find((t) => t.id === teamId);
+    if (!team) return "—";
+    const coach = team.coachId ? nameOf(data.coaches, team.coachId) : "";
+    return coach ? `${team.name} – ${coach}` : team.name;
+  };
+
   const toggleDay = (day) => {
     setFilterDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...DAYS.filter((d) => prev.includes(d) || d === day)]));
   };
@@ -164,13 +172,13 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                             >
                               <option value="">—</option>
                               {data.teams.map((t) => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
+                                <option key={t.id} value={t.id}>{teamWithCoach(t.id)}</option>
                               ))}
                             </select>
                           ) : (
-                            <div className="text-xs text-stone-700">{assignment.playing ? nameOf(data.teams, assignment.playing) : "—"}</div>
+                            <div className="text-xs text-stone-700">{assignment.playing ? teamWithCoach(assignment.playing) : "—"}</div>
                           )}
-                          <div className="print-only text-xs text-stone-700">{assignment.playing ? nameOf(data.teams, assignment.playing) : "—"}</div>
+                          <div className="print-only text-xs text-stone-700">{assignment.playing ? teamWithCoach(assignment.playing) : "—"}</div>
                         </td>
                         {/* Secretary team column */}
                         <td className="border border-stone-200 px-2 py-1.5 align-top bg-purple-50/30">
@@ -186,13 +194,13 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                             >
                               <option value="">—</option>
                               {data.teams.map((t) => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
+                                <option key={t.id} value={t.id}>{teamWithCoach(t.id)}</option>
                               ))}
                             </select>
                           ) : (
-                            <div className="text-xs text-stone-700">{assignment.secretary ? nameOf(data.teams, assignment.secretary) : "—"}</div>
+                            <div className="text-xs text-stone-700">{assignment.secretary ? teamWithCoach(assignment.secretary) : "—"}</div>
                           )}
-                          <div className="print-only text-xs text-stone-700">{assignment.secretary ? nameOf(data.teams, assignment.secretary) : "—"}</div>
+                          <div className="print-only text-xs text-stone-700">{assignment.secretary ? teamWithCoach(assignment.secretary) : "—"}</div>
                         </td>
                         {/* Weekly total */}
                         <td className="border border-stone-200 px-2 py-1.5 text-center bg-stone-50">

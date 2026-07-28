@@ -63,7 +63,7 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   const handleSaveAndAddNext = (session) => {
     const nextSessions = [...data.sessions, { ...session, id: uid() }];
     save({ ...data, sessions: nextSessions });
-    setNextSessionDefaults({ coachId: session.coachId, type: session.type });
+    setNextSessionDefaults({ teamId: session.teamId, coachId: session.coachId, type: session.type });
     setEditingId("new");
   };
 
