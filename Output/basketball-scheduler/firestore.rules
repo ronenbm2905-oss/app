@@ -1,12 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /clubs/{clubId} {
-      // Any signed-in user can read.
-      allow read: if request.auth != null;
-      // Only admins listed in the document can write.
-      allow write: if request.auth != null &&
+
+    // ---- Permission model (allowlist) ----
+    // Every club document holds two email allowlists:
+    //   admins[]  — editors: may read AND write.
+    //   members[] — viewers: may read only.
+    // A signed-in user whose Google email is in NEITHER list has NO access at
+    // all (read is denied), so club data is never exposed to arbitrary Google
+    // accounts. This mirrors the write model that was already admin-only.
+
+    function isAdmin() {
+      return request.auth != null &&
+        'admins' in resource.data &&
         request.auth.token.email in resource.data.admins;
+    }
+
+    function isMember() {
+      return request.auth != null &&
+        'members' in resource.data &&
+        request.auth.token.email in resource.data.members;
+    }
+
+    match /clubs/{clubId} {
+      // Read limited to the allowlist (admins or members) — not any signed-in user.
+      allow read: if isAdmin() || isMember();
+      // Write limited to admins only.
+      allow write: if isAdmin();
     }
   }
 }

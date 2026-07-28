@@ -61,8 +61,14 @@ function useCloudClubData(user) {
         setData(snap.exists() ? withDefaults(snap.data()) : EMPTY);
         setLoaded(true);
       },
-      () => {
-        setError("טעינת הנתונים נכשלה. בדוק חיבור והרשאות.");
+      (err) => {
+        if (err?.code === "permission-denied") {
+          setError(
+            'אין לך הרשאת גישה למועדון זה. כדי לצפות בלוח, בקש ממנהל המערכת להוסיף את כתובת הדוא"ל שלך לרשימת המורשים.'
+          );
+        } else {
+          setError("טעינת הנתונים נכשלה. בדוק חיבור והרשאות.");
+        }
         setLoaded(true);
       }
     );

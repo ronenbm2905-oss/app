@@ -220,7 +220,7 @@ export function GamesView({ data, save, canEdit }) {
           </div>
           <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
             {data.teams.length === 0 ? (
-              <div className="p-6 text-center text-stone-400 text-sm">הוסף קבוצות קודם בטאב "קבוצות, מאמנים ואולמות".</div>
+              <div className="p-6 text-center text-stone-600 text-sm">הוסף קבוצות קודם בטאב "קבוצות, מאמנים ואולמות".</div>
             ) : (
               <div className="divide-y divide-stone-100">
                 {data.teams.map((team) => {
@@ -263,7 +263,7 @@ export function GamesView({ data, save, canEdit }) {
                               ))}
                             </div>
                           ) : (
-                            <span className="text-xs text-stone-400 italic">לא הוגדר</span>
+                            <span className="text-xs text-stone-600 italic">לא הוגדר</span>
                           )}
                           <button onClick={() => { setEditingTeamId(team.id); setCodeInput(codes.join(", ")); }} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500" aria-label="ערוך">
                             <IconPlus size={14} />
@@ -331,7 +331,7 @@ export function GamesView({ data, save, canEdit }) {
           {importMsg && (
             <div className={`text-xs rounded-lg p-2.5 flex items-center justify-between ${importMsg.type === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
               <span>{importMsg.text}</span>
-              <button onClick={() => setImportMsg(null)}>
+              <button onClick={() => setImportMsg(null)} aria-label="סגור הודעה">
                 <IconX size={14} />
               </button>
             </div>
@@ -341,7 +341,7 @@ export function GamesView({ data, save, canEdit }) {
             {filtered.length === 0 ? (
               <div className="p-8 text-center space-y-2">
                 <IconTrophy size={28} className="mx-auto text-stone-300" />
-                <p className="text-stone-400 text-sm">
+                <p className="text-stone-600 text-sm">
                   {games.length === 0
                     ? canEdit
                       ? "אין עדיין משחקים. ייבא קובץ מהאיגוד או הוסף משחק ידני."
@@ -358,7 +358,7 @@ export function GamesView({ data, save, canEdit }) {
                     <div key={g.federationCode || i} className="flex items-center gap-3 px-4 py-3 flex-wrap">
                       <div className="w-28 shrink-0">
                         <div className="text-xs font-medium text-stone-700">{formatDateHe(g.date)}</div>
-                        <div className="text-xs text-stone-400">{g.time}</div>
+                        <div className="text-xs text-stone-600">{g.time}</div>
                       </div>
                       <Pill color={colorFor(g.teamId, data.teams.map((t) => t.id))}>{teamName(g.teamId)}</Pill>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${g.isHome ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
@@ -366,11 +366,11 @@ export function GamesView({ data, save, canEdit }) {
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-stone-700 truncate">נגד: {g.opponent}</div>
-                        <div className="text-xs text-stone-400 truncate">{g.venue}</div>
+                        <div className="text-xs text-stone-600 truncate">{g.venue}</div>
                       </div>
                       <div className="hidden sm:block text-right shrink-0">
                         <div className="text-xs text-stone-500 truncate max-w-32">{g.league}</div>
-                        {g.round !== "" && g.round !== 0 && <div className="text-xs text-stone-400">מחזור {g.round}</div>}
+                        {g.round !== "" && g.round !== 0 && <div className="text-xs text-stone-600">מחזור {g.round}</div>}
                       </div>
                       {result !== null ? (
                         <div className="shrink-0 text-right">
@@ -382,7 +382,7 @@ export function GamesView({ data, save, canEdit }) {
                           </div>
                         </div>
                       ) : (
-                        <div className="shrink-0 text-xs text-stone-300">טרם נקבע</div>
+                        <div className="shrink-0 text-xs text-stone-500">טרם נקבע</div>
                       )}
                       {canEdit && g.manual && (
                         <button
@@ -390,7 +390,8 @@ export function GamesView({ data, save, canEdit }) {
                             const nextGames = games.filter((_, j) => j !== games.indexOf(g));
                             save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, data) });
                           }}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-stone-300 hover:text-red-500 shrink-0"
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-stone-500 hover:text-red-600 shrink-0"
+                          aria-label="מחק משחק"
                         >
                           <IconTrash size={14} />
                         </button>
@@ -403,7 +404,7 @@ export function GamesView({ data, save, canEdit }) {
           </div>
 
           {filtered.length > 0 && (
-            <div className="text-xs text-stone-400 text-left">
+            <div className="text-xs text-stone-600 text-left">
               {filtered.length} משחקים{filterTeam || filterType ? " (מסוננים)" : ""}
               {games.length !== filtered.length ? ` מתוך ${games.length}` : ""}
             </div>

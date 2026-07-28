@@ -93,7 +93,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
             ))}
           </div>
         )}
-        <p className="text-xs text-stone-400">לחץ "הדפסה / שמור PDF" ובחלון ההדפסה בחר "שמור כ-PDF". מומלץ: כיוון דף לרוחב (Landscape).</p>
+        <p className="text-xs text-stone-600">לחץ "הדפסה / שמור PDF" ובחלון ההדפסה בחר "שמור כ-PDF". מומלץ: כיוון דף לרוחב (Landscape).</p>
       </div>
 
       {/* TEAM MODE */}
@@ -102,7 +102,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
           <div className="print-only text-center mb-3 text-xl font-bold text-stone-800">{title}</div>
           <div className="bg-white rounded-xl border border-stone-200 overflow-auto weekly-table-wrap">
             {data.teams.length === 0 ? (
-              <div className="p-8 text-center text-stone-400 text-sm">אין קבוצות רשומות עדיין.</div>
+              <div className="p-8 text-center text-stone-600 text-sm">אין קבוצות רשומות עדיין.</div>
             ) : (
               <table className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 130 + 110 }}>
                 <thead>
@@ -111,7 +111,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
                     {activeDays.map((day) => (
                       <th key={day} className="border border-stone-200 bg-stone-50 px-3 py-2 text-center text-xs font-semibold text-stone-600">
                         יום {day}
-                        {weekDates[day] && <div className="font-normal text-stone-400">{formatDate(weekDates[day])}</div>}
+                        {weekDates[day] && <div className="font-normal text-stone-600">{formatDate(weekDates[day])}</div>}
                       </th>
                     ))}
                     <th className="border border-stone-200 bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700 w-32">קבוצה משחקת</th>
@@ -147,7 +147,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
                                         <div className="font-semibold tabular-nums" style={{ color }}>{s.start}–{s.end}</div>
                                         <div className="text-stone-600 mt-0.5">{nameOf(data.halls, s.hallId)}</div>
                                         {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
-                                        {s.notes && <div className="text-stone-400 mt-0.5">{s.notes}</div>}
+                                        {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
                                       </div>
                                     );
                                   })}
@@ -225,9 +225,9 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
             {title} — אולם {selectedHallName}
           </div>
           {!selectedHallId ? (
-            <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-400 text-sm no-print">בחר אולם כדי להציג את הדוח.</div>
+            <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm no-print">בחר אולם כדי להציג את הדוח.</div>
           ) : hallSessions.length === 0 ? (
-            <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-400 text-sm">אין אימונים באולם זה בשבוע הנבחר.</div>
+            <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm">אין אימונים באולם זה בשבוע הנבחר.</div>
           ) : (
             <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
               <div className="px-4 py-2.5 bg-stone-700 text-white text-sm font-bold flex items-center justify-between">

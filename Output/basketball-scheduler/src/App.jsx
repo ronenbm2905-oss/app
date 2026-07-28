@@ -8,6 +8,7 @@ import { ConstraintsView } from "./components/ConstraintsView";
 import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
+import { LegalFooter } from "./legal/LegalFooter";
 import { IconLogOut, IconEye } from "./components/ui/icons";
 
 const TABS = [
@@ -22,7 +23,7 @@ const TABS = [
 function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
-      <div className="text-stone-400 text-sm">טוען...</div>
+      <div className="text-stone-600 text-sm">טוען...</div>
     </div>
   );
 }
@@ -70,13 +71,17 @@ export default function App() {
           )}
         </header>
 
-        <div className="flex gap-1 bg-stone-200/70 rounded-xl p-1 w-fit mb-5 flex-wrap">
+        <div role="tablist" aria-label="מסכי המערכת" className="flex gap-1 bg-stone-200/70 rounded-xl p-1 w-fit mb-5 flex-wrap">
           {TABS.map((tb) => (
             <button
               key={tb.id}
+              role="tab"
+              id={`tab-${tb.id}`}
+              aria-selected={tab === tb.id}
+              aria-controls="tabpanel"
               onClick={() => setTab(tb.id)}
               className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                tab === tb.id ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+                tab === tb.id ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-800"
               }`}
             >
               {tb.label}
@@ -86,6 +91,7 @@ export default function App() {
 
         {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
 
+        <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {tab === "rosters" ? (
           <RostersView data={data} save={save} canEdit={canEdit} />
         ) : tab === "manager" ? (
@@ -99,6 +105,9 @@ export default function App() {
         ) : (
           <CoachView data={data} />
         )}
+        </div>
+
+        <LegalFooter className="mt-10 pt-6 border-t border-stone-200" />
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ export function CoachView({ data, fixedCoachId }) {
     return (
       <div className="space-y-4" dir="rtl">
         <div className="bg-white rounded-xl border border-stone-200 p-6 text-center space-y-3">
-          <IconUsers size={28} className="mx-auto text-stone-400" />
+          <IconUsers size={28} className="mx-auto text-stone-600" />
           <p className="text-stone-600 text-sm">בחר את שמך כדי לראות את לוח האימונים שלך</p>
           <Select value={coachId} onChange={setCoachId} options={data.coaches} placeholder="בחר מאמן" className="max-w-xs mx-auto" />
         </div>
@@ -75,7 +75,7 @@ export function CoachView({ data, fixedCoachId }) {
                 <div>
                   <p className="text-xs font-medium text-stone-500 mb-1.5">האימונים שלך</p>
                   {mySessions.length === 0 ? (
-                    <p className="text-xs text-stone-400">אין לך אימון ביום זה.</p>
+                    <p className="text-xs text-stone-600">אין לך אימון ביום זה.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {mySessions.map((s) => {
@@ -119,7 +119,7 @@ export function CoachView({ data, fixedCoachId }) {
                           <IconMapPin size={12} /> {hall.name}
                         </p>
                         {sessions.length === 0 ? (
-                          <p className="text-xs text-stone-400">אין אימונים</p>
+                          <p className="text-xs text-stone-600">אין אימונים</p>
                         ) : (
                           <div className="space-y-1">
                             {sessions.map((s) => (
@@ -128,7 +128,7 @@ export function CoachView({ data, fixedCoachId }) {
                                   {s.start}–{s.end}
                                 </span>
                                 <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>{nameOf(data.teams, s.teamId)}</Pill>
-                                <span className="text-stone-400">{nameOf(data.coaches, s.coachId)}</span>
+                                <span className="text-stone-600">{nameOf(data.coaches, s.coachId)}</span>
                               </div>
                             ))}
                           </div>

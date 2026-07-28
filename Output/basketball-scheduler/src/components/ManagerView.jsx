@@ -129,7 +129,7 @@ export function ManagerView({ data, save, canEdit }) {
           }`}
         >
           <span>{importMsg.text}</span>
-          <button onClick={() => setImportMsg(null)}>
+          <button onClick={() => setImportMsg(null)} aria-label="סגור הודעה">
             <IconX size={14} />
           </button>
         </div>
@@ -175,7 +175,7 @@ export function ManagerView({ data, save, canEdit }) {
 
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="p-8 text-center text-stone-400 text-sm">
+          <div className="p-8 text-center text-stone-600 text-sm">
             {data.sessions.length === 0
               ? canEdit
                 ? "אין עדיין אימונים. ייבא קובץ CSV או הוסף אימון חדש."
@@ -226,7 +226,7 @@ export function ManagerView({ data, save, canEdit }) {
                             <Pill color={sessionTypeColor(s.type)}>{s.type}</Pill>
                           )}
                           {isGameSession && (
-                            <span className="text-xs text-stone-400 italic">מייבוא משחקים</span>
+                            <span className="text-xs text-stone-600 italic">מייבוא משחקים</span>
                           )}
                           <span className="text-stone-300 text-xs">•</span>
                           <span className="text-sm text-stone-600">{nameOf(data.coaches, s.coachId)}</span>
@@ -239,7 +239,7 @@ export function ManagerView({ data, save, canEdit }) {
                             </>
                           )}
                         </div>
-                        {s.notes && <div className="text-xs text-stone-400 mt-0.5 truncate">{s.notes}</div>}
+                        {s.notes && <div className="text-xs text-stone-600 mt-0.5 truncate">{s.notes}</div>}
                       </div>
                       {hasViolation && (
                         <div className="flex items-center gap-1 text-red-600 text-xs font-medium shrink-0">
@@ -264,7 +264,7 @@ export function ManagerView({ data, save, canEdit }) {
                               </button>
                               <button
                                 onClick={() => handleDelete(s.id)}
-                                className="p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-600"
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-stone-600 hover:text-red-600"
                                 aria-label="מחק"
                               >
                                 <IconTrash size={14} />

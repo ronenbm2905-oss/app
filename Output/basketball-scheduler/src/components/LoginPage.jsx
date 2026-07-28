@@ -1,15 +1,16 @@
 import { IconTrophy } from "./ui/icons";
+import { LegalFooter } from "../legal/LegalFooter";
 
 export function LoginPage({ onSignIn, authError }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 px-4" dir="rtl">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 px-4 py-8" dir="rtl">
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-8 max-w-sm w-full text-center space-y-5">
         <div className="mx-auto w-14 h-14 rounded-2xl bg-orange-600 flex items-center justify-center">
           <IconTrophy size={28} className="text-white" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-stone-900">מערכת שעות אימוני כדורסל</h1>
-          <p className="text-sm text-stone-500 mt-1">התחבר כדי להמשיך</p>
+          <p className="text-sm text-stone-600 mt-1">התחבר כדי להמשיך</p>
         </div>
 
         <button
@@ -21,10 +22,17 @@ export function LoginPage({ onSignIn, authError }) {
 
         {authError && <p className="text-xs text-red-600">{authError}</p>}
 
-        <p className="text-xs text-stone-400">
+        <p className="text-xs text-stone-600 leading-relaxed">
+          בהתחברות אתה מאשר את מדיניות הפרטיות ותנאי השימוש שלנו. נאסוף את כתובת הדוא"ל
+          והשם מחשבון ה-Google שלך לצורך זיהוי והרשאות בלבד.
+        </p>
+
+        <p className="text-xs text-stone-600">
           מנהלים יכולים לערוך; מאמנים רואים את הלוח במצב צפייה בלבד.
         </p>
       </div>
+
+      <LegalFooter className="mt-6" />
     </div>
   );
 }

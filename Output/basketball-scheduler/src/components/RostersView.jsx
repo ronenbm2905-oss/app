@@ -72,7 +72,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
       )}
 
       {items.length === 0 ? (
-        <div className="p-6 text-center text-stone-400 text-sm">
+        <div className="p-6 text-center text-stone-600 text-sm">
           אין עדיין {label === "מאמן" ? "מאמנים" : "אולמות"} רשומים.
         </div>
       ) : (
@@ -89,7 +89,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
                 ) : (
                   <div className="flex items-center gap-3 px-4 py-2.5">
                     <span className="flex-1 text-sm text-stone-700">{item.name}</span>
-                    {inUse > 0 && <span className="text-xs text-stone-400">{inUse} אימונים</span>}
+                    {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
                       <div className="flex items-center gap-1 shrink-0">
                         <button onClick={() => setEditingId(item.id)} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500" aria-label="ערוך">
@@ -98,7 +98,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
                         <button
                           onClick={() => onDelete(item.id, inUse)}
                           className={`p-1.5 rounded-lg ${
-                            inUse > 0 ? "text-stone-300 cursor-not-allowed" : "hover:bg-red-50 text-stone-400 hover:text-red-600"
+                            inUse > 0 ? "text-stone-300 cursor-not-allowed" : "hover:bg-red-50 text-stone-600 hover:text-red-600"
                           }`}
                           aria-label="מחק"
                           title={inUse > 0 ? "לא ניתן למחוק - יש אימונים שמשתמשים בזה" : "מחק"}
@@ -189,7 +189,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, canEdit 
       )}
 
       {items.length === 0 ? (
-        <div className="p-6 text-center text-stone-400 text-sm">אין עדיין קבוצות רשומות.</div>
+        <div className="p-6 text-center text-stone-600 text-sm">אין עדיין קבוצות רשומות.</div>
       ) : (
         <div className="divide-y divide-stone-100">
           {items.map((item) => {
@@ -206,9 +206,9 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, canEdit 
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colorFor(item.id, items.map((t) => t.id)) }} />
                     <div className="flex-1">
                       <div className="text-sm text-stone-700">{item.name}</div>
-                      {item.coachId && <div className="text-xs text-stone-400">מאמן: {coachName(item.coachId)}</div>}
+                      {item.coachId && <div className="text-xs text-stone-600">מאמן: {coachName(item.coachId)}</div>}
                     </div>
-                    {inUse > 0 && <span className="text-xs text-stone-400">{inUse} אימונים</span>}
+                    {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
                       <div className="flex items-center gap-1 shrink-0">
                         <button onClick={() => setEditingId(item.id)} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500" aria-label="ערוך">
@@ -217,7 +217,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, canEdit 
                         <button
                           onClick={() => onDelete(item.id, inUse)}
                           className={`p-1.5 rounded-lg ${
-                            inUse > 0 ? "text-stone-300 cursor-not-allowed" : "hover:bg-red-50 text-stone-400 hover:text-red-600"
+                            inUse > 0 ? "text-stone-300 cursor-not-allowed" : "hover:bg-red-50 text-stone-600 hover:text-red-600"
                           }`}
                           aria-label="מחק"
                           title={inUse > 0 ? "לא ניתן למחוק - יש אימונים שמשתמשים בזה" : "מחק"}
@@ -290,7 +290,7 @@ export function RostersView({ data, save, canEdit }) {
           <span className="flex items-center gap-2">
             <IconAlert size={16} className="shrink-0" /> {blockedMsg}
           </span>
-          <button onClick={() => setBlockedMsg(null)}>
+          <button onClick={() => setBlockedMsg(null)} aria-label="סגור הודעה">
             <IconX size={14} />
           </button>
         </div>

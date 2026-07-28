@@ -36,5 +36,6 @@ export const EMPTY = {
   games: [],
   gameMapping: [],
   weeklyAssignments: {},
-  admins: [],
+  admins: [],   // emails with edit rights (read + write)
+  members: [],  // emails with view-only rights (read); admins also read via the rules
 };

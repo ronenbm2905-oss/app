@@ -175,7 +175,7 @@ export function ConstraintsView({ data, save, canEdit }) {
 
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         {constraints.length === 0 ? (
-          <div className="p-8 text-center text-stone-400 text-sm">
+          <div className="p-8 text-center text-stone-600 text-sm">
             אין אילוצים רשומים.{canEdit ? " הוסף אילוץ כדי שהכלי יתריע על אימונים שמתנגשים בזמני חוסר-זמינות." : ""}
           </div>
         ) : (
@@ -191,7 +191,7 @@ export function ConstraintsView({ data, save, canEdit }) {
                     </div>
                   ) : (
                     <div className="flex items-center gap-3 px-4 py-3">
-                      <div className="shrink-0 text-stone-400">
+                      <div className="shrink-0 text-stone-600">
                         {c.type === "coach" ? <IconUserX size={16} /> : <IconBuilding size={16} />}
                       </div>
                       <div className="w-16 text-sm font-medium text-stone-700 shrink-0">{c.day}</div>
@@ -202,7 +202,7 @@ export function ConstraintsView({ data, save, canEdit }) {
                         <span className="text-sm text-stone-700 font-medium">
                           {c.type === "coach" ? nameOf(data.coaches, c.refId) : nameOf(data.halls, c.refId)}
                         </span>
-                        {c.note && <span className="text-xs text-stone-400">— {c.note}</span>}
+                        {c.note && <span className="text-xs text-stone-600">— {c.note}</span>}
                       </div>
                       {affected > 0 && (
                         <div className="flex items-center gap-1 text-red-600 text-xs font-medium shrink-0">
@@ -214,7 +214,7 @@ export function ConstraintsView({ data, save, canEdit }) {
                           <button onClick={() => setEditingId(c.id)} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500" aria-label="ערוך">
                             <IconPencil size={14} />
                           </button>
-                          <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-600" aria-label="מחק">
+                          <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-stone-600 hover:text-red-600" aria-label="מחק">
                             <IconTrash size={14} />
                           </button>
                         </div>
