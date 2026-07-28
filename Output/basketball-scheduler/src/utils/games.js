@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { DAYS } from "../constants";
-import { formatDateFromExcel, parseDateDMY, HEB_DAY_MAP } from "./dates";
+import { formatDateFromExcel, parseDateDMY, HEB_DAY_MAP, weekStartOfDMY } from "./dates";
 
 // Parse xlsx using SheetJS. In Vite we import the library directly (not window.XLSX).
 export function parseXlsxToRows(arrayBuffer) {
@@ -227,6 +227,7 @@ export function syncGamesToSessions(nextGames, data) {
       end,
       type: sessionType,
       notes: `נגד: ${g.opponent}${g.venue ? ` | ${g.venue}` : ""}`,
+      weekOf: weekStartOfDMY(g.date),
       fromGame: true,
       gameKey: gameSessionKey(g),
       federationCode: g.federationCode,

@@ -1,19 +1,20 @@
 import { useState, useMemo, useRef } from "react";
 import { DAYS } from "../constants";
-import { timeToMinutes } from "../utils/dates";
+import { timeToMinutes, shiftWeek } from "../utils/dates";
 import { uid } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
 import { findConflicts, findConstraintViolations } from "../utils/conflicts";
 import { parseCSV, buildCsvTemplate, importCsvToData } from "../utils/csv";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
+import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
 import {
   IconUpload, IconPlus, IconTrash, IconAlert, IconX, IconDownload,
-  IconMapPin, IconPencil, IconShield, IconBan,
+  IconMapPin, IconPencil, IconShield, IconBan, IconCopy,
 } from "./ui/icons";
 
-export function ManagerView({ data, save, canEdit }) {
+export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [editingId, setEditingId] = useState(null);
   const [filterDay, setFilterDay] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
@@ -22,15 +23,21 @@ export function ManagerView({ data, save, canEdit }) {
   const fileInputRef = useRef(null);
   const [importMsg, setImportMsg] = useState(null);
 
-  const conflicts = useMemo(() => findConflicts(data.sessions), [data.sessions]);
+  // Only sessions of the currently-selected week.
+  const weekSessions = useMemo(
+    () => data.sessions.filter((s) => (s.weekOf || "") === weekStart),
+    [data.sessions, weekStart]
+  );
+
+  const conflicts = useMemo(() => findConflicts(weekSessions), [weekSessions]);
   const violations = useMemo(
-    () => findConstraintViolations(data.sessions, data.constraints || []),
-    [data.sessions, data.constraints]
+    () => findConstraintViolations(weekSessions, data.constraints || []),
+    [weekSessions, data.constraints]
   );
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
-  const filtered = data.sessions
+  const filtered = weekSessions
     .filter((s) => !filterDay || s.day === filterDay)
     .filter((s) => !filterTeam || s.teamId === filterTeam)
     .filter((s) => !filterHall || s.hallId === filterHall)
@@ -64,6 +71,18 @@ export function ManagerView({ data, save, canEdit }) {
     save({ ...data, sessions: data.sessions.filter((s) => s.id !== id) });
   };
 
+  const handleCopyPrevWeek = () => {
+    const prev = shiftWeek(weekStart, -1);
+    const prevSessions = data.sessions.filter((s) => (s.weekOf || "") === prev && !s.fromGame);
+    if (prevSessions.length === 0) {
+      setImportMsg({ type: "error", text: "אין אימונים בשבוע הקודם להעתקה." });
+      return;
+    }
+    const copies = prevSessions.map((s) => ({ ...s, id: uid(), weekOf: weekStart }));
+    save({ ...data, sessions: [...data.sessions, ...copies] });
+    setImportMsg({ type: "success", text: `הועתקו ${copies.length} אימונים מהשבוע הקודם.` });
+  };
+
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -74,8 +93,11 @@ export function ManagerView({ data, save, canEdit }) {
       return;
     }
     const next = importCsvToData(rows, data);
+    if (Array.isArray(next.sessions)) {
+      next.sessions = next.sessions.map((s) => (s.weekOf ? s : { ...s, weekOf: weekStart }));
+    }
     save({ ...data, ...next });
-    setImportMsg({ type: "success", text: `יובאו ${rows.length} שורות בהצלחה.` });
+    setImportMsg({ type: "success", text: `יובאו ${rows.length} שורות לשבוע הנבחר בהצלחה.` });
     e.target.value = "";
   };
 
@@ -94,6 +116,19 @@ export function ManagerView({ data, save, canEdit }) {
 
   return (
     <div className="space-y-4" dir="rtl">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <WeekNav value={weekStart} onChange={setWeekStart} />
+        {canEdit && (
+          <button
+            onClick={handleCopyPrevWeek}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+            title="העתק את כל האימונים (הידניים) מהשבוע הקודם לשבוע זה"
+          >
+            <IconCopy size={15} /> שכפל שבוע קודם
+          </button>
+        )}
+      </div>
+
       {canEdit && (
         <div className="flex flex-wrap items-center gap-2 justify-between">
           <div className="flex items-center gap-2">
@@ -157,6 +192,7 @@ export function ManagerView({ data, save, canEdit }) {
         <SessionForm
           data={data}
           initial={nextSessionDefaults}
+          weekStart={weekStart}
           onSave={handleSaveSession}
           onSaveAndAddNext={handleSaveAndAddNext}
           onCancel={() => {
@@ -176,10 +212,10 @@ export function ManagerView({ data, save, canEdit }) {
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-stone-600 text-sm">
-            {data.sessions.length === 0
+            {weekSessions.length === 0
               ? canEdit
-                ? "אין עדיין אימונים. ייבא קובץ CSV או הוסף אימון חדש."
-                : "אין עדיין אימונים."
+                ? "אין אימונים בשבוע זה. הוסף אימון חדש, שכפל שבוע קודם, או ייבא CSV."
+                : "אין אימונים בשבוע זה."
               : "אין אימונים שמתאימים לסינון הנוכחי."}
           </div>
         ) : (
@@ -196,6 +232,7 @@ export function ManagerView({ data, save, canEdit }) {
                       <SessionForm
                         data={data}
                         initial={s}
+                        weekStart={weekStart}
                         onSave={handleSaveSession}
                         onSaveAndAddNext={handleSaveAndAddNext}
                         onCancel={() => setEditingId(null)}

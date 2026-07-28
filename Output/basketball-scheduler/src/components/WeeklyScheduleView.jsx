@@ -3,21 +3,14 @@ import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { Select } from "./ui/Select";
+import { WeekNav } from "./ui/WeekNav";
 import { IconDownload } from "./ui/icons";
 
-export function WeeklyScheduleView({ data, save, canEdit }) {
+export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
-  const [sundayDate, setSundayDate] = useState(() => {
-    const today = new Date();
-    const day = today.getDay(); // 0=Sun
-    const diff = day === 0 ? 0 : 7 - day;
-    const next = new Date(today);
-    next.setDate(today.getDate() + diff);
-    return next.toISOString().slice(0, 10);
-  });
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
@@ -26,23 +19,28 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
   };
 
   const activeDays = DAYS.filter((d) => filterDays.includes(d));
-  const weekDates = getWeekDates(sundayDate);
+  const weekDates = getWeekDates(weekStart);
 
   const typeColor = (type) => sessionTypeColor(type);
 
   const cellSessions = (teamId, day) =>
-    data.sessions.filter((s) => s.teamId === teamId && s.day === day).sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    data.sessions
+      .filter((s) => s.teamId === teamId && s.day === day && (s.weekOf || "") === weekStart)
+      .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+
+  const teamWeekCount = (teamId) =>
+    activeDays.reduce((n, day) => n + cellSessions(teamId, day).length, 0);
 
   const hallSessions = useMemo(() => {
     if (!selectedHallId) return [];
     return data.sessions
-      .filter((s) => s.hallId === selectedHallId)
+      .filter((s) => s.hallId === selectedHallId && (s.weekOf || "") === weekStart)
       .sort((a, b) => {
         const di = DAYS.indexOf(a.day) - DAYS.indexOf(b.day);
         if (di !== 0) return di;
         return timeToMinutes(a.start) - timeToMinutes(b.start);
       });
-  }, [selectedHallId, data.sessions]);
+  }, [selectedHallId, data.sessions, weekStart]);
 
   const selectedHallName = nameOf(data.halls, selectedHallId);
 
@@ -50,6 +48,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
     <div className="space-y-4" dir="rtl">
       {/* Controls */}
       <div className="no-print space-y-3">
+        <WeekNav value={weekStart} onChange={setWeekStart} />
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -69,13 +68,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
               </button>
             </div>
             {mode === "hall" && (
-              <div className="flex items-center gap-2">
-                <Select value={selectedHallId} onChange={setSelectedHallId} options={data.halls} placeholder="בחר אולם" className="w-40" />
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs text-stone-500 shrink-0">יום ראשון:</label>
-                  <input type="date" value={sundayDate} onChange={(e) => setSundayDate(e.target.value)} className="bg-white border border-stone-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
-                </div>
-              </div>
+              <Select value={selectedHallId} onChange={setSelectedHallId} options={data.halls} placeholder="בחר אולם" className="w-40" />
             )}
           </div>
           <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">
@@ -104,7 +97,7 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
             {data.teams.length === 0 ? (
               <div className="p-8 text-center text-stone-600 text-sm">אין קבוצות רשומות עדיין.</div>
             ) : (
-              <table className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 112 + 100 }}>
+              <table className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 108 + 360 }}>
                 <thead>
                   <tr>
                     <th className="border border-stone-200 bg-stone-50 px-3 py-2 text-right text-xs font-semibold text-stone-600 w-28">קבוצה</th>
@@ -116,11 +109,12 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
                     ))}
                     <th className="border border-stone-200 bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700 w-32">קבוצה משחקת</th>
                     <th className="border border-stone-200 bg-purple-50 px-3 py-2 text-center text-xs font-semibold text-purple-700 w-32">קבוצה מזכירות</th>
+                    <th className="border border-stone-200 bg-stone-100 px-2 py-2 text-center text-xs font-semibold text-stone-600 w-16">סה״כ שבוע</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.teams.map((team) => {
-                    const assignKey = `${sundayDate}__${team.id}`;
+                    const assignKey = `${weekStart}__${team.id}`;
                     const assignment = (data.weeklyAssignments || {})[assignKey] || { playing: "", secretary: "" };
                     const rowColor = colorForTeamByCoach(team, data.teams);
                     return (
@@ -200,6 +194,10 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
                           )}
                           <div className="print-only text-xs text-stone-700">{assignment.secretary ? nameOf(data.teams, assignment.secretary) : "—"}</div>
                         </td>
+                        {/* Weekly total */}
+                        <td className="border border-stone-200 px-2 py-1.5 text-center bg-stone-50">
+                          <span className="text-sm font-semibold tabular-nums text-stone-700">{teamWeekCount(team.id)}</span>
+                        </td>
                       </tr>
                     );
                   })}
@@ -232,9 +230,9 @@ export function WeeklyScheduleView({ data, save, canEdit }) {
             <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
               <div className="px-4 py-2.5 bg-stone-700 text-white text-sm font-bold flex items-center justify-between">
                 <span>אולם {selectedHallName}</span>
-                {sundayDate && (
+                {weekStart && (
                   <span className="text-stone-300 text-xs font-normal">
-                    {formatDate(new Date(sundayDate + "T00:00:00"))} — {formatDate(new Date(new Date(sundayDate + "T00:00:00").setDate(new Date(sundayDate + "T00:00:00").getDate() + 6)))}
+                    {formatDate(new Date(weekStart + "T00:00:00"))} — {formatDate(new Date(new Date(weekStart + "T00:00:00").setDate(new Date(weekStart + "T00:00:00").getDate() + 6)))}
                   </span>
                 )}
               </div>

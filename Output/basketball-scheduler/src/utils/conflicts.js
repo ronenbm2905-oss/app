@@ -9,6 +9,7 @@ export function findConflicts(sessions) {
       const a = sessions[i];
       const b = sessions[j];
       if (a.day !== b.day) continue;
+      if ((a.weekOf || "") !== (b.weekOf || "")) continue; // only within the same week
       if (!overlaps(a.start, a.end, b.start, b.end)) continue;
       const sameHall = a.hallId === b.hallId;
       const sameCoach = a.coachId === b.coachId;

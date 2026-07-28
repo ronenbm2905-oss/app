@@ -8,7 +8,8 @@ import { Pill } from "./ui/Pill";
 import { IconAlert, IconBan, IconPlus, IconCheck } from "./ui/icons";
 import { uid } from "../utils/dates";
 
-export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext }) {
+export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext, weekStart }) {
+  const weekOf = initial?.weekOf || weekStart;
   const [teamId, setTeamId] = useState(initial?.teamId || "");
   const [coachId, setCoachId] = useState(initial?.coachId || "");
   const [hallId, setHallId] = useState(initial?.hallId || "");
@@ -38,7 +39,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext 
 
   const wouldConflict = useMemo(() => {
     if (!valid) return null;
-    const others = data.sessions.filter((s) => s.id !== initial?.id);
+    const others = data.sessions.filter((s) => s.id !== initial?.id && (s.weekOf || "") === (weekOf || ""));
     const hits = others.filter(
       (s) =>
         s.day === day &&
@@ -46,7 +47,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext 
         (s.hallId === hallId || s.coachId === coachId)
     );
     return hits.length > 0 ? hits : null;
-  }, [teamId, coachId, hallId, day, start, end, valid, data.sessions, initial]);
+  }, [teamId, coachId, hallId, day, start, end, valid, data.sessions, initial, weekOf]);
 
   const wouldViolateConstraints = useMemo(() => {
     if (!valid) return null;
@@ -67,6 +68,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext 
     end,
     type,
     notes: notes.trim(),
+    weekOf,
   };
 
   return (

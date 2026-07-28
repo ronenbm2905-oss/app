@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
+import { todayWeekStart } from "./utils/dates";
 import { LoginPage } from "./components/LoginPage";
 import { RostersView } from "./components/RostersView";
 import { ManagerView } from "./components/ManagerView";
@@ -32,6 +33,7 @@ export default function App() {
   const { user, authLoading, authError, signIn, signOut, isFirebaseConfigured } = useAuth();
   const { data, save, loaded, error, isAdmin, mode } = useClubData(user);
   const [tab, setTab] = useState("manager");
+  const [weekStart, setWeekStart] = useState(todayWeekStart());
 
   // Cloud mode: wait for auth, then require sign-in.
   if (isFirebaseConfigured && authLoading) return <Loading />;
@@ -95,15 +97,15 @@ export default function App() {
         {tab === "rosters" ? (
           <RostersView data={data} save={save} canEdit={canEdit} />
         ) : tab === "manager" ? (
-          <ManagerView data={data} save={save} canEdit={canEdit} />
+          <ManagerView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : tab === "constraints" ? (
           <ConstraintsView data={data} save={save} canEdit={canEdit} />
         ) : tab === "games" ? (
           <GamesView data={data} save={save} canEdit={canEdit} />
         ) : tab === "weekly" ? (
-          <WeeklyScheduleView data={data} save={save} canEdit={canEdit} />
+          <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : (
-          <CoachView data={data} />
+          <CoachView data={data} weekStart={weekStart} setWeekStart={setWeekStart} />
         )}
         </div>
 

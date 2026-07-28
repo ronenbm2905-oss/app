@@ -77,3 +77,48 @@ export function formatDate(d) {
     d.getMonth() + 1
   ).padStart(2, "0")}/${d.getFullYear()}`;
 }
+
+// ---------- Week helpers (week = Sunday→Saturday, keyed by that Sunday's ISO date) ----------
+
+// Date -> "YYYY-MM-DD" (local, no timezone shift)
+export function toISODate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
+// Given a Date, return the ISO date of the Sunday that starts its week.
+export function weekStartOf(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // getDay: 0=Sun -> back to Sunday
+  return toISODate(d);
+}
+
+// ISO Sunday of the week containing today.
+export function todayWeekStart() {
+  return weekStartOf(new Date());
+}
+
+// Shift a Sunday-ISO string by whole weeks (delta can be negative).
+export function shiftWeek(sundayIso, deltaWeeks) {
+  const d = new Date(sundayIso + "T00:00:00");
+  d.setDate(d.getDate() + deltaWeeks * 7);
+  return toISODate(d);
+}
+
+// "DD-MM-YYYY" / "DD/MM/YYYY" / "DD.MM.YYYY" -> Sunday-ISO of that date's week (or "").
+export function weekStartOfDMY(dmy) {
+  const d = parseDateDMY(dmy);
+  return d ? weekStartOf(d) : "";
+}
+
+// Human label for a week, e.g. "24/05–30/05/2026".
+export function formatWeekRange(sundayIso) {
+  if (!sundayIso) return "";
+  const start = new Date(sundayIso + "T00:00:00");
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const dm = (x) => `${String(x.getDate()).padStart(2, "0")}/${String(x.getMonth() + 1).padStart(2, "0")}`;
+  return `${dm(start)}–${dm(end)}/${end.getFullYear()}`;
+}

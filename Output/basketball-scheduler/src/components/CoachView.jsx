@@ -5,22 +5,25 @@ import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
+import { WeekNav } from "./ui/WeekNav";
 import { IconUsers, IconCalendar, IconMapPin, IconBan } from "./ui/icons";
 
-export function CoachView({ data, fixedCoachId }) {
+export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
 
+  const inWeek = (s) => (s.weekOf || "") === weekStart;
+
   const myFor = (d) =>
     data.sessions
-      .filter((s) => s.coachId === coachId && (!d || s.day === d))
+      .filter((s) => s.coachId === coachId && inWeek(s) && (!d || s.day === d))
       .sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start));
 
   const hallActivityFor = (d) =>
     data.halls.map((hall) => ({
       hall,
       sessions: data.sessions
-        .filter((s) => s.hallId === hall.id && (!d || s.day === d))
+        .filter((s) => s.hallId === hall.id && inWeek(s) && (!d || s.day === d))
         .sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start)),
     }));
 
@@ -54,7 +57,10 @@ export function CoachView({ data, fixedCoachId }) {
         )}
       </div>
 
-      <Select value={day} onChange={setDay} options={DAYS.map((d) => ({ id: d, name: d }))} placeholder="כל הימים" className="max-w-xs" />
+      <div className="flex flex-wrap items-center gap-2">
+        <WeekNav value={weekStart} onChange={setWeekStart} />
+        <Select value={day} onChange={setDay} options={DAYS.map((d) => ({ id: d, name: d }))} placeholder="כל הימים" className="max-w-xs" />
+      </div>
 
       <div className="space-y-5">
         {DAYS.filter((d) => !day || d === day).map((d) => {
