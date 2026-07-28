@@ -14,12 +14,24 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
-  // "TeamName – CoachName" for the playing/secretary columns (falls back to team name only).
-  const teamWithCoach = (teamId) => {
+  // Coach name of a team (empty string if none) — used for the "coach on its own line" display.
+  const coachOfTeam = (teamId) => {
     const team = data.teams.find((t) => t.id === teamId);
-    if (!team) return "—";
-    const coach = team.coachId ? nameOf(data.coaches, team.coachId) : "";
-    return coach ? `${team.name} – ${coach}` : team.name;
+    return team?.coachId ? nameOf(data.coaches, team.coachId) : "";
+  };
+
+  // Playing/secretary cell display: team name on top, coach name on the line below.
+  const assignDisplay = (teamId, printMode) => {
+    if (!teamId) return "—";
+    const coach = coachOfTeam(teamId);
+    return (
+      <>
+        <div>{nameOf(data.teams, teamId)}</div>
+        {coach && (
+          <div className={`text-[10px] ${printMode ? "text-stone-600" : "text-stone-500"}`}>{coach}</div>
+        )}
+      </>
+    );
   };
 
   const toggleDay = (day) => {
@@ -172,13 +184,16 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                             >
                               <option value="">—</option>
                               {data.teams.map((t) => (
-                                <option key={t.id} value={t.id}>{teamWithCoach(t.id)}</option>
+                                <option key={t.id} value={t.id}>{t.name}</option>
                               ))}
                             </select>
                           ) : (
-                            <div className="text-xs text-stone-700">{assignment.playing ? teamWithCoach(assignment.playing) : "—"}</div>
+                            <div className="text-xs text-stone-700">{assignDisplay(assignment.playing, false)}</div>
                           )}
-                          <div className="print-only text-xs text-stone-700">{assignment.playing ? teamWithCoach(assignment.playing) : "—"}</div>
+                          {canEdit && assignment.playing && coachOfTeam(assignment.playing) && (
+                            <div className="no-print text-[10px] text-stone-500 mt-0.5 truncate">{coachOfTeam(assignment.playing)}</div>
+                          )}
+                          <div className="print-only text-xs text-stone-700">{assignDisplay(assignment.playing, true)}</div>
                         </td>
                         {/* Secretary team column */}
                         <td className="border border-stone-200 px-2 py-1.5 align-top bg-purple-50/30">
@@ -194,13 +209,16 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                             >
                               <option value="">—</option>
                               {data.teams.map((t) => (
-                                <option key={t.id} value={t.id}>{teamWithCoach(t.id)}</option>
+                                <option key={t.id} value={t.id}>{t.name}</option>
                               ))}
                             </select>
                           ) : (
-                            <div className="text-xs text-stone-700">{assignment.secretary ? teamWithCoach(assignment.secretary) : "—"}</div>
+                            <div className="text-xs text-stone-700">{assignDisplay(assignment.secretary, false)}</div>
                           )}
-                          <div className="print-only text-xs text-stone-700">{assignment.secretary ? teamWithCoach(assignment.secretary) : "—"}</div>
+                          {canEdit && assignment.secretary && coachOfTeam(assignment.secretary) && (
+                            <div className="no-print text-[10px] text-stone-500 mt-0.5 truncate">{coachOfTeam(assignment.secretary)}</div>
+                          )}
+                          <div className="print-only text-xs text-stone-700">{assignDisplay(assignment.secretary, true)}</div>
                         </td>
                         {/* Weekly total */}
                         <td className="border border-stone-200 px-2 py-1.5 text-center bg-stone-50">
