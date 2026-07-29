@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  background: #faf7ef;
+}
+
+/* יעדי מגע גדולים לילדים — כפתורים לא נדחסים */
+button {
+  touch-action: manipulation;
+}
+
+/* הסתרת פוקוס-אאוטליין רק לעכבר; שמירה למקלדת (נגישות) */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+:focus-visible {
+  outline: 3px solid #3e7c8c;
+  outline-offset: 2px;
+}
+
+/* הדפסה: רק אזור ההדפסה (דף צביעה) גלוי */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

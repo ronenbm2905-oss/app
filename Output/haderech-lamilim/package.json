@@ -1,0 +1,29 @@
+{
+  "name": "haderech-lamilim",
+  "version": "1.0.0",
+  "description": "הדרך למילים — אפליקציית ווב חינוכית לילדים 2–8, מבוססת ערכת הקלפים מאת דורית בן מאיר",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "extract:images": "node scripts/extract-images.mjs",
+    "extract:montages": "node scripts/montages.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.408.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.0.2",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "pdfjs-dist": "^4.2.67",
+    "postcss": "^8.4.39",
+    "sharp": "^0.35.3",
+    "tailwindcss": "^3.4.6",
+    "vite": "^5.3.4"
+  }
+}

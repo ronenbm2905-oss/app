@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ANALYTICS: הזרקת snippet של פיקסל/אנליטיקס כאן -->
+
+  <!-- ===== SEO (מבלוק ה-SEO של שירה) ===== -->
+  <title>מדבקות לדרך — 54 משפטים מחזקים לילדים | הדרך למילים</title>
+  <meta name="description" content="מדבקות לדרך: 54 מדבקות עם משפטים מעצימים לילדים, לכריך ולקלמר. פותחים את השנה עם מילים טובות. מארז 24 ₪ · 4 מארזים 80 ₪. הזמינו עכשיו.">
+  <meta name="keywords" content="מדבקות מחזקות לילדים, מדבקות לדרך, משפטים מעצימים לילדים, מתנה לתחילת שנה, חזרה לבית הספר, מדבקות לכריך, מדבקות לקלמר, הדרך למילים, דורית בן מאיר">
+  <meta name="author" content="דורית בן מאיר — הדרך למילים">
+  <meta name="theme-color" content="#17497F">
+
+  <!-- ===== Open Graph ===== -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="he_IL">
+  <meta property="og:site_name" content="הדרך למילים">
+  <meta property="og:title" content="מדבקות לדרך — 54 משפטים מחזקים לילדים">
+  <meta property="og:description" content="פותחים את השנה עם מילים טובות. מארז 54 מדבקות מעצימות לכריך ולקלמר. מארז 24 ₪ · 4 מארזים 80 ₪.">
+  <meta property="og:image" content="assets/2026-07-27-madbekot-real-hero.jpg">
+  <meta property="og:image:alt" content="מדבקת 'אני יכול הכל!' מודבקת על עטיפת האוכל בקופסת האוכל של הילד">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="מדבקות לדרך — 54 משפטים מחזקים לילדים">
+  <meta name="twitter:description" content="פותחים את השנה עם מילים טובות. מארז 54 מדבקות מעצימות לכריך ולקלמר.">
+  <meta name="twitter:image" content="assets/2026-07-27-madbekot-real-hero.jpg">
+
+  <!-- favicon (אייקון המתנה — גרסת הפלטה הכחולה) -->
+  <link rel="icon" type="image/png" href="assets/2026-07-28-madbekot-icon-gift-blue.png">
+  <link rel="apple-touch-icon" href="assets/2026-07-28-madbekot-icon-gift-blue.png">
+
+  <!-- ===== פונטים =====
+       חריג ה-CDN היחיד המורשה: Google Fonts, לפי מפרט איתי.
+       Varela Round (כותרות UI) · Assistant (גוף) · Frank Ruhl Libre 900 (H1 מנוקד).
+       אם הרשת לא זמינה — יש font stack מקומי מלא ב-fallback (ראה --font-*). -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@700;900&family=Varela+Round&display=swap" rel="stylesheet">
+  <!-- חלופה ל-H1: אפשר להחליף ל-Suez One (&family=Suez+One) אם דורית מעדיפה מראה גושי יותר. -->
+
+  <!-- ===== Critical CSS (inline — בלי תלויות חיצוניות) ===== -->
+  <style>
+    /* ===== Design Tokens (מפרט העיצוב המעודכן של איתי — פלטה כחול/תכלת/כתום/צהוב) ===== */
+    :root{
+      /* צבעים */
+      --color-bg:#E4F1FC; --color-surface:#FFFFFF; --color-surface-tint:#EAF4FD;
+      --color-text:#17497F; --color-blue-royal:#1B5FA6; --color-box-navy:#123A63;
+      --color-primary:#E06E10; --color-primary-hover:#C25E08; --color-orange-deep:#C85D0E;
+      --color-accent-teal:#35A9C4; --color-accent-yellow:#FFC53D;
+      --color-text-muted:#52626F; --color-border:#CFE4F5;
+
+      /* טיפוגרפיה */
+      --font-head:"Varela Round","Segoe UI",system-ui,Arial,sans-serif;
+      --font-body:"Assistant","Segoe UI",system-ui,Arial,sans-serif;
+      --font-display:"Frank Ruhl Libre","Suez One","Times New Roman",serif;
+
+      /* ריווח */
+      --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px;
+      --sp-6:32px; --sp-7:48px; --sp-8:64px; --sp-9:96px;
+
+      /* רדיוס */
+      --radius-pill:999px; --radius-card:20px; --radius-media:24px; --radius-input:12px;
+
+      /* צללים (גוון כחול/כתום) */
+      --shadow-card:0 6px 24px rgba(23,73,127,.10);
+      --shadow-cta:0 8px 20px rgba(224,110,16,.30);
+      --shadow-soft:0 2px 10px rgba(23,73,127,.07);
+
+      --maxw:1120px;
+    }
+
+    *,*::before,*::after{box-sizing:border-box;}
+    html{-webkit-text-size-adjust:100%;}
+    body{
+      margin:0;
+      font-family:var(--font-body);
+      font-size:17px;
+      line-height:1.6;
+      color:var(--color-text);
+      background:var(--color-bg);
+      -webkit-font-smoothing:antialiased;
+    }
+    h1,h2,h3{font-family:var(--font-head);line-height:1.2;margin:0 0 var(--sp-4);font-weight:400;color:var(--color-text);}
+    h1{font-family:var(--font-display);font-weight:900;font-size:34px;line-height:1.35;}
+    h2{font-size:24px;}
+    h3{font-size:19px;}
+    p{margin:0 0 var(--sp-4);}
+    img{max-width:100%;height:auto;display:block;}
+    a{color:var(--color-blue-royal);}
+
+    /* focus נראה (נגישות) */
+    a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{
+      outline:3px solid var(--color-blue-royal);
+      outline-offset:2px;
+      border-radius:4px;
+    }
+
+    .wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:20px;}
+    .section{padding-block:48px;}
+    .center{text-align:center;}
+    .num{unicode-bidi:isolate;}
+
+    /* ===== כפתורים / CTA ===== */
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      font-family:var(--font-body);font-weight:700;font-size:19px;
+      padding-block:14px;padding-inline:28px;
+      border-radius:var(--radius-pill);
+      text-decoration:none;cursor:pointer;border:2px solid transparent;
+      transition:transform .15s ease,background-color .15s ease,box-shadow .15s ease,color .15s ease;
+      text-align:center;line-height:1.2;
+    }
+    /* primary (מלא כתום) — טקסט לבן 700 ≥18px (נדרש לניגודיות AA) */
+    .btn-primary{
+      background:var(--color-primary);color:#fff;box-shadow:var(--shadow-cta);
+      border-color:var(--color-primary);
+    }
+    .btn-primary:hover{background:var(--color-primary-hover);border-color:var(--color-primary-hover);transform:translateY(-2px);}
+    /* single (חלול כתום) — טקסט/מסגרת orange-deep */
+    .btn-single{
+      background:transparent;color:var(--color-orange-deep);border-color:var(--color-orange-deep);
+    }
+    .btn-single:hover{background:var(--color-orange-deep);color:#fff;transform:translateY(-2px);}
+    /* כפתור מלא ניטרלי — לשוויון בולטות בבאנר העוגיות (ללא dark pattern) */
+    .btn-neutral{background:var(--color-box-navy);color:#fff;border-color:var(--color-box-navy);}
+    .btn-neutral:hover{background:#0d2c4c;border-color:#0d2c4c;transform:translateY(-2px);}
+    .cta-support{font-size:14px;color:var(--color-text-muted);margin-block-start:10px;}
+
+    /* Skip link */
+    .skip-link{
+      position:absolute;inset-inline-start:12px;inset-block-start:-60px;z-index:100;
+      background:var(--color-primary);color:#fff;padding:10px 18px;border-radius:var(--radius-pill);
+      font-weight:700;text-decoration:none;transition:inset-block-start .2s ease;
+    }
+    .skip-link:focus{inset-block-start:12px;}
+
+    /* ===== רצועת מבצע עליונה ===== */
+    .promo-strip{
+      background:var(--color-box-navy);color:#fff;text-align:center;
+      font-family:var(--font-body);font-weight:700;font-size:15px;
+      padding-block:10px;padding-inline:16px;line-height:1.4;
+    }
+    .promo-strip .num{font-weight:700;}
+
+    /* ===== Hero ===== */
+    .hero{
+      position:relative;overflow:hidden;
+      background:linear-gradient(180deg,var(--color-surface-tint) 0%,var(--color-bg) 100%);
+      padding-block:40px;
+    }
+    .hero::before{
+      content:"";position:absolute;inset:0;
+      background-image:url("assets/2026-07-28-madbekot-bg-pattern-blue.png");
+      background-size:cover;background-position:center;opacity:.35;
+      pointer-events:none;z-index:0;
+    }
+    .hero .wrap{position:relative;z-index:1;}
+    .hero-copy{text-align:center;}
+    /* טקסט רגשי — orange-deep, גדול (≥22px 700) לעמידה ב-AA */
+    .emotional{
+      font-family:var(--font-body);font-weight:700;color:var(--color-orange-deep);
+      font-size:22px;line-height:1.4;max-width:30ch;margin-inline:auto;margin-block-end:var(--sp-4);
+    }
+    .hero h1{margin-block:var(--sp-2) var(--sp-4);}
+    .hero-sub{font-size:18px;color:var(--color-text);max-width:44ch;margin-inline:auto;margin-block-end:var(--sp-3);}
+    /* שורת מבצע בולטת + קו דינמי תכלת */
+    .offer-line{
+      display:inline-block;font-family:var(--font-body);font-weight:700;
+      color:var(--color-text);font-size:21px;line-height:1.35;
+      margin-block:var(--sp-4) var(--sp-5);
+    }
+    .offer-line .teal-underline{
+      display:block;height:4px;border-radius:var(--radius-pill);
+      background:linear-gradient(270deg,var(--color-accent-teal),rgba(53,169,196,0));
+      width:65%;margin-block-start:8px;margin-inline:auto;transition:width .3s ease;
+    }
+    .offer-line:hover .teal-underline{width:100%;}
+    .hero-cta{display:flex;flex-direction:column;gap:var(--sp-3);align-items:center;}
+    .hero-cta .btn{width:100%;max-width:360px;}
+
+    /* ===== קרוסלה רצה (marquee) =====
+       direction:ltr על המכל והמסילה — הצילומים אינם תלויי-כיוון, וכך הקצה השמאלי
+       של ה-track מעוגן לקצה השמאלי של המכל (במקום לגלוש שמאלה מחוץ ל-overflow ב-RTL). */
+    .marquee{overflow:hidden;position:relative;width:100%;margin-block-start:var(--sp-6);direction:ltr;
+      -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
+      mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
+    .marquee-track{display:flex;width:max-content;direction:ltr;animation:marquee 34s linear infinite;}
+    .marquee:hover .marquee-track,.marquee:focus-within .marquee-track{animation-play-state:paused;}
+    /* הריווח כ-margin לכל תמונה (כולל האחרונה) כדי שרוחב סט אחד = בדיוק 50% מה-track → לולאה חלקה */
+    .marquee-track img{
+      height:240px;width:auto;flex:0 0 auto;object-fit:cover;margin-inline-end:var(--sp-4);
+      border-radius:var(--radius-media);box-shadow:var(--shadow-card);background:var(--color-surface);
+    }
+    @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+    /* תמונת מדבקות סטטית בהירו (במקום רצף תמונות) */
+    .hero-media{max-width:420px;margin-inline:auto;margin-block-start:var(--sp-6);}
+    .hero-media img{width:100%;border-radius:var(--radius-media);box-shadow:var(--shadow-card);}
+
+    /* ===== רצועת ערך ===== */
+    .value{background:var(--color-surface);}
+    .value-grid{display:grid;grid-template-columns:1fr;gap:var(--sp-5);}
+    .value-item{text-align:center;padding:var(--sp-5);}
+    .value-icon{
+      width:96px;height:96px;margin-inline:auto;margin-block-end:var(--sp-4);
+      background:var(--color-bg);border-radius:var(--radius-pill);
+      box-shadow:var(--shadow-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;
+    }
+    .value-icon img{width:76px;height:76px;object-fit:contain;}
+    .value-item h3{margin-block-end:var(--sp-2);color:var(--color-text);}
+    .value-item p{color:var(--color-text-muted);font-size:16px;margin:0;}
+    .value-item .value-sub{color:var(--color-blue-royal);font-weight:600;font-size:16px;margin-block-start:var(--sp-2);}
+
+    /* ===== מה יש במארז + showcase ===== */
+    .pack{background:var(--color-bg);}
+    .pack-title{display:flex;align-items:center;justify-content:center;gap:var(--sp-3);flex-wrap:wrap;}
+    .pack-title h2{margin:0;font-size:28px;}
+    .star{width:26px;height:26px;flex:0 0 auto;}
+    .pack-body{max-width:60ch;margin-inline:auto;text-align:center;color:var(--color-text);margin-block-start:var(--sp-5);}
+    .pack-body .lead{font-size:19px;font-weight:600;}
+    /* צילום המארזים */
+    .pack-lead-media{max-width:640px;margin-inline:auto;margin-block:var(--sp-6) 0;}
+    .pack-lead-media img{border-radius:var(--radius-media);box-shadow:var(--shadow-card);width:100%;}
+    .pack-lead-media figcaption{font-size:14px;color:var(--color-text-muted);text-align:center;margin-block-start:var(--sp-3);}
+    /* showcase משפטים מנוקדים — pills מתחלפים */
+    .sticker-cloud{
+      display:flex;flex-wrap:wrap;gap:var(--sp-3);justify-content:center;
+      margin-block-start:var(--sp-7);
+    }
+    .sticker{
+      font-family:var(--font-display);font-weight:700;font-size:18px;line-height:1.5;
+      padding-block:10px;padding-inline:20px;border-radius:var(--radius-pill);
+      box-shadow:var(--shadow-soft);transform:rotate(var(--rot,0deg));
+    }
+    .sticker:nth-child(3n+1){background:#D3ECF6;color:var(--color-text);}
+    .sticker:nth-child(3n+2){background:var(--color-box-navy);color:#fff;}
+    .sticker:nth-child(3n+3){background:#FCE3C8;color:var(--color-orange-deep);}
+
+    /* ===== משפט תחילת שנה (band) ===== */
+    .statement{background:var(--color-surface-tint);text-align:center;}
+    .statement p{
+      max-width:46ch;margin-inline:auto;margin-block:0;
+      font-family:var(--font-head);font-size:22px;line-height:1.4;color:var(--color-text);
+    }
+
+    /* ===== למי זה מתאים — תיבות navy ===== */
+    .audience{background:var(--color-surface);}
+    .audience-grid{display:grid;grid-template-columns:1fr;gap:var(--sp-4);margin-block-start:var(--sp-6);}
+    .aud-card{
+      background:var(--color-box-navy);color:#fff;
+      border-radius:var(--radius-card);padding:var(--sp-6) var(--sp-5);box-shadow:var(--shadow-card);
+      text-align:center;
+    }
+    .aud-card h3{color:#fff;margin-block-end:var(--sp-2);font-size:20px;}
+    .aud-card p{margin:0;color:rgba(255,255,255,.9);font-size:16px;}
+
+    /* ===== ככה זה נראה אצל הילדים ===== */
+    .real{background:var(--color-bg);}
+    .real h2{font-size:28px;}
+
+    /* ===== טסטימוניאלס ===== */
+    .testi{background:var(--color-surface);}
+    .testi-grid{display:grid;grid-template-columns:1fr;gap:var(--sp-4);margin-block-start:var(--sp-6);max-width:900px;margin-inline:auto;}
+    .testi-card{
+      display:flex;gap:var(--sp-4);
+      background:var(--color-bg);border:1px solid var(--color-border);
+      border-radius:var(--radius-card);padding:var(--sp-5);box-shadow:var(--shadow-soft);
+    }
+    /* מקום עתידי לצילום מסך לצד הטקסט (data-slot) */
+    .testi-shot{display:none;flex:0 0 84px;}
+    .testi-card[data-has-shot="true"] .testi-shot{display:block;}
+    .testi-shot img{width:84px;height:84px;object-fit:cover;border-radius:var(--radius-input);}
+    .testi-body{flex:1 1 auto;}
+    .testi-stars{color:var(--color-accent-yellow);font-size:15px;letter-spacing:2px;margin-block-end:var(--sp-2);}
+    .testi-quote{margin:0 0 var(--sp-3);color:var(--color-text);font-size:17px;line-height:1.55;}
+    .testi-author{margin:0;color:var(--color-text-muted);font-size:14px;font-weight:600;}
+
+    /* ===== בלוק מותג ===== */
+    .brand{background:var(--color-surface-tint);text-align:center;}
+    .brand-logo{max-width:420px;margin-inline:auto;margin-block-end:var(--sp-5);}
+    .brand-logo img{width:100%;border-radius:var(--radius-media);}
+    .brand p{max-width:52ch;margin-inline:auto;color:var(--color-text);}
+    .brand .brand-rights{font-size:14px;color:var(--color-text-muted);}
+
+    /* ===== המבצע + urgency + תמחור ===== */
+    .offer{background:var(--color-surface-tint);position:relative;overflow:hidden;}
+    .offer-box{
+      max-width:640px;margin-inline:auto;text-align:center;
+      background:var(--color-surface);border:2px solid var(--color-primary);
+      border-radius:var(--radius-card);padding:var(--sp-6) var(--sp-5);box-shadow:var(--shadow-card);
+    }
+    .offer{padding-block-start:var(--sp-4);}
+    .offer-box h2{color:var(--color-orange-deep);font-family:var(--font-head);font-size:24px;margin-block-end:var(--sp-3);}
+    .offer-headline{font-weight:800;margin-block-end:6px!important;}
+    /* פס נע כחול — מוצמד מתחת לכותרת; סגמנט כחול שרץ הלוך ושוב על מסילה תכולה */
+    .moving-bar{position:relative;display:block;width:170px;height:5px;margin-inline:auto;margin-block:0 var(--sp-3);
+      border-radius:99px;background:#CFE3F5;overflow:hidden;}
+    .moving-bar::before{content:"";position:absolute;top:0;bottom:0;left:0;width:70px;border-radius:99px;
+      background:var(--color-blue-royal);animation:bar-run 1.7s ease-in-out infinite;}
+    @keyframes bar-run{0%{transform:translateX(0);}50%{transform:translateX(100px);}100%{transform:translateX(0);}}
+    .offer-box p.offer-sub{margin:0;color:var(--color-blue-royal);font-weight:700;}
+    .price-grid{display:grid;grid-template-columns:1fr;gap:var(--sp-5);margin-block:var(--sp-7) 0;max-width:760px;margin-inline:auto;}
+    .price-card{
+      background:var(--color-surface);border:2px solid var(--color-border);
+      border-radius:var(--radius-card);padding:var(--sp-6) var(--sp-5);text-align:center;
+      box-shadow:var(--shadow-card);position:relative;
+    }
+    .price-card.featured{border-color:var(--color-primary);}
+    .price-tag{
+      position:absolute;inset-block-start:-14px;inset-inline-start:50%;transform:translateX(50%);
+      background:var(--color-accent-yellow);color:var(--color-box-navy);
+      font-weight:700;font-size:14px;padding-block:5px;padding-inline:16px;border-radius:var(--radius-pill);
+      white-space:nowrap;box-shadow:var(--shadow-soft);
+    }
+    .price-name{font-family:var(--font-head);font-size:20px;margin-block-end:var(--sp-2);color:var(--color-text);}
+    .price-amount{font-size:40px;font-weight:700;color:var(--color-primary);font-family:var(--font-head);line-height:1;}
+    .price-desc{color:var(--color-text-muted);font-size:15px;margin-block:var(--sp-3) var(--sp-5);}
+    .price-card .btn{width:100%;}
+
+    /* ===== FAQ ===== */
+    .faq{background:var(--color-surface);}
+    .faq h2{font-size:28px;}
+    .faq-list{max-width:760px;margin-inline:auto;margin-block-start:var(--sp-6);}
+    .faq-item{
+      border:1px solid var(--color-border);border-radius:var(--radius-card);
+      margin-block-end:var(--sp-3);background:var(--color-bg);overflow:hidden;
+    }
+    .faq-item summary{
+      list-style:none;cursor:pointer;padding:var(--sp-4) var(--sp-5);
+      font-family:var(--font-head);font-size:18px;color:var(--color-text);
+      display:flex;justify-content:space-between;align-items:center;gap:var(--sp-4);
+    }
+    .faq-item summary::-webkit-details-marker{display:none;}
+    .faq-item summary::after{
+      content:"‹";font-size:24px;color:var(--color-primary);
+      transition:transform .2s ease;transform:rotate(-90deg);flex-shrink:0;
+    }
+    .faq-item[open] summary::after{transform:rotate(90deg);}
+    .faq-answer{padding-inline:var(--sp-5);padding-block-end:var(--sp-5);color:var(--color-text-muted);}
+
+    /* ===== CTA סופי (סגירה) ===== */
+    .final-cta{background:var(--color-box-navy);color:#fff;text-align:center;position:relative;overflow:hidden;}
+    .final-cta::before{
+      content:"";position:absolute;inset:0;
+      background-image:url("assets/2026-07-28-madbekot-bg-pattern-blue.png");
+      background-size:cover;background-position:center;opacity:.15;pointer-events:none;
+    }
+    .final-cta .wrap{position:relative;z-index:1;}
+    .final-cta h2{color:#fff;font-size:28px;}
+    .final-cta p{color:rgba(255,255,255,.92);max-width:52ch;margin-inline:auto;}
+    .final-cta .final-order{
+      display:inline-block;background:var(--color-primary);border-radius:var(--radius-card);
+      padding:var(--sp-5);margin-block:var(--sp-5) var(--sp-3);box-shadow:var(--shadow-cta);
+    }
+    .final-cta .final-order .order-note{color:#fff;font-weight:700;font-size:19px;margin-block-end:var(--sp-3);display:block;}
+    .final-cta .final-order .btn-primary{background:#fff;color:var(--color-primary-hover);border-color:#fff;box-shadow:none;}
+    .final-cta .final-order .btn-primary:hover{background:#FFF1E3;border-color:#FFF1E3;}
+    .final-cta .link-single{
+      display:inline-block;margin-block-start:var(--sp-3);color:var(--color-accent-yellow);font-weight:700;font-size:18px;
+      text-decoration:underline;text-underline-offset:3px;
+    }
+
+    /* ===== פוטר ===== */
+    footer{background:var(--color-box-navy);color:#DCE9F5;padding-block:var(--sp-7) 100px;text-align:center;}
+    /* סעיפים משפטיים מכווצים (accordion) — נפתחים בלחיצה */
+    .legal-acc{max-width:760px;margin-inline:auto;margin-block-start:var(--sp-3);text-align:start;color:#B8CBDE;font-size:14px;line-height:1.7;border-block-start:1px solid rgba(255,255,255,.12);}
+    .legal-acc > summary{cursor:pointer;list-style:none;color:#fff;font-size:16px;font-weight:700;padding-block:var(--sp-3);display:flex;align-items:center;justify-content:center;gap:var(--sp-2);}
+    .legal-acc > summary::-webkit-details-marker{display:none;}
+    .legal-acc > summary::after{content:"‹";font-size:20px;color:var(--color-accent-yellow);transition:transform .2s ease;transform:rotate(-90deg);}
+    .legal-acc[open] > summary::after{transform:rotate(90deg);}
+    .legal-acc h4{color:#fff;margin-block-start:var(--sp-3);}
+    footer p{color:#B8CBDE;font-size:14px;margin-block:var(--sp-2);}
+    footer a{color:#fff;text-decoration:underline;text-underline-offset:2px;}
+
+    /* ===== Sticky CTA מובייל ===== */
+    .sticky-cta{
+      position:fixed;inset-inline:0;inset-block-end:0;z-index:40;
+      background:var(--color-surface);border-block-start:1px solid var(--color-border);
+      padding:10px 16px;box-shadow:0 -4px 16px rgba(23,73,127,.12);
+      transform:translateY(120%);transition:transform .3s ease;
+    }
+    .sticky-cta.show{transform:translateY(0);}
+    .sticky-cta .btn{width:100%;}
+
+    /* ===== באנר עוגיות ===== */
+    .cookie-banner{
+      position:fixed;inset-inline:12px;inset-block-end:12px;z-index:60;
+      background:var(--color-surface);border:1px solid var(--color-border);
+      border-radius:var(--radius-card);box-shadow:var(--shadow-card);
+      padding:var(--sp-4) var(--sp-5);max-width:520px;margin-inline:auto;
+      display:flex;flex-direction:column;gap:var(--sp-3);
+    }
+    .cookie-banner p{margin:0;font-size:14px;color:var(--color-text-muted);}
+    .cookie-banner .actions{display:flex;gap:var(--sp-3);flex-wrap:wrap;}
+    /* שני הכפתורים שווי-בולטות — אותו גודל/משקל, שניהם מלאים (ללא dark pattern) */
+    .cookie-banner .btn{padding-block:12px;padding-inline:20px;font-size:19px;flex:1 1 140px;}
+    .cookie-banner.hidden{display:none;}
+
+    .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+    /* ===== Tablet ≥768 ===== */
+    @media (min-width:768px){
+      .value-grid{grid-template-columns:repeat(3,1fr);}
+      .audience-grid{grid-template-columns:repeat(2,1fr);}
+      .price-grid{grid-template-columns:repeat(2,1fr);}
+      .testi-grid{grid-template-columns:repeat(2,1fr);}
+      h1{font-size:44px;}
+      h2{font-size:30px;}
+      .pack-title h2,.final-cta h2,.faq h2,.real h2{font-size:32px;}
+      .emotional{font-size:26px;}
+      .offer-line{font-size:24px;}
+      .marquee-track img{height:280px;}
+      .sticky-cta{display:none;}
+    }
+
+    /* ===== Desktop ≥1024 ===== */
+    @media (min-width:1024px){
+      .section{padding-block:80px;}
+      .wrap{padding-inline:24px;}
+      h1{font-size:52px;}
+      h2{font-size:34px;}
+      h3{font-size:22px;}
+      body{font-size:18px;}
+      .hero{padding-block:56px;}
+      .emotional{font-size:28px;}
+      .pack-title h2,.final-cta h2,.faq h2,.real h2{font-size:34px;}
+    }
+
+    @media (prefers-reduced-motion:reduce){
+      *{transition:none !important;}
+      .marquee-track{animation:none !important;}
+      .marquee{overflow-x:auto;}
+      .moving-bar::before{animation:none !important;left:0;width:100%;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Skip link -->
+  <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
+
+  <!-- ============ 1. רצועת מבצע עליונה ============ -->
+  <div class="promo-strip" role="note">
+    מבצע חזרה לבית הספר · בתוקף עד <span class="num">31.8.2026</span>
+  </div>
+
+  <!-- ============ 2. HERO ============ -->
+  <header class="hero" id="main-content">
+    <div class="wrap">
+      <div class="hero-copy">
+        <!-- טקסט רגשי (orange-deep) -->
+        <p class="emotional">לפעמים כל מה שילד צריך הוא מילים טובות שילוו את היום שלו בחיוך ובטחון</p>
+
+        <!-- H1 מנוקד — טקסט חי (Frank Ruhl Libre 900). המחרוזת המנוקדת בדיוק כפי שהוגדרה. -->
+        <h1>מַדְבֵּקוֹת לַדֶּרֶךְ</h1>
+
+        <p class="hero-sub">במארז אחד של 54 מדבקות עם מסרים מחזקים שילוו את הילדים לאורך היום</p>
+        <p class="hero-sub">כי כל ילד צריך רגע קטן שימלא אותו בבטחון ויזכיר לו שיש מי שמאמין בו.</p>
+
+        <!-- שורת מבצע בולטת + קו דינמי תכלת -->
+        <div class="offer-line">
+          מבצע מיוחד לחזרה ללימודים <span aria-hidden="true">🎒</span> 4 מארזים ב-<span class="num">80 ₪</span>
+          <span class="teal-underline" aria-hidden="true"></span>
+        </div>
+
+        <div class="hero-cta">
+          <!-- כפתור ראשי (מלא כתום) → 4 מארזים -->
+          <a class="btn btn-primary"
+             href="https://pay.tranzila.com/doritplus/Zmp3YXV0bU1GQllodVVEMUNlaUxHZz09"
+             target="_blank" rel="noopener"
+             data-cta="primary" data-event="order-click">
+            פותחים שנה עם 4 מארזים ב-<span class="num">80 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+          </a>
+          <!-- כפתור משני (חלול כתום) → מארז בודד -->
+          <a class="btn btn-single"
+             href="https://pay.tranzila.com/doritplus/bU9tM0JLMEJRS2xtSklWVDhsQW4rUT09"
+             target="_blank" rel="noopener"
+             data-cta="single" data-event="order-click">
+            מעדיפים מארז 1 ב-<span class="num">24 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- תמונת המדבקות (סטטית, לבקשת דורית — במקום רצף התמונות) -->
+      <figure class="hero-media">
+        <img src="assets/2026-07-29-madbekot-sheets-hero.jpg" alt="גיליונות 'מדבקות לדרך' המנוקדים — משפטים מחזקים לילדים עם איורים" width="1200" height="1600">
+      </figure>
+    </div>
+  </header>
+
+  <!-- ============ 3. רצועת ערך ============ -->
+  <section class="section value" aria-labelledby="value-title">
+    <div class="wrap">
+      <h2 id="value-title" class="center visually-hidden">למה מדבקות לדרך</h2>
+      <div class="value-grid">
+        <div class="value-item">
+          <div class="value-icon">
+            <img src="assets/2026-07-28-madbekot-icon-backpack-blue.png" alt="" loading="lazy" width="76" height="76">
+          </div>
+          <h3>54 משפטים מחזקים במארז</h3>
+          <p class="value-sub">כל בוקר מחכה לילד מסר חדש</p>
+        </div>
+        <div class="value-item">
+          <div class="value-icon">
+            <img src="assets/2026-07-28-madbekot-icon-lunchbag-blue.png" alt="" loading="lazy" width="76" height="76">
+          </div>
+          <h3>רואים אותך — גם כשאני לא לידך</h3>
+          <p class="value-sub">מסר מחזק שמלווה את הילד לאורך היום</p>
+        </div>
+        <div class="value-item">
+          <div class="value-icon">
+            <img src="assets/2026-07-28-madbekot-icon-gift-blue.png" alt="" loading="lazy" width="76" height="76">
+          </div>
+          <h3>מתאים לכריך, לקלמר ולשקית האוכל</h3>
+          <p class="value-sub">הפתעה קטנה עם משמעות גדולה</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. מה מחכה בכל מארז + showcase ============ -->
+  <section class="section pack" aria-labelledby="pack-title">
+    <div class="wrap">
+      <div class="pack-title">
+        <!-- זוג כוכבים דקורטיביים: צהוב + תכלת -->
+        <svg class="star" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="#FFC53D" d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.8 5.9 20.8l1.2-6.6L2.3 9l6.6-.9z"/></svg>
+        <h2 id="pack-title">מה מחכה לכם בכל מארז?</h2>
+        <svg class="star" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="#35A9C4" d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.8 5.9 20.8l1.2-6.6L2.3 9l6.6-.9z"/></svg>
+      </div>
+      <p class="pack-body">
+        <span class="lead">בכל מארז יש 54 מדבקות עם משפטים מחזקים.</span>
+        אתם בוחרים משפט ומדביקים על הכריך של הבוקר, על הקלמר או בכל מקום שתבחרו.
+        הילד פותח את היום עם מילים שיעלו על פניו חיוך — גם כשאתם לא לידו. פשוט, קטן, ועושה את כל ההבדל.
+      </p>
+
+      <!-- תמונת המארזים — בינתיים תקריב גיליונות המדבקות האמיתיים (pic 1). TODO: swap for 4-packs group photo -->
+      <figure class="pack-lead-media">
+        <img src="assets/2026-07-28-madbekot-real-sheets-closeup.jpg"
+             alt="תקריב של גיליונות 'מדבקות לדרך' המנוקדים — 54 המשפטים המחזקים על רקע שמיים תכולים עם כוכבים"
+             loading="lazy" width="1536" height="2048">
+        <figcaption>גיליונות המדבקות של המארז — 54 משפטים מחזקים, מנוקדים ומאוירים.</figcaption>
+      </figure>
+
+      <!-- showcase — משפטי המדבקות לדוגמה, מנוקדים ובולטים (טקסט HTML חי, לא מהתמונה). -->
+      <div class="sticker-cloud" role="list" aria-label="משפטים לדוגמה מהמארז">
+        <span class="sticker" role="listitem" style="--rot:-2deg">אֲנִי עוֹשֶׂה אֶת הֲכִי טוֹב שֶׁלִּי</span>
+        <span class="sticker" role="listitem" style="--rot:1.5deg">יֵשׁ בִּי כּוֹחַ לְהַצְלִיחַ</span>
+        <span class="sticker" role="listitem" style="--rot:-1deg">אֲנִי יָכוֹל הַכֹּל</span>
+        <span class="sticker" role="listitem" style="--rot:2deg">הַיּוֹם יִהְיֶה לִי יוֹם מַצְחִיק</span>
+        <span class="sticker" role="listitem" style="--rot:-1.5deg">אֲנִי אַצְלִיחַ!</span>
+        <span class="sticker" role="listitem" style="--rot:1deg">מְחַכֶּה לִי יוֹם נִפְלָא</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5. מושלם לתחילת שנה — ולא רק ============ -->
+  <section class="section statement" aria-labelledby="statement-title">
+    <div class="wrap">
+      <h2 id="statement-title" class="center">מושלם לתחילת שנה — ולא רק.</h2>
+      <p>להעניק לילדים תחושת ביטחון, מסוגלות, חיוך וחיבוק קטן – גם באמצע היום.</p>
+    </div>
+  </section>
+
+  <!-- ============ 6. למי זה מתאים — תיבות navy ============ -->
+  <section class="section audience" aria-labelledby="aud-title">
+    <div class="wrap">
+      <h2 id="aud-title" class="center">למי זה מתאים</h2>
+      <div class="audience-grid">
+        <div class="aud-card">
+          <h3>להורים</h3>
+          <p>הפתעה קטנה וטובה על הכריך, במחברת או בפתק קטן — שתלווה את הילד לאורך היום, גם כשאתם לא לידו.</p>
+        </div>
+        <div class="aud-card">
+          <h3>לגננות</h3>
+          <p>כלי רגשי חמים לפינת הבוקר ולחיזוק אישי בגן.</p>
+        </div>
+        <div class="aud-card">
+          <h3>למורות ולמורים</h3>
+          <p>דרך פשוטה להעניק לתלמידים מסר אישי משמח ומחזק.</p>
+        </div>
+        <div class="aud-card">
+          <h3>למטפלים</h3>
+          <p>מסר מחזק שנשאר עם הילד גם אחרי המפגש.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7. ככה זה נראה אצל הילדים — קרוסלה רצה ============ -->
+  <section class="section real" aria-labelledby="real-title">
+    <div class="wrap">
+      <h2 id="real-title" class="center">ככה זה נראה אצל הילדים</h2>
+    </div>
+    <div class="marquee" role="region" aria-label="צילומים אמיתיים של המדבקות אצל ילדים">
+      <div class="marquee-track">
+        <img src="assets/2026-07-28-madbekot-real-lunchbox.jpg" alt="מדבקת 'גם אם יהיה לי קשה, לא אוותר' מודבקת על כריך עטוף בארוחת הבוקר של ילד" loading="lazy" width="1530" height="2040">
+        <img src="assets/2026-07-27-madbekot-real-usage-1.jpg" alt="מדבקה מחזקת מודבקת על קופסת האוכל של ילד" loading="lazy" width="1024" height="1024">
+        <img src="assets/2026-07-27-madbekot-real-usage-2.jpg" alt="מדבקה מחזקת מודבקת על שקית האוכל של ילד" loading="lazy" width="1024" height="1024">
+        <img src="assets/2026-07-27-madbekot-real-1x1.jpg" alt="מדבקת 'אני יכול הכל!' על פיתה בקופסת אוכל עם פירות ובקבוק מים" loading="lazy" width="1024" height="1024">
+        <img src="assets/2026-07-27-madbekot-real-9x16.jpg" alt="מדבקת 'אני יכול הכל!' על ארוחת בוקר בקופסת אוכל של ילד" loading="lazy" width="1080" height="1920">
+        <!-- כפילות לצורך לולאה חלקה -->
+        <img src="assets/2026-07-28-madbekot-real-lunchbox.jpg" alt="" aria-hidden="true" loading="lazy" width="1530" height="2040">
+        <img src="assets/2026-07-27-madbekot-real-usage-1.jpg" alt="" aria-hidden="true" loading="lazy" width="1024" height="1024">
+        <img src="assets/2026-07-27-madbekot-real-usage-2.jpg" alt="" aria-hidden="true" loading="lazy" width="1024" height="1024">
+        <img src="assets/2026-07-27-madbekot-real-1x1.jpg" alt="" aria-hidden="true" loading="lazy" width="1024" height="1024">
+        <img src="assets/2026-07-27-madbekot-real-9x16.jpg" alt="" aria-hidden="true" loading="lazy" width="1080" height="1920">
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 8. מה מספרים מי שכבר רכשו ============ -->
+  <section class="section testi" aria-labelledby="testi-title">
+    <div class="wrap">
+      <h2 id="testi-title" class="center">מה מספרים מי שכבר רכשו</h2>
+      <!-- מבנה מוכן לצילומי מסך עתידיים: הוסיפו data-has-shot="true" + <img> בתוך .testi-shot -->
+      <div class="testi-grid">
+        <article class="testi-card" data-has-shot="false">
+          <div class="testi-shot"><img src="" alt="" loading="lazy"></div>
+          <div class="testi-body">
+            <div class="testi-stars" aria-hidden="true">★★★★★</div>
+            <p class="testi-quote">"קיבלתי היום את המדבקות והייתי חייבת לכתוב לך אישית — מדהימות ואיכותיות! מחכה כבר להדביק לילדים על המחברות."</p>
+            <p class="testi-author">שרון, ירושלים · אמא ל-<span class="num">2</span></p>
+          </div>
+        </article>
+        <article class="testi-card" data-has-shot="false">
+          <div class="testi-shot"><img src="" alt="" loading="lazy"></div>
+          <div class="testi-body">
+            <div class="testi-stars" aria-hidden="true">★★★★★</div>
+            <p class="testi-quote">"מדהים, אהבתי מאוד!!!"</p>
+            <p class="testi-author">סיגל י., ראשון לציון · אמא ל-<span class="num">3</span></p>
+          </div>
+        </article>
+        <article class="testi-card" data-has-shot="false">
+          <div class="testi-shot"><img src="" alt="" loading="lazy"></div>
+          <div class="testi-body">
+            <div class="testi-stars" aria-hidden="true">★★★★★</div>
+            <p class="testi-quote">"הבת שלי כל כך שמחה לראות הבוקר את המשפט 'אני מאמינה בעצמי', שכל הדרך לבית הספר היא דילגה ושרה אותו 🙂"</p>
+            <p class="testi-author">רונית כ., גבעתיים · אמא ל-<span class="num">1</span></p>
+          </div>
+        </article>
+        <article class="testi-card" data-has-shot="false">
+          <div class="testi-shot"><img src="" alt="" loading="lazy"></div>
+          <div class="testi-body">
+            <div class="testi-stars" aria-hidden="true">★★★★★</div>
+            <p class="testi-quote">"אני מטפלת רגשית — הילדים מסיימים טיפול, בוחרים מדבקה לפי מה שהם מרגישים, וזה כל כך מרגש. תודה."</p>
+            <p class="testi-author">איילת ד., רמת גן · מטפלת רגשית</p>
+          </div>
+        </article>
+        <article class="testi-card" data-has-shot="false">
+          <div class="testi-shot"><img src="" alt="" loading="lazy"></div>
+          <div class="testi-body">
+            <div class="testi-stars" aria-hidden="true">★★★★★</div>
+            <p class="testi-quote">"המדבקות שלך מככבות אצלי בכיתה 🌟🌟🌟"</p>
+            <p class="testi-author">שירן ט., רחובות · מורה</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 9. בלוק מותג ============ -->
+  <section class="section brand" aria-labelledby="brand-title">
+    <div class="wrap">
+      <h2 id="brand-title" class="visually-hidden">המותג הדרך למילים</h2>
+      <!-- הלוגו הרשמי — הרקע התכלת שלו מתמזג עם רצועת surface-tint, פינות מעוגלות כדי לא ליצור "ריבוע" -->
+      <div class="brand-logo">
+        <img src="assets/logo-haderech.jpg" alt="הדרך למילים — המותג של דורית בן מאיר" loading="lazy" width="691" height="186">
+      </div>
+      <p><strong>מדבקות לדרך</strong> הן מוצר מקורי מהמותג הדרך למילים.</p>
+      <p class="brand-rights">כל הזכויות שמורות לדורית בן מאיר – תנועה פלוס.</p>
+    </div>
+  </section>
+
+  <!-- ============ 10+11. תיבת מבצע + תמחור ============ -->
+  <section class="section offer" id="offer" aria-labelledby="offer-title">
+    <div class="wrap">
+      <div class="offer-box">
+        <h2 id="offer-title" class="offer-headline">מבצע חזרה לבית הספר — בתוקף עד ה-<span class="num">31/8/2026</span>.</h2>
+        <span class="moving-bar" aria-hidden="true"></span>
+        <p class="offer-sub">זו התקופה לפתוח את השנה עם מילים טובות ומחזקות.</p>
+      </div>
+
+      <div class="price-grid">
+        <div class="price-card">
+          <div class="price-name">מארז בודד</div>
+          <div class="price-amount"><span class="num">24 ₪</span></div>
+          <p class="price-desc">54 מדבקות מחזקות</p>
+          <a class="btn btn-single"
+             href="https://pay.tranzila.com/doritplus/bU9tM0JLMEJRS2xtSklWVDhsQW4rUT09"
+             target="_blank" rel="noopener"
+             data-cta="single" data-event="order-click">
+            מזמינים מארז ב-<span class="num">24 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+          </a>
+        </div>
+
+        <div class="price-card featured">
+          <span class="price-tag">⭐ הכי משתלם</span>
+          <div class="price-name">4 מארזים</div>
+          <div class="price-amount"><span class="num">80 ₪</span></div>
+          <p class="price-desc">216 משפטים · מושלם להזמנה משותפת עם חברים או לכמה ילדים</p>
+          <a class="btn btn-primary"
+             href="https://pay.tranzila.com/doritplus/Zmp3YXV0bU1GQllodVVEMUNlaUxHZz09"
+             target="_blank" rel="noopener"
+             data-cta="primary" data-event="order-click">
+            מזמינים 4 מארזים ב-<span class="num">80 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 12. בטח רציתם לדעת גם… ============ -->
+  <section class="section faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <h2 id="faq-title" class="center">בטח רציתם לדעת גם…</h2>
+      <div class="faq-list">
+
+        <details class="faq-item">
+          <summary aria-controls="faq1"><span>לאיזה גיל זה מתאים?</span></summary>
+          <div class="faq-answer" id="faq1">
+            המדבקות נכתבו במיוחד לעולים לכיתה א' ולילדי בית הספר היסודי (גילאי <span class="num">5–12</span>),
+            וגם כְּכלי לגננות ולמטפלות לחיזוק תחושת המסוגלות.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary aria-controls="faq2"><span>מה יש במארז?</span></summary>
+          <div class="faq-answer" id="faq2">
+            בכל מארז 54 מדבקות עם משפטים מחזקים ומעצימים לילדים — כמו "אני עושה את הכי טוב שלי",
+            "יש בי כוח להצליח" ו"מחכה לי יום נפלא". במבצע 4 המארזים תקבלו 216 משפטים בסך הכל.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary aria-controls="faq3"><span>איפה מדביקים, והאם זה בטוח למגע עם אוכל?</span></summary>
+          <div class="faq-answer" id="faq3">
+            המדבקות מיועדות להדבקה על <strong>אריזת המזון, שקית האוכל, הקלמר או קופסת האוכל</strong> —
+            לא במגע ישיר עם המזון.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary aria-controls="faq4"><span>מתי המארז יגיע?</span></summary>
+          <div class="faq-answer" id="faq4">
+            לאחר ההזמנה בעמוד התשלום ניתן לבחור בין איסוף עצמי למשלוח.
+            כדי שהמארז יגיע לתחילת השנה, מומלץ להזמין מוקדם ככל האפשר.
+          </div>
+        </details>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 13. סגירה (CTA סופי) ============ -->
+  <section class="section final-cta" aria-labelledby="final-title">
+    <div class="wrap">
+      <h2 id="final-title">פותחים שנה עם מילים טובות</h2>
+      <p>
+        מדבקה אחת קטנה על הכריך, ומסר גדול שמלווה את הילד שלכם לאורך כל היום.
+        הזמינו עכשיו כדי שהמארז יגיע בזמן לתחילת השנה.
+      </p>
+      <!-- תיבת הזמנה כתומה בולטת -->
+      <div class="final-order">
+        <span class="order-note">מזמינים 4 מארזים ב-<span class="num">80 ₪</span></span>
+        <a class="btn btn-primary"
+           href="https://pay.tranzila.com/doritplus/Zmp3YXV0bU1GQllodVVEMUNlaUxHZz09"
+           target="_blank" rel="noopener"
+           data-cta="primary" data-event="order-click">
+          להזמנת 4 מארזים<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+        </a>
+      </div>
+      <br>
+      <a class="link-single"
+         href="https://pay.tranzila.com/doritplus/bU9tM0JLMEJRS2xtSklWVDhsQW4rUT09"
+         target="_blank" rel="noopener"
+         data-cta="single" data-event="order-click">
+        מעדיפים מארז אחד ב-<span class="num">24 ₪</span> »<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ============ 14. פוטר ============ -->
+  <footer>
+    <div class="wrap">
+      <p>מדבקות לדרך · דורית בן מאיר · doritplus.co.il</p>
+
+      <!-- פרטי עוסק (זיהוי המוכר — עסקת מכר מרחוק). -->
+      <p style="color:#DCE9F5;">
+        <strong>פרטי העוסק:</strong>
+        דורית בן מאיר · עוסק פטור מס' <span class="num" dir="ltr">033625328</span> ·
+        דוא"ל <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a> ·
+        טלפון <a href="tel:+972548145085" class="num" dir="ltr">054-8145085</a>
+      </p>
+
+      <nav aria-label="קישורים משפטיים">
+        <p>
+          <a href="#privacy" id="privacy-link">מדיניות פרטיות</a> ·
+          <a href="#accessibility" id="accessibility-link">הצהרת נגישות</a> ·
+          <a href="#cancellation" id="cancellation-link">מדיניות ביטול</a>
+        </p>
+      </nav>
+
+      <!-- מדיניות פרטיות (accordion — נפתח בלחיצה) -->
+      <details id="privacy" class="legal-acc">
+        <summary>מדיניות פרטיות</summary>
+        <p><em>עדכון אחרון: <span class="num">28.7.2026</span></em></p>
+
+        <h4 style="color:#fff;">1. מי אנחנו</h4>
+        <p>דף זה ("האתר") מופעל על ידי דורית בן מאיר, מהמותג "הדרך למילים" (doritplus.co.il), שהוא בעל השליטה במידע.
+          עוסק פטור מס' <span class="num" dir="ltr">033625328</span> · דוא"ל לפניות פרטיות: <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a>.</p>
+
+        <h4 style="color:#fff;">2. איזה מידע נאסף</h4>
+        <p><strong>מידע שאתם מוסרים ביוזמתכם:</strong> התשלום וההזמנה מתבצעים בעמוד תשלום חיצוני של Tranzila.
+          איננו אוספים ואיננו שומרים באתר זה פרטי אמצעי תשלום. מידע ההזמנה נאסף ומעובד על ידי Tranzila וספק הסליקה, בכפוף למדיניות הפרטיות שלהם.</p>
+        <p><strong>מידע שנאסף אוטומטית:</strong> בעת הגלישה עשוי להיאסף מידע טכני — כתובת IP, סוג דפדפן/מכשיר, ומזהי עוגיות —
+          לצורך תפעול תקין ומדידת ביצועים בסיסית של האתר.</p>
+
+        <h4 style="color:#fff;">3. עוגיות (Cookies)</h4>
+        <p><strong>עוגיות חיוניות/פונקציונליות</strong> — נדרשות לתפעול האתר ולזכירת בחירת ההסכמה שלכם (נשמרת מקומית בדפדפן).<br>
+          <strong>עוגיות מדידה/פרסום</strong> — כרגע איננו מפעילים עוגיות פרסום או פיקסלים. אם נוסיף כאלה בעתיד,
+          הן יפעלו רק לאחר קבלת הסכמתכם דרך באנר העוגיות, ותוכלו לסרב בכל עת.</p>
+
+        <h4 style="color:#fff;">4. פיקסלים ופרסום מותאם (רימרקטינג)</h4>
+        <p>כרגע איננו עושים שימוש בפיקסלים פרסומיים או ברימרקטינג באתר זה. אם נתחיל להשתמש בכלים כאלה
+          (למשל Meta Pixel או Google Ads) לצורך מדידת קמפיינים או פרסום מותאם — נעדכן מדיניות זו מראש
+          ונבקש את הסכמתכם המפורשת דרך באנר העוגיות.</p>
+
+        <h4 style="color:#fff;">5. שירותי צד שלישי</h4>
+        <p><strong>Tranzila</strong> — סליקת תשלומים (עמוד חיצוני).<br>
+          <strong>Google Fonts</strong> — הגופנים בדף זה נטענים משרתי Google Fonts (CDN), מה שעשוי להעביר את כתובת ה-IP שלכם ל-Google בעת הטעינה.
+          קיים גם מנגנון גופנים מקומי (fallback) אם השירות אינו זמין.</p>
+
+        <h4 style="color:#fff;">6. הזכויות שלכם</h4>
+        <p>בהתאם לחוק הגנת הפרטיות, התשמ"א-1981 (כולל תיקון 13): זכות עיון, זכות תיקון, וזכות מחיקה של מידע אישי, בכפוף לדין. לפנייה: <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a>.</p>
+
+        <h4 style="color:#fff;">7. שמירת מידע ואבטחה</h4>
+        <p>מידע טכני/מדידה נשמר כל עוד נדרש למטרות שלשמן נאסף ובהתאם לדין. אנו נוקטים אמצעים סבירים לאבטחת המידע.</p>
+
+        <h4 style="color:#fff;">8. שינויים ויצירת קשר</h4>
+        <p>נעדכן מדיניות זו מעת לעת. לפניות: <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a> · טלפון <a href="tel:+972548145085" class="num" dir="ltr">054-8145085</a> · דורית בן מאיר, "הדרך למילים".</p>
+      </details>
+
+      <!-- הצהרת נגישות (accordion — נפתח בלחיצה) -->
+      <details id="accessibility" class="legal-acc">
+        <summary>הצהרת נגישות</summary>
+        <p><em>עדכון אחרון: <span class="num">28.7.2026</span></em></p>
+        <p><strong>המחויבות שלנו:</strong> דורית בן מאיר ("הדרך למילים") רואה חשיבות בכך שהאתר יהיה נגיש לכלל המשתמשים,
+          לרבות אנשים עם מוגבלות, בהתאם לחוק שוויון זכויות לאנשים עם מוגבלות, התשנ"ח-1998 ולתקנות מכוחו.</p>
+        <p><strong>רמת ההנגשה:</strong> האתר הונגש בהתאם לתקן הישראלי ת"י 5568 ברמה AA (מבוסס WCAG 2.0), ובכלל זה: מבנה עמוד סמנטי,
+          כיווניות עברית (RTL) והגדרת שפה, ניגודיות צבע נאותה, ניווט והפעלה במקלדת, מצבי פוקוס נראים, וטקסט חלופי לתמונות.</p>
+        <p><strong>מגבלות ידועות:</strong> ייתכנו רכיבים דקורטיביים מסוימים שאינם נגישים במלואם. אנו פועלים לתיקון הדרגתי.</p>
+        <p><strong>פרטי איש/אשת קשר נגישות:</strong> דורית בן מאיר ·
+          דוא"ל <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a> ·
+          טלפון <a href="tel:+972548145085" class="num" dir="ltr">054-8145085</a>.</p>
+      </details>
+
+      <!-- מדיניות ביטול עסקה (accordion — נפתח בלחיצה; חובת גילוי לפי סעיף 14ג) -->
+      <details id="cancellation" class="legal-acc">
+        <summary>מדיניות ביטול עסקה</summary>
+        <p><em>עדכון אחרון: <span class="num">29.7.2026</span></em></p>
+        <p>רכישת המדבקות היא עסקת מכר מרחוק לפי חוק הגנת הצרכן, התשמ"א-1981. ניתן לבטל את העסקה בתוך <span class="num">14</span> ימים מיום קבלת המארז, או מיום קבלת מסמך פרטי העסקה — לפי המאוחר מביניהם.</p>
+        <p><strong>אופן הביטול:</strong> להודעת ביטול פנו אלינו בדוא"ל <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a> או בטלפון <a href="tel:+972548145085" class="num" dir="ltr">054-8145085</a>, בציון שם ומספר הזמנה. התמורה תושב בתוך <span class="num">14</span> ימים ממועד הודעת הביטול.</p>
+        <p><strong>ביטול מטעמי חרטה (ללא פגם):</strong> המארז יוחזר אלינו על חשבון הלקוח/ה ובמצב תקין ושלם. נהיה רשאים לנכות דמי ביטול בשיעור של עד <span class="num">5%</span> ממחיר המארז או <span class="num">100 ₪</span> — לפי הנמוך מביניהם.</p>
+        <p><strong>מארז פגום או שאינו תואם:</strong> אם המארז הגיע פגום או שונה מהמפורסם — הביטול וההחזרה על חשבוננו, ותקבלו החזר מלא ללא דמי ביטול.</p>
+        <p><strong>משלוח בדואר:</strong> חלון הביטול מתחיל מרגע שהמארז מגיע לידיכם בפועל; עיכוב במשלוח אינו פוגע בזכותכם.</p>
+      </details>
+
+      <p style="margin-block-start:32px;">© <span class="num">2026</span> כל הזכויות שמורות · הדרך למילים.</p>
+    </div>
+  </footer>
+
+  <!-- ============ Sticky CTA מובייל ============ -->
+  <div class="sticky-cta" id="sticky-cta" aria-hidden="true">
+    <a class="btn btn-primary"
+       href="https://pay.tranzila.com/doritplus/Zmp3YXV0bU1GQllodVVEMUNlaUxHZz09"
+       target="_blank" rel="noopener"
+       data-cta="primary" data-event="order-click">
+      מזמינים 4 מארזים ב-<span class="num">80 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+    </a>
+  </div>
+
+  <!-- ============ באנר עוגיות ============ -->
+  <div class="cookie-banner" id="cookie-banner" role="region" aria-label="הודעת עוגיות">
+    <!-- באנר עוגיות (תואם תיקון 13): שני כפתורים שווי-בולטות · gating פיקסל ב-JS -->
+    <p>
+      אנחנו משתמשים בעוגיות חיוניות לתפעול האתר. כרגע איננו מפעילים עוגיות פרסום או פיקסלים;
+      אם נוסיף בעתיד עוגיות מדידה/פרסום, הן יופעלו רק לאחר קבלת הסכמתכם. פרטים ב<a href="#privacy">מדיניות הפרטיות</a>.
+    </p>
+    <div class="actions">
+      <button class="btn btn-primary" id="cookie-accept" type="button">אישור הכל</button>
+      <button class="btn btn-neutral" id="cookie-decline" type="button">רק הכרחיות</button>
+    </div>
+  </div>
+
+  <!-- ============ JS (עצמאי, ללא תלויות) ============ -->
+  <script>
+    (function(){
+      "use strict";
+
+      // ----- פתיחת סעיף משפטי מכווץ (accordion) בעת לחיצה על קישור אליו -----
+      document.addEventListener("click", function(e){
+        var a = e.target.closest('a[href^="#"]');
+        if (!a) return;
+        var el = document.getElementById(a.getAttribute("href").slice(1));
+        if (el && el.tagName === "DETAILS") { el.open = true; }
+      });
+
+      // ----- Sticky CTA: מופיע אחרי גלילה מה-hero (מובייל) -----
+      var sticky = document.getElementById("sticky-cta");
+      var hero = document.querySelector(".hero");
+      if (sticky && hero && "IntersectionObserver" in window) {
+        var io = new IntersectionObserver(function(entries){
+          entries.forEach(function(e){
+            if (e.isIntersecting) {
+              sticky.classList.remove("show");
+              sticky.setAttribute("aria-hidden","true");
+            } else {
+              sticky.classList.add("show");
+              sticky.setAttribute("aria-hidden","false");
+            }
+          });
+        }, {threshold:0});
+        io.observe(hero);
+      }
+
+      // ----- באנר עוגיות + gating פיקסל (תואם תיקון 13) -----
+      var banner = document.getElementById("cookie-banner");
+      var KEY = "madbekot-cookie-consent"; // ערכים: "all" | "essential"
+      var pixelLoaded = false;
+
+      /*
+        HOOK לטל — הזרקת פיקסל/אנליטיקס:
+        הפונקציה loadMarketingPixel() היא הנקודה היחידה שבה מותר לטעון פיקסל שיווקי
+        (Meta / Google Ads / GA). היא נקראת אך ורק כאשר ההסכמה היא "all" —
+        לעולם לא בטעינת העמוד ולעולם לא כאשר המשתמש בחר "essential".
+        אין להזריק snippet פיקסל ב-<head> או בטעינה — רק בתוך הפונקציה הזו.
+      */
+      function loadMarketingPixel(){
+        if (pixelLoaded) return;              // מניעת טעינה כפולה
+        pixelLoaded = true;
+        // --- ANALYTICS/PIXEL INJECTION POINT (טל) ---
+        // דוגמה: var s=document.createElement('script'); s.src='...'; document.head.appendChild(s);
+        // כרגע ריק בכוונה — אין פיקסל פעיל עד שטל יזריק כאן.
+      }
+
+      // בטעינה: קרא הסכמה קיימת מ-localStorage. פיקסל נטען רק אם ההסכמה היא "all".
+      var stored = null;
+      try { stored = localStorage.getItem(KEY); } catch(e){}
+      if (stored) {
+        banner.classList.add("hidden");
+        if (stored === "all") loadMarketingPixel();   // gating: רק בהסכמה מפורשת
+      }
+
+      function setConsent(val){
+        try { localStorage.setItem(KEY, val); } catch(e){}
+        banner.classList.add("hidden");
+        if (val === "all") loadMarketingPixel();       // "essential" → לא נטען כלל
+      }
+
+      var accept = document.getElementById("cookie-accept");
+      var decline = document.getElementById("cookie-decline");
+      if (accept) accept.addEventListener("click", function(){ setConsent("all"); });
+      if (decline) decline.addEventListener("click", function(){ setConsent("essential"); });
+    })();
+  </script>
+
+</body>
+</html>

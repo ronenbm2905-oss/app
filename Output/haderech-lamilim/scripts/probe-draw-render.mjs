@@ -1,0 +1,13 @@
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { createCanvas } from '@napi-rs/canvas';
+import fs from 'fs';
+const SP=process.argv[2];
+const url='C:/Users/RONEN/Desktop/cloud ai/app/Briefs/haderech/klafim_drawings_bizua_shtanz.pdf';
+const doc=await getDocument({url,useSystemFonts:true}).promise;
+const page=await doc.getPage(1);
+const vp=page.getViewport({scale:4});
+const c=createCanvas(vp.width,vp.height);const ctx=c.getContext('2d');
+ctx.fillStyle='#fff';ctx.fillRect(0,0,vp.width,vp.height);
+await page.render({canvasContext:ctx,viewport:vp}).promise;
+fs.writeFileSync(SP+'/draw-sample-p1.png',c.toBuffer('image/png'));
+console.log('done',vp.width,vp.height);

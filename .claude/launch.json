@@ -7,6 +7,20 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "Output/basketball-scheduler",
       "port": 5173
+    },
+    {
+      "name": "haderech-lamilim",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "Output/haderech-lamilim",
+      "port": 5174
+    },
+    {
+      "name": "madbekot-laderech",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "-l", "5180", "."],
+      "cwd": "Output/2026-07-27-madbekot-laderech",
+      "port": 5180
     }
   ]
 }
