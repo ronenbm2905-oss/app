@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, initial-scale=1">
+<title>מדבקות לדרך — פוסטר שיווקי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Varela+Round&family=Assistant:wght@400;600;700;800&family=Frank+Ruhl+Libre:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#E4F1FC; --surface:#FFFFFF; --tint:#EAF4FD;
+    --text:#17497F; --royal:#1B5FA6; --navy:#123A63;
+    --cta:#E06E10; --cta-deep:#C85D0E;
+    --teal:#35A9C4; --yellow:#FFC53D;
+    --font-head:"Varela Round","Segoe UI",system-ui,Arial,sans-serif;
+    --font-body:"Assistant","Segoe UI",system-ui,Arial,sans-serif;
+    --font-display:"Frank Ruhl Libre","Times New Roman",serif;
+    --r-card:20px; --r-media:24px; --r-pill:999px;
+    --shadow:0 6px 24px rgba(23,73,127,.10);
+    --shadow-strong:0 10px 34px rgba(23,73,127,.18);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{background:#c9def0;}
+  body{font-family:var(--font-body);color:var(--text);}
+
+  .poster{
+    position:relative;
+    width:1080px;
+    background:var(--bg);
+    overflow:hidden;
+    padding:56px 44px 52px;
+    font-family:var(--font-body);
+    color:var(--text);
+    line-height:1.28;
+  }
+
+  /* ===== decorative sprinkles ===== */
+  .deco{position:absolute;pointer-events:none;user-select:none;font-family:var(--font-body);line-height:1;z-index:0;}
+  .d1{top:24px;left:40px;font-size:34px;color:var(--yellow);transform:rotate(-12deg);}
+  .d2{top:120px;left:150px;font-size:20px;color:var(--teal);}
+  .d3{top:30px;right:470px;font-size:26px;color:var(--royal);transform:rotate(8deg);}
+  .d4{top:700px;right:60px;font-size:24px;color:var(--yellow);}
+  .d5{top:760px;left:120px;font-size:22px;color:var(--teal);transform:rotate(-10deg);}
+  .d6{bottom:30px;right:40px;font-size:24px;color:var(--royal);}
+  .d7{bottom:24px;left:60px;font-size:22px;color:var(--yellow);transform:rotate(14deg);}
+  .d8{top:430px;left:30px;font-size:20px;color:var(--teal);}
+
+  .poster > *{position:relative;z-index:1;}
+
+  /* small brand logo top-left corner */
+  .brand{position:absolute;top:34px;left:40px;z-index:2;}
+  .brand img{height:34px;width:auto;display:block;opacity:.92;border-radius:6px;}
+
+  /* ============ PANEL 1 — HERO ============ */
+  .hero{display:flex;gap:36px;align-items:stretch;margin-bottom:40px;}
+  .hero-text{flex:1 1 0;min-width:0;padding-top:10px;display:flex;flex-direction:column;}
+  .hero-media{flex:0 0 484px;position:relative;}
+
+  .h1{font-family:var(--font-head);font-size:90px;line-height:.98;color:var(--text);font-weight:400;letter-spacing:-1px;}
+  .h1 .row2{display:inline-flex;align-items:center;gap:14px;}
+  .h1 .accent{color:var(--royal);}
+  .h1 .kicker{font-size:52px;color:var(--navy);font-weight:400;}
+  .heart-mark{color:var(--yellow);font-size:44px;}
+
+  .dot-div{margin:26px 0 24px;display:flex;align-items:center;gap:12px;}
+  .dot-div .line{flex:1;border-top:3px dotted #A9CBEA;}
+  .dot-div .hh{color:var(--cta-deep);font-size:28px;}
+
+  .count-line{font-family:var(--font-head);font-size:62px;color:var(--cta);line-height:1;margin-bottom:8px;}
+  .count-sub{font-size:27px;color:var(--royal);font-weight:700;margin-bottom:34px;max-width:440px;}
+
+  .benefits{display:flex;flex-direction:column;gap:22px;margin-top:auto;}
+  .benefit{display:flex;align-items:center;gap:20px;}
+  .benefit .ico{flex:0 0 78px;height:78px;width:78px;border-radius:50%;background:var(--surface);
+    box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
+  .benefit .ico img{width:52px;height:52px;object-fit:contain;}
+  .benefit .txt{font-size:27px;font-weight:700;color:var(--text);}
+  .benefit.pop .txt{color:var(--cta-deep);font-weight:800;font-size:28px;}
+
+  /* hero media */
+  .photo-frame{position:relative;border-radius:var(--r-media);overflow:hidden;box-shadow:var(--shadow-strong);
+    border:6px solid #fff;height:100%;min-height:720px;}
+  .photo-frame img{width:100%;height:100%;object-fit:cover;display:block;}
+
+  .offer-badge{position:absolute;left:-24px;bottom:40px;z-index:3;
+    width:246px;height:246px;border-radius:50%;
+    background:radial-gradient(circle at 50% 38%, #FFD46A 0%, var(--yellow) 55%, var(--cta) 140%);
+    box-shadow:0 8px 26px rgba(200,93,14,.34);
+    border:5px dashed #fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    color:#7a3d00;}
+  .offer-badge .ob-top{font-family:var(--font-body);font-size:19px;font-weight:800;color:#8a4300;line-height:1.1;}
+  .offer-badge .ob-mid{font-family:var(--font-head);font-size:30px;color:var(--navy);margin:5px 0 0;}
+  .offer-badge .ob-price{font-family:var(--font-head);font-size:62px;color:var(--cta-deep);line-height:.95;margin-top:2px;}
+  .offer-badge .ob-price small{font-size:38px;}
+
+  /* ============ BOTTOM ROW — panels 2/3/4 ============ */
+  .bottom{display:flex;gap:24px;align-items:stretch;}
+  .panel{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--shadow);padding:24px;display:flex;flex-direction:column;}
+
+  /* panel 4 — gift (rightmost) */
+  .p-gift{flex:0 0 280px;}
+  .p-gift h3{font-family:var(--font-head);font-size:34px;color:var(--text);line-height:1.05;margin-bottom:12px;}
+  .p-gift .lead{font-size:21px;font-weight:600;color:var(--royal);margin-bottom:18px;}
+  .p-gift .gift-photo{border-radius:16px;overflow:hidden;flex:1;min-height:300px;box-shadow:var(--shadow);}
+  .p-gift .gift-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .p-gift .mini-offer{margin-top:18px;background:linear-gradient(90deg,var(--cta) 0%,var(--cta-deep) 100%);
+    color:#fff;border-radius:var(--r-pill);padding:14px 16px;text-align:center;line-height:1.2;}
+  .p-gift .mini-offer .mo-small{font-size:15px;font-weight:700;opacity:.95;}
+  .p-gift .mini-offer .mo-big{font-family:var(--font-head);font-size:26px;margin-top:2px;}
+
+  /* panel 3 — sheet grid (middle) */
+  .p-sheet{flex:1 1 0;min-width:0;}
+  .sheet-head{text-align:center;margin-bottom:6px;}
+  .sheet-head .title{font-family:var(--font-display);font-weight:900;font-size:48px;color:var(--text);letter-spacing:.5px;}
+  .sheet-head .stars{font-size:22px;letter-spacing:5px;}
+  .sheet-head .stars .s1{color:var(--royal);} .sheet-head .stars .s2{color:var(--teal);} .sheet-head .stars .s3{color:var(--yellow);}
+  .sheet-head .sub{font-size:19px;font-weight:600;color:var(--royal);margin-top:3px;}
+
+  .sticker-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:16px;flex:1;}
+  .scard{background:var(--tint);border-radius:14px;padding:12px 9px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:132px;
+    border:1px solid #DCEBF8;}
+  .scard .sc-txt{font-size:17px;font-weight:700;color:var(--navy);line-height:1.34;}
+  .scard .sc-emoji{font-size:22px;line-height:1;}
+
+  .sheet-foot{margin-top:16px;background:#FFF3D4;border-radius:var(--r-pill);
+    padding:13px 16px;text-align:center;color:var(--cta-deep);font-weight:800;font-size:23px;
+    border:1px solid #FCE3B0;}
+  .sheet-foot .hh{color:#E0505F;}
+
+  /* panel 2 — usage photos (leftmost, two stacked) */
+  .p-use{flex:0 0 258px;padding:0;background:transparent;box-shadow:none;
+    display:flex;flex-direction:column;gap:12px;}
+  .use-photo{position:relative;flex:1 1 0;min-height:0;border-radius:var(--r-card);
+    overflow:hidden;box-shadow:var(--shadow);}
+  .use-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .p-use .cap{position:absolute;left:12px;right:12px;bottom:12px;
+    background:rgba(18,58,99,.82);color:#fff;border-radius:14px;padding:9px 12px;
+    font-size:16px;font-weight:700;text-align:center;line-height:1.25;}
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <!-- decorative sprinkles -->
+  <span class="deco d1">✦</span>
+  <span class="deco d2">✦</span>
+  <span class="deco d3">★</span>
+  <span class="deco d4">✦</span>
+  <span class="deco d5">★</span>
+  <span class="deco d6">✦</span>
+  <span class="deco d7">★</span>
+  <span class="deco d8">♥</span>
+
+  <div class="brand"><img src="assets/logo-haderech.jpg" alt="הדרך למילים"></div>
+
+  <!-- ============ PANEL 1 — HERO ============ -->
+  <section class="hero">
+    <div class="hero-text">
+      <h1 class="h1">
+        <span class="accent">פותחים את השנה</span><br>
+        <span class="row2"><span class="kicker"><b>עם מילים טובות</b></span><span class="heart-mark">♥</span></span>
+      </h1>
+
+      <div class="dot-div"><span class="hh">♥</span><span class="line"></span></div>
+
+      <div class="count-line">54 מדבקות</div>
+      <div class="count-sub">עם משפטים מחזקים ומעצימים לילדים</div>
+
+      <div class="benefits">
+        <div class="benefit">
+          <span class="ico"><img src="assets/2026-07-28-madbekot-icon-backpack-blue.png" alt=""></span>
+          <span class="txt">להדבקה על כריך הבוקר</span>
+        </div>
+        <div class="benefit">
+          <span class="ico"><img src="assets/2026-07-28-madbekot-icon-lunchbag-blue.png" alt=""></span>
+          <span class="txt">מתאימה לשקית האוכל ולקלמר</span>
+        </div>
+        <div class="benefit pop">
+          <span class="ico"><img src="assets/2026-07-28-madbekot-icon-gift-blue.png" alt=""></span>
+          <span class="txt">הפתעה קטנה שעושה שינוי גדול</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-media">
+      <div class="photo-frame">
+        <img src="assets/2026-07-27-madbekot-real-hero.jpg" alt="מדבקת 'אני יכול הכל' מודבקת על פיתה בקופסת האוכל של הילד">
+      </div>
+      <div class="offer-badge">
+        <span class="ob-top">מבצע לתחילת השנה</span>
+        <span class="ob-mid">4 מארזים</span>
+        <span class="ob-price">ב-80<small> ₪</small></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BOTTOM ROW (RTL: 4 · 3 · 2) ============ -->
+  <section class="bottom">
+
+    <!-- PANEL 4 — מתנה מושלמת (right) -->
+    <div class="panel p-gift">
+      <h3>מתנה מושלמת לתחילת שנה</h3>
+      <div class="lead">לילדים שאוהבים מילים טובות ולילדים שרוצים להאמין בעצמם</div>
+      <div class="gift-photo">
+        <img src="assets/2026-07-28-madbekot-real-sheets-closeup.jpg" alt="גיליונות 'מדבקות לדרך' המנוקדים פרושים — 54 המשפטים המחזקים על רקע תכלת">
+      </div>
+      <div class="mini-offer">
+        <div class="mo-small">לחגיגת תחילת השנה</div>
+        <div class="mo-big">4 מארזים ב-80 ₪</div>
+      </div>
+    </div>
+
+    <!-- PANEL 3 — גיליון המשפטים (middle) -->
+    <div class="panel p-sheet">
+      <div class="sheet-head">
+        <div class="title">מְדַבְּקוֹת לַדֶּרֶךְ</div>
+        <div class="stars"><span class="s1">★</span><span class="s2">★</span><span class="s3">★</span></div>
+        <div class="sub">מילים קטנות שעושות ביטחון גדול</div>
+      </div>
+      <div class="sticker-grid">
+        <div class="scard"><span class="sc-txt">אֲנִי עוֹשֶׂה אֶת הֲכִי טוֹב שֶׁלִּי</span><span class="sc-emoji">☀️</span></div>
+        <div class="scard"><span class="sc-txt">יֵשׁ בִּי כּוֹחַ לְהַצְלִיחַ</span><span class="sc-emoji">💪</span></div>
+        <div class="scard"><span class="sc-txt">אֲנִי יָכוֹל הַכֹּל</span><span class="sc-emoji">🚀</span></div>
+        <div class="scard"><span class="sc-txt">הַיּוֹם יִהְיֶה לִי יוֹם מַצְחִיק</span><span class="sc-emoji">😄</span></div>
+        <div class="scard"><span class="sc-txt">אֲנִי אַצְלִיחַ!</span><span class="sc-emoji">🏅</span></div>
+        <div class="scard"><span class="sc-txt">מְחַכֶּה לִי יוֹם נִפְלָא</span><span class="sc-emoji">🌈</span></div>
+        <div class="scard"><span class="sc-txt">אֵיזֶה כֵּיף לִהְיוֹת מְיוּחָד</span><span class="sc-emoji">⭐</span></div>
+        <div class="scard"><span class="sc-txt">הַיּוֹם אֲגַלֶּה מַשֶּׁהוּ חָדָשׁ</span><span class="sc-emoji">🔍</span></div>
+        <div class="scard"><span class="sc-txt">אֲנַסֶּה הַיּוֹם יוֹתֵר מֵאֶתְמוֹל</span><span class="sc-emoji">🪜</span></div>
+      </div>
+      <div class="sheet-foot"><span class="hh">♥</span> הפתעה קטנה שעושה שינוי גדול</div>
+    </div>
+
+    <!-- PANEL 2 — צילומי שימוש (left, שתי תמונות זו על זו) -->
+    <div class="panel p-use">
+      <div class="use-photo">
+        <img src="assets/2026-07-29-madbekot-real-star-sandwich.jpg" alt="מדבקת 'הכל אפשר' בקופסת אוכל עם כריכי כוכב, מלפפון ועגבנייה">
+      </div>
+      <div class="use-photo">
+        <img src="assets/2026-07-28-madbekot-real-lunchbox.jpg" alt="מדבקה מחזקת מודבקת על כריך עטוף בארוחת הבוקר של ילד">
+        <div class="cap">מדבקה אחת על הכריך —<br>מסר גדול לכל היום</div>
+      </div>
+    </div>
+
+  </section>
+
+</div>
+</body>
+</html>

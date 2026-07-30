@@ -1,0 +1,11 @@
+# פרישת Netlify — "הדרך למילים"
+#
+# פרישה מהירה (מומלץ לגרסת הערות): גררו את תיקיית dist/ ל-https://app.netlify.com/drop
+# (הריצו קודם `npm run build`). הקונפיג הזה רלוונטי רק אם מחברים את הריפו ל-Netlify (CI).
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"

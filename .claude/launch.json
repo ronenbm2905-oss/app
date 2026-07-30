@@ -21,6 +21,13 @@
       "runtimeArgs": ["--yes", "serve", "-l", "5180", "."],
       "cwd": "Output/2026-07-27-madbekot-laderech",
       "port": 5180
+    },
+    {
+      "name": "madbekot-poster",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "-l", "5181", "."],
+      "cwd": "itai/Outputs/madbekot-poster",
+      "port": 5181
     }
   ]
 }

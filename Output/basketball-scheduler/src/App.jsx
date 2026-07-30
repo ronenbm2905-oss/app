@@ -9,6 +9,7 @@ import { ConstraintsView } from "./components/ConstraintsView";
 import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
+import { PlayersView } from "./components/PlayersView";
 import { ReportView } from "./components/ReportView";
 import { LegalFooter } from "./legal/LegalFooter";
 import { IconLogOut, IconEye } from "./components/ui/icons";
@@ -20,6 +21,7 @@ const TABS = [
   { id: "games", label: "משחקים" },
   { id: "weekly", label: "לוח שבועי" },
   { id: "coach", label: "תצוגת מאמן" },
+  { id: "players", label: "שחקנים" },
   { id: "report", label: "דו\"ח שעות" },
 ];
 
@@ -108,6 +110,8 @@ export default function App() {
           <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : tab === "coach" ? (
           <CoachView data={data} weekStart={weekStart} setWeekStart={setWeekStart} />
+        ) : tab === "players" ? (
+          <PlayersView data={data} save={save} canEdit={canEdit} />
         ) : (
           <ReportView data={data} />
         )}

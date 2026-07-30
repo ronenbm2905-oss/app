@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!--
+    ============================================================================
+    דף תודה — "מדבקות לדרך" · הדרך למילים (דורית בן מאיר)
+    ============================================================================
+
+    מטרת הדף:
+      עמוד ה-Success שאליו Tranzila מפנה את הלקוח/ה אחרי תשלום מוצלח.
+      זו הנקודה היחידה שבה נורה אירוע Meta `Purchase`.
+
+    למה כאן ולא ב-Tranzila (T-1, מפרט עדי סבב #6):
+      מפתח ההסכמה נשמר ב-localStorage והוא per-origin. הדומיין של Tranzila
+      (pay.tranzila.com) לא חולק את ה-localStorage של האתר שלנו, ולכן אסור
+      ואי-אפשר לירות פיקסל שם. דף התודה חייב לשבת על אותו origin של דף המכירה
+      (למשל doritplus-madbekot.netlify.app/thank-you.html) כדי לקרוא את ההסכמה.
+
+    ----------------------------------------------------------------------------
+    הגדרה ב-Tranzila (למי שמגדיר — "תנועה פלוס" / דורית):
+    ----------------------------------------------------------------------------
+      1. בממשק הטרמינל של Tranzila → הגדרות → "כתובת הצלחה" (Success URL / notify_url_address)
+         הזינו את כתובת דף התודה על אותו דומיין של דף המכירה, למשל:
+             https://doritplus-madbekot.netlify.app/thank-you.html
+      2. Tranzila מוסיפה אוטומטית לכתובת ה-Success פרמטרים על העסקה. סכום העסקה
+         מועבר בפרמטר בשם `sum` (למשל: .../thank-you.html?sum=80). הדף כאן קורא
+         אך ורק את `sum`.
+      3. אם בטרמינל שלכם שם הפרמטר שונה (בחלק מהתצורות הסכום מגיע כ-`sum` ובאחרות
+         אפשר להעביר גם ערך מותאם) — עדכנו את הקבוע SUM_PARAM למטה בהתאם, או הגדירו
+         שהסכום יועבר בפרמטר בשם `sum`.
+      4. חשוב (מינימיזציה, מפרט T-3): אין להעביר לכתובת דף התודה פרטים מזהים
+         (שם, אימייל, טלפון) — סכום העסקה בלבד. פרמטרים מזהים ב-URL עלולים להיחשף
+         ל-Meta דרך referrer/fbq. הדף הזה קורא **רק** את הסכום ולא שום PII.
+
+    ----------------------------------------------------------------------------
+    גיטינג הפיקסל (T-2 / T-3, מפרט עדי):
+    ----------------------------------------------------------------------------
+      • Purchase נורה **רק אם** ההסכמה במפתח `madbekot-cookie-consent-v3` היא "all".
+        פוסט-רכישה ≠ פוסט-הסכמה: ההסכמה נוגעת למעקב, לא לעסקה.
+      • Purchase נשלח עם `value` + `currency:'ILS'` בלבד — בלי PII, בלי Advanced Matching.
+      • הסכום נקרא מ-`?sum=` ומאומת מספרית (Number תקין וחיובי); אם חסר/לא-תקין —
+        נופל לברירת מחדל בטוחה (DEFAULT_VALUE = מחיר המארז הבודד, 24 ₪), ולא מוזרק
+        ל-DOM גולמי (הגנת XSS).
+    ============================================================================
+  -->
+
+  <title>תודה על ההזמנה! · מדבקות לדרך — הדרך למילים</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#17497F">
+  <link rel="icon" type="image/png" href="assets/2026-07-28-madbekot-icon-gift-blue.png">
+  <link rel="apple-touch-icon" href="assets/2026-07-28-madbekot-icon-gift-blue.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@700;900&family=Varela+Round&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --color-bg:#E4F1FC; --color-surface:#FFFFFF; --color-surface-tint:#EAF4FD;
+      --color-text:#17497F; --color-blue-royal:#1B5FA6; --color-box-navy:#123A63;
+      --color-primary:#E06E10; --color-primary-hover:#C25E08; --color-orange-deep:#C85D0E;
+      --color-accent-teal:#35A9C4; --color-accent-yellow:#FFC53D;
+      --color-text-muted:#52626F; --color-border:#CFE4F5;
+      --font-head:"Varela Round","Segoe UI",system-ui,Arial,sans-serif;
+      --font-body:"Assistant","Segoe UI",system-ui,Arial,sans-serif;
+      --font-display:"Frank Ruhl Libre","Suez One","Times New Roman",serif;
+      --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+      --radius-pill:999px; --radius-card:20px; --radius-media:24px;
+      --shadow-card:0 6px 24px rgba(23,73,127,.10);
+      --shadow-cta:0 8px 20px rgba(224,110,16,.30);
+      --shadow-soft:0 2px 10px rgba(23,73,127,.07);
+    }
+    *,*::before,*::after{box-sizing:border-box;}
+    body{
+      margin:0;font-family:var(--font-body);font-size:17px;line-height:1.6;
+      color:var(--color-text);background:var(--color-bg);
+      -webkit-font-smoothing:antialiased;min-height:100vh;
+      display:flex;flex-direction:column;
+    }
+    a{color:var(--color-blue-royal);}
+    a:focus-visible,button:focus-visible,summary:focus-visible{
+      outline:3px solid var(--color-blue-royal);outline-offset:2px;border-radius:4px;
+    }
+    .num{unicode-bidi:isolate;}
+    main{flex:1 0 auto;display:flex;align-items:center;justify-content:center;padding:var(--sp-7) 20px;}
+    .card{
+      max-width:560px;width:100%;background:var(--color-surface);
+      border:1px solid var(--color-border);border-radius:var(--radius-card);
+      box-shadow:var(--shadow-card);padding:var(--sp-7) var(--sp-6);text-align:center;
+    }
+    .badge{
+      width:96px;height:96px;margin-inline:auto;margin-block-end:var(--sp-5);
+      background:var(--color-surface-tint);border-radius:var(--radius-pill);
+      box-shadow:var(--shadow-soft);display:flex;align-items:center;justify-content:center;
+    }
+    .badge svg{width:52px;height:52px;}
+    h1{
+      font-family:var(--font-display);font-weight:900;font-size:32px;line-height:1.3;
+      margin:0 0 var(--sp-3);color:var(--color-text);
+    }
+    .lead{font-size:19px;color:var(--color-text);margin:0 0 var(--sp-5);}
+    .next-box{
+      background:var(--color-surface-tint);border:1px solid var(--color-border);
+      border-radius:var(--radius-card);padding:var(--sp-5);text-align:start;
+      margin-block:var(--sp-5);
+    }
+    .next-box h2{
+      font-family:var(--font-head);font-size:19px;color:var(--color-text);
+      margin:0 0 var(--sp-3);text-align:center;
+    }
+    .next-box ul{margin:0;padding-inline-start:22px;color:var(--color-text-muted);font-size:16px;line-height:1.7;}
+    .next-box li{margin-block-end:6px;}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      font-family:var(--font-body);font-weight:700;font-size:19px;
+      padding-block:14px;padding-inline:28px;border-radius:var(--radius-pill);
+      text-decoration:none;cursor:pointer;border:2px solid var(--color-primary);
+      background:var(--color-primary);color:#fff;box-shadow:var(--shadow-cta);
+      transition:transform .15s ease,background-color .15s ease;
+    }
+    .btn:hover{background:var(--color-primary-hover);border-color:var(--color-primary-hover);transform:translateY(-2px);}
+    .contact{font-size:14px;color:var(--color-text-muted);margin-block-start:var(--sp-5);}
+    .contact a{color:var(--color-blue-royal);}
+
+    footer{
+      flex-shrink:0;background:var(--color-box-navy);color:#B8CBDE;
+      padding-block:var(--sp-6);text-align:center;font-size:14px;
+    }
+    footer a{color:#fff;text-decoration:underline;text-underline-offset:2px;}
+    footer nav p{margin-block:var(--sp-2);}
+
+    /* ===== באנר עוגיות (עקבי עם דף המכירה) ===== */
+    .cookie-banner{
+      position:fixed;inset-inline:12px;inset-block-end:12px;z-index:60;
+      background:var(--color-surface);border:1px solid var(--color-border);
+      border-radius:var(--radius-card);box-shadow:var(--shadow-card);
+      padding:var(--sp-4) var(--sp-5);max-width:520px;margin-inline:auto;
+      display:flex;flex-direction:column;gap:var(--sp-3);
+    }
+    .cookie-banner p{margin:0;font-size:14px;color:var(--color-text-muted);}
+    .cookie-banner .actions{display:flex;gap:var(--sp-3);flex-wrap:wrap;}
+    .cookie-banner .btn{padding-block:12px;padding-inline:20px;font-size:19px;flex:1 1 140px;box-shadow:none;}
+    .btn-neutral{background:var(--color-box-navy);color:#fff;border-color:var(--color-box-navy);}
+    .btn-neutral:hover{background:#0d2c4c;border-color:#0d2c4c;}
+    .cookie-banner.hidden{display:none;}
+
+    @media (min-width:768px){ h1{font-size:38px;} }
+    @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+  </style>
+</head>
+<body>
+
+  <main>
+    <div class="card">
+      <div class="badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#35A9C4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+
+      <h1>תודה על ההזמנה!</h1>
+      <p class="lead">ההזמנה שלכם התקבלה בהצלחה. אנחנו כבר מתרגשים שהמדבקות יצאו לדרך אל הילדים.</p>
+
+      <div class="next-box">
+        <h2>מה קורה עכשיו?</h2>
+        <ul>
+          <li>אישור ההזמנה יישלח אליכם מ-Tranzila למייל שהזנתם בתשלום.</li>
+          <li>נכין את המארז ונצא לדרך — לפי אופן האספקה שבחרתם (איסוף עצמי או משלוח).</li>
+          <li>כדי שהמארז יגיע בזמן לתחילת השנה, נטפל בהזמנה בהקדם.</li>
+        </ul>
+      </div>
+
+      <a class="btn" href="index.html">חזרה לדף הבית</a>
+
+      <p class="contact">
+        שאלה על ההזמנה? כתבו לנו ל-<a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a>
+        או חייגו <a href="tel:+972548145085" class="num" dir="ltr">054-8145085</a>.
+      </p>
+    </div>
+  </main>
+
+  <footer>
+    <div>
+      <p>מדבקות לדרך · דורית בן מאיר · <a href="https://doritplus.co.il">doritplus.co.il</a></p>
+      <nav aria-label="קישורים משפטיים">
+        <p>
+          <a href="index.html#privacy">מדיניות פרטיות</a> ·
+          <a href="index.html#accessibility">הצהרת נגישות</a> ·
+          <a href="index.html#cancellation">מדיניות ביטול</a> ·
+          <a href="#" id="cookie-reset">ניהול עוגיות</a>
+        </p>
+      </nav>
+      <p>© <span class="num">2026</span> כל הזכויות שמורות · הדרך למילים.</p>
+    </div>
+  </footer>
+
+  <!-- ============ באנר עוגיות ============ -->
+  <div class="cookie-banner hidden" id="cookie-banner" role="region" aria-label="הודעת עוגיות">
+    <p>
+      אנחנו משתמשים בעוגיות חיוניות לתפעול האתר, ובהסכמתכם גם בעוגיות מדידה ופרסום — כולל
+      <strong>Meta Pixel</strong> (רימרקטינג) — שמעבירות מידע ל-Meta, לרבות מחוץ לישראל.
+      תוכלו לאשר את כולן או להסתפק בהכרחיות בלבד, ולחזור בכם בכל עת.
+      פרטים ב<a href="index.html#privacy">מדיניות הפרטיות</a>.
+    </p>
+    <div class="actions">
+      <button class="btn" id="cookie-accept" type="button">אישור הכל</button>
+      <button class="btn btn-neutral" id="cookie-decline" type="button">רק הכרחיות</button>
+    </div>
+  </div>
+
+  <!-- ============ JS — גיטינג פיקסל + Purchase ============ -->
+  <script>
+    (function(){
+      "use strict";
+
+      var KEY = "madbekot-cookie-consent-v3"; // אותו מפתח כמו בדף המכירה (per-origin)
+      var SUM_PARAM = "sum";                  // שם הפרמטר שמעביר Tranzila את סכום העסקה
+      var DEFAULT_VALUE = 24;                 // ברירת מחדל בטוחה (מחיר מארז בודד) אם הסכום חסר/לא-תקין
+      var PIXEL_ID = "1155607796337708";      // Meta Pixel — "תנועה פלוס"
+      var pixelLoaded = false;
+      var purchaseFired = false;
+
+      // --- קריאת סכום העסקה מפרמטר Tranzila, עם אימות מספרי (T-3) ---
+      function readPurchaseValue(){
+        var raw = null;
+        try { raw = new URLSearchParams(window.location.search).get(SUM_PARAM); } catch(e){}
+        var n = Number(raw);                  // המרה מספרית קפדנית
+        if (!isFinite(n) || n <= 0) return DEFAULT_VALUE; // חסר/לא-תקין → ברירת מחדל בטוחה
+        return n;
+      }
+
+      // --- טעינת בסיס הפיקסל (רק אחרי הסכמה "all") ---
+      function loadMarketingPixel(){
+        if (pixelLoaded) return;
+        pixelLoaded = true;
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+        n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+        (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', PIXEL_ID);
+        fbq('track','PageView');
+      }
+
+      // --- ירי Purchase: value + currency בלבד, בלי PII, בלי Advanced Matching ---
+      function firePurchase(){
+        if (purchaseFired || !window.fbq || !pixelLoaded) return;
+        purchaseFired = true;
+        fbq('track','Purchase', { value: readPurchaseValue(), currency: 'ILS' });
+      }
+
+      // --- גיטינג: פיקסל + Purchase נורים אך ורק אם ההסכמה היא "all" ---
+      function applyConsent(val){
+        if (val === "all"){
+          loadMarketingPixel();
+          firePurchase();
+        }
+      }
+
+      var banner = document.getElementById("cookie-banner");
+
+      // בטעינה: קרא הסכמה קיימת. אם "all" → פיקסל + Purchase. אחרת → הצג באנר, בלי פיקסל.
+      var stored = null;
+      try { stored = localStorage.getItem(KEY); } catch(e){}
+      if (stored){
+        banner.classList.add("hidden");
+        applyConsent(stored);
+      } else {
+        banner.classList.remove("hidden"); // אין הסכמה קודמת → בקש עכשיו
+      }
+
+      function setConsent(val){
+        try { localStorage.setItem(KEY, val); } catch(e){}
+        banner.classList.add("hidden");
+        applyConsent(val); // "essential" → לא נטען פיקסל ולא נורה Purchase
+      }
+
+      var accept = document.getElementById("cookie-accept");
+      var decline = document.getElementById("cookie-decline");
+      if (accept) accept.addEventListener("click", function(){ setConsent("all"); });
+      if (decline) decline.addEventListener("click", function(){ setConsent("essential"); });
+
+      // --- מנגנון חזרה מהסכמה ("ניהול עוגיות") — עקבי עם דף המכירה ---
+      var reset = document.getElementById("cookie-reset");
+      if (reset) reset.addEventListener("click", function(ev){
+        ev.preventDefault();
+        try { localStorage.removeItem(KEY); } catch(e){}
+        location.reload();
+      });
+    })();
+  </script>
+
+</body>
+</html>

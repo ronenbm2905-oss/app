@@ -572,7 +572,7 @@
         </div>
         <div class="aud-card">
           <h3>לגננות</h3>
-          <p>כלי רגשי חמים לפינת הבוקר ולחיזוק אישי בגן.</p>
+          <p>כלי רגשי לתיווך ושיח בגן, עם מילים טובות.</p>
         </div>
         <div class="aud-card">
           <h3>למורות ולמורים</h3>
@@ -796,7 +796,8 @@
         <p>
           <a href="#privacy" id="privacy-link">מדיניות פרטיות</a> ·
           <a href="#accessibility" id="accessibility-link">הצהרת נגישות</a> ·
-          <a href="#cancellation" id="cancellation-link">מדיניות ביטול</a>
+          <a href="#cancellation" id="cancellation-link">מדיניות ביטול</a> ·
+          <a href="#" id="cookie-reset">ניהול עוגיות</a>
         </p>
       </nav>
 
@@ -821,14 +822,26 @@
           הן יפעלו רק לאחר קבלת הסכמתכם דרך באנר העוגיות, ותוכלו לסרב בכל עת.</p>
 
         <h4 style="color:#fff;">4. פיקסלים ופרסום מותאם (רימרקטינג)</h4>
-        <p>כרגע איננו עושים שימוש בפיקסלים פרסומיים או ברימרקטינג באתר זה. אם נתחיל להשתמש בכלים כאלה
-          (למשל Meta Pixel או Google Ads) לצורך מדידת קמפיינים או פרסום מותאם — נעדכן מדיניות זו מראש
-          ונבקש את הסכמתכם המפורשת דרך באנר העוגיות.</p>
+        <!-- ⚖️ טיוטת עדי (סבב #6) — ניסוח ההסכמה + סעיף העברת המידע לחו"ל מצריכים אישור עו"ד רשומה לפני go-live -->
+        <p>אנו עושים שימוש ב-<strong>Meta Pixel</strong> (פייסבוק/אינסטגרם) לצורך מדידת ביצועי קמפיינים
+          והצגת מודעות מותאמות (רימרקטינג). הפיקסל מופעל באמצעות סוכנות הפרסום מטעמנו, "תנועה פלוס".
+          הכלי אוסף מזהים טכניים — כתובת IP, מזהי עוגיות ומזהה מכשיר — ומידע על פעולות שביצעתם בדף
+          (צפייה בעמוד, לחיצה על כפתור הזמנה, השלמת רכישה); לפי חוק הגנת הפרטיות אלה מהווים מידע אישי.</p>
+        <p><strong>הפעלת הפיקסל מותנית בהסכמתכם המפורשת מראש</strong> דרך באנר העוגיות. כל עוד לא נתתם
+          הסכמה — הפיקסל אינו נטען כלל.</p>
+        <p><strong>העברת מידע ל-Meta ולחו"ל:</strong> בעת הפעלת הפיקסל, המידע הנאסף מועבר ומעובד על ידי
+          Meta Platforms (אירלנד/ארה"ב), לרבות אחסון והעברה <strong>מחוץ לגבולות ישראל</strong>, בכפוף
+          למדיניות הפרטיות ולתנאי עיבוד הנתונים של Meta.</p>
+        <p><strong>חזרה מהסכמה:</strong> תוכלו לחזור בכם מההסכמה בכל עת דרך הקישור "ניהול עוגיות" בתחתית
+          הדף, או בהגדרות הדפדפן, ולנהל העדפות פרסום בהגדרות חשבון Meta שלכם. חזרה מהסכמה אינה פוגעת
+          בחוקיות העיבוד שנעשה קודם לכן.</p>
 
         <h4 style="color:#fff;">5. שירותי צד שלישי</h4>
         <p><strong>Tranzila</strong> — סליקת תשלומים (עמוד חיצוני).<br>
           <strong>Google Fonts</strong> — הגופנים בדף זה נטענים משרתי Google Fonts (CDN), מה שעשוי להעביר את כתובת ה-IP שלכם ל-Google בעת הטעינה.
-          קיים גם מנגנון גופנים מקומי (fallback) אם השירות אינו זמין.</p>
+          קיים גם מנגנון גופנים מקומי (fallback) אם השירות אינו זמין.<br>
+          <strong>Meta Platforms (Facebook/Instagram)</strong> — פיקסל רימרקטינג ומדידת קמפיינים,
+          בהסכמתכם בלבד, לרבות העברת מידע לחו"ל. מופעל דרך סוכנות "תנועה פלוס".</p>
 
         <h4 style="color:#fff;">6. הזכויות שלכם</h4>
         <p>בהתאם לחוק הגנת הפרטיות, התשמ"א-1981 (כולל תיקון 13): זכות עיון, זכות תיקון, וזכות מחיקה של מידע אישי, בכפוף לדין. לפנייה: <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a>.</p>
@@ -882,9 +895,12 @@
   <!-- ============ באנר עוגיות ============ -->
   <div class="cookie-banner" id="cookie-banner" role="region" aria-label="הודעת עוגיות">
     <!-- באנר עוגיות (תואם תיקון 13): שני כפתורים שווי-בולטות · gating פיקסל ב-JS -->
+    <!-- ⚖️ נוסח הבאנר (ההסכמה + אזכור העברת המידע לחו"ל) — טיוטת עדי (סבב #6), לאימות עו"ד לפני go-live -->
     <p>
-      אנחנו משתמשים בעוגיות חיוניות לתפעול האתר. כרגע איננו מפעילים עוגיות פרסום או פיקסלים;
-      אם נוסיף בעתיד עוגיות מדידה/פרסום, הן יופעלו רק לאחר קבלת הסכמתכם. פרטים ב<a href="#privacy">מדיניות הפרטיות</a>.
+      אנחנו משתמשים בעוגיות חיוניות לתפעול האתר, ובהסכמתכם גם בעוגיות מדידה ופרסום — כולל
+      <strong>Meta Pixel</strong> (רימרקטינג) — שמעבירות מידע ל-Meta, לרבות מחוץ לישראל.
+      תוכלו לאשר את כולן או להסתפק בהכרחיות בלבד, ולחזור בכם בכל עת.
+      פרטים ב<a href="#privacy">מדיניות הפרטיות</a>.
     </p>
     <div class="actions">
       <button class="btn btn-primary" id="cookie-accept" type="button">אישור הכל</button>
@@ -925,7 +941,7 @@
 
       // ----- באנר עוגיות + gating פיקסל (תואם תיקון 13) -----
       var banner = document.getElementById("cookie-banner");
-      var KEY = "madbekot-cookie-consent"; // ערכים: "all" | "essential"
+      var KEY = "madbekot-cookie-consent-v3"; // ערכים: "all" | "essential" — גורסף ל-v3 כדי לאלץ הסכמה מחדש לפני הפעלת פיקסל Meta (G-2, סבב #6)
       var pixelLoaded = false;
 
       /*
@@ -936,11 +952,17 @@
         אין להזריק snippet פיקסל ב-<head> או בטעינה — רק בתוך הפונקציה הזו.
       */
       function loadMarketingPixel(){
-        if (pixelLoaded) return;              // מניעת טעינה כפולה
+        if (pixelLoaded) return;              // מניעת טעינה כפולה (G-3)
         pixelLoaded = true;
-        // --- ANALYTICS/PIXEL INJECTION POINT (טל) ---
-        // דוגמה: var s=document.createElement('script'); s.src='...'; document.head.appendChild(s);
-        // כרגע ריק בכוונה — אין פיקסל פעיל עד שטל יזריק כאן.
+        // Meta Pixel (תנועה פלוס · 1155607796337708) — נטען אך ורק כאן, אחרי opt-in אקטיבי.
+        // לעולם לא ב-<head> ולעולם לא בטעינת העמוד. init + PageView יורים רק פוסט-הסכמה.
+        !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+        n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+        (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init','1155607796337708');
+        fbq('track','PageView');
       }
 
       // בטעינה: קרא הסכמה קיימת מ-localStorage. פיקסל נטען רק אם ההסכמה היא "all".
@@ -961,6 +983,28 @@
       var decline = document.getElementById("cookie-decline");
       if (accept) accept.addEventListener("click", function(){ setConsent("all"); });
       if (decline) decline.addEventListener("click", function(){ setConsent("essential"); });
+
+      // ----- G-4: InitiateCheckout על כפתורי ההזמנה -----
+      // יורה אך ורק אם הפיקסל כבר נטען (כלומר יש הסכמה "all"). ללא הסכמה — לא נורה כלום.
+      // הקישורים/החוזה לא משתנים: data-cta="primary" → 80 ₪, data-cta="single" → 24 ₪.
+      document.addEventListener("click", function(e){
+        var el = e.target.closest('[data-event="order-click"]');
+        if (!el) return;
+        if (window.fbq && pixelLoaded){
+          var val = el.getAttribute("data-cta") === "primary" ? 80 : 24;
+          fbq('track','InitiateCheckout', {value: val, currency: 'ILS'});
+        }
+      });
+
+      // ----- G-5: מנגנון חזרה מהסכמה ("ניהול עוגיות") -----
+      // מנקה את מפתח ההסכמה ומרענן → הבאנר חוזר והמשתמש בוחר מחדש (או מבטל).
+      // ביטול = בביקור/רענון הבא הפיקסל לא נטען.
+      var reset = document.getElementById("cookie-reset");
+      if (reset) reset.addEventListener("click", function(ev){
+        ev.preventDefault();
+        try { localStorage.removeItem(KEY); } catch(e){}
+        location.reload();
+      });
     })();
   </script>
 
