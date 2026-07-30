@@ -304,3 +304,18 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** נותר **M1** (הסכמת הורים בטופס הרישום — פעולת רונן, לא קוד). QA ויזואלי של הטאבים
   החדשים אצל המשתמש (מצב ענן, Google login). `firebase deploy` עדיין חסום ל-Claude — עובר דרך המשתמש.
 - **Related:** [[basketball-scheduler-legal-gate]], [[push-workflow]]
+
+### 2026-07-30 — תיקון מובייל: דוח מאמן כתמונה לשיתוף (במקום window.print) [built, ממתין ל-deploy]
+- **What was done:** באייפון/דפדפני מובייל `window.print()` לא עבד → מאמנים לא הצליחו לפתוח את דוח ה-PDF
+  השבועי בטלפון (רק במחשב). הוחלף ב-`shareOrDownloadReport` ב-`CoachView.jsx`: `html2canvas` מצלם את בלוק
+  הדוח ל-PNG, ואז `navigator.share({files})` פותח את תפריט השיתוף של ה-OS (מובייל → וואטסאפ); fallback
+  להורדה במחשב. בלוק הדוח עבר מ-`print-only` ל-container מרונדר **off-screen** (`position:fixed; left:-10000px`)
+  כדי ש-html2canvas יוכל לצלם אותו.
+- **Decisions:** (1) **תמונה ולא PDF** — PNG נשלח בוואטסאפ בצורה הכי טבעית, ו-jsPDF בעברית/RTL בעייתי.
+  (2) `html2canvas` ב-**dynamic import** → chunk נפרד (201KB), לא מכביד על טעינת האפליקציה. (3) `firebase-tools`
+  נוסף כ-**devDependency קבוע** כדי שה-deploy המקומי לא יישבר שוב (ההתקנה ה-`--no-save` נמחקה ב-npm install).
+- **Verification:** `npm run build` נקי (1559 מודולים, chunk html2canvas נפרד). זרימת ה-share לא נבדקה אצל
+  Claude (דורש מובייל + auth) — QA אצל המשתמש. commit `e089e0c` נדחף.
+- **Notes / Caveats:** לא חי עד deploy hosting. המאמנים חייבים Safari/Chrome אמיתי (לא דפדפן וואטסאפ) כדי
+  ש-`navigator.share` יעבוד.
+- **Related:** [[push-workflow]]
