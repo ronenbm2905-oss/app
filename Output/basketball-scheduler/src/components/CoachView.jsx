@@ -1,22 +1,31 @@
 import { useState } from "react";
 import { DAYS } from "../constants";
-import { timeToMinutes } from "../utils/dates";
+import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
-import { IconUsers, IconCalendar, IconMapPin, IconBan } from "./ui/icons";
+import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
+
+const CLUB_NAME = "קרית אונו – דור העתיד";
 
 export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
+  const [teamId, setTeamId] = useState(""); // team filter / report scope
 
   const inWeek = (s) => (s.weekOf || "") === weekStart;
 
   const myFor = (d) =>
     data.sessions
-      .filter((s) => s.coachId === coachId && inWeek(s) && (!d || s.day === d))
+      .filter(
+        (s) =>
+          s.coachId === coachId &&
+          inWeek(s) &&
+          (!d || s.day === d) &&
+          (!teamId || s.teamId === teamId)
+      )
       .sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start));
 
   const hallActivityFor = (d) =>
@@ -43,110 +52,193 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
 
   const myName = nameOf(data.coaches, coachId);
 
+  // Teams this coach is responsible for: formally assigned (team.coachId) + any team they have sessions with.
+  const coachTeamIds = [
+    ...new Set([
+      ...data.teams.filter((t) => t.coachId === coachId).map((t) => t.id),
+      ...data.sessions.filter((s) => s.coachId === coachId).map((s) => s.teamId),
+    ]),
+  ].filter(Boolean);
+  const coachTeams = data.teams.filter((t) => coachTeamIds.includes(t.id));
+
+  // The team the weekly PDF report is about. With a single team it's implicit; with 2+ the coach picks.
+  const reportTeamId = teamId || (coachTeams.length === 1 ? coachTeams[0].id : "");
+  const reportTeamName = nameOf(data.teams, reportTeamId);
+
+  const weekDates = getWeekDates(weekStart);
+  const reportSessions = data.sessions
+    .filter((s) => s.teamId === reportTeamId && inWeek(s))
+    .sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start));
+
   return (
-    <div className="space-y-4" dir="rtl">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h2 className="text-lg font-semibold text-stone-800">שלום, {myName}</h2>
-          <p className="text-xs text-stone-500">להלן האימונים שלך, ולצידם כל הפעילות באולמות באותם זמנים</p>
+    <div dir="rtl">
+      {/* ---------- On-screen (hidden when printing) ---------- */}
+      <div className="no-print space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-stone-800">שלום, {myName}</h2>
+            <p className="text-xs text-stone-500">להלן האימונים שלך, ולצידם כל הפעילות באולמות באותם זמנים</p>
+          </div>
+          {!fixedCoachId && (
+            <button onClick={() => { setCoachId(""); setTeamId(""); }} className="text-xs text-stone-500 underline hover:text-stone-700">
+              החלף מאמן
+            </button>
+          )}
         </div>
-        {!fixedCoachId && (
-          <button onClick={() => setCoachId("")} className="text-xs text-stone-500 underline hover:text-stone-700">
-            החלף מאמן
+
+        <div className="flex flex-wrap items-center gap-2">
+          <WeekNav value={weekStart} onChange={setWeekStart} />
+          {coachTeams.length > 1 && (
+            <Select
+              value={teamId}
+              onChange={setTeamId}
+              options={coachTeams}
+              placeholder="כל הקבוצות שלי"
+              className="max-w-xs"
+            />
+          )}
+          <Select value={day} onChange={setDay} options={DAYS.map((d) => ({ id: d, name: d }))} placeholder="כל הימים" className="max-w-xs" />
+        </div>
+
+        {/* Player-facing weekly PDF report */}
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm text-emerald-900">
+            <span className="font-semibold">דוח אימונים לקבוצה (PDF)</span>
+            <span className="text-emerald-700"> — לשליחה לשחקנים בוואטסאפ. {reportTeamId ? `${reportTeamName} · ${formatWeekRange(weekStart)}` : "בחר קבוצה כדי להפיק דוח."}</span>
+          </div>
+          <button
+            onClick={() => window.print()}
+            disabled={!reportTeamId || reportSessions.length === 0}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:hover:bg-emerald-600"
+            title={!reportTeamId ? "בחר קבוצה" : reportSessions.length === 0 ? "אין אימונים לקבוצה זו בשבוע הנבחר" : "הפקת דוח PDF"}
+          >
+            <IconDownload size={15} /> הורדת דוח PDF
           </button>
-        )}
-      </div>
+        </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <WeekNav value={weekStart} onChange={setWeekStart} />
-        <Select value={day} onChange={setDay} options={DAYS.map((d) => ({ id: d, name: d }))} placeholder="כל הימים" className="max-w-xs" />
-      </div>
+        <div className="space-y-5">
+          {DAYS.filter((d) => !day || d === day).map((d) => {
+            const mySessions = myFor(d);
+            if (mySessions.length === 0 && day !== d) return null;
+            const hallRows = hallActivityFor(d);
+            const anyActivity = mySessions.length > 0 || hallRows.some((h) => h.sessions.length > 0);
+            if (!anyActivity) return null;
 
-      <div className="space-y-5">
-        {DAYS.filter((d) => !day || d === day).map((d) => {
-          const mySessions = myFor(d);
-          if (mySessions.length === 0 && day !== d) return null;
-          const hallRows = hallActivityFor(d);
-          const anyActivity = mySessions.length > 0 || hallRows.some((h) => h.sessions.length > 0);
-          if (!anyActivity) return null;
-
-          return (
-            <div key={d} className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-              <div className="bg-stone-50 px-4 py-2 border-b border-stone-200 flex items-center gap-2">
-                <IconCalendar size={14} className="text-stone-500" />
-                <h3 className="text-sm font-semibold text-stone-700">יום {d}</h3>
-              </div>
-
-              <div className="p-4 space-y-4">
-                <div>
-                  <p className="text-xs font-medium text-stone-500 mb-1.5">האימונים שלך</p>
-                  {mySessions.length === 0 ? (
-                    <p className="text-xs text-stone-600">אין לך אימון ביום זה.</p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {mySessions.map((s) => {
-                        const violated = sessionViolatesConstraints(s, data.constraints || []);
-                        return (
-                          <div
-                            key={s.id}
-                            className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${
-                              violated.length > 0 ? "bg-red-50 border-red-200" : "bg-orange-50 border-orange-200"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-orange-800 tabular-nums w-24 shrink-0">
-                                {s.start}–{s.end}
-                              </span>
-                              <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>{nameOf(data.teams, s.teamId)}</Pill>
-                              {s.type && s.type !== "אימון" && <Pill color={sessionTypeColor(s.type)}>{s.type}</Pill>}
-                              <span className="text-sm text-stone-600 flex items-center gap-1">
-                                <IconMapPin size={12} /> {nameOf(data.halls, s.hallId)}
-                              </span>
-                              {violated.length > 0 && (
-                                <span className="text-xs text-red-600 font-medium flex items-center gap-1">
-                                  <IconBan size={12} /> מתנגש עם אילוץ
-                                </span>
-                              )}
-                            </div>
-                            {s.notes && <div className="text-xs text-stone-500 pr-1">{s.notes}</div>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+            return (
+              <div key={d} className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+                <div className="bg-stone-50 px-4 py-2 border-b border-stone-200 flex items-center gap-2">
+                  <IconCalendar size={14} className="text-stone-500" />
+                  <h3 className="text-sm font-semibold text-stone-700">יום {d}</h3>
                 </div>
 
-                <div>
-                  <p className="text-xs font-medium text-stone-500 mb-1.5">פעילות באולמות</p>
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {hallRows.map(({ hall, sessions }) => (
-                      <div key={hall.id} className="border border-stone-200 rounded-lg p-2.5">
-                        <p className="text-xs font-semibold text-stone-600 flex items-center gap-1 mb-1.5">
-                          <IconMapPin size={12} /> {hall.name}
-                        </p>
-                        {sessions.length === 0 ? (
-                          <p className="text-xs text-stone-600">אין אימונים</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {sessions.map((s) => (
-                              <div key={s.id} className="text-xs flex items-center gap-1.5">
-                                <span className="tabular-nums text-stone-500 w-20 shrink-0">
+                <div className="p-4 space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-stone-500 mb-1.5">האימונים שלך</p>
+                    {mySessions.length === 0 ? (
+                      <p className="text-xs text-stone-600">אין לך אימון ביום זה.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {mySessions.map((s) => {
+                          const violated = sessionViolatesConstraints(s, data.constraints || []);
+                          return (
+                            <div
+                              key={s.id}
+                              className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${
+                                violated.length > 0 ? "bg-red-50 border-red-200" : "bg-orange-50 border-orange-200"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium text-orange-800 tabular-nums w-24 shrink-0">
                                   {s.start}–{s.end}
                                 </span>
                                 <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>{nameOf(data.teams, s.teamId)}</Pill>
-                                <span className="text-stone-600">{nameOf(data.coaches, s.coachId)}</span>
+                                {s.type && s.type !== "אימון" && <Pill color={sessionTypeColor(s.type)}>{s.type}</Pill>}
+                                <span className="text-sm text-stone-600 flex items-center gap-1">
+                                  <IconMapPin size={12} /> {nameOf(data.halls, s.hallId)}
+                                </span>
+                                {violated.length > 0 && (
+                                  <span className="text-xs text-red-600 font-medium flex items-center gap-1">
+                                    <IconBan size={12} /> מתנגש עם אילוץ
+                                  </span>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        )}
+                              {s.notes && <div className="text-xs text-stone-500 pr-1">{s.notes}</div>}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium text-stone-500 mb-1.5">פעילות באולמות</p>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {hallRows.map(({ hall, sessions }) => (
+                        <div key={hall.id} className="border border-stone-200 rounded-lg p-2.5">
+                          <p className="text-xs font-semibold text-stone-600 flex items-center gap-1 mb-1.5">
+                            <IconMapPin size={12} /> {hall.name}
+                          </p>
+                          {sessions.length === 0 ? (
+                            <p className="text-xs text-stone-600">אין אימונים</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {sessions.map((s) => (
+                                <div key={s.id} className="text-xs flex items-center gap-1.5">
+                                  <span className="tabular-nums text-stone-500 w-20 shrink-0">
+                                    {s.start}–{s.end}
+                                  </span>
+                                  <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>{nameOf(data.teams, s.teamId)}</Pill>
+                                  <span className="text-stone-600">{nameOf(data.coaches, s.coachId)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ---------- Print-only: clean player-facing weekly schedule for the selected team ---------- */}
+      <div className="print-only">
+        <div style={{ textAlign: "center", marginBottom: "10px" }}>
+          <div style={{ fontSize: "13px", color: "#57534E" }}>{CLUB_NAME}</div>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>לוח אימונים שבועי — {reportTeamName}</h1>
+          <div style={{ fontSize: "14px", color: "#57534E" }}>{formatWeekRange(weekStart)}</div>
+        </div>
+        {reportSessions.length === 0 ? (
+          <p style={{ textAlign: "center" }}>אין אימונים לקבוצה זו בשבוע הנבחר.</p>
+        ) : (
+          <table style={{ width: "100%", maxWidth: "700px", margin: "0 auto", borderCollapse: "collapse", fontSize: "13px" }}>
+            <thead>
+              <tr style={{ background: "#F5F5F4" }}>
+                <th style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right" }}>יום</th>
+                <th style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "center" }}>תאריך</th>
+                <th style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "center" }}>שעה</th>
+                <th style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right" }}>אולם</th>
+                <th style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right" }}>פרטים</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportSessions.map((s) => (
+                <tr key={s.id}>
+                  <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right", fontWeight: 600 }}>{s.day}</td>
+                  <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "center" }}>{formatDate(weekDates[s.day])}</td>
+                  <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "center" }}>{s.start}–{s.end}</td>
+                  <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right" }}>{nameOf(data.halls, s.hallId)}</td>
+                  <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right" }}>
+                    {[s.type && s.type !== "אימון" ? s.type : "", s.notes || ""].filter(Boolean).join(" · ") || "אימון"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
