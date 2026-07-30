@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { DAYS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
@@ -14,6 +14,8 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
   const [teamId, setTeamId] = useState(""); // team filter / report scope
+  const [reportBusy, setReportBusy] = useState(false);
+  const reportRef = useRef(null); // off-screen node captured into the shareable image
 
   const inWeek = (s) => (s.weekOf || "") === weekStart;
 
@@ -70,6 +72,44 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
     .filter((s) => s.teamId === reportTeamId && inWeek(s))
     .sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || timeToMinutes(a.start) - timeToMinutes(b.start));
 
+  // Produce the weekly report as a PNG image and hand it to the OS share sheet
+  // (mobile → WhatsApp) or, when sharing files isn't supported (desktop), download it.
+  // window.print() was unreliable on iPhone / in-app browsers — an image shares everywhere.
+  async function shareOrDownloadReport() {
+    if (!reportRef.current || !reportTeamId || reportBusy) return;
+    setReportBusy(true);
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: "#ffffff" });
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("no blob");
+      const fileName = `לוח-אימונים-${reportTeamName}-${weekStart}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: `לוח אימונים — ${reportTeamName}` });
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return; // coach cancelled the share sheet
+          // otherwise fall through to download
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("לא הצלחנו להפיק את הדוח. נסה שוב, או הפק אותו מהמחשב.");
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
   return (
     <div dir="rtl">
       {/* ---------- On-screen (hidden when printing) ---------- */}
@@ -103,16 +143,16 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
         {/* Player-facing weekly PDF report */}
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm text-emerald-900">
-            <span className="font-semibold">דוח אימונים לקבוצה (PDF)</span>
+            <span className="font-semibold">דוח אימונים לקבוצה (תמונה)</span>
             <span className="text-emerald-700"> — לשליחה לשחקנים בוואטסאפ. {reportTeamId ? `${reportTeamName} · ${formatWeekRange(weekStart)}` : "בחר קבוצה כדי להפיק דוח."}</span>
           </div>
           <button
-            onClick={() => window.print()}
-            disabled={!reportTeamId || reportSessions.length === 0}
+            onClick={shareOrDownloadReport}
+            disabled={!reportTeamId || reportSessions.length === 0 || reportBusy}
             className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:hover:bg-emerald-600"
-            title={!reportTeamId ? "בחר קבוצה" : reportSessions.length === 0 ? "אין אימונים לקבוצה זו בשבוע הנבחר" : "הפקת דוח PDF"}
+            title={!reportTeamId ? "בחר קבוצה" : reportSessions.length === 0 ? "אין אימונים לקבוצה זו בשבוע הנבחר" : "שיתוף / הורדת דוח"}
           >
-            <IconDownload size={15} /> הורדת דוח PDF
+            <IconDownload size={15} /> {reportBusy ? "מכין דוח..." : "שיתוף / הורדת דוח"}
           </button>
         </div>
 
@@ -204,8 +244,14 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
         </div>
       </div>
 
-      {/* ---------- Print-only: clean player-facing weekly schedule for the selected team ---------- */}
-      <div className="print-only">
+      {/* ---------- Off-screen capture target: rendered (not display:none) so html2canvas can
+           snapshot it into a shareable PNG, but positioned off-screen so it never shows on screen. ---------- */}
+      <div
+        ref={reportRef}
+        dir="rtl"
+        aria-hidden="true"
+        style={{ position: "fixed", top: 0, left: "-10000px", width: "720px", background: "#fff", padding: "24px" }}
+      >
         <div style={{ textAlign: "center", marginBottom: "10px" }}>
           <div style={{ fontSize: "13px", color: "#57534E" }}>{CLUB_NAME}</div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>לוח אימונים שבועי — {reportTeamName}</h1>

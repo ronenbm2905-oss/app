@@ -34,8 +34,10 @@ SheetJS + Firebase (Firestore/Auth/Hosting)**, JavaScript (לא TS). הכלי מ
   האגודה מ-hardcoded להגדרה + "מדריך הקמה לאגודה חדשה" לפני חלוקת עותקים. ראה [[team-expansion-noam-fullstack]].
 - קובץ `.env` קיים רק במחשב הבית — במחשב המשרד צריך ליצור אותו ידנית (לא עובר דרך git).
   לכל build/deploy עתידי מהמשרד צריך את ה-`.env` שם.
-- deploy עתידי: `firebase deploy` נחסם ל-Claude ע"י ה-auto-mode classifier (פעולת פרסום) —
-  המשתמש מריץ ידנית דרך `cmd /c "npx firebase-tools deploy ..."` (PowerShell חוסם סקריפטים).
+- deploy עתידי: `firebase deploy` נחסם ל-Claude ע"י ה-auto-mode classifier (פעולת פרסום) — המשתמש מריץ
+  ידנית. **השיטה שעבדה (30.7):** לא כפתור Run (בעייתי — prompts/PATH/MODULE_NOT_FOUND), אלא **חלון cmd אמיתי**
+  (Win+R→`cmd`) + `firebase-tools` מותקן **מקומית** בפרויקט: `node ".\node_modules\firebase-tools\lib\bin\firebase.js"
+  deploy --only hosting`. ראה entry 2026-07-30 (Deploy hosting).
 - ייבוא xlsx מהאיגוד אומת דרך העברת קוד נאמנה בלבד, לא עם קובץ אמיתי (לא היה קובץ דגימה בסשן).
 - זיהוי בית/חוץ בפורמט החדש מקודד לפי מילות-מפתח "קרית אונו" (מהמקור) — יצטרך התאמה למועדון אחר.
 
@@ -287,3 +289,18 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** **נותר M1** — על רונן לאמת שטופס הרישום כולל הסכמת הורים לאחסון דיגיטלי; ⚖️ טעון עו"ד
   בהמשך (ראה Open Questions). כעת אין דגל חוסם → deploy hosting מותר (המשתמש מריץ ידנית).
 - **Related:** [[basketball-scheduler-legal-gate]], [[team-expansion-adi-legal]], [[push-workflow]]
+
+### 2026-07-30 — Deploy hosting: שחקנים + תצוגת מאמן PDF + תיקון B1 — חיים [shipped]
+- **What was done:** deploy hosting מוצלח — שלוש התכונות מ-30.7 (רשימת שחקנים+ייבוא אקסל, בורר קבוצה+דוח
+  PDF שבועי בתצוגת מאמן, ותיקון B1 במדיניות הפרטיות) עלו **יחד לאוויר**. `Deploy complete!` →
+  https://basketball-schedule-f0f57.web.app. שער עדי כבר היה 🟡 (B1 תוקן) לפני ה-deploy.
+- **שיטת deploy שעבדה (קריטי לפעם הבאה):** כל הדרכים הרגילות נכשלו דרך כפתור ה-Run: `npx firebase-tools`
+  ביקש אישור התקנה אינטראקטיבי `(y)` והחלון לא קיבל הקלדה → `npm error canceled`; `firebase` לא ב-PATH
+  (`is not recognized`); `%APPDATA%` לא התרחב (`cannot find the path`); הנתיב הגלובלי נפל `MODULE_NOT_FOUND`
+  (ההתקנה הגלובלית של המשתמש שבורה/חלקית — אצל Claude כל הנתיבים עבדו). **הפתרון שעבד:** (1) התקנתי
+  `firebase-tools` **מקומית בפרויקט** (`npm install firebase-tools --no-save`); (2) המשתמש פתח **חלון cmd אמיתי**
+  (Win+R→`cmd`, *לא* כפתור Run) והריץ: `cd /d "...\Output\basketball-scheduler"` ואז
+  `node ".\node_modules\firebase-tools\lib\bin\firebase.js" deploy --only hosting`. עבד מיידית, פלט מלא, בלי prompts.
+- **Notes / Caveats:** נותר **M1** (הסכמת הורים בטופס הרישום — פעולת רונן, לא קוד). QA ויזואלי של הטאבים
+  החדשים אצל המשתמש (מצב ענן, Google login). `firebase deploy` עדיין חסום ל-Claude — עובר דרך המשתמש.
+- **Related:** [[basketball-scheduler-legal-gate]], [[push-workflow]]
