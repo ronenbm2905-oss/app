@@ -319,3 +319,17 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** לא חי עד deploy hosting. המאמנים חייבים Safari/Chrome אמיתי (לא דפדפן וואטסאפ) כדי
   ש-`navigator.share` יעבוד.
 - **Related:** [[push-workflow]]
+
+### 2026-07-30 — לוח הודעות למאמנים (טאב + באנר בכל המסכים) [built, ממתין ל-deploy]
+- **What was done:** לבקשת המשתמש — לוח הודעה אחד שהמנהל כותב והמאמנים קוראים. מודל: `announcement: {text,
+  updatedAt}` ב-`EMPTY` (`constants.js`). רכיבים חדשים: `AnnouncementsView.jsx` (טאב "הודעות" — textarea
+  לעריכה למנהל, קריאה-בלבד למאמן; כפתורי "פרסם"/"מחק" + חותמת "עודכן"), `AnnouncementBanner.jsx` (באנר צהוב
+  קומפקטי בראש **כל** המסכים כשיש טקסט, עם 📢 + "פתח"). ב-`App.jsx`: טאב "הודעות" **ראשון**, הבאנר מוצג בכל
+  הטאבים חוץ מ-announcements, וניתוב.
+- **Decisions (בחירות המשתמש):** (1) **לוח הודעה אחד** (לא פיד) — טקסט יחיד שנערך, הודעה חדשה דורסת. (2)
+  **גם באנר וגם טאב** — הבאנר מבטיח שהמאמן רואה מיד בכניסה בלי לחפש. (3) קריאה-בלבד למאמן מרונדרת מ-`current`
+  (לא state מקומי) כדי ש-onSnapshot יעדכן מיד. (4) guard `data.announcement?.text` כי מסמכי `clubs/main` ישנים
+  לא כוללים את השדה — לא קורס.
+- **Verification:** `npm run build` נקי (1561 מודולים, +2). QA ויזואלי אצל המשתמש (מצב ענן, Google login).
+- **Notes / Caveats:** last-write-wins בין שני מנהלים שעורכים במקביל (נדיר, מקובל). לא חי עד deploy hosting.
+- **Related:** [[push-workflow]]

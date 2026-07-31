@@ -36,6 +36,7 @@ export const EMPTY = {
   games: [],
   gameMapping: [],
   players: [],  // { id, teamId, name, phone, birthDate, shirtSize, pantsSize, sweaterSize, jerseyNumber }
+  announcement: { text: "", updatedAt: null }, // single notice board shown to all coaches
   weeklyAssignments: {},
   admins: [],   // emails with edit rights (read + write)
   members: [],  // emails with view-only rights (read); admins also read via the rules
