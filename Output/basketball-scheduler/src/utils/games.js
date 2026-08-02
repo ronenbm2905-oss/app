@@ -210,12 +210,17 @@ export function syncGamesToSessions(nextGames, data) {
     const sessionType = g.isHome ? "משחק בית" : "משחק חוץ";
     const hallId = g.isHome ? hallByName(g.venue) : "";
     const coachId = coachForTeam(g.teamId);
-    const start = g.time || "18:00";
-    const [sh, sm] = start.split(":").map(Number);
-    const endMinutes = (sh * 60 + (sm || 0) + 120) % (24 * 60);
-    const end = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(
-      endMinutes % 60
-    ).padStart(2, "0")}`;
+    // הקובץ מהאיגוד נותן רק את שעת המשחק. השורה בלוח נחסמת מ-30 דקות חימום
+    // לפני שריקת הפתיחה ועד שעה וחצי אחריה. דוגמה: משחק 18:30 → 18:00–20:00.
+    const gameTime = g.time || "18:00";
+    const [gh, gm] = gameTime.split(":").map(Number);
+    const gameMinutes = gh * 60 + (gm || 0);
+    const toHM = (mins) => {
+      const m = ((mins % (24 * 60)) + 24 * 60) % (24 * 60); // עוטף סביב חצות
+      return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    };
+    const start = toHM(gameMinutes - 30); // חצי שעה חימום לפני
+    const end = toHM(gameMinutes + 90); // שעה וחצי משחק
 
     nextSessions.push({
       id: gameSessionKey(g),
@@ -226,7 +231,7 @@ export function syncGamesToSessions(nextGames, data) {
       start,
       end,
       type: sessionType,
-      notes: `נגד: ${g.opponent}${g.venue ? ` | ${g.venue}` : ""}`,
+      notes: `נגד: ${g.opponent}${g.venue ? ` | ${g.venue}` : ""} | חימום ${start} · משחק ${gameTime}`,
       weekOf: weekStartOfDMY(g.date),
       fromGame: true,
       gameKey: gameSessionKey(g),
