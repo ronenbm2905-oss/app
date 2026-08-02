@@ -17,6 +17,7 @@ function ManualGameForm({ data, onSave, onCancel }) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("18:00");
   const [hallId, setHallId] = useState("");
+  const [address, setAddress] = useState(""); // free-text venue for away games
   const [league, setLeague] = useState("");
 
   const valid = teamId && opponent.trim() && date && time;
@@ -49,10 +50,24 @@ function ManualGameForm({ data, onSave, onCancel }) {
             placeholder="בחר"
           />
         </div>
-        <div>
-          <label className="text-xs text-stone-500 mb-1 block">אולם</label>
-          <Select value={hallId} onChange={setHallId} options={data.halls} placeholder="בחר אולם (אופציונלי)" />
-        </div>
+        {isHome ? (
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">אולם</label>
+            <Select value={hallId} onChange={setHallId} options={data.halls} placeholder="בחר אולם (אופציונלי)" />
+          </div>
+        ) : (
+          <div>
+            <label className="text-xs text-stone-500 mb-1 block">כתובת המשחק</label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="כתובת האולם היריב (להסעות)"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              dir="rtl"
+            />
+          </div>
+        )}
         <div>
           <label className="text-xs text-stone-500 mb-1 block">תאריך</label>
           <input
@@ -97,7 +112,11 @@ function ManualGameForm({ data, onSave, onCancel }) {
               isHome,
               date: date.split("-").reverse().join("-"), // YYYY-MM-DD -> DD-MM-YYYY
               time,
-              venue: hallId ? data.halls.find((h) => h.id === hallId)?.name || "" : "",
+              venue: isHome
+                ? hallId
+                  ? data.halls.find((h) => h.id === hallId)?.name || ""
+                  : ""
+                : address.trim(),
               league: league.trim(),
               round: "",
               weekDay: "",
