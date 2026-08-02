@@ -127,6 +127,7 @@ export function GamesView({ data, save, canEdit }) {
 
   const codesFor = (teamId) => mapping.find((m) => m.teamId === teamId)?.federationCodes || [];
   const teamName = (id) => data.teams.find((t) => t.id === id)?.name || id;
+  const coachNameOf = (id) => data.coaches.find((c) => c.id === id)?.name || "";
 
   const [editingTeamId, setEditingTeamId] = useState(null);
   const [codeInput, setCodeInput] = useState("");
@@ -233,6 +234,7 @@ export function GamesView({ data, save, canEdit }) {
                           <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colorFor(team.id, data.teams.map((t) => t.id)) }} />
                             <span className="text-sm font-medium text-stone-700">{team.name}</span>
+                            {team.coachId && <span className="text-xs text-stone-500">· {coachNameOf(team.coachId)}</span>}
                           </div>
                           <input
                             type="text"
@@ -255,7 +257,10 @@ export function GamesView({ data, save, canEdit }) {
                       ) : (
                         <div className="flex items-center gap-3">
                           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colorFor(team.id, data.teams.map((t) => t.id)) }} />
-                          <span className="text-sm text-stone-700 flex-1">{team.name}</span>
+                          <div className="flex-1">
+                            <div className="text-sm text-stone-700">{team.name}</div>
+                            {team.coachId && <div className="text-xs text-stone-500">מאמן: {coachNameOf(team.coachId)}</div>}
+                          </div>
                           {codes.length > 0 ? (
                             <div className="flex gap-1 flex-wrap">
                               {codes.map((c) => (

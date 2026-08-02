@@ -336,3 +336,11 @@ admin = `ronenbm2905@gmail.com`.
 - **Verification:** `npm run build` נקי (1561 מודולים, +2). QA ויזואלי אצל המשתמש (מצב ענן, Google login).
 - **Notes / Caveats:** last-write-wins בין שני מנהלים שעורכים במקביל (נדיר, מקובל). לא חי עד deploy hosting.
 - **Related:** [[push-workflow]]
+
+### 2026-08-02 — שם מאמן במסך "מיפוי קבוצות" [built, ממתין ל-deploy]
+- **What was done:** לבקשת המשתמש — בטאב משחקים → תת-טאב "מיפוי קבוצות", לצד כל קבוצה מוצג כעת גם **שם
+  המאמן** (מתחת לשם הקבוצה בתצוגה; ובשורת העריכה כ"· <מאמן>"). נוסף helper `coachNameOf` ב-`GamesView.jsx`,
+  עם guard על `team.coachId` (לא כל קבוצה בהכרח עם מאמן).
+- **Verification:** `npm run build` נקי (1561 מודולים). QA ויזואלי אצל המשתמש (מצב ענן, Google login).
+- **Notes / Caveats:** שינוי תצוגה בלבד (אין שינוי מודל נתונים). לא חי עד deploy hosting.
+- **Related:** [[push-workflow]]
