@@ -112,7 +112,7 @@ export default function App() {
         ) : tab === "constraints" ? (
           <ConstraintsView data={data} save={save} canEdit={canEdit} />
         ) : tab === "games" ? (
-          <GamesView data={data} save={save} canEdit={canEdit} />
+          <GamesView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : tab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : tab === "coach" ? (

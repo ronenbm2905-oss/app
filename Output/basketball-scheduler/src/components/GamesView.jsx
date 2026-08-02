@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { uid, formatDateHe } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/games";
+import { TransportExport } from "./TransportExport";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import {
@@ -114,7 +115,7 @@ function ManualGameForm({ data, onSave, onCancel }) {
   );
 }
 
-export function GamesView({ data, save, canEdit }) {
+export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [subTab, setSubTab] = useState("games"); // "games" | "mapping"
   const [importMsg, setImportMsg] = useState(null);
   const [filterTeam, setFilterTeam] = useState("");
@@ -286,6 +287,9 @@ export function GamesView({ data, save, canEdit }) {
 
       {subTab === "games" && (
         <div className="space-y-4">
+          {canEdit && (
+            <TransportExport data={data} weekStart={weekStart} setWeekStart={setWeekStart} />
+          )}
           <div className="flex flex-wrap items-center gap-2 justify-between">
             <div className="flex items-center gap-2">
               {canEdit && (

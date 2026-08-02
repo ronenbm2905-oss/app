@@ -30,4 +30,5 @@ export {
   ArrowRight as IconArrowRight,
   LogOut as IconLogOut,
   Eye as IconEye,
+  Bus as IconBus,
 } from "lucide-react";

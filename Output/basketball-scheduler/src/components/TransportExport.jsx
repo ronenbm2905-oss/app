@@ -1,0 +1,192 @@
+import { useState, useRef } from "react";
+import { formatWeekRange } from "../utils/dates";
+import {
+  awayGamesForWeek,
+  buildTransportRows,
+  exportTransportXlsx,
+  TRANSPORT_HEADERS,
+} from "../utils/transport";
+import { WeekNav } from "./ui/WeekNav";
+import { IconDownload, IconBus, IconMapPin } from "./ui/icons";
+
+const CLUB_NAME = "קרית אונו – דור העתיד";
+
+// Manager tool: weekly export of away games + addresses for ordering transportation.
+// Two outputs — an editable .xlsx (send to the bus vendor) and a PNG image (share on WhatsApp).
+export function TransportExport({ data, weekStart, setWeekStart }) {
+  const [departBefore, setDepartBefore] = useState(90); // minutes before tip-off
+  const [busy, setBusy] = useState(false);
+  const captureRef = useRef(null); // off-screen node snapshotted into the shareable image
+
+  const teamName = (id) => data.teams.find((t) => t.id === id)?.name || id;
+  const awayGames = awayGamesForWeek(data.games || [], weekStart);
+  const rows = buildTransportRows(awayGames, { teamName, departBefore });
+  const weekLabel = formatWeekRange(weekStart);
+  const hasRows = rows.length > 0;
+
+  const handleXlsx = () => {
+    if (!hasRows) return;
+    exportTransportXlsx(rows, weekStart);
+  };
+
+  async function handleImage() {
+    if (!captureRef.current || !hasRows || busy) return;
+    setBusy(true);
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(captureRef.current, { scale: 2, backgroundColor: "#ffffff" });
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) throw new Error("no blob");
+      const fileName = `הסעות-משחקי-חוץ-${weekStart}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: `הסעות משחקי חוץ — ${weekLabel}` });
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return; // user cancelled the share sheet
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("לא הצלחנו להפיק את הקובץ. נסה שוב, או הפק אותו מהמחשב.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3" dir="rtl">
+      <div className="flex items-center gap-2">
+        <IconBus size={18} className="text-indigo-700 shrink-0" />
+        <div>
+          <h3 className="text-sm font-semibold text-indigo-900">הסעות למשחקי חוץ</h3>
+          <p className="text-xs text-indigo-700">
+            רשימת משחקי החוץ + כתובות לשבוע הנבחר, לייצוא והזמנת הסעות.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <WeekNav value={weekStart} onChange={setWeekStart} />
+        <label className="flex items-center gap-1.5 text-xs text-indigo-900">
+          יציאה
+          <input
+            type="number"
+            min={0}
+            step={15}
+            value={departBefore}
+            onChange={(e) => setDepartBefore(Math.max(0, Number(e.target.value) || 0))}
+            className="w-16 bg-white border border-indigo-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label="דקות לפני המשחק ליציאה"
+          />
+          דק' לפני שריקת הפתיחה
+        </label>
+      </div>
+
+      <div className="text-xs text-indigo-800">
+        {hasRows
+          ? `${rows.length} משחקי חוץ בשבוע ${weekLabel}.`
+          : `אין משחקי חוץ בשבוע ${weekLabel}.`}
+      </div>
+
+      {/* On-screen preview so the manager sees what will be exported */}
+      {hasRows && (
+        <div className="bg-white rounded-lg border border-indigo-100 overflow-x-auto">
+          <table className="w-full text-xs" dir="rtl">
+            <thead>
+              <tr className="bg-indigo-100/60 text-indigo-900">
+                {TRANSPORT_HEADERS.map((h) => (
+                  <th key={h} className="px-2.5 py-1.5 text-right font-semibold whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-indigo-50">
+              {rows.map((r, i) => (
+                <tr key={i} className="text-stone-700">
+                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums">{r.date}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap">{r.day}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums">{r.gameTime}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums font-medium text-indigo-800">{r.departTime}</td>
+                  <td className="px-2.5 py-1.5 whitespace-nowrap">{r.team}</td>
+                  <td className="px-2.5 py-1.5">{r.opponent}</td>
+                  <td className="px-2.5 py-1.5">{r.address || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={handleXlsx}
+          disabled={!hasRows}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:hover:bg-indigo-600"
+          title={hasRows ? "הורדת קובץ אקסל" : "אין משחקי חוץ בשבוע זה"}
+        >
+          <IconDownload size={15} /> ייצוא אקסל
+        </button>
+        <button
+          onClick={handleImage}
+          disabled={!hasRows || busy}
+          className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-white border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-40"
+          title={hasRows ? "שיתוף / הורדת תמונה" : "אין משחקי חוץ בשבוע זה"}
+        >
+          <IconMapPin size={15} /> {busy ? "מכין תמונה..." : "שיתוף / הורדת תמונה"}
+        </button>
+      </div>
+
+      {/* Off-screen capture target for the PNG (rendered, not display:none, so html2canvas can snapshot it) */}
+      <div
+        ref={captureRef}
+        dir="rtl"
+        aria-hidden="true"
+        style={{ position: "fixed", top: 0, left: "-10000px", width: "760px", background: "#fff", padding: "24px" }}
+      >
+        <div style={{ textAlign: "center", marginBottom: "10px" }}>
+          <div style={{ fontSize: "13px", color: "#57534E" }}>{CLUB_NAME}</div>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>הסעות — משחקי חוץ</h1>
+          <div style={{ fontSize: "14px", color: "#57534E" }}>{weekLabel}</div>
+          <div style={{ fontSize: "12px", color: "#6366F1", marginTop: "2px" }}>
+            שעת יציאה = {departBefore} דק' לפני שריקת הפתיחה
+          </div>
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <thead>
+            <tr style={{ background: "#EEF2FF" }}>
+              {TRANSPORT_HEADERS.map((h) => (
+                <th key={h} style={{ border: "1px solid #C7D2FE", padding: "6px 8px", textAlign: "right" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.date}</td>
+                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right", fontWeight: 600 }}>{r.day}</td>
+                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "center" }}>{r.gameTime}</td>
+                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "center", fontWeight: 700, color: "#4338CA" }}>{r.departTime}</td>
+                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.team}</td>
+                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.opponent}</td>
+                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.address || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
