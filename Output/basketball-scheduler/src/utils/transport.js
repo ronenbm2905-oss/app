@@ -52,7 +52,7 @@ export function buildTransportRows(awayGames, { teamName, departBefore }) {
     departTime: timeMinus(g.time, departBefore),
     team: teamName(g.teamId),
     opponent: g.opponent || "",
-    address: g.venue || "",
+    address: g.addressOverride || g.venue || "", // manual override wins over the file's מיקום column
   }));
 }
 

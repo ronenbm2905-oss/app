@@ -7,24 +7,36 @@ import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import {
   IconPlus, IconTrash, IconX, IconCheck, IconRefresh,
-  IconTrophy, IconHome, IconArrowRight,
+  IconTrophy, IconHome, IconArrowRight, IconPencil,
 } from "./ui/icons";
 
-function ManualGameForm({ data, onSave, onCancel }) {
-  const [teamId, setTeamId] = useState("");
-  const [opponent, setOpponent] = useState("");
-  const [isHome, setIsHome] = useState(true);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("18:00");
-  const [hallId, setHallId] = useState("");
-  const [address, setAddress] = useState(""); // free-text venue for away games
-  const [league, setLeague] = useState("");
+// `initial` = an existing game to edit (its fields pre-fill the form); omit to add a new one.
+function ManualGameForm({ data, initial, onSave, onCancel }) {
+  const editing = !!initial;
+  const [teamId, setTeamId] = useState(initial?.teamId || "");
+  const [opponent, setOpponent] = useState(initial?.opponent || "");
+  const [isHome, setIsHome] = useState(initial ? !!initial.isHome : true);
+  // stored dates are DD-MM-YYYY; the <input type=date> needs YYYY-MM-DD
+  const [date, setDate] = useState(
+    initial?.date ? initial.date.split("-").reverse().join("-") : ""
+  );
+  const [time, setTime] = useState(initial?.time || "18:00");
+  // home games store venue as a hall name → map back to its id; away games store a free-text address
+  const [hallId, setHallId] = useState(
+    initial && initial.isHome
+      ? data.halls.find((h) => h.name === initial.venue)?.id || ""
+      : ""
+  );
+  const [address, setAddress] = useState(
+    initial && !initial.isHome ? initial.venue || "" : ""
+  ); // free-text venue for away games
+  const [league, setLeague] = useState(initial?.league || "");
 
   const valid = teamId && opponent.trim() && date && time;
 
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
-      <h3 className="text-sm font-semibold text-stone-700">הוספת משחק ידני</h3>
+      <h3 className="text-sm font-semibold text-stone-700">{editing ? "עריכת משחק" : "הוספת משחק ידני"}</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-stone-500 mb-1 block">קבוצה</label>
@@ -106,7 +118,7 @@ function ManualGameForm({ data, onSave, onCancel }) {
           disabled={!valid}
           onClick={() =>
             onSave({
-              federationCode: `manual-${uid()}`,
+              federationCode: initial?.federationCode || `manual-${uid()}`,
               teamId,
               opponent: opponent.trim(),
               isHome,
@@ -118,10 +130,10 @@ function ManualGameForm({ data, onSave, onCancel }) {
                   : ""
                 : address.trim(),
               league: league.trim(),
-              round: "",
+              round: initial?.round || "",
               weekDay: "",
-              ourScore: null,
-              theirScore: null,
+              ourScore: initial?.ourScore ?? null,
+              theirScore: initial?.theirScore ?? null,
               manual: true,
             })
           }
@@ -134,12 +146,50 @@ function ManualGameForm({ data, onSave, onCancel }) {
   );
 }
 
+// Imported games are owned by the federation file, so only their address is hand-editable.
+// The value is stored as `addressOverride`, which survives re-import (see importGamesFile).
+function ImportedAddressForm({ game, onSave, onCancel }) {
+  const [address, setAddress] = useState(game.addressOverride || game.venue || "");
+  return (
+    <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
+      <h3 className="text-sm font-semibold text-stone-700">עריכת כתובת — נגד {game.opponent}</h3>
+      <p className="text-xs text-stone-500">
+        כתובת ידנית למשחק חוץ מיובא. תישמר גם אחרי ייבוא/סנכרון מחדש של קובץ האיגוד.
+      </p>
+      <div>
+        <label className="text-xs text-stone-500 mb-1 block">כתובת המשחק</label>
+        <input
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="כתובת האולם היריב (להסעות)"
+          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+          dir="rtl"
+          autoFocus
+        />
+      </div>
+      <div className="flex justify-end gap-2 pt-1">
+        <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
+          ביטול
+        </button>
+        <button
+          onClick={() => onSave(address.trim())}
+          className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 flex items-center gap-1.5"
+        >
+          <IconCheck size={15} /> שמור כתובת
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [subTab, setSubTab] = useState("games"); // "games" | "mapping"
   const [importMsg, setImportMsg] = useState(null);
   const [filterTeam, setFilterTeam] = useState("");
   const [filterType, setFilterType] = useState(""); // "home"|"away"|""
   const [addingGame, setAddingGame] = useState(false);
+  const [editingCode, setEditingCode] = useState(null); // federationCode of the manual game being edited
   const fileInputRef = useRef(null);
 
   const games = data.games || [];
@@ -382,6 +432,33 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                 {filtered.map((g, i) => {
                   const result = gameResult(g);
                   const resultColor = result === "win" ? "#16A34A" : result === "loss" ? "#DC2626" : "#CA8A04";
+                  if (canEdit && editingCode === g.federationCode && (g.manual || !g.isHome)) {
+                    const saveGame = (game) => {
+                      const nextGames = games.map((x) =>
+                        x.federationCode === game.federationCode ? game : x
+                      );
+                      save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, data) });
+                      setEditingCode(null);
+                    };
+                    return (
+                      <div key={g.federationCode || i} className="p-3">
+                        {g.manual ? (
+                          <ManualGameForm
+                            data={data}
+                            initial={g}
+                            onSave={saveGame}
+                            onCancel={() => setEditingCode(null)}
+                          />
+                        ) : (
+                          <ImportedAddressForm
+                            game={g}
+                            onSave={(addr) => saveGame({ ...g, addressOverride: addr })}
+                            onCancel={() => setEditingCode(null)}
+                          />
+                        )}
+                      </div>
+                    );
+                  }
                   return (
                     <div key={g.federationCode || i} className="flex items-center gap-3 px-4 py-3 flex-wrap">
                       <div className="w-28 shrink-0">
@@ -394,7 +471,10 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-stone-700 truncate">נגד: {g.opponent}</div>
-                        <div className="text-xs text-stone-600 truncate">{g.venue}</div>
+                        <div className="text-xs text-stone-600 truncate">
+                          {g.addressOverride || g.venue}
+                          {g.addressOverride && <span className="text-stone-400"> (כתובת ידנית)</span>}
+                        </div>
                       </div>
                       <div className="hidden sm:block text-right shrink-0">
                         <div className="text-xs text-stone-500 truncate max-w-32">{g.league}</div>
@@ -413,15 +493,34 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                         <div className="shrink-0 text-xs text-stone-500">טרם נקבע</div>
                       )}
                       {canEdit && g.manual && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => setEditingCode(g.federationCode)}
+                            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500"
+                            aria-label="ערוך משחק"
+                          >
+                            <IconPencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const nextGames = games.filter((_, j) => j !== games.indexOf(g));
+                              save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, data) });
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-stone-500 hover:text-red-600"
+                            aria-label="מחק משחק"
+                          >
+                            <IconTrash size={14} />
+                          </button>
+                        </div>
+                      )}
+                      {canEdit && !g.manual && !g.isHome && (
                         <button
-                          onClick={() => {
-                            const nextGames = games.filter((_, j) => j !== games.indexOf(g));
-                            save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, data) });
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-stone-500 hover:text-red-600 shrink-0"
-                          aria-label="מחק משחק"
+                          onClick={() => setEditingCode(g.federationCode)}
+                          className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0"
+                          aria-label="ערוך כתובת"
+                          title="ערוך כתובת (להסעות)"
                         >
-                          <IconTrash size={14} />
+                          <IconPencil size={14} />
                         </button>
                       )}
                     </div>

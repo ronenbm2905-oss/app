@@ -155,7 +155,9 @@ export function importGamesFile(rawRows, data) {
         (g) => String(g.federationCode) === key
       );
       if (idx >= 0) {
-        nextGames[idx] = game;
+        // preserve a manually-set address override across re-imports (file data refreshes everything else)
+        const prevOverride = nextGames[idx].addressOverride;
+        nextGames[idx] = prevOverride ? { ...game, addressOverride: prevOverride } : game;
         updated++;
       }
     } else {
@@ -208,7 +210,8 @@ export function syncGamesToSessions(nextGames, data) {
     }
     if (!day || !DAYS.includes(day)) return;
     const sessionType = g.isHome ? "משחק בית" : "משחק חוץ";
-    const hallId = g.isHome ? hallByName(g.venue) : "";
+    const venue = g.addressOverride || g.venue || ""; // manual address override wins over the file
+    const hallId = g.isHome ? hallByName(venue) : "";
     const coachId = coachForTeam(g.teamId);
     // הקובץ מהאיגוד נותן רק את שעת המשחק. השורה בלוח נחסמת מ-30 דקות חימום
     // לפני שריקת הפתיחה ועד שעה וחצי אחריה. דוגמה: משחק 18:30 → 18:00–20:00.
@@ -231,7 +234,7 @@ export function syncGamesToSessions(nextGames, data) {
       start,
       end,
       type: sessionType,
-      notes: `נגד: ${g.opponent}${g.venue ? ` | ${g.venue}` : ""} | חימום ${start} · משחק ${gameTime}`,
+      notes: `נגד: ${g.opponent}${venue ? ` | ${venue}` : ""} | חימום ${start} · משחק ${gameTime}`,
       weekOf: weekStartOfDMY(g.date),
       fromGame: true,
       gameKey: gameSessionKey(g),

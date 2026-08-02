@@ -44,8 +44,9 @@ SheetJS + Firebase (Firestore/Auth/Hosting)**, JavaScript (לא TS). הכלי מ
   deploy --only hosting`. ראה entry 2026-07-30 (Deploy hosting).
 - ייבוא xlsx מהאיגוד אומת דרך העברת קוד נאמנה בלבד, לא עם קובץ אמיתי (לא היה קובץ דגימה בסשן).
 - **ייצוא הסעות — איכות הכתובת (3.8):** ה-slot מסתמך על עמודת "מיקום" (`venue`) למשחקי חוץ ככתובת. לא אומת
-  מול קובץ אמיתי שהעמודה מכילה **כתובת מלאה** ולא רק שם אולם. לבדוק בקובץ העונה הראשון; אם חסר — לשקול
-  מיפוי שם-אולם→כתובת או שדה כתובת ידני. ראה [[basketball-scheduler-cloud-migration#2026-08-03]].
+  מול קובץ אמיתי שהעמודה מכילה **כתובת מלאה** ולא רק שם אולם. לבדוק בקובץ העונה הראשון. **נפתר חלקית:** נוסף
+  `addressOverride` — אפשר לערוך ידנית כתובת של משחק חוץ מיובא, וה-override שורד ייבוא מחדש. ראה
+  [[basketball-scheduler-cloud-migration#2026-08-03]].
 - זיהוי בית/חוץ בפורמט החדש מקודד לפי מילות-מפתח "קרית אונו" (מהמקור) — יצטרך התאמה למועדון אחר.
 
 פרטי הפרויקט של המשתמש: Firebase project `basketball-schedule-f0f57`, מסמך `clubs/main`,
@@ -394,4 +395,37 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** (1) איכות הכתובת ל**משחקים מיובאים** תלויה בעמודת "מיקום" בקובץ האיגוד — אם שם מופיע
   רק שם אולם ולא כתובת מלאה, זה מה שייצא (ראה Open Question). למשחק ידני — הכתובת מוקלדת חופשי. (2) שעת
   היציאה היא **הערכה** (buffer אחיד) — לא לפי מרחק יעד. (3) לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
+### 2026-08-03 — עריכת משחק ידני (כולל הוספת כתובת בדיעבד) [built, ממתין ל-deploy]
+- **What was done:** המשתמש שאל איך עורכים משחק כדי להוסיף כתובת בדיעבד (משחקי חוץ ידניים שנוצרו לפני שדה
+  הכתובת נשארו בלי `venue`). עד כה למשחק ידני היה רק כפתור מחיקה, ולמיובא כלום. `ManualGameForm` הוסב לשמש
+  גם לעריכה: prop `initial` ממלא את כל השדות (כולל המרת תאריך DD-MM-YYYY↔YYYY-MM-DD, ומיפוי `venue`→hallId
+  למשחק בית / `venue`→address למשחק חוץ), כותרת "עריכת משחק", וב-onSave נשמרים `federationCode` (כדי
+  להחליף במקום להוסיף, וה-session key נשאר יציב) + `round`/scores הקיימים. ב-`GamesView`: state `editingCode`,
+  כפתור עיפרון ליד המחיקה (משחק ידני בלבד), וטופס עריכה **inline** במקום השורה. onSave ממפה `games` לפי
+  `federationCode` וקורא `syncGamesToSessions`. נוסף `IconPencil`.
+- **Decisions:** (1) **עריכה למשחק ידני בלבד** — משחקים מיובאים לא נערכים ידנית כי re-sync של קובץ האיגוד
+  ידרוס את השינוי (הכתובת שלהם מגיעה מהקובץ; לעדכון — ייבוא מחדש). (2) עריכה inline (כמו `ManagerView`), לא מודאל.
+- **Verification:** `npm run build` נקי. QA ויזואלי אצל המשתמש (מצב ענן, Google login).
+- **Open follow-up:** אם יתברר שצריך לתקן כתובת של משחק **מיובא** (עמודת "מיקום" חסרה/חלקית), יידרש מנגנון
+  override עמיד ל-re-sync — **נבנה בסשן הבא (ראה למטה 2026-08-03 override כתובת למשחק מיובא).**
+- **Related:** [[push-workflow]]
+
+### 2026-08-03 — override כתובת למשחק מיובא (עמיד לייבוא מחדש) [built, ממתין ל-deploy]
+- **What was done:** המשך ישיר — המשתמש ביקש עריכה גם למשחק **מיובא**, לא רק ידני. האתגר: `importGamesFile`
+  בונה מחדש כל משחק מהשורה (`nextGames[idx]=game`) → כל עריכה ידנית נדרסת בסנכרון הבא. הפתרון: שדה
+  `addressOverride` **על אובייקט המשחק** (לא מפה נפרדת). (1) `importGamesFile` — בעדכון משחק קיים משמר את
+  `addressOverride` הקודם (`prevOverride ? {...game, addressOverride:prevOverride} : game`) → שורד re-import.
+  (2) כתובת אפקטיבית = `g.addressOverride || g.venue` — מיושם ב-`syncGamesToSessions` (notes + hallByName),
+  ב-`transport.buildTransportRows` (עמודת כתובת בייצוא ההסעות), ובתצוגת רשימת המשחחים (עם תגית "כתובת ידנית").
+  (3) UI: רכיב חדש `ImportedAddressForm` (עורך כתובת בלבד + הסבר שהיא שורדת ייבוא), כפתור עיפרון למשחק חוץ
+  מיובא, טופס inline. onSave כותב `{...g, addressOverride: addr}`.
+- **Decisions:** (1) למשחק מיובא נערכת **הכתובת בלבד** — שאר השדות בבעלות קובץ האיגוד (re-import מרענן אותם).
+  משחק ידני נשאר עריכה מלאה. (2) עורך רק **משחקי חוץ** מיובאים (בית משתמש באולם פנימי). (3) `addressOverride`
+  ריק ("") נופל חזרה לערך הקובץ — ניקוי ה-override מחזיר לברירת המחדל.
+- **Verification:** `npm run build` נקי. **unit-test ב-Node — 4/4 עברו** (override שורד re-import כשהקובץ חוזר
+  ריק, כתובת אפקטיבית, בלי-override→הקובץ מנצח, override ריק→נפילה חזרה לקובץ). QA ויזואלי אצל המשתמש (ענן).
+- **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`. שינוי כתובת ידנית **לא** משנה את `federationCode`
+  → ה-session key יציב, אין כפילות בלוח.
 - **Related:** [[push-workflow]]
