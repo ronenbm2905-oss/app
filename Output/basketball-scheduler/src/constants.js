@@ -2,6 +2,11 @@
 export const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 export const STORAGE_KEY = "bball-schedule-v1";
 
+// Club home base — the pickup point for away-game transportation.
+export const CLUB_PICKUP_POINT = "אולם עלומים, הכפר 2, קריית אונו";
+// Vehicle-size options for transport (seats).
+export const VEHICLE_TYPES = ["16", "20"];
+
 export const SESSION_TYPES = [
   { id: "אימון", name: "אימון", color: "#57534E" },
   { id: "משחק בית", name: "משחק בית", color: "#16A34A" },

@@ -25,52 +25,87 @@ export function timeMinus(hm, minutes) {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
+// Add minutes to an "HH:MM" time (wraps around midnight).
+export function timePlus(hm, minutes) {
+  return timeMinus(hm, -minutes);
+}
+
+// A game lasts 1.5h from tip-off — used for the return-pickup time.
+export const GAME_DURATION_MIN = 90;
+
 // Hebrew weekday name from a DD-MM-YYYY date string.
 export function dayOf(dmy) {
   const d = parseDateDMY(dmy);
   return d ? DAYS[d.getDay()] : "";
 }
 
-// Column schema for the transport export (order = column order in the Excel/image).
+// Column schema for the transport export — order matches the file the vendor already knows.
 export const TRANSPORT_HEADERS = [
-  "תאריך",
-  "יום",
-  "שעת משחק",
-  "שעת יציאה",
   "קבוצה",
-  "יריב",
-  "כתובת",
+  "יום",
+  "תאריך",
+  "שעה",
+  "מארחת",
+  "מיקום",
+  "איש קשר",
+  "טלפון",
+  "שעת התייצבות",
+  "נקודת איסוף",
+  "איסוף חזרה",
+  "סוג רכב",
 ];
 
 // Build printable/exportable rows from away games.
-// `departBefore` = minutes before tip-off for the recommended departure time.
-export function buildTransportRows(awayGames, { teamName, departBefore }) {
-  return awayGames.map((g) => ({
-    date: g.date || "",
-    day: dayOf(g.date),
-    gameTime: g.time || "",
-    departTime: timeMinus(g.time, departBefore),
-    team: teamName(g.teamId),
-    opponent: g.opponent || "",
-    address: g.addressOverride || g.venue || "", // manual override wins over the file's מיקום column
-  }));
+// `departBefore` = minutes before tip-off for the gathering ("שעת התייצבות") time.
+// `pickupPoint` = the club's fixed pickup address. `teams`/`coaches` resolve contact + vehicle.
+export function buildTransportRows(awayGames, { teams, coaches, departBefore, pickupPoint }) {
+  const teamById = (id) => (teams || []).find((t) => t.id === id);
+  const coachById = (id) => (coaches || []).find((c) => c.id === id);
+  return awayGames.map((g) => {
+    const team = teamById(g.teamId);
+    const coach = team && team.coachId ? coachById(team.coachId) : null;
+    return {
+      team: team?.name || g.teamId,
+      day: dayOf(g.date),
+      date: g.date || "",
+      gameTime: g.time || "",
+      opponent: g.opponent || "",
+      address: g.addressOverride || g.venue || "", // manual override wins over the file's מיקום column
+      coachName: coach?.name || "",
+      coachPhone: coach?.phone || "",
+      arriveTime: timeMinus(g.time, departBefore), // gather at pickup point
+      pickupPoint: pickupPoint || "",
+      returnTime: timePlus(g.time, GAME_DURATION_MIN), // end of game
+      vehicle: team?.vehicleType || "",
+    };
+  });
+}
+
+// Row object -> array of cells in TRANSPORT_HEADERS order (shared by xlsx + image).
+export function transportRowToCells(r) {
+  return [
+    r.team, r.day, r.date, r.gameTime, r.opponent, r.address,
+    r.coachName, r.coachPhone, r.arriveTime, r.pickupPoint, r.returnTime, r.vehicle,
+  ];
 }
 
 // Generate + download an xlsx of the transport rows. `fileTag` is a filename-safe label.
 export function exportTransportXlsx(rows, fileTag) {
-  const aoa = [
-    TRANSPORT_HEADERS,
-    ...rows.map((r) => [r.date, r.day, r.gameTime, r.departTime, r.team, r.opponent, r.address]),
-  ];
+  const aoa = [TRANSPORT_HEADERS, ...rows.map(transportRowToCells)];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [
+    { wch: 18 }, // קבוצה
+    { wch: 6 }, // יום
     { wch: 12 }, // תאריך
-    { wch: 8 }, // יום
-    { wch: 9 }, // שעת משחק
-    { wch: 9 }, // שעת יציאה
-    { wch: 16 }, // קבוצה
-    { wch: 20 }, // יריב
-    { wch: 34 }, // כתובת
+    { wch: 7 }, // שעה
+    { wch: 22 }, // מארחת
+    { wch: 32 }, // מיקום
+    { wch: 14 }, // איש קשר
+    { wch: 13 }, // טלפון
+    { wch: 11 }, // שעת התייצבות
+    { wch: 28 }, // נקודת איסוף
+    { wch: 10 }, // איסוף חזרה
+    { wch: 8 }, // סוג רכב
   ];
   const wb = XLSX.utils.book_new();
   wb.Workbook = { Views: [{ RTL: true }] }; // Excel opens the sheet right-to-left

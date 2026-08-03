@@ -1,26 +1,35 @@
 import { useState, useRef } from "react";
+import { CLUB_PICKUP_POINT } from "../constants";
 import { formatWeekRange } from "../utils/dates";
 import {
   awayGamesForWeek,
   buildTransportRows,
   exportTransportXlsx,
+  transportRowToCells,
   TRANSPORT_HEADERS,
 } from "../utils/transport";
 import { WeekNav } from "./ui/WeekNav";
 import { IconDownload, IconBus, IconMapPin } from "./ui/icons";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
+// Cells that read better centered (times / short codes) — by column index in TRANSPORT_HEADERS.
+const CENTER_COLS = new Set([1, 3, 8, 10, 11]); // יום, שעה, שעת התייצבות, איסוף חזרה, סוג רכב
 
 // Manager tool: weekly export of away games + addresses for ordering transportation.
 // Two outputs — an editable .xlsx (send to the bus vendor) and a PNG image (share on WhatsApp).
+// Column set matches the file the vendor already knows from last season.
 export function TransportExport({ data, weekStart, setWeekStart }) {
-  const [departBefore, setDepartBefore] = useState(90); // minutes before tip-off
+  const [departBefore, setDepartBefore] = useState(90); // minutes before tip-off → "שעת התייצבות"
   const [busy, setBusy] = useState(false);
   const captureRef = useRef(null); // off-screen node snapshotted into the shareable image
 
-  const teamName = (id) => data.teams.find((t) => t.id === id)?.name || id;
   const awayGames = awayGamesForWeek(data.games || [], weekStart);
-  const rows = buildTransportRows(awayGames, { teamName, departBefore });
+  const rows = buildTransportRows(awayGames, {
+    teams: data.teams,
+    coaches: data.coaches,
+    departBefore,
+    pickupPoint: CLUB_PICKUP_POINT,
+  });
   const weekLabel = formatWeekRange(weekStart);
   const hasRows = rows.length > 0;
 
@@ -70,7 +79,7 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
         <div>
           <h3 className="text-sm font-semibold text-indigo-900">הסעות למשחקי חוץ</h3>
           <p className="text-xs text-indigo-700">
-            רשימת משחקי החוץ + כתובות לשבוע הנבחר, לייצוא והזמנת הסעות.
+            רשימת משחקי החוץ לשבוע הנבחר, מוכנה להזמנת הסעות — כולל מאמן, טלפון, כתובת, שעות ורכב.
           </p>
         </div>
       </div>
@@ -78,7 +87,7 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
       <div className="flex flex-wrap items-center gap-3">
         <WeekNav value={weekStart} onChange={setWeekStart} />
         <label className="flex items-center gap-1.5 text-xs text-indigo-900">
-          יציאה
+          התייצבות
           <input
             type="number"
             min={0}
@@ -86,7 +95,7 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
             value={departBefore}
             onChange={(e) => setDepartBefore(Math.max(0, Number(e.target.value) || 0))}
             className="w-16 bg-white border border-indigo-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label="דקות לפני המשחק ליציאה"
+            aria-label="דקות לפני המשחק להתייצבות"
           />
           דק' לפני שריקת הפתיחה
         </label>
@@ -94,7 +103,7 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
 
       <div className="text-xs text-indigo-800">
         {hasRows
-          ? `${rows.length} משחקי חוץ בשבוע ${weekLabel}.`
+          ? `${rows.length} משחקי חוץ בשבוע ${weekLabel}. נקודת איסוף: ${CLUB_PICKUP_POINT}. איסוף חזרה = סיום המשחק.`
           : `אין משחקי חוץ בשבוע ${weekLabel}.`}
       </div>
 
@@ -114,13 +123,14 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
             <tbody className="divide-y divide-indigo-50">
               {rows.map((r, i) => (
                 <tr key={i} className="text-stone-700">
-                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums">{r.date}</td>
-                  <td className="px-2.5 py-1.5 whitespace-nowrap">{r.day}</td>
-                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums">{r.gameTime}</td>
-                  <td className="px-2.5 py-1.5 whitespace-nowrap tabular-nums font-medium text-indigo-800">{r.departTime}</td>
-                  <td className="px-2.5 py-1.5 whitespace-nowrap">{r.team}</td>
-                  <td className="px-2.5 py-1.5">{r.opponent}</td>
-                  <td className="px-2.5 py-1.5">{r.address || "—"}</td>
+                  {transportRowToCells(r).map((cell, ci) => (
+                    <td
+                      key={ci}
+                      className={`px-2.5 py-1.5 ${CENTER_COLS.has(ci) ? "text-center tabular-nums whitespace-nowrap" : ""}`}
+                    >
+                      {cell || (ci === 5 ? "—" : "")}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -152,21 +162,21 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
         ref={captureRef}
         dir="rtl"
         aria-hidden="true"
-        style={{ position: "fixed", top: 0, left: "-10000px", width: "760px", background: "#fff", padding: "24px" }}
+        style={{ position: "fixed", top: 0, left: "-10000px", width: "1180px", background: "#fff", padding: "24px" }}
       >
         <div style={{ textAlign: "center", marginBottom: "10px" }}>
           <div style={{ fontSize: "13px", color: "#57534E" }}>{CLUB_NAME}</div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>הסעות — משחקי חוץ</h1>
           <div style={{ fontSize: "14px", color: "#57534E" }}>{weekLabel}</div>
           <div style={{ fontSize: "12px", color: "#6366F1", marginTop: "2px" }}>
-            שעת יציאה = {departBefore} דק' לפני שריקת הפתיחה
+            התייצבות {departBefore} דק' לפני המשחק · איסוף חזרה = סיום המשחק · נקודת איסוף: {CLUB_PICKUP_POINT}
           </div>
         </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
           <thead>
             <tr style={{ background: "#EEF2FF" }}>
               {TRANSPORT_HEADERS.map((h) => (
-                <th key={h} style={{ border: "1px solid #C7D2FE", padding: "6px 8px", textAlign: "right" }}>
+                <th key={h} style={{ border: "1px solid #C7D2FE", padding: "5px 6px", textAlign: "right", whiteSpace: "nowrap" }}>
                   {h}
                 </th>
               ))}
@@ -175,13 +185,21 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
           <tbody>
             {rows.map((r, i) => (
               <tr key={i}>
-                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.date}</td>
-                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right", fontWeight: 600 }}>{r.day}</td>
-                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "center" }}>{r.gameTime}</td>
-                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "center", fontWeight: 700, color: "#4338CA" }}>{r.departTime}</td>
-                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.team}</td>
-                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.opponent}</td>
-                <td style={{ border: "1px solid #E0E7FF", padding: "6px 8px", textAlign: "right" }}>{r.address || "—"}</td>
+                {transportRowToCells(r).map((cell, ci) => (
+                  <td
+                    key={ci}
+                    style={{
+                      border: "1px solid #E0E7FF",
+                      padding: "5px 6px",
+                      textAlign: CENTER_COLS.has(ci) ? "center" : "right",
+                      fontWeight: ci === 8 ? 700 : ci === 1 ? 600 : 400,
+                      color: ci === 8 ? "#4338CA" : "#1C1917",
+                      whiteSpace: CENTER_COLS.has(ci) ? "nowrap" : "normal",
+                    }}
+                  >
+                    {cell || (ci === 5 ? "—" : "")}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

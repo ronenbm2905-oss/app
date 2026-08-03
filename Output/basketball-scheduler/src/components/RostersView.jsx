@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { VEHICLE_TYPES } from "../constants";
 import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
 import { Select } from "./ui/Select";
@@ -7,8 +8,10 @@ import {
   IconUsers, IconUserPlus, IconBuilding, IconChevronUp, IconChevronDown,
 } from "./ui/icons";
 
-function NameForm({ initial, label, onSave, onCancel }) {
+// `withPhone` adds a phone field (used for coaches — feeds the transport export's contact column).
+function NameForm({ initial, label, withPhone, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
+  const [phone, setPhone] = useState(initial?.phone || "");
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -24,13 +27,32 @@ function NameForm({ initial, label, onSave, onCancel }) {
           autoFocus
         />
       </div>
+      {withPhone && (
+        <div>
+          <label className="text-xs text-stone-500 mb-1 block">טלפון (להסעות)</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="050-0000000"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            dir="ltr"
+          />
+        </div>
+      )}
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
         </button>
         <button
           disabled={!valid}
-          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim() })}
+          onClick={() =>
+            onSave({
+              id: initial?.id || uid(),
+              name: name.trim(),
+              ...(withPhone ? { phone: phone.trim() } : {}),
+            })
+          }
           className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
@@ -40,7 +62,7 @@ function NameForm({ initial, label, onSave, onCancel }) {
   );
 }
 
-function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit }) {
+function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone }) {
   const [editingId, setEditingId] = useState(null);
 
   const handleSave = (item) => {
@@ -67,7 +89,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
 
       {canEdit && editingId === "new" && (
         <div className="p-3 border-b border-stone-100">
-          <NameForm label={label} onSave={handleSave} onCancel={() => setEditingId(null)} />
+          <NameForm label={label} withPhone={withPhone} onSave={handleSave} onCancel={() => setEditingId(null)} />
         </div>
       )}
 
@@ -84,11 +106,16 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
               <div key={item.id}>
                 {canEdit && isEditing ? (
                   <div className="p-3">
-                    <NameForm initial={item} label={label} onSave={handleSave} onCancel={() => setEditingId(null)} />
+                    <NameForm initial={item} label={label} withPhone={withPhone} onSave={handleSave} onCancel={() => setEditingId(null)} />
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="flex-1 text-sm text-stone-700">{item.name}</span>
+                    <span className="flex-1 text-sm text-stone-700">
+                      {item.name}
+                      {withPhone && item.phone && (
+                        <span className="text-xs text-stone-500 mr-2" dir="ltr">{item.phone}</span>
+                      )}
+                    </span>
                     {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
                       <div className="flex items-center gap-1 shrink-0">
@@ -121,6 +148,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
 function TeamForm({ initial, coaches, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [coachId, setCoachId] = useState(initial?.coachId || "");
+  const [vehicleType, setVehicleType] = useState(initial?.vehicleType || "");
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -140,13 +168,22 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
         <label className="text-xs text-stone-500 mb-1 block">מאמן הקבוצה (אופציונלי)</label>
         <Select value={coachId} onChange={setCoachId} options={coaches} placeholder="בחר מאמן" />
       </div>
+      <div>
+        <label className="text-xs text-stone-500 mb-1 block">סוג רכב להסעות (אופציונלי)</label>
+        <Select
+          value={vehicleType}
+          onChange={setVehicleType}
+          options={VEHICLE_TYPES.map((v) => ({ id: v, name: `${v} מקומות` }))}
+          placeholder="בחר סוג רכב"
+        />
+      </div>
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
         </button>
         <button
           disabled={!valid}
-          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null })}
+          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "" })}
           className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
@@ -326,7 +363,7 @@ export function RostersView({ data, save, canEdit }) {
       )}
       <div className="grid sm:grid-cols-3 gap-4">
         <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
-        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} />
+        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone />
         <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} />
       </div>
     </div>
