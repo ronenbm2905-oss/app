@@ -15,6 +15,7 @@ import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { LegalFooter } from "./legal/LegalFooter";
 import { IconLogOut, IconEye } from "./components/ui/icons";
+import clubLogo from "./assets/club-logo.jpg";
 
 const TABS = [
   { id: "announcements", label: "הודעות" },
@@ -54,9 +55,12 @@ export default function App() {
       <div className={`${tab === "weekly" ? "max-w-7xl" : "max-w-4xl"} mx-auto px-4 py-6`}>
         <header className="mb-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <h1 className="text-2xl font-bold text-stone-900 tracking-tight">מערכת שעות אימוני כדורסל</h1>
-              <p className="text-sm text-stone-500 mt-0.5">תיאום קבוצות, מאמנים ואולמות במקום אחד</p>
+            <div className="flex items-center gap-3">
+              <img src={clubLogo} alt="עירוני קריית אונו – כדורסל דור העתיד" className="w-14 h-14 object-contain shrink-0" />
+              <div>
+                <h1 className="text-2xl font-bold text-stone-900 tracking-tight">מערכת שעות אימוני כדורסל</h1>
+                <p className="text-sm text-stone-500 mt-0.5">תיאום קבוצות, מאמנים ואולמות במקום אחד</p>
+              </div>
             </div>
             {isFirebaseConfigured && user && (
               <div className="flex items-center gap-2 text-xs text-stone-500">

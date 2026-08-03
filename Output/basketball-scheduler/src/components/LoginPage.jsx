@@ -1,13 +1,11 @@
-import { IconTrophy } from "./ui/icons";
 import { LegalFooter } from "../legal/LegalFooter";
+import clubLogo from "../assets/club-logo.jpg";
 
 export function LoginPage({ onSignIn, authError }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 px-4 py-8" dir="rtl">
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-8 max-w-sm w-full text-center space-y-5">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-orange-600 flex items-center justify-center">
-          <IconTrophy size={28} className="text-white" />
-        </div>
+        <img src={clubLogo} alt="עירוני קריית אונו – כדורסל דור העתיד" className="mx-auto w-24 h-24 object-contain" />
         <div>
           <h1 className="text-xl font-bold text-stone-900">מערכת שעות אימוני כדורסל</h1>
           <p className="text-sm text-stone-600 mt-1">התחבר כדי להמשיך</p>
