@@ -20,6 +20,9 @@ SheetJS + Firebase (Firestore/Auth/Hosting)**, JavaScript (לא TS). הכלי מ
 עומד בפני עצמו (בחירת המשתמש). אילוצים נשארים כללים חוצי-שבועות.
 
 ## Open Questions
+- **TODO (5.8) — לוגו גם בהסעות:** המשתמש ביקש להזכיר לו **בפעם הבאה** להוסיף את לוגו המועדון גם ל-
+  `TransportExport.jsx` (תמונת ההסעות של המנהל). הלוגו כבר בדוח המאמן ובהדפסת הלוח, אך לא בהסעות. ראה
+  [[basketball-transport-logo-todo]].
 - **התראות — MVP בלבד (5.8):** מומש כפתור "פרסם לו"ז" + באנר (לא push אמיתי שקופץ בנעול-מסך). push מלא דורש
   FCM + service worker + Cloud Function — נשאר כשדרוג עתידי אם המשתמש ירצה התראות מחוץ לאפליקציה.
 - **שער עדי לרשימת השחקנים — B1 תוקן (30.7), נותר M1:** הדגל החוסם (מדיניות הפרטיות הצהירה שקרית שלא
@@ -537,6 +540,18 @@ admin = `ronenbm2905@gmail.com`.
   לוגו גם שם בעתיד אם ירצה.
 - **Verification:** `npm run build` נקי. QA ויזואלי (שיתוף תמונה במובייל + הדפסה) אצל המשתמש — אין דפדפן מובייל/auth ב-toolset.
 - **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
+### 2026-08-05 — תיקון: לוגו בדוח המאמן לא הופיע בנייד (data URI) [built, ממתין ל-deploy]
+- **What was done:** המשתמש דיווח שבנייד הדוח יוצא **בלי** לוגו, ובמחשב **עם**. סיבה: html2canvas בנייד לא תמיד
+  מצייר תמונה שהיא **URL** (asset) בתוך אלמנט off-screen. תיקון ב-`CoachView.jsx`: הלוגו מומר פעם אחת ל-**data
+  URI** (`useEffect` → `fetch(clubLogo)` → `FileReader.readAsDataURL`) ומאוחסן ב-state `logoDataUrl`; ה-`<img>`
+  בבלוק הנלכד משתמש ב-`logoDataUrl || clubLogo`. תמונה מוטמעת (base64) לא דורשת fetch בזמן הצילום → נצבעת אמין
+  בכל המכשירים. ה-safeguard הקודם (המתנה ל-onload) נשאר.
+- **Decisions:** data URI ולא הגדלת `assetsInlineLimit` של Vite (הלוגו 418KB — לא רוצים להטמיע גלובלית); ההמרה
+  קורית ב-mount, מהירה (asset מאותו origin, cached), ומוכנה הרבה לפני הלחיצה. fallback ל-URL אם ה-fetch נכשל.
+- **Verification:** `npm run build` נקי. אימות סופי בנייד אצל המשתמש (שיתוף וואטסאפ) — אין מובייל ב-toolset.
+- **Notes / Caveats:** אותו דפוס יידרש אם נוסיף לוגו לתמונת ההסעות (ראה [[basketball-transport-logo-todo]]). לא חי עד deploy.
 - **Related:** [[push-workflow]]
 
 ### 2026-08-05 — עמודת "סה"כ שבוע": עורכים בלבד + אופציה להשמיט מהדפסה [built, ממתין ל-deploy]

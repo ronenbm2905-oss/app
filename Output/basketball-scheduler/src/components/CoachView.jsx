@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { DAYS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
@@ -17,6 +17,23 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const [teamId, setTeamId] = useState(""); // team filter / report scope
   const [reportBusy, setReportBusy] = useState(false);
   const reportRef = useRef(null); // off-screen node captured into the shareable image
+  const [logoDataUrl, setLogoDataUrl] = useState(""); // inline the logo so html2canvas renders it on mobile too
+
+  // Convert the bundled logo to a data URI once. As an inline image it needs no fetch at capture
+  // time, which is what mobile browsers were failing to paint into the html2canvas snapshot.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(clubLogo);
+        const blob = await res.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => { if (!cancelled) setLogoDataUrl(reader.result); };
+        reader.readAsDataURL(blob);
+      } catch { /* fall back to the URL src */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const inWeek = (s) => (s.weekOf || "") === weekStart;
 
@@ -259,7 +276,7 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
         style={{ position: "fixed", top: 0, left: "-10000px", width: "720px", background: "#fff", padding: "24px" }}
       >
         <div style={{ textAlign: "center", marginBottom: "10px" }}>
-          <img src={clubLogo} alt="" style={{ height: "64px", width: "auto", objectFit: "contain", display: "block", margin: "0 auto 6px" }} />
+          <img src={logoDataUrl || clubLogo} alt="" style={{ height: "64px", width: "auto", objectFit: "contain", display: "block", margin: "0 auto 6px" }} />
           <div style={{ fontSize: "13px", color: "#57534E" }}>{CLUB_NAME}</div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>לוח אימונים שבועי — {reportTeamName}</h1>
           <div style={{ fontSize: "14px", color: "#57534E" }}>{formatWeekRange(weekStart)}</div>
