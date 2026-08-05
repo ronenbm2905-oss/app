@@ -37,6 +37,12 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
+  // Team dropdown labels show the coach too ("קבוצה – מאמן"), so the manager sees who runs each team.
+  const teamOptions = data.teams.map((t) => {
+    const coach = t.coachId ? nameOf(data.coaches, t.coachId) : "";
+    return { id: t.id, name: coach && coach !== "—" ? `${t.name} – ${coach}` : t.name };
+  });
+
   // Picking a team auto-fills its coach (each team has a fixed coach); still editable for substitutes.
   const handleTeamChange = (newTeamId) => {
     setTeamId(newTeamId);
@@ -83,7 +89,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-stone-500 mb-1 block">קבוצה</label>
-          <Select value={teamId} onChange={handleTeamChange} options={data.teams} placeholder="בחר קבוצה" />
+          <Select value={teamId} onChange={handleTeamChange} options={teamOptions} placeholder="בחר קבוצה" />
         </div>
         <div>
           <label className="text-xs text-stone-500 mb-1 block">מאמן</label>

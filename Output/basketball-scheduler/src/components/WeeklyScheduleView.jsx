@@ -15,6 +15,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const [selectedHallId, setSelectedHallId] = useState("");
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
+  const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
 
   // MVP "notification": stamp this week as published → every coach sees the banner live.
   const publishSchedule = () => {
@@ -23,15 +24,25 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     setTimeout(() => setJustPublished(false), 2500);
   };
 
-  // Editing straight from the board — same save/delete semantics as ManagerView, existing sessions only.
+  // Add or edit straight from the board — append a new training or replace an edited one (same as ManagerView).
   const handleSaveSession = (session) => {
-    save({ ...data, sessions: data.sessions.map((s) => (s.id === session.id ? session : s)) });
+    const exists = data.sessions.some((s) => s.id === session.id);
+    const nextSessions = exists
+      ? data.sessions.map((s) => (s.id === session.id ? session : s))
+      : [...data.sessions, session];
+    save({ ...data, sessions: nextSessions });
     setEditingSession(null);
+    setAddingCell(null);
   };
   const handleDeleteSession = (id) => {
     save({ ...data, sessions: data.sessions.filter((s) => s.id !== id) });
     setEditingSession(null);
   };
+
+  // The modal shows either the clicked session (edit) or a prefilled draft (new). Kept as a stable
+  // object (not recomputed each render) so SessionForm's initial-sync effect doesn't reset typing.
+  const modalInitial = editingSession || addingCell;
+  const closeModal = () => { setEditingSession(null); setAddingCell(null); };
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
@@ -187,7 +198,20 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                           return (
                             <td key={day} className="border border-stone-200 px-2 py-1.5 align-top">
                               {sessions.length === 0 ? (
-                                <span className="text-stone-200 text-xs">—</span>
+                                canEdit ? (
+                                  <>
+                                    <button
+                                      onClick={() => setAddingCell({ teamId: team.id, coachId: team.coachId || "", day, weekOf: weekStart })}
+                                      title="הוסף אימון"
+                                      className="no-print w-full flex items-center justify-center py-1 text-stone-300 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                    >
+                                      <span className="text-base leading-none">＋</span>
+                                    </button>
+                                    <span className="print-only text-stone-200 text-xs">—</span>
+                                  </>
+                                ) : (
+                                  <span className="text-stone-200 text-xs">—</span>
+                                )
                               ) : (
                                 <div className="space-y-1.5">
                                   {sessions.map((s) => {
@@ -217,6 +241,15 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                       </div>
                                     );
                                   })}
+                                  {canEdit && (
+                                    <button
+                                      onClick={() => setAddingCell({ teamId: team.id, coachId: team.coachId || "", day, weekOf: weekStart })}
+                                      title="הוסף אימון נוסף"
+                                      className="no-print w-full flex items-center justify-center py-0.5 text-[10px] text-stone-400 hover:text-orange-600 rounded"
+                                    >
+                                      ＋ הוסף
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </td>
@@ -356,29 +389,31 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
         </>
       )}
 
-      {/* Edit-from-board modal — click a training cell to edit or move it without leaving this view */}
-      {editingSession && (
+      {/* Board modal — click a training cell to edit/move it, or an empty cell to add one, without leaving this view */}
+      {modalInitial && (
         <div
           className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center overflow-y-auto p-4 no-print"
           dir="rtl"
-          onClick={() => setEditingSession(null)}
+          onClick={closeModal}
         >
           <div className="w-full max-w-lg my-8" onClick={(e) => e.stopPropagation()}>
             <div className="bg-stone-50 rounded-t-xl border border-stone-300 border-b-0 px-4 py-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-stone-800">עריכת אימון</h3>
-              <button
-                onClick={() => handleDeleteSession(editingSession.id)}
-                className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
-              >
-                <IconTrash size={14} /> מחק אימון
-              </button>
+              <h3 className="text-sm font-semibold text-stone-800">{editingSession ? "עריכת אימון" : "אימון חדש"}</h3>
+              {editingSession && (
+                <button
+                  onClick={() => handleDeleteSession(editingSession.id)}
+                  className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+                >
+                  <IconTrash size={14} /> מחק אימון
+                </button>
+              )}
             </div>
             <SessionForm
               data={data}
-              initial={editingSession}
+              initial={modalInitial}
               weekStart={weekStart}
               onSave={handleSaveSession}
-              onCancel={() => setEditingSession(null)}
+              onCancel={closeModal}
             />
           </div>
         </div>

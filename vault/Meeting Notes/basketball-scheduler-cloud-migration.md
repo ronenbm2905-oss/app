@@ -511,3 +511,24 @@ admin = `ronenbm2905@gmail.com`.
   `clubs/main` ישנים בלי השדות: guards (`data.holidays||[]`, `pub?.weekOf`) לא קורסים. (3) MVP התראות = באנר
   בתוך האפליקציה, לא push שקופץ במסך נעול (ראה Open Questions).
 - **Related:** [[push-workflow]]
+
+### 2026-08-05 — שיבוץ אימון מתא ריק בלוח השבועי (השלמת #6) [built, ממתין ל-deploy]
+- **What was done:** חידוד של המשתמש ל-#6 — התכוון שגם **תא ריק** יהיה לחיץ ל**הוספת** אימון, לא רק עריכת קיים.
+  ב-`WeeklyScheduleView.jsx`: state חדש `addingCell` שמחזיק **initial מוכן** (`{teamId, coachId:team.coachId, day,
+  weekOf}`) — אובייקט יציב כדי שה-effect של `SessionForm` (תלוי ב-`initial`) לא יאפס הקלדה. תא ריק (admin) מציג כפתור
+  **＋** (ותחת הדפסה "—" דרך `print-only`); תא עם אימונים קיבל גם כפתור "＋ הוסף" קטן להוספת אימון נוסף באותו יום.
+  `handleSaveSession` אוחד ל-append-or-replace (קיים→map, חדש→push); המודאל נפתח מ-`modalInitial = editingSession
+  || addingCell`, כותרת "אימון חדש" vs "עריכת אימון", וכפתור מחיקה רק בעריכה.
+- **Decisions:** (1) שמירת ה-initial המלא ב-state (לא חישוב-מחדש בכל render) — מונע reset של הטופס אם ה-parent
+  מתרנדר (למשל onSnapshot). (2) המאמן ממולא-מראש מהקבוצה (כמו `handleTeamChange` ב-SessionForm), עדיין ניתן לשינוי.
+- **Verification:** `npm run build` נקי. QA ויזואלי אצל המשתמש (מצב ענן, Google login).
+- **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
+### 2026-08-05 — בורר הקבוצה בטופס האימון מציג גם את המאמן [built, ממתין ל-deploy]
+- **What was done:** בקשת המשתמש — בעת הזנת אימון, בפתיחת בורר "קבוצה" לראות גם את שם המאמן. ב-`SessionForm.jsx`
+  נבנה `teamOptions` שממפה כל קבוצה ל-`{id, name:"קבוצה – מאמן"}` (ה-value נשאר `team.id` → מילוי-אוטומטי של המאמן
+  ובחירה עובדים כרגיל). משפיע על כל מקום שמשתמש ב-SessionForm (ניהול + הלוח השבועי).
+- **Verification:** `npm run build` נקי.
+- **Notes / Caveats:** קבוצה בלי מאמן מוצגת בשם בלבד. לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
