@@ -13,6 +13,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
+  const [printTotals, setPrintTotals] = useState(false); // editors only; keep the totals column out of print by default
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
   const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
@@ -149,6 +150,17 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             ))}
           </div>
         )}
+        {mode === "team" && canEdit && (
+          <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
+            <input
+              type="checkbox"
+              checked={printTotals}
+              onChange={(e) => setPrintTotals(e.target.checked)}
+              className="accent-orange-600"
+            />
+            כלול את עמודת "סה״כ שבוע" גם בהדפסה
+          </label>
+        )}
         <p className="text-xs text-stone-600">לחץ "הדפסה / שמור PDF" ובחלון ההדפסה בחר "שמור כ-PDF". מומלץ: כיוון דף לרוחב (Landscape).</p>
       </div>
 
@@ -176,7 +188,9 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                     })}
                     <th className="border border-stone-200 bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700 w-32" style={{ borderInlineStartWidth: "3px", borderInlineStartColor: "#57534E" }}>קבוצה משחקת</th>
                     <th className="border border-stone-200 bg-purple-50 px-3 py-2 text-center text-xs font-semibold text-purple-700 w-32">קבוצה מזכירות</th>
-                    <th className="border border-stone-200 bg-stone-100 px-2 py-2 text-center text-xs font-semibold text-stone-600 w-16">סה״כ שבוע</th>
+                    {canEdit && (
+                      <th className={`border border-stone-200 bg-stone-100 px-2 py-2 text-center text-xs font-semibold text-stone-600 w-16 ${printTotals ? "" : "no-print"}`}>סה״כ שבוע</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -305,10 +319,12 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                           )}
                           <div className="print-only text-xs text-stone-700">{assignDisplay(assignment.secretary, true)}</div>
                         </td>
-                        {/* Weekly total */}
-                        <td className="border border-stone-200 px-2 py-1.5 text-center bg-stone-50">
-                          <span className="text-sm font-semibold tabular-nums text-stone-700">{teamWeekCount(team.id)}</span>
-                        </td>
+                        {/* Weekly total — editors only; optionally excluded from print */}
+                        {canEdit && (
+                          <td className={`border border-stone-200 px-2 py-1.5 text-center bg-stone-50 ${printTotals ? "" : "no-print"}`}>
+                            <span className="text-sm font-semibold tabular-nums text-stone-700">{teamWeekCount(team.id)}</span>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

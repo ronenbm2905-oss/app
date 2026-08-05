@@ -525,6 +525,18 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`.
 - **Related:** [[push-workflow]]
 
+### 2026-08-05 — עמודת "סה"כ שבוע": עורכים בלבד + אופציה להשמיט מהדפסה [built, ממתין ל-deploy]
+- **What was done:** בקשת המשתמש — עמודת "סה"כ שבוע" בלוח השבועי תוצג **רק למנהל/עורך**, ותהיה **אופציה
+  להשמיט אותה מהדפסה**. ב-`WeeklyScheduleView.jsx`: ה-th וה-td של העמודה עוטפו ב-`{canEdit && ...}` (מאמן צופה
+  לא רואה אותה כלל, מסך והדפסה). נוסף state `printTotals` (ברירת מחדל **false**) + checkbox בקונטרולים (team-mode,
+  canEdit) "כלול את עמודת סה"כ שבוע גם בהדפסה"; כשכבוי, לתאי העמודה מתווסף `no-print` → נראים על המסך לעורך אך
+  לא בהדפסה.
+- **Decisions:** (1) ברירת מחדל = **לא מודפס** (הדפסה נקייה לשחקנים/מאמנים); העורך מסמן ידנית אם רוצה. (2) מימוש
+  דרך `no-print` הקיים (לא media query חדש). (3) עמודה מוסתרת לגמרי לצופים — לא רק בהדפסה.
+- **Verification:** `npm run build` נקי. QA ויזואלי אצל המשתמש.
+- **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
 ### 2026-08-05 — ייבוא חגים מרשימה + תמיכה בטווחי תאריכים [built, ממתין ל-deploy]
 - **What was done:** המשתמש ביקש להעלות מסמך אגודה עם תאריכי החגים ולייבא אוטומטית. שיתף PDF (`דף רישום
   2026-2027`). ניתחתי אותו (חילוץ טקסט דרך `pdf-parse` ב-Node/scratchpad, כי אין poppler/python): זהו **מכתב
