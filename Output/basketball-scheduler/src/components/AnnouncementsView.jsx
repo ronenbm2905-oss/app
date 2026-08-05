@@ -1,6 +1,58 @@
 import { useState } from "react";
 import { IconCheck, IconTrash } from "./ui/icons";
 
+// How many days ahead a birthday still shows on the notice board.
+const BIRTHDAY_WINDOW_DAYS = 14;
+
+// Days until the next occurrence of a MM-DD birthday (0 = today). null if unparseable.
+function daysUntilBirthday(iso) {
+  if (!iso) return null;
+  const p = String(iso).split("-");
+  if (p.length !== 3) return null;
+  const bm = Number(p[1]), bd = Number(p[2]);
+  if (!bm || !bd) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let next = new Date(today.getFullYear(), bm - 1, bd);
+  if (next < today) next = new Date(today.getFullYear() + 1, bm - 1, bd);
+  return Math.round((next - today) / 86400000);
+}
+
+// Coaches whose birthday falls within the window, soonest first.
+function upcomingBirthdays(coaches) {
+  return (coaches || [])
+    .map((c) => ({ name: c.name, days: daysUntilBirthday(c.birthDate) }))
+    .filter((c) => c.days !== null && c.days <= BIRTHDAY_WINDOW_DAYS)
+    .sort((a, b) => a.days - b.days);
+}
+
+function whenLabel(days) {
+  if (days === 0) return "היום 🎉";
+  if (days === 1) return "מחר";
+  return `בעוד ${days} ימים`;
+}
+
+function BirthdayReminder({ coaches }) {
+  const list = upcomingBirthdays(coaches);
+  if (list.length === 0) return null;
+  return (
+    <div className="bg-pink-50 border border-pink-200 rounded-xl p-4" dir="rtl">
+      <div className="flex items-center gap-2 mb-2">
+        <span aria-hidden="true">🎂</span>
+        <h2 className="text-sm font-semibold text-pink-900">ימי הולדת קרובים למאמנים</h2>
+      </div>
+      <ul className="space-y-1">
+        {list.map((c, i) => (
+          <li key={i} className="text-sm text-pink-900 flex items-center gap-2">
+            <span className="font-medium">{c.name}</span>
+            <span className={`text-xs ${c.days === 0 ? "text-pink-700 font-semibold" : "text-pink-600"}`}>{whenLabel(c.days)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function formatUpdated(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -28,6 +80,7 @@ export function AnnouncementsView({ data, save, canEdit }) {
   if (!canEdit) {
     return (
       <div className="space-y-3" dir="rtl">
+        <BirthdayReminder coaches={data.coaches} />
         <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-stone-200 bg-stone-50 flex items-center gap-2">
             <span aria-hidden="true">📢</span>
@@ -50,6 +103,7 @@ export function AnnouncementsView({ data, save, canEdit }) {
 
   return (
     <div className="space-y-3" dir="rtl">
+      <BirthdayReminder coaches={data.coaches} />
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-stone-200 bg-stone-50 flex items-center gap-2 flex-wrap">
           <span aria-hidden="true">📢</span>

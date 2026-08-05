@@ -1,8 +1,87 @@
 import { useState, useEffect } from "react";
 import { DAYS } from "../constants";
 import { timeToMinutes, overlaps, uid } from "../utils/dates";
+import { formatISODate } from "../utils/holidays";
 import { Select } from "./ui/Select";
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconUserX, IconBuilding, IconBan } from "./ui/icons";
+
+// Register club-wide special days (holidays, breaks). They surface on the weekly board's day headers.
+function HolidaysCard({ data, save, canEdit }) {
+  const [date, setDate] = useState("");
+  const [name, setName] = useState("");
+  const holidays = (data.holidays || []).slice().sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const valid = date && name.trim();
+
+  const add = () => {
+    if (!valid) return;
+    save({ ...data, holidays: [...(data.holidays || []), { id: uid(), date, name: name.trim() }] });
+    setDate("");
+    setName("");
+  };
+  const del = (id) => save({ ...data, holidays: (data.holidays || []).filter((h) => h.id !== id) });
+
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="bg-stone-50 px-4 py-2.5 border-b border-stone-200 flex items-center gap-2 text-stone-700 font-semibold text-sm">
+        <span aria-hidden="true">🎉</span> חגים וימים מיוחדים
+      </div>
+      <div className="p-4 space-y-3">
+        <p className="text-xs text-stone-500">
+          רשום כאן חגים, חופשות או ימים מיוחדים. הם יופיעו מסומנים בכותרת היום בלוח השבועי.
+        </p>
+        {canEdit && (
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">תאריך</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                dir="ltr"
+                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="flex-1 min-w-[10rem]">
+              <label className="text-xs text-stone-500 mb-1 block">שם היום</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="לדוגמה: ערב ראש השנה"
+                dir="rtl"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <button
+              disabled={!valid}
+              onClick={add}
+              className="px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
+            >
+              <IconPlus size={15} /> הוסף
+            </button>
+          </div>
+        )}
+        {holidays.length === 0 ? (
+          <p className="text-sm text-stone-500">אין ימים מיוחדים רשומים.</p>
+        ) : (
+          <div className="divide-y divide-stone-100 border border-stone-100 rounded-lg">
+            {holidays.map((h) => (
+              <div key={h.id} className="flex items-center gap-3 px-3 py-2">
+                <span className="w-24 text-sm tabular-nums text-stone-600 shrink-0">{formatISODate(h.date)}</span>
+                <span className="flex-1 text-sm text-stone-800">{h.name}</span>
+                {canEdit && (
+                  <button onClick={() => del(h.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-stone-600 hover:text-red-600" aria-label="מחק">
+                    <IconTrash size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ConstraintForm({ data, initial, onSave, onCancel, onSaveAndAddNext }) {
   const [type, setType] = useState(initial?.type || "coach");
@@ -149,6 +228,8 @@ export function ConstraintsView({ data, save, canEdit }) {
 
   return (
     <div className="space-y-4" dir="rtl">
+      <HolidaysCard data={data} save={save} canEdit={canEdit} />
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-stone-500">
           רשום כאן זמנים בהם מאמן או אולם <span className="font-medium text-stone-700">לא זמינים</span>. הכלי יתריע אם אימון נקבע בתוך טווח חסום.

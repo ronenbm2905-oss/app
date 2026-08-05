@@ -8,10 +8,19 @@ import {
   IconUsers, IconUserPlus, IconBuilding, IconChevronUp, IconChevronDown,
 } from "./ui/icons";
 
+// Short DD/MM label for a stored ISO birth date (YYYY-MM-DD). Year is intentionally dropped in the list.
+function birthLabel(iso) {
+  if (!iso) return "";
+  const p = String(iso).split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}` : "";
+}
+
 // `withPhone` adds a phone field (used for coaches — feeds the transport export's contact column).
-function NameForm({ initial, label, withPhone, onSave, onCancel }) {
+// `withBirthDate` adds a birthday field (used for coaches — feeds the birthday reminder on the notice board).
+function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [phone, setPhone] = useState(initial?.phone || "");
+  const [birthDate, setBirthDate] = useState(initial?.birthDate || "");
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -40,6 +49,18 @@ function NameForm({ initial, label, withPhone, onSave, onCancel }) {
           />
         </div>
       )}
+      {withBirthDate && (
+        <div>
+          <label className="text-xs text-stone-500 mb-1 block">תאריך לידה (לתזכורת יום הולדת)</label>
+          <input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            dir="ltr"
+          />
+        </div>
+      )}
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
@@ -51,6 +72,7 @@ function NameForm({ initial, label, withPhone, onSave, onCancel }) {
               id: initial?.id || uid(),
               name: name.trim(),
               ...(withPhone ? { phone: phone.trim() } : {}),
+              ...(withBirthDate ? { birthDate } : {}),
             })
           }
           className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
@@ -62,7 +84,7 @@ function NameForm({ initial, label, withPhone, onSave, onCancel }) {
   );
 }
 
-function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone }) {
+function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone, withBirthDate }) {
   const [editingId, setEditingId] = useState(null);
 
   const handleSave = (item) => {
@@ -89,7 +111,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
 
       {canEdit && editingId === "new" && (
         <div className="p-3 border-b border-stone-100">
-          <NameForm label={label} withPhone={withPhone} onSave={handleSave} onCancel={() => setEditingId(null)} />
+          <NameForm label={label} withPhone={withPhone} withBirthDate={withBirthDate} onSave={handleSave} onCancel={() => setEditingId(null)} />
         </div>
       )}
 
@@ -106,7 +128,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
               <div key={item.id}>
                 {canEdit && isEditing ? (
                   <div className="p-3">
-                    <NameForm initial={item} label={label} withPhone={withPhone} onSave={handleSave} onCancel={() => setEditingId(null)} />
+                    <NameForm initial={item} label={label} withPhone={withPhone} withBirthDate={withBirthDate} onSave={handleSave} onCancel={() => setEditingId(null)} />
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 px-4 py-2.5">
@@ -114,6 +136,9 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
                       {item.name}
                       {withPhone && item.phone && (
                         <span className="text-xs text-stone-500 mr-2" dir="ltr">{item.phone}</span>
+                      )}
+                      {withBirthDate && item.birthDate && (
+                        <span className="text-xs text-stone-500 mr-2">🎂 {birthLabel(item.birthDate)}</span>
                       )}
                     </span>
                     {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
@@ -363,7 +388,7 @@ export function RostersView({ data, save, canEdit }) {
       )}
       <div className="grid sm:grid-cols-3 gap-4">
         <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
-        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone />
+        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withBirthDate />
         <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} />
       </div>
     </div>

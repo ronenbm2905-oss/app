@@ -13,6 +13,7 @@ import { PlayersView } from "./components/PlayersView";
 import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
+import { SchedulePublishedBanner } from "./components/SchedulePublishedBanner";
 import { LegalFooter } from "./legal/LegalFooter";
 import { IconLogOut, IconEye } from "./components/ui/icons";
 import clubLogo from "./assets/club-logo.jpg";
@@ -104,6 +105,7 @@ export default function App() {
 
         {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
 
+        <SchedulePublishedBanner data={data} />
         {tab !== "announcements" && <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />}
 
         <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`}>

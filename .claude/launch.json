@@ -28,6 +28,13 @@
       "runtimeArgs": ["--yes", "serve", "-l", "5181", "."],
       "cwd": "itai/Outputs/madbekot-poster",
       "port": 5181
+    },
+    {
+      "name": "property-management",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "Output/property-management",
+      "port": 5175
     }
   ]
 }

@@ -1,0 +1,125 @@
+rules_version = '2';
+
+// ============================================================================
+// deny-by-default: כל מה שלא הותר במפורש — חסום. שלושה תפקידים (פרוסה 2):
+//   owner        — הבעלים (uid == ownerId בנתיב). גישה מלאה לכל הנתונים שלו.
+//   tenant       — הדייר. קורא אך ורק ישויות שבהן הוא ה-tenant המקושר, ובלי
+//                  נתונים כלכליים (transactions/debts/units/reminders חסומים לו
+//                  לחלוטין). יכול לפתוח ticket לדירתו בלבד.
+//   maintenance  — איש תחזוקה. קורא/מעדכן אך ורק tickets שהוא ה-assignee שלהם,
+//                  וכתיבה מוגבלת לשדות status + fieldPhotos בלבד (בדיקת diff) —
+//                  לא שדות כלכליים (quote/cost/insurance).
+//
+// הבידוד נאכף כאן ב-rules, לא ב-UI. הכשל הקטלני שנמנע: דייר/איש-צוות א' קורא
+// נתוני דייר/בעלים אחר. שדה ownerId נשמר בכל ישות (B1) כקו-הגנה שני.
+//
+// מודל (רסטרקטורינג פרוסה 2): כל ישות היא מסמך נפרד בתת-אוסף תחת owners/{ownerId}
+// (properties/units/tenants/leases/transactions/debts/tickets/documents/reminders),
+// מה שמאפשר הרשאה פרטנית ל-tenant/maintenance. מסמך השורש owners/{ownerId}
+// מחזיק settings בלבד ונשאר owner-only.
+//
+// אזור (B4): לבחור region מפורש בעת יצירת Firestore (ראה README). סקופ נוכחי:
+// ישראל-בלבד (החלטת המשתמש) — לא משנה את הבידוד הטכני.
+// ============================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
+    }
+    // ה-userId שנשמר על מסמך הדייר (מקשר את חשבון הדייר לרשומת ה-tenant).
+    function tenantDoc(ownerId, tenantId) {
+      return get(/databases/$(database)/documents/owners/$(ownerId)/tenants/$(tenantId)).data;
+    }
+    function isLinkedTenant(ownerId, tenantId) {
+      return isSignedIn()
+        && tenantId != null
+        && exists(/databases/$(database)/documents/owners/$(ownerId)/tenants/$(tenantId))
+        && tenantDoc(ownerId, tenantId).userId == request.auth.uid;
+    }
+    // הדייר המקושר לחוזה (דרך tenantId של החוזה).
+    function isTenantOfLease(ownerId, leaseId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/owners/$(ownerId)/leases/$(leaseId))
+        && isLinkedTenant(ownerId, get(/databases/$(database)/documents/owners/$(ownerId)/leases/$(leaseId)).data.tenantId);
+    }
+    function isAssignee(ticketData) {
+      return isSignedIn() && ticketData.assigneeUserId == request.auth.uid;
+    }
+
+    // ---- מסמך השורש: settings בלבד. owner בלבד. ----
+    match /owners/{ownerId} {
+      allow read, write: if isOwner(ownerId);
+
+      // -- נכסים: owner בלבד. --
+      // ב-rules אין join יעיל נכס→חוזה בלי leaseId, ומסמך הנכס מכיל נתונים
+      // כלכליים (finance/תשואה) שאסור לחשוף לדייר. לכן קריאת מסמך הנכס owner-only;
+      // הדייר מקבל תצוגת-נכס מצומצמת (כתובת/סוג/סטטוס) שמדונרמלת על מסמך ה-lease
+      // שהוא כבר מורשה לקרוא (publicLease). ראה firestoreSync + README.
+      match /properties/{propertyId} {
+        allow read, write: if isOwner(ownerId);
+      }
+
+      // -- דיירים: owner מלא; הדייר קורא אך ורק את המסמך שלו (PII) --
+      match /tenants/{tenantId} {
+        allow read: if isOwner(ownerId)
+          || (isSignedIn() && resource.data.userId == request.auth.uid);
+        allow write: if isOwner(ownerId); // הדייר לא עורך את רשומת ה-PII שלו
+      }
+
+      // -- חוזים: owner מלא; הדייר המקושר קורא בלבד --
+      match /leases/{leaseId} {
+        allow read: if isOwner(ownerId) || isLinkedTenant(ownerId, resource.data.tenantId);
+        allow write: if isOwner(ownerId);
+      }
+
+      // -- מסמכים: owner מלא; הדייר קורא מסמכים המקושרים אליו/לחוזהו --
+      match /documents/{docId} {
+        allow read: if isOwner(ownerId)
+          || isLinkedTenant(ownerId, resource.data.tenantId)
+          || (resource.data.leaseId != null && isTenantOfLease(ownerId, resource.data.leaseId));
+        allow write: if isOwner(ownerId);
+      }
+
+      // -- תקלות --
+      //    read:   owner, ה-assignee, או הדייר-המדווח.
+      //    create: owner, או דייר שפותח תקלה לדירתו (reportedByTenantId שלו, status=open).
+      //    update: owner מלא; assignee — אך ורק status + fieldPhotos (בדיקת diff).
+      //    delete: owner בלבד.
+      match /tickets/{ticketId} {
+        allow read: if isOwner(ownerId)
+          || isAssignee(resource.data)
+          || isLinkedTenant(ownerId, resource.data.reportedByTenantId);
+
+        allow create: if isOwner(ownerId)
+          || (
+            isLinkedTenant(ownerId, request.resource.data.reportedByTenantId)
+            && request.resource.data.status == 'open'
+            && request.resource.data.ownerId == ownerId
+          );
+
+        allow update: if isOwner(ownerId)
+          || (
+            isAssignee(resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'fieldPhotos'])
+          );
+
+        allow delete: if isOwner(ownerId);
+      }
+
+      // -- נתונים כלכליים ותפעוליים: owner בלבד. חסומים ל-tenant/maintenance. --
+      match /transactions/{id} { allow read, write: if isOwner(ownerId); }
+      match /debts/{id}        { allow read, write: if isOwner(ownerId); }
+      match /units/{id}        { allow read, write: if isOwner(ownerId); }
+      match /reminders/{id}    { allow read, write: if isOwner(ownerId); }
+    }
+
+    // כל שאר המסמכים — חסום מפורשות.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

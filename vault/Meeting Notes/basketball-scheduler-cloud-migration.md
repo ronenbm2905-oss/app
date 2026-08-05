@@ -20,6 +20,8 @@ SheetJS + Firebase (Firestore/Auth/Hosting)**, JavaScript (לא TS). הכלי מ
 עומד בפני עצמו (בחירת המשתמש). אילוצים נשארים כללים חוצי-שבועות.
 
 ## Open Questions
+- **התראות — MVP בלבד (5.8):** מומש כפתור "פרסם לו"ז" + באנר (לא push אמיתי שקופץ בנעול-מסך). push מלא דורש
+  FCM + service worker + Cloud Function — נשאר כשדרוג עתידי אם המשתמש ירצה התראות מחוץ לאפליקציה.
 - **שער עדי לרשימת השחקנים — B1 תוקן (30.7), נותר M1:** הדגל החוסם (מדיניות הפרטיות הצהירה שקרית שלא
   נאספים טלפון/ת.לידה/פרטי קטינים) **תוקן** — שולב סעיף "נתוני שחקנים" (2א) + הוסרה ההצהרה השקרית, עם
   סימוני ⚖️ גלויים (בחירת המשתמש). השער עבר ל🟡 **אושר עם תיקונים חובה**. **נותר M1 (על המשתמש):** לאמת
@@ -465,3 +467,47 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** (1) לא הוגדר favicon עם הלוגו (עדיין אייקון ברירת המחדל של Vite) — הצעה פתוחה. (2) לא חי עד
   `firebase deploy --only hosting`. (3) IP: לוגו של המועדון בשימוש באפליקציה הפנימית של המועדון ע"י המפעיל — לגיטימי.
 - **Related:** [[push-workflow]], [[golden-tri-sticker-design]]
+
+### 2026-08-05 — ימי הולדת מאמנים + קו הפרדה עבה בלוח השבועי [built, ממתין ל-deploy]
+- **What was done:** המשתמש הביא 6 רעיונות חדשים. מומשו שניים הברורים: **(1) ת.לידה למאמן + תזכורת יום
+  הולדת** — `NameForm`/`RosterList` (`RostersView.jsx`) קיבלו prop `withBirthDate` (מופעל לרשימת המאמנים
+  לצד `withPhone`): שדה `<input type="date">` → `birthDate` (ISO YYYY-MM-DD) על רשומת המאמן, מוצג בשורה כ-
+  "🎂 DD/MM" (`birthLabel`). ב-`AnnouncementsView.jsx` נוסף רכיב `BirthdayReminder` (כרטיס ורוד בראש מסך
+  ההודעות, גם למנהל וגם למאמן צופה): `daysUntilBirthday` מחשב ימים עד המופע הבא של MM-DD, `upcomingBirthdays`
+  מסנן חלון של **14 יום** וממיין, תוויות "היום 🎉 / מחר / בעוד N ימים". **(2) קו הפרדה עבה בלוח השבועי** —
+  ב-`WeeklyScheduleView.jsx`, ה-th וה-td של עמודת "קבוצה משחקת" קיבלו `borderInlineStartWidth:3px` (#57534E)
+  → קו עבה בין עמודת שבת (היום האחרון) לעמודות המשחקת/מזכירות, גם על המסך וגם בהדפסה.
+- **Decisions:** (1) ת.לידה של מאמן נשמר כ-ISO מ-native date input (בשונה מ-DD-MM-YYYY של שחקנים) — קל לפרסר
+  להשוואת MM-DD. השנה נשמרת אך יורדת בתצוגה. (2) חלון תזכורת 14 יום (מרווח הכנה למנהל); התאמה = שינוי קבוע אחד
+  `BIRTHDAY_WINDOW_DAYS`. (3) `borderInlineStart` (לוגי) ולא border-right — נכון אוטומטית ב-RTL.
+- **תשובות לרעיונות שלא מומשו (בלי קוד):** **(#5 מאמן ל-2 קבוצות = אותו צבע) כבר קיים** — `colorForTeamByCoach`
+  (`colors.js`) מקבץ לפי `coachId`. **(#2 התראות push)** — דורש FCM + service worker + Cloud Function (עלות/מורכבות);
+  הוצע MVP קליל תחילה. **(#3 חגי ישראל)** — אין כיום מנגנון ייעודי (רק אילוצים/הודעה חופשית); הוצע פיצ'ר "ימים
+  מיוחדים" שמסמן תאריך כחג בלוח. **(#6 עריכת אימון מתוך הלוח השבועי)** — כיום עריכה רק בטאב "ניהול"; הוצע
+  click-to-edit על תא בלוח. שלושתם ממתינים לתעדוף המשתמש (ראה Open Questions).
+- **Verification:** `npm run build` נקי (1564 מודולים). QA ויזואלי אצל המשתמש (מצב ענן, Google login).
+- **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`. מסמכי `clubs/main` ישנים בלי `birthDate` על
+  מאמן — ה-guard (`c.birthDate`) לא קורס, פשוט לא מציג עד שממלאים.
+- **Related:** [[push-workflow]]
+
+### 2026-08-05 — 3 פיצ'רים: עריכת אימון מהלוח + חגים/ימים מיוחדים + MVP "פרסם לו"ז" [built, ממתין ל-deploy]
+- **What was done:** המשתמש בחר לבנות את שלושת הרעיונות שנשארו (מתוך 6). **(#6) עריכת אימון מתוך הלוח השבועי** —
+  ב-`WeeklyScheduleView.jsx` כל תא אימון (למעט משחקים מיובאים `fromGame`) הפך ל-`<button>` שפותח **מודאל**
+  עם `SessionForm` (initial=ה-session, שומר `weekOf` → אפשר להזיז יום/שעה/אולם), + כפתור "מחק אימון". שמירה =
+  map-replace על `data.sessions`; אותה סמנטיקה כמו `ManagerView` בלי לעבור טאב. **(#3) חגים / ימים מיוחדים** —
+  מודל `holidays: [{id,date:"YYYY-MM-DD",name}]` ב-`EMPTY`; util חדש `utils/holidays.js` (`holidayNameOn` מעל
+  `toISODate` הקיים ב-dates.js — התאמה לפי תאריך-לוח מקומי, מיושר ל-`getWeekDates`; `formatISODate`). כרטיס ניהול
+  `HolidaysCard` בראש טאב **אילוצים** (הוספה/מחיקה, `input type=date`). בלוח השבועי כותרת היום מציגה "🎉 <שם>"
+  ורקע `bg-rose-50` כשיש חג. **(#2) MVP התראות** — כפתור "פרסם לו"ז לשבוע" (admin) ב-`WeeklyScheduleView` שכותב
+  `schedulePublished: {weekOf, at}`; רכיב `SchedulePublishedBanner` (ירוק) ב-`App.jsx` מוצג לכל המשתמשים (live דרך
+  onSnapshot) בכל הטאבים, ונעלם אוטומטית אחרי 8 ימים.
+- **Decisions:** (1) עריכה מהלוח = **מודאל** (לא inline — שובר טבלה); משחקים מיובאים לא נערכים מהלוח (בעלות קובץ
+  האיגוד, כמו ב-ManagerView). (2) חגים בטאב **אילוצים** (לא טאב חדש — נשמר מספר הטאבים; תמטית "מתי לא מתאמנים").
+  סימון בכותרת בלבד (לא צובע כל תא) — MVP קריא. (3) התראות = **MVP באנר** במקום push אמיתי (FCM/SW/Cloud Function
+  = מורכבות/עלות); הבאנר מיידי, חינמי, ומספיק ל"סיימתי לו"ז → כולם רואים". חלון 8 ימים כדי שייעלם לבד.
+- **Verification:** `npm run build` נקי (1566 מודולים, +2). התאמת תאריך חג נשענת על `toISODate` המשותף (מיושר
+  ל-getWeekDates). QA ויזואלי אצל המשתמש (מצב ענן, Google login).
+- **Notes / Caveats:** (1) לא חי עד `firebase deploy --only hosting`. (2) `schedulePublished`/`holidays` — מסמכי
+  `clubs/main` ישנים בלי השדות: guards (`data.holidays||[]`, `pub?.weekOf`) לא קורסים. (3) MVP התראות = באנר
+  בתוך האפליקציה, לא push שקופץ במסך נעול (ראה Open Questions).
+- **Related:** [[push-workflow]]

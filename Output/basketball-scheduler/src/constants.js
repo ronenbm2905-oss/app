@@ -41,7 +41,9 @@ export const EMPTY = {
   games: [],
   gameMapping: [],
   players: [],  // { id, teamId, name, phone, birthDate, shirtSize, pantsSize, sweaterSize, jerseyNumber }
+  holidays: [], // { id, date: "YYYY-MM-DD", name } — special days shown on the weekly board
   announcement: { text: "", updatedAt: null }, // single notice board shown to all coaches
+  schedulePublished: null, // { weekOf, at } — set when a manager marks a week's schedule as published
   weeklyAssignments: {},
   admins: [],   // emails with edit rights (read + write)
   members: [],  // emails with view-only rights (read); admins also read via the rules

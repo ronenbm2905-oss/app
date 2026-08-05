@@ -2,15 +2,36 @@ import { useState, useMemo } from "react";
 import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
+import { holidayNameOn } from "../utils/holidays";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
-import { IconDownload } from "./ui/icons";
+import { SessionForm } from "./SessionForm";
+import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
 
 export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
+  const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
+  const [justPublished, setJustPublished] = useState(false);
+
+  // MVP "notification": stamp this week as published → every coach sees the banner live.
+  const publishSchedule = () => {
+    save({ ...data, schedulePublished: { weekOf: weekStart, at: new Date().toISOString() } });
+    setJustPublished(true);
+    setTimeout(() => setJustPublished(false), 2500);
+  };
+
+  // Editing straight from the board — same save/delete semantics as ManagerView, existing sessions only.
+  const handleSaveSession = (session) => {
+    save({ ...data, sessions: data.sessions.map((s) => (s.id === session.id ? session : s)) });
+    setEditingSession(null);
+  };
+  const handleDeleteSession = (id) => {
+    save({ ...data, sessions: data.sessions.filter((s) => s.id !== id) });
+    setEditingSession(null);
+  };
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
@@ -91,9 +112,20 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
               <Select value={selectedHallId} onChange={setSelectedHallId} options={data.halls} placeholder="בחר אולם" className="w-40" />
             )}
           </div>
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">
-            <IconDownload size={15} /> הדפסה / שמור PDF
-          </button>
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <button
+                onClick={publishSchedule}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50"
+                title="סמן שהלו״ז לשבוע זה מוכן — יופיע באנר לכל המאמנים"
+              >
+                <IconCheck size={15} /> {justPublished ? "פורסם ✓" : "פרסם לו״ז לשבוע"}
+              </button>
+            )}
+            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">
+              <IconDownload size={15} /> הדפסה / שמור PDF
+            </button>
+          </div>
         </div>
 
         {mode === "team" && (
@@ -121,13 +153,17 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 <thead>
                   <tr>
                     <th className="border border-stone-200 bg-stone-50 px-3 py-2 text-right text-xs font-semibold text-stone-600 w-28">קבוצה</th>
-                    {activeDays.map((day) => (
-                      <th key={day} className="border border-stone-200 bg-stone-50 px-3 py-2 text-center text-xs font-semibold text-stone-600">
-                        יום {day}
-                        {weekDates[day] && <div className="font-normal text-stone-600">{formatDate(weekDates[day])}</div>}
-                      </th>
-                    ))}
-                    <th className="border border-stone-200 bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700 w-32">קבוצה משחקת</th>
+                    {activeDays.map((day) => {
+                      const holiday = holidayNameOn(data.holidays, weekDates[day]);
+                      return (
+                        <th key={day} className={`border border-stone-200 px-3 py-2 text-center text-xs font-semibold text-stone-600 ${holiday ? "bg-rose-50" : "bg-stone-50"}`}>
+                          יום {day}
+                          {weekDates[day] && <div className="font-normal text-stone-600">{formatDate(weekDates[day])}</div>}
+                          {holiday && <div className="font-semibold text-rose-600 mt-0.5">🎉 {holiday}</div>}
+                        </th>
+                      );
+                    })}
+                    <th className="border border-stone-200 bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700 w-32" style={{ borderInlineStartWidth: "3px", borderInlineStartColor: "#57534E" }}>קבוצה משחקת</th>
                     <th className="border border-stone-200 bg-purple-50 px-3 py-2 text-center text-xs font-semibold text-purple-700 w-32">קבוצה מזכירות</th>
                     <th className="border border-stone-200 bg-stone-100 px-2 py-2 text-center text-xs font-semibold text-stone-600 w-16">סה״כ שבוע</th>
                   </tr>
@@ -156,12 +192,28 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                 <div className="space-y-1.5">
                                   {sessions.map((s) => {
                                     const color = typeColor(s.type || "אימון");
-                                    return (
-                                      <div key={s.id} className="rounded px-1.5 py-1 text-xs leading-tight" style={{ backgroundColor: `${color}15`, borderRight: `3px solid ${color}` }}>
+                                    const editable = canEdit && !s.fromGame;
+                                    const inner = (
+                                      <>
                                         <div className="font-semibold tabular-nums" style={{ color }}>{s.start}–{s.end}</div>
                                         <div className="text-stone-600 mt-0.5">{nameOf(data.halls, s.hallId)}</div>
                                         {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
                                         {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
+                                      </>
+                                    );
+                                    return editable ? (
+                                      <button
+                                        key={s.id}
+                                        onClick={() => setEditingSession(s)}
+                                        title="לחץ לעריכה / הזזת האימון"
+                                        className="block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-orange-400"
+                                        style={{ backgroundColor: `${color}15`, borderRight: `3px solid ${color}` }}
+                                      >
+                                        {inner}
+                                      </button>
+                                    ) : (
+                                      <div key={s.id} className="rounded px-1.5 py-1 text-xs leading-tight" style={{ backgroundColor: `${color}15`, borderRight: `3px solid ${color}` }}>
+                                        {inner}
                                       </div>
                                     );
                                   })}
@@ -171,7 +223,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                           );
                         })}
                         {/* Playing team column */}
-                        <td className="border border-stone-200 px-2 py-1.5 align-top bg-blue-50/30">
+                        <td className="border border-stone-200 px-2 py-1.5 align-top bg-blue-50/30" style={{ borderInlineStartWidth: "3px", borderInlineStartColor: "#57534E" }}>
                           {canEdit ? (
                             <select
                               value={assignment.playing}
@@ -302,6 +354,34 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             </div>
           )}
         </>
+      )}
+
+      {/* Edit-from-board modal — click a training cell to edit or move it without leaving this view */}
+      {editingSession && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center overflow-y-auto p-4 no-print"
+          dir="rtl"
+          onClick={() => setEditingSession(null)}
+        >
+          <div className="w-full max-w-lg my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-stone-50 rounded-t-xl border border-stone-300 border-b-0 px-4 py-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-stone-800">עריכת אימון</h3>
+              <button
+                onClick={() => handleDeleteSession(editingSession.id)}
+                className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+              >
+                <IconTrash size={14} /> מחק אימון
+              </button>
+            </div>
+            <SessionForm
+              data={data}
+              initial={editingSession}
+              weekStart={weekStart}
+              onSave={handleSaveSession}
+              onCancel={() => setEditingSession(null)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
