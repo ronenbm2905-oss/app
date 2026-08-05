@@ -525,6 +525,20 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`.
 - **Related:** [[push-workflow]]
 
+### 2026-08-05 — לוגו המועדון בדוח המאמן (תמונה לוואטסאפ) ובהדפסת הלוח [built, ממתין ל-deploy]
+- **What was done:** המשתמש דיווח שכשמאמן שולח את הלו"ז השבועי בוואטסאפ, הלוגו של קרית אונו לא מופיע. הדוח
+  שהמאמן משתף הוא בלוק ה-off-screen ב-`CoachView.jsx` שנלכד ל-PNG דרך html2canvas — הכותרת כללה רק `CLUB_NAME`
+  כטקסט, בלי הלוגו. תוקן: (1) יובא `clubLogo` ונוסף `<img>` (גובה 64px, ממורכז) בראש הבלוק הנלכד. (2) **safeguard**
+  ב-`shareOrDownloadReport` — לפני `html2canvas`, אם `logoImg` עוד לא נטען → `await` על onload/onerror, כדי
+  ש-html2canvas לא יצלם לוגו ריק. (3) לעקביות, נוסף הלוגו גם לכותרות ה-`print-only` של `WeeklyScheduleView`
+  (מצב קבוצה ומצב אולם) — כך שגם הדפסת PDF של הלוח כוללת לוגו.
+- **Decisions:** (1) הבלוק ה-off-screen ממילא מרונדר תמיד (fixed, off-screen) → הלוגו נטען הרבה לפני הלחיצה;
+  ה-safeguard הוא ביטוח זול נוסף. (2) לא נגעתי ב-`TransportExport` (תמונת ההסעות של המנהל) — לא דווח; ניתן להוסיף
+  לוגו גם שם בעתיד אם ירצה.
+- **Verification:** `npm run build` נקי. QA ויזואלי (שיתוף תמונה במובייל + הדפסה) אצל המשתמש — אין דפדפן מובייל/auth ב-toolset.
+- **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
 ### 2026-08-05 — עמודת "סה"כ שבוע": עורכים בלבד + אופציה להשמיט מהדפסה [built, ממתין ל-deploy]
 - **What was done:** בקשת המשתמש — עמודת "סה"כ שבוע" בלוח השבועי תוצג **רק למנהל/עורך**, ותהיה **אופציה
   להשמיט אותה מהדפסה**. ב-`WeeklyScheduleView.jsx`: ה-th וה-td של העמודה עוטפו ב-`{canEdit && ...}` (מאמן צופה

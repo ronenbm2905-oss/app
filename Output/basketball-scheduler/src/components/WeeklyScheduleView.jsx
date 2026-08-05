@@ -7,6 +7,7 @@ import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
 import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
+import clubLogo from "../assets/club-logo.jpg";
 
 export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
@@ -167,7 +168,10 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       {/* TEAM MODE */}
       {mode === "team" && (
         <>
-          <div className="print-only text-center mb-3 text-xl font-bold text-stone-800">{title}</div>
+          <div className="print-only text-center mb-3">
+            <img src={clubLogo} alt="" className="mx-auto h-16 object-contain mb-1" />
+            <div className="text-xl font-bold text-stone-800">{title}</div>
+          </div>
           <div className="bg-white rounded-xl border border-stone-200 overflow-auto weekly-table-wrap">
             {data.teams.length === 0 ? (
               <div className="p-8 text-center text-stone-600 text-sm">אין קבוצות רשומות עדיין.</div>
@@ -346,8 +350,9 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       {/* HALL MODE */}
       {mode === "hall" && (
         <>
-          <div className="print-only text-center mb-2 text-xl font-bold text-stone-800">
-            {title} — אולם {selectedHallName}
+          <div className="print-only text-center mb-2">
+            <img src={clubLogo} alt="" className="mx-auto h-16 object-contain mb-1" />
+            <div className="text-xl font-bold text-stone-800">{title} — אולם {selectedHallName}</div>
           </div>
           {!selectedHallId ? (
             <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm no-print">בחר אולם כדי להציג את הדוח.</div>

@@ -7,6 +7,7 @@ import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
+import clubLogo from "../assets/club-logo.jpg";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
 
@@ -80,6 +81,11 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
     setReportBusy(true);
     try {
       const { default: html2canvas } = await import("html2canvas");
+      // Ensure the club logo finished loading — otherwise html2canvas may snapshot it blank.
+      const logoImg = reportRef.current.querySelector("img");
+      if (logoImg && !logoImg.complete) {
+        await new Promise((res) => { logoImg.onload = res; logoImg.onerror = res; });
+      }
       const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: "#ffffff" });
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("no blob");
@@ -253,6 +259,7 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
         style={{ position: "fixed", top: 0, left: "-10000px", width: "720px", background: "#fff", padding: "24px" }}
       >
         <div style={{ textAlign: "center", marginBottom: "10px" }}>
+          <img src={clubLogo} alt="" style={{ height: "64px", width: "auto", objectFit: "contain", display: "block", margin: "0 auto 6px" }} />
           <div style={{ fontSize: "13px", color: "#57534E" }}>{CLUB_NAME}</div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>לוח אימונים שבועי — {reportTeamName}</h1>
           <div style={{ fontSize: "14px", color: "#57534E" }}>{formatWeekRange(weekStart)}</div>
