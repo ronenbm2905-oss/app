@@ -1,34 +1,103 @@
 import { useState, useEffect } from "react";
 import { DAYS } from "../constants";
 import { timeToMinutes, overlaps, uid } from "../utils/dates";
-import { formatISODate } from "../utils/holidays";
+import { formatHolidayRange, parseHolidaysText } from "../utils/holidays";
 import { Select } from "./ui/Select";
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconUserX, IconBuilding, IconBan } from "./ui/icons";
 
-// Register club-wide special days (holidays, breaks). They surface on the weekly board's day headers.
+// Register club-wide special days (holidays, breaks) — single days or date ranges, plus bulk paste-import.
+// They surface on the weekly board's day headers.
 function HolidaysCard({ data, save, canEdit }) {
   const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [name, setName] = useState("");
+  const [showImport, setShowImport] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [importMsg, setImportMsg] = useState("");
   const holidays = (data.holidays || []).slice().sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  const valid = date && name.trim();
+  const valid = date && name.trim() && (!endDate || endDate >= date);
 
   const add = () => {
     if (!valid) return;
-    save({ ...data, holidays: [...(data.holidays || []), { id: uid(), date, name: name.trim() }] });
+    const entry = { id: uid(), date, endDate: endDate && endDate !== date ? endDate : "", name: name.trim() };
+    save({ ...data, holidays: [...(data.holidays || []), entry] });
     setDate("");
+    setEndDate("");
     setName("");
   };
   const del = (id) => save({ ...data, holidays: (data.holidays || []).filter((h) => h.id !== id) });
 
+  const runImport = () => {
+    const parsed = parseHolidaysText(pasteText);
+    if (parsed.length === 0) {
+      setImportMsg("לא זוהו תאריכים ברשימה. ודא שכל שורה מתחילה בתאריך (למשל 11/09/2026).");
+      return;
+    }
+    const existing = data.holidays || [];
+    const key = (h) => `${h.date}__${h.endDate || h.date}`;
+    const seen = new Set(existing.map(key));
+    const toAdd = [];
+    parsed.forEach((h) => {
+      const k = key(h);
+      if (seen.has(k)) return;
+      seen.add(k);
+      toAdd.push({ id: uid(), date: h.date, endDate: h.endDate && h.endDate !== h.date ? h.endDate : "", name: h.name });
+    });
+    if (toAdd.length > 0) save({ ...data, holidays: [...existing, ...toAdd] });
+    const skipped = parsed.length - toAdd.length;
+    setImportMsg(`נוספו ${toAdd.length} ימים${skipped ? `, דולגו ${skipped} כפילויות` : ""}.`);
+    setPasteText("");
+  };
+
   return (
     <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-      <div className="bg-stone-50 px-4 py-2.5 border-b border-stone-200 flex items-center gap-2 text-stone-700 font-semibold text-sm">
-        <span aria-hidden="true">🎉</span> חגים וימים מיוחדים
+      <div className="bg-stone-50 px-4 py-2.5 border-b border-stone-200 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-stone-700 font-semibold text-sm">
+          <span aria-hidden="true">🎉</span> חגים וימים מיוחדים
+        </div>
+        {canEdit && (
+          <button
+            onClick={() => { setShowImport((v) => !v); setImportMsg(""); }}
+            className="text-xs text-orange-600 hover:text-orange-700 underline underline-offset-2"
+          >
+            {showImport ? "סגור ייבוא" : "ייבוא מרשימה"}
+          </button>
+        )}
       </div>
       <div className="p-4 space-y-3">
         <p className="text-xs text-stone-500">
-          רשום כאן חגים, חופשות או ימים מיוחדים. הם יופיעו מסומנים בכותרת היום בלוח השבועי.
+          רשום כאן חגים, חופשות או ימים מיוחדים (יום בודד או טווח). הם יופיעו מסומנים בכותרת היום בלוח השבועי.
         </p>
+
+        {canEdit && showImport && (
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 space-y-2">
+            <p className="text-xs text-stone-600">
+              הדבק שורה לכל חג — תאריך (או טווח, שני תאריכים) ואז השם. לדוגמה:
+            </p>
+            <pre className="text-[11px] text-stone-500 bg-white border border-stone-200 rounded p-2 overflow-x-auto" dir="ltr">{`11/09/2026-13/09/2026 ראש השנה
+23/03/2027-24/03/2027 פורים
+04/05/2027 יום הזיכרון לשואה`}</pre>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              rows={5}
+              dir="rtl"
+              placeholder="הדבק כאן את רשימת החגים..."
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-y"
+            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={runImport}
+                disabled={!pasteText.trim()}
+                className="px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600"
+              >
+                ייבא רשימה
+              </button>
+              {importMsg && <span className="text-xs text-stone-600">{importMsg}</span>}
+            </div>
+          </div>
+        )}
+
         {canEdit && (
           <div className="flex flex-wrap items-end gap-2">
             <div>
@@ -41,13 +110,24 @@ function HolidaysCard({ data, save, canEdit }) {
                 className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">עד (אופציונלי)</label>
+              <input
+                type="date"
+                value={endDate}
+                min={date}
+                onChange={(e) => setEndDate(e.target.value)}
+                dir="ltr"
+                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
             <div className="flex-1 min-w-[10rem]">
               <label className="text-xs text-stone-500 mb-1 block">שם היום</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="לדוגמה: ערב ראש השנה"
+                placeholder="לדוגמה: ראש השנה"
                 dir="rtl"
                 className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
@@ -61,13 +141,14 @@ function HolidaysCard({ data, save, canEdit }) {
             </button>
           </div>
         )}
+
         {holidays.length === 0 ? (
           <p className="text-sm text-stone-500">אין ימים מיוחדים רשומים.</p>
         ) : (
           <div className="divide-y divide-stone-100 border border-stone-100 rounded-lg">
             {holidays.map((h) => (
               <div key={h.id} className="flex items-center gap-3 px-3 py-2">
-                <span className="w-24 text-sm tabular-nums text-stone-600 shrink-0">{formatISODate(h.date)}</span>
+                <span className="w-36 text-sm tabular-nums text-stone-600 shrink-0">{formatHolidayRange(h)}</span>
                 <span className="flex-1 text-sm text-stone-800">{h.name}</span>
                 {canEdit && (
                   <button onClick={() => del(h.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-stone-600 hover:text-red-600" aria-label="מחק">
