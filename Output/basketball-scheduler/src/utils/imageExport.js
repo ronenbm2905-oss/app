@@ -59,18 +59,43 @@ export async function withLogoHeader(baseCanvas, logoSrc, title = "") {
   }
 }
 
-// Capture a DOM node to a PNG blob, compositing logo + optional title on top.
-export async function captureNode(node, { logoSrc = "", title = "", scale = 2 } = {}) {
+// Render a DOM node to a canvas (via html2canvas) with the logo + optional title
+// composited on top. Shared by the PNG and PDF exporters below.
+export async function renderNodeCanvas(node, { logoSrc = "", title = "", scale = 2 } = {}) {
   const { default: html2canvas } = await import("html2canvas");
   const baseCanvas = await html2canvas(node, { scale, backgroundColor: "#ffffff" });
-  const finalCanvas = logoSrc || title ? await withLogoHeader(baseCanvas, logoSrc, title) : baseCanvas;
-  return await new Promise((resolve) => finalCanvas.toBlob(resolve, "image/png"));
+  return logoSrc || title ? await withLogoHeader(baseCanvas, logoSrc, title) : baseCanvas;
 }
 
-// Hand a PNG blob to the OS share sheet (mobile → WhatsApp) or download it (desktop).
+export function canvasToPngBlob(canvas) {
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+// Wrap a canvas in a single-page PDF sized exactly to the image — one long page with
+// the header on top, so there are no repeating-header or orientation problems (mobile
+// print engines can't repeat table headers reliably; this sidesteps that entirely).
+export async function canvasToPdfBlob(canvas) {
+  const { jsPDF } = await import("jspdf");
+  const orientation = canvas.width >= canvas.height ? "landscape" : "portrait";
+  const pdf = new jsPDF({ orientation, unit: "px", format: [canvas.width, canvas.height] });
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
+  // JPEG (not PNG) keeps the file small enough to share on WhatsApp even for large boards;
+  // the canvas has a white background so there's no transparency to lose.
+  pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, pw, ph);
+  return pdf.output("blob");
+}
+
+// Capture a DOM node to a PNG blob, compositing logo + optional title on top.
+export async function captureNode(node, opts = {}) {
+  const canvas = await renderNodeCanvas(node, opts);
+  return canvasToPngBlob(canvas);
+}
+
+// Hand a blob (PNG or PDF) to the OS share sheet (mobile → WhatsApp) or download it (desktop).
 export async function shareOrDownloadBlob(blob, fileName, shareTitle) {
   if (!blob) throw new Error("no blob");
-  const file = new File([blob], fileName, { type: "image/png" });
+  const file = new File([blob], fileName, { type: blob.type || "application/octet-stream" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: shareTitle });

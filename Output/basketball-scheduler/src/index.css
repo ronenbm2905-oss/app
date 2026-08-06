@@ -53,6 +53,22 @@ body {
     page-break-inside: avoid;
   }
 
+  /* Darker cell text + a clear line between teams — the light-gray on-screen styling
+     is too faint on paper (session-type colors are left untouched, they carry meaning). */
+  .weekly-table td,
+  .weekly-table th {
+    border-color: #d6d3d1 !important;
+  }
+  .weekly-table tbody td {
+    border-bottom: 1.5px solid #57534e !important;
+  }
+  .weekly-table .text-stone-400,
+  .weekly-table .text-stone-500,
+  .weekly-table .text-stone-600,
+  .weekly-table .text-stone-700 {
+    color: #1c1917 !important;
+  }
+
   /* Scale down table to fit all 7 days on one A4 landscape page */
   .weekly-table-wrap {
     overflow: visible !important;
@@ -88,6 +104,21 @@ body {
 }
 .capturing .print-only {
   display: block !important;
+}
+
+/* Same darker text + stronger team separators when exporting the board as an image/PDF. */
+.weekly-table.capturing td,
+.weekly-table.capturing th {
+  border-color: #d6d3d1 !important;
+}
+.weekly-table.capturing tbody td {
+  border-bottom: 2px solid #57534e !important;
+}
+.weekly-table.capturing .text-stone-400,
+.weekly-table.capturing .text-stone-500,
+.weekly-table.capturing .text-stone-600,
+.weekly-table.capturing .text-stone-700 {
+  color: #1c1917 !important;
 }
 
 /* Screen: always allow horizontal scroll on the weekly table */

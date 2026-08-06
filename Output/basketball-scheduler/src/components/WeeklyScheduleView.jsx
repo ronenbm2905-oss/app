@@ -3,7 +3,7 @@ import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
-import { captureNode, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
+import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
@@ -19,8 +19,8 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
   const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
-  const [shareBusy, setShareBusy] = useState(false); // producing the shareable board image
-  const boardRef = useRef(null); // the team-mode <table> captured into the WhatsApp image
+  const [shareBusy, setShareBusy] = useState(""); // "img" | "pdf" while producing that export
+  const boardRef = useRef(null); // the team-mode <table> captured into the shared image/PDF
   const [logoDataUrl, setLogoDataUrl] = useState(""); // inline logo so html2canvas paints it on mobile too
 
   // Inline the bundled logo once as a data URI (mobile browsers fail to paint a fetched <img>).
@@ -30,29 +30,37 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     return () => { cancelled = true; };
   }, []);
 
-  // Share/save the whole weekly board as a single landscape PNG — the reliable path for
-  // WhatsApp. Sidesteps the browser print dialog (which kept forcing portrait). We flip the
-  // table into its print-style read-only view during capture via the `capturing` class.
-  async function shareBoardImage() {
+  // Capture the whole board to a canvas with the logo + title composited on top. We flip the
+  // table into its print-style read-only view during capture via the `capturing` class, so the
+  // exported image is clean (no dropdowns/＋ buttons/totals; playing+secretary values shown).
+  async function captureBoardCanvas() {
     const node = boardRef.current;
-    if (!node || shareBusy) return;
-    setShareBusy(true);
-    let blob;
+    node.classList.add("capturing");
     try {
-      node.classList.add("capturing");
-      try {
-        blob = await captureNode(node, {
-          logoSrc: logoDataUrl || clubLogo,
-          title: `${title} · ${formatWeekRange(weekStart)}`,
-        });
-      } finally {
-        node.classList.remove("capturing"); // restore the interactive view immediately
-      }
-      await shareOrDownloadBlob(blob, `לוז-שבועי-${weekStart}.png`, title);
-    } catch (e) {
-      alert("לא הצלחנו להפיק את התמונה. נסה שוב.");
+      return await renderNodeCanvas(node, {
+        logoSrc: logoDataUrl || clubLogo,
+        title: `${title} · ${formatWeekRange(weekStart)}`,
+      });
     } finally {
-      setShareBusy(false);
+      node.classList.remove("capturing"); // restore the interactive view immediately
+    }
+  }
+
+  // Export the board as a single landscape file for WhatsApp — sidesteps the browser print
+  // dialog (which forced portrait) and mobile print engines (which don't repeat table headers).
+  // kind: "img" → PNG, "pdf" → single-page PDF sized to the image (header on top, one long page).
+  async function shareBoard(kind) {
+    if (!boardRef.current || shareBusy) return;
+    setShareBusy(kind);
+    try {
+      const canvas = await captureBoardCanvas();
+      const blob = kind === "pdf" ? await canvasToPdfBlob(canvas) : await canvasToPngBlob(canvas);
+      const ext = kind === "pdf" ? "pdf" : "png";
+      await shareOrDownloadBlob(blob, `לוז-שבועי-${weekStart}.${ext}`, title);
+    } catch (e) {
+      alert("לא הצלחנו להפיק את הקובץ. נסה שוב.");
+    } finally {
+      setShareBusy("");
     }
   }
 
@@ -173,18 +181,30 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
               </button>
             )}
             {mode === "team" && (
-              <button
-                onClick={shareBoardImage}
-                disabled={shareBusy}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-60"
-                title="שמור/שתף את הלוז כתמונה לרוחב — מומלץ לשליחה בווטאפ"
-              >
-                <IconDownload size={15} /> {shareBusy ? "מכין תמונה…" : "שיתוף / שמירת תמונה"}
+              <>
+                <button
+                  onClick={() => shareBoard("img")}
+                  disabled={!!shareBusy}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-60"
+                  title="שמור/שתף את הלוז כתמונה לרוחב — מומלץ לשליחה בווטאפ"
+                >
+                  <IconDownload size={15} /> {shareBusy === "img" ? "מכין תמונה…" : "שיתוף / שמירת תמונה"}
+                </button>
+                <button
+                  onClick={() => shareBoard("pdf")}
+                  disabled={!!shareBusy}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50 disabled:opacity-60"
+                  title="שמור/שתף את הלוז כקובץ PDF — עמוד אחד לרוחב עם הכותרת למעלה (עובד גם בנייד)"
+                >
+                  <IconDownload size={15} /> {shareBusy === "pdf" ? "מכין PDF…" : "שמירת PDF"}
+                </button>
+              </>
+            )}
+            {mode === "hall" && (
+              <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50">
+                <IconDownload size={15} /> הדפסה / PDF
               </button>
             )}
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50">
-              <IconDownload size={15} /> הדפסה / PDF
-            </button>
           </div>
         </div>
 
@@ -209,7 +229,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             כלול את עמודת "סה״כ שבוע" גם בהדפסה
           </label>
         )}
-        <p className="text-xs text-stone-600">לשליחה בווטאפ מומלץ "שיתוף / שמירת תמונה" — יוצא תמונה אחת לרוחב עם הלוגו, בלי בעיות כיוון או פיצול לעמודים. "הדפסה / PDF" נשאר למי שרוצה קובץ PDF.</p>
+        <p className="text-xs text-stone-600">לשליחה בווטאפ: "שיתוף / שמירת תמונה" (תמונה אחת לרוחב) או "שמירת PDF" (עמוד אחד לרוחב עם הכותרת למעלה). שניהם עובדים גם בנייד — בלי בעיות כיוון או כותרות שנעלמות בין עמודים.</p>
       </div>
 
       {/* TEAM MODE */}

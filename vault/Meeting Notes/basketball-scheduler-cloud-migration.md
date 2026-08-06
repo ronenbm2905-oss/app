@@ -637,3 +637,28 @@ admin = `ronenbm2905@gmail.com`.
   ווטאפ; בדסקטופ נופל להורדה. לא חי עד `firebase deploy --only hosting`. ה-util המשותף מוכן גם ל-TODO של לוגו בהסעות
   ([[basketball-transport-logo-todo]]).
 - **Related:** [[push-workflow]]
+
+### 2026-08-06 — ייצוא PDF (עמוד יחיד) מהלוז — כי כותרות לא חוזרות בהדפסת נייד [built+verified, ממתין ל-deploy]
+- **What was done:** המשתמש דיווח שהדפסת PDF מהנייד מוציאה עמודים בלי כותרת. הסיבה: מנועי הדפסה בנייד (בעיקר iOS
+  Safari) לא מכבדים `thead{display:table-header-group}` ולא חוזרים על הכותרת — מגבלת דפדפן, לא קוד. הפתרון: כפתור
+  "שמירת PDF" חדש שמייצר **PDF של עמוד יחיד** בגודל התמונה (עם לוגו+כותרת למעלה), מאותו canvas של הצילום → אין פיצול
+  ואין צורך בחזרת כותרת. הורחב `imageExport.js`: `renderNodeCanvas` (canvas משותף), `canvasToPngBlob`,
+  `canvasToPdfBlob` (jsPDF, dynamic import, chunk נפרד ~390KB). ב-WeeklyScheduleView: `shareBoard("img"|"pdf")` עם
+  `captureBoardCanvas` משותף; שני כפתורים ב-team-mode (תמונה + PDF), `window.print` נשאר רק ב-hall-mode.
+  הותקן `jspdf@^4.2.1`.
+- **Verification:** `npm run build` נקי (jspdf ב-chunk נפרד). preview מקומי: שני הכפתורים קיימים; PDF מפיק
+  `application/pdf` והמחלקה `capturing` נוקתה. **גודל:** תחילה PDF יצא 5.4MB (הטמעת PNG) → שיניתי ל-JPEG 0.92 →
+  ירד ל-~111KB (התמונה PNG 127KB). אין שגיאות קונסול.
+- **Notes / Caveats:** PDF עמוד-יחיד בגודל התמונה → כשמדפיסים על נייר זה עמוד ענק אחד (מיועד לשיתוף דיגיטלי/ווטאפ, לא
+  להדפסה על A4). JPEG 0.92 → טקסט חד מספיק בזכות scale:2. לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
+### 2026-08-06 — קריאוּת הלוז בייצוא/הדפסה: טקסט כהה + קו כהה בין קבוצות [built+verified, ממתין ל-deploy]
+- **What was done:** בקשת המשתמש — הטקסט בתאים חלש בהדפסה, ולחזק את הקו בין קבוצה לקבוצה. ב-`index.css` נוספו כללים
+  זהים לשני ההקשרים (`@media print` ו-`.weekly-table.capturing` לייצוא תמונה/PDF): טקסטים נייטרליים
+  (`.text-stone-400/500/600/700`) → `#1c1917` (stone-900); קו תחתון לכל שורת גוף (`tbody td`) → `2px solid #57534e`
+  (בהדפסה 1.5px) = מפריד ברור בין קבוצות; קווי רשת → stone-300. **צבעי סוגי האימון (inline) לא נגעו — הם משמעותיים.**
+- **Verification:** preview מקומי, בדיקת computed styles עם/בלי `capturing`: neutral `rgb(87,83,78)`→`rgb(28,25,23)`;
+  border תחתון `0.67px stone-200`→`2px rgb(87,83,78)`; רשת→stone-300. `npm run build` נקי.
+- **Notes / Caveats:** ההכהיה חלה רק בייצוא/הדפסה, לא במסך הרגיל (מכוון). לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
