@@ -154,7 +154,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 w-48"
+              className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-48"
               placeholder="כותרת הלוח"
               dir="rtl"
             />
@@ -185,7 +185,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 <button
                   onClick={() => shareBoard("img")}
                   disabled={!!shareBusy}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60"
                   title="שמור/שתף את הלוז כתמונה לרוחב — מומלץ לשליחה בווטאפ"
                 >
                   <IconDownload size={15} /> {shareBusy === "img" ? "מכין תמונה…" : "שיתוף / שמירת תמונה"}
@@ -212,7 +212,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
           <div className="flex flex-wrap gap-1.5">
             <span className="text-xs text-stone-500 self-center">ימים:</span>
             {DAYS.map((day) => (
-              <button key={day} onClick={() => toggleDay(day)} className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${filterDays.includes(day) ? "bg-orange-600 text-white border-orange-600" : "bg-white text-stone-500 border-stone-300 hover:bg-stone-50"}`}>
+              <button key={day} onClick={() => toggleDay(day)} className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${filterDays.includes(day) ? "bg-brand-600 text-white border-brand-600" : "bg-white text-stone-500 border-stone-300 hover:bg-stone-50"}`}>
                 {day}
               </button>
             ))}
@@ -224,7 +224,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
               type="checkbox"
               checked={printTotals}
               onChange={(e) => setPrintTotals(e.target.checked)}
-              className="accent-orange-600"
+              className="accent-brand-600"
             />
             כלול את עמודת "סה״כ שבוע" גם בהדפסה
           </label>
@@ -288,7 +288,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                     <button
                                       onClick={() => setAddingCell({ teamId: team.id, coachId: team.coachId || "", day, weekOf: weekStart })}
                                       title="הוסף אימון"
-                                      className="no-print w-full flex items-center justify-center py-1 text-stone-300 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                      className="no-print w-full flex items-center justify-center py-1 text-stone-300 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"
                                     >
                                       <span className="text-base leading-none">＋</span>
                                     </button>
@@ -315,7 +315,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                         key={s.id}
                                         onClick={() => setEditingSession(s)}
                                         title="לחץ לעריכה / הזזת האימון"
-                                        className="block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-orange-400"
+                                        className="block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400"
                                         style={{ backgroundColor: `${color}15`, borderRight: `3px solid ${color}` }}
                                       >
                                         {inner}
@@ -330,7 +330,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                     <button
                                       onClick={() => setAddingCell({ teamId: team.id, coachId: team.coachId || "", day, weekOf: weekStart })}
                                       title="הוסף אימון נוסף"
-                                      className="no-print w-full flex items-center justify-center py-0.5 text-[10px] text-stone-400 hover:text-orange-600 rounded"
+                                      className="no-print w-full flex items-center justify-center py-0.5 text-[10px] text-stone-400 hover:text-brand-600 rounded"
                                     >
                                       ＋ הוסף
                                     </button>

@@ -31,7 +31,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={`שם ${label}`}
-          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           dir="rtl"
           autoFocus
         />
@@ -44,7 +44,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="050-0000000"
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             dir="ltr"
           />
         </div>
@@ -56,7 +56,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }
             type="date"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             dir="ltr"
           />
         </div>
@@ -75,7 +75,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }
               ...(withBirthDate ? { birthDate } : {}),
             })
           }
-          className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
+          className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
         </button>
@@ -102,7 +102,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
         {canEdit && (
           <button
             onClick={() => setEditingId("new")}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-orange-600 text-white hover:bg-orange-700"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
           >
             <IconPlus size={13} /> הוסף {label}
           </button>
@@ -184,7 +184,7 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="שם קבוצה"
-          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           dir="rtl"
           autoFocus
         />
@@ -209,7 +209,7 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
         <button
           disabled={!valid}
           onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "" })}
-          className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
+          className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
         </button>
@@ -237,7 +237,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
         {canEdit && (
           <button
             onClick={() => setEditingId("new")}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-orange-600 text-white hover:bg-orange-700"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
           >
             <IconPlus size={13} /> הוסף קבוצה
           </button>

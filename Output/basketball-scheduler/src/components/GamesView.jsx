@@ -49,7 +49,7 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
             value={opponent}
             onChange={(e) => setOpponent(e.target.value)}
             placeholder="שם הקבוצה היריבה"
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             dir="rtl"
           />
         </div>
@@ -75,7 +75,7 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="כתובת האולם היריב (להסעות)"
-              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               dir="rtl"
             />
           </div>
@@ -86,7 +86,7 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
         <div>
@@ -95,7 +95,7 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
         <div className="col-span-2">
@@ -105,7 +105,7 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
             value={league}
             onChange={(e) => setLeague(e.target.value)}
             placeholder="שם הליגה"
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             dir="rtl"
           />
         </div>
@@ -137,7 +137,7 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
               manual: true,
             })
           }
-          className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 flex items-center gap-1.5"
+          className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור משחק
         </button>
@@ -163,7 +163,7 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="כתובת האולם היריב (להסעות)"
-          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           dir="rtl"
           autoFocus
         />
@@ -174,7 +174,7 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
         </button>
         <button
           onClick={() => onSave(address.trim())}
-          className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 flex items-center gap-1.5"
+          className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור כתובת
         </button>
@@ -311,7 +311,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                             value={codeInput}
                             onChange={(e) => setCodeInput(e.target.value)}
                             placeholder="מספרי קבוצה, מופרדים בפסיק. לדוגמה: 11758, 3368"
-                            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                             dir="ltr"
                             autoFocus
                           />
@@ -319,7 +319,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                             <button onClick={() => { setEditingTeamId(null); setCodeInput(""); }} className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
                               ביטול
                             </button>
-                            <button onClick={() => saveCodes(team.id, codeInput)} className="px-3 py-1.5 text-xs rounded-lg bg-orange-600 text-white hover:bg-orange-700 flex items-center gap-1">
+                            <button onClick={() => saveCodes(team.id, codeInput)} className="px-3 py-1.5 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1">
                               <IconCheck size={13} /> שמור
                             </button>
                           </div>
@@ -387,7 +387,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
               <Select value={filterTeam} onChange={setFilterTeam} options={data.teams} placeholder="כל הקבוצות" className="w-40" />
               <Select value={filterType} onChange={setFilterType} options={[{ id: "home", name: "משחק בית" }, { id: "away", name: "משחק חוץ" }]} placeholder="בית / חוץ" className="w-36" />
               {canEdit && (
-                <button onClick={() => setAddingGame((g) => !g)} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">
+                <button onClick={() => setAddingGame((g) => !g)} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700">
                   <IconPlus size={15} /> משחק ידני
                 </button>
               )}

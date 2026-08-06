@@ -46,7 +46,7 @@ export function WeekNav({ value, onChange, className = "" }) {
           type="date"
           value={value}
           onChange={(e) => e.target.value && onChange(weekStartOf(new Date(e.target.value + "T00:00:00")))}
-          className="bg-white border border-stone-300 rounded-lg px-2 py-1.5 text-xs text-stone-600 focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="bg-white border border-stone-300 rounded-lg px-2 py-1.5 text-xs text-stone-600 focus:outline-none focus:ring-2 focus:ring-brand-500"
           aria-label="קפוץ לשבוע לפי תאריך"
         />
       </label>

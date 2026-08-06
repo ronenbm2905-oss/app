@@ -114,7 +114,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
             type="time"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           />
         </div>
         <div>
@@ -123,7 +123,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
             type="time"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           />
         </div>
         <div>
@@ -137,7 +137,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="לדוגמה: משחק נגד הפועל, משחק חוץ"
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             dir="rtl"
           />
         </div>
@@ -204,7 +204,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
             <button
               disabled={!valid}
               onClick={() => onSaveAndAddNext(currentSession)}
-              className="px-3 py-1.5 text-sm rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 disabled:opacity-40 flex items-center gap-1.5"
+              className="px-3 py-1.5 text-sm rounded-lg border border-brand-500 text-brand-600 hover:bg-brand-50 disabled:opacity-40 flex items-center gap-1.5"
             >
               <IconPlus size={15} /> שמור והוסף אימון נוסף לקבוצה זו
             </button>
@@ -212,7 +212,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
           <button
             disabled={!valid}
             onClick={() => onSave(currentSession)}
-            className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
+            className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
           >
             <IconCheck size={15} /> שמור אימון
           </button>

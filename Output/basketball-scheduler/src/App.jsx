@@ -53,13 +53,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-stone-50" dir="rtl">
+      {/* Club identity accent: royal-blue bar with a short orange segment, echoing the logo (blue ribbon + orange stars). */}
+      <div className="h-1.5 bg-brand-600 flex" aria-hidden="true">
+        <span className="h-full w-24 bg-accent-500" />
+      </div>
       <div className={`${tab === "weekly" ? "max-w-7xl" : "max-w-4xl"} mx-auto px-4 py-6`}>
         <header className="mb-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
               <img src={clubLogo} alt="עירוני קריית אונו – כדורסל דור העתיד" className="w-14 h-14 object-contain shrink-0" />
               <div>
-                <h1 className="text-2xl font-bold text-stone-900 tracking-tight">מערכת שעות אימוני כדורסל</h1>
+                <h1 className="text-2xl font-bold text-brand-700 tracking-tight">מערכת שעות אימוני כדורסל</h1>
                 <p className="text-sm text-stone-500 mt-0.5">תיאום קבוצות, מאמנים ואולמות במקום אחד</p>
               </div>
             </div>
@@ -95,7 +99,7 @@ export default function App() {
               aria-controls="tabpanel"
               onClick={() => setTab(tb.id)}
               className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                tab === tb.id ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-800"
+                tab === tb.id ? "bg-brand-600 text-white shadow-sm" : "text-stone-600 hover:text-stone-800"
               }`}
             >
               {tb.label}

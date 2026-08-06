@@ -48,7 +48,7 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
             ? (e) => setP({ ...p, [key]: fromInputDate(e.target.value) })
             : set(key)
         }
-        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         dir={type === "text" ? "rtl" : "ltr"}
         {...extra}
       />
@@ -89,7 +89,7 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
               jerseyNumber: jersey,
             })
           }
-          className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
+          className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
         </button>
@@ -183,7 +183,7 @@ export function PlayersView({ data, save, canEdit }) {
               <IconUpload size={15} /> ייבוא מאקסל
             </button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} className="hidden" />
-            <button onClick={() => setEditing("new")} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">
+            <button onClick={() => setEditing("new")} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700">
               <IconPlus size={15} /> הוסף שחקן
             </button>
           </div>

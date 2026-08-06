@@ -116,7 +116,7 @@ export function AnnouncementsView({ data, save, canEdit }) {
             onChange={(e) => setText(e.target.value)}
             rows={6}
             placeholder="כתוב כאן הודעה כללית למאמנים — לדוגמה: 'בשבוע הבא אין אימונים ביום שלישי בגלל חג.'"
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-y"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y"
             dir="rtl"
           />
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -141,7 +141,7 @@ export function AnnouncementsView({ data, save, canEdit }) {
               <button
                 onClick={() => persist(text)}
                 disabled={!dirty}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600"
               >
                 <IconCheck size={15} /> פרסם הודעה
               </button>

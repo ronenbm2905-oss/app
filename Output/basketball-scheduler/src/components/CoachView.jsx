@@ -174,11 +174,11 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
                             <div
                               key={s.id}
                               className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${
-                                violated.length > 0 ? "bg-red-50 border-red-200" : "bg-orange-50 border-orange-200"
+                                violated.length > 0 ? "bg-red-50 border-red-200" : "bg-brand-50 border-brand-200"
                               }`}
                             >
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium text-orange-800 tabular-nums w-24 shrink-0">
+                                <span className="text-sm font-medium text-brand-800 tabular-nums w-24 shrink-0">
                                   {s.start}–{s.end}
                                 </span>
                                 <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>{nameOf(data.teams, s.teamId)}</Pill>

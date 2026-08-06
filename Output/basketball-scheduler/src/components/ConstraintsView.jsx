@@ -58,7 +58,7 @@ function HolidaysCard({ data, save, canEdit }) {
         {canEdit && (
           <button
             onClick={() => { setShowImport((v) => !v); setImportMsg(""); }}
-            className="text-xs text-orange-600 hover:text-orange-700 underline underline-offset-2"
+            className="text-xs text-brand-600 hover:text-brand-700 underline underline-offset-2"
           >
             {showImport ? "סגור ייבוא" : "ייבוא מרשימה"}
           </button>
@@ -83,13 +83,13 @@ function HolidaysCard({ data, save, canEdit }) {
               rows={5}
               dir="rtl"
               placeholder="הדבק כאן את רשימת החגים..."
-              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-y"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y"
             />
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={runImport}
                 disabled={!pasteText.trim()}
-                className="px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600"
+                className="px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600"
               >
                 ייבא רשימה
               </button>
@@ -107,7 +107,7 @@ function HolidaysCard({ data, save, canEdit }) {
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 dir="ltr"
-                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div>
@@ -118,7 +118,7 @@ function HolidaysCard({ data, save, canEdit }) {
                 min={date}
                 onChange={(e) => setEndDate(e.target.value)}
                 dir="ltr"
-                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div className="flex-1 min-w-[10rem]">
@@ -129,13 +129,13 @@ function HolidaysCard({ data, save, canEdit }) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="לדוגמה: ראש השנה"
                 dir="rtl"
-                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <button
               disabled={!valid}
               onClick={add}
-              className="px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
+              className="px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
             >
               <IconPlus size={15} /> הוסף
             </button>
@@ -216,7 +216,7 @@ function ConstraintForm({ data, initial, onSave, onCancel, onSaveAndAddNext }) {
             type="time"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           />
         </div>
         <div>
@@ -225,7 +225,7 @@ function ConstraintForm({ data, initial, onSave, onCancel, onSaveAndAddNext }) {
             type="time"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
-            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           />
         </div>
       </div>
@@ -236,7 +236,7 @@ function ConstraintForm({ data, initial, onSave, onCancel, onSaveAndAddNext }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="לדוגמה: עבודה אחרת, אחזקת אולם"
-          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           dir="rtl"
         />
       </div>
@@ -254,7 +254,7 @@ function ConstraintForm({ data, initial, onSave, onCancel, onSaveAndAddNext }) {
             <button
               disabled={!valid}
               onClick={() => onSaveAndAddNext({ id: uid(), type, refId, day, start, end, note })}
-              className="px-3 py-1.5 text-sm rounded-lg border border-orange-500 text-orange-600 hover:bg-orange-50 disabled:opacity-40 flex items-center gap-1.5"
+              className="px-3 py-1.5 text-sm rounded-lg border border-brand-500 text-brand-600 hover:bg-brand-50 disabled:opacity-40 flex items-center gap-1.5"
             >
               <IconPlus size={15} /> שמור והוסף טווח נוסף {type === "coach" ? "למאמן" : "לאולם"} זה
             </button>
@@ -262,7 +262,7 @@ function ConstraintForm({ data, initial, onSave, onCancel, onSaveAndAddNext }) {
           <button
             disabled={!valid}
             onClick={() => onSave({ id: initial?.id || uid(), type, refId, day, start, end, note })}
-            className="px-3 py-1.5 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 flex items-center gap-1.5"
+            className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
           >
             <IconCheck size={15} /> שמור אילוץ
           </button>
@@ -318,7 +318,7 @@ export function ConstraintsView({ data, save, canEdit }) {
         {canEdit && (
           <button
             onClick={() => { setNextDefaults(null); setEditingId("new"); }}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 shrink-0"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 shrink-0"
           >
             <IconPlus size={15} /> אילוץ חדש
           </button>

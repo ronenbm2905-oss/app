@@ -7,7 +7,7 @@ export function Select({ value, onChange, options, placeholder, className = "", 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full appearance-none bg-white border border-stone-300 rounded-lg px-3 py-2 pr-8 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:bg-stone-100 disabled:text-stone-600"
+        className="w-full appearance-none bg-white border border-stone-300 rounded-lg px-3 py-2 pr-8 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:bg-stone-100 disabled:text-stone-600"
         dir="rtl"
       >
         <option value="">{placeholder}</option>

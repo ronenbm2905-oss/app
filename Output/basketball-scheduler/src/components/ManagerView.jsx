@@ -148,7 +148,7 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
           </div>
           <button
             onClick={() => setEditingId("new")}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700"
           >
             <IconPlus size={15} /> אימון חדש
           </button>

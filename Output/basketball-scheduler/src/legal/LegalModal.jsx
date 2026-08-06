@@ -48,7 +48,7 @@ export function LegalModal({ docId, onClose }) {
             ref={closeRef}
             onClick={onClose}
             aria-label="סגור"
-            className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <IconX size={18} />
           </button>

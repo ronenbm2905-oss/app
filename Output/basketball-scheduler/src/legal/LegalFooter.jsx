@@ -18,7 +18,7 @@ export function LegalFooter({ className = "" }) {
             <span key={id} className="flex items-center gap-x-2">
               <button
                 onClick={() => setOpenDoc(id)}
-                className="underline underline-offset-2 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-500 rounded"
+                className="underline underline-offset-2 hover:text-stone-900 focus:outline-none focus:ring-2 focus:ring-brand-500 rounded"
               >
                 {LEGAL_DOCS[id].label}
               </button>

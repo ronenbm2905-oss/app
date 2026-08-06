@@ -77,7 +77,7 @@ export function ReportView({ data }) {
             type="month"
             value={month}
             onChange={(e) => e.target.value && setMonth(e.target.value)}
-            className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <button
             onClick={() => setMonth(shiftMonth(month, 1))}
@@ -95,7 +95,7 @@ export function ReportView({ data }) {
         </div>
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700"
+          className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700"
         >
           <IconDownload size={15} /> הדפסה / שמור PDF
         </button>
@@ -130,10 +130,10 @@ export function ReportView({ data }) {
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-orange-50">
+              <tr className="bg-brand-50">
                 <td className="px-4 py-2.5 font-bold text-stone-800">סה"כ</td>
                 <td className="px-4 py-2.5 text-center tabular-nums font-bold text-stone-800">{totalUnits}</td>
-                <td className="px-4 py-2.5 text-center tabular-nums font-bold text-orange-700">{fmtHours(totalHours)}</td>
+                <td className="px-4 py-2.5 text-center tabular-nums font-bold text-brand-700">{fmtHours(totalHours)}</td>
               </tr>
             </tfoot>
           </table>
