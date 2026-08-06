@@ -14,6 +14,14 @@ body {
   border-radius: 4px;
 }
 
+/* Page setup — kept at top level. Some desktop browsers ignore @page when it is
+   nested inside @media print and fall back to portrait, which is why the printout
+   came out portrait on the computer but correct on the phone. */
+@page {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
 @media print {
   body {
     background: white !important;
@@ -34,9 +42,15 @@ body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  @page {
-    size: A4 landscape;
-    margin: 8mm;
+
+  /* Repeat the day-header row at the top of every printed page, and never split a
+     team row across a page boundary. */
+  .weekly-table thead {
+    display: table-header-group !important;
+  }
+  .weekly-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   /* Scale down table to fit all 7 days on one A4 landscape page */

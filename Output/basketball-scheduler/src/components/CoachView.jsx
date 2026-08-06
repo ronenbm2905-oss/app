@@ -11,6 +11,32 @@ import clubLogo from "../assets/club-logo.jpg";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
 
+// Draw the club logo centered above an already-captured canvas and return a new, taller canvas.
+// We composite the logo ourselves because html2canvas does not reliably paint <img> on mobile.
+async function withLogoHeader(baseCanvas, logoSrc) {
+  try {
+    const logo = new Image();
+    logo.src = logoSrc;
+    try { await logo.decode(); } catch { await new Promise((r) => { logo.onload = r; logo.onerror = r; }); }
+    if (!logo.naturalWidth) return baseCanvas;
+    const pad = 28;
+    const logoH = Math.min(170, logo.naturalHeight);
+    const logoW = Math.round(logoH * (logo.naturalWidth / logo.naturalHeight));
+    const headerH = logoH + pad * 2;
+    const out = document.createElement("canvas");
+    out.width = baseCanvas.width;
+    out.height = baseCanvas.height + headerH;
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(logo, Math.round((out.width - logoW) / 2), pad, logoW, logoH);
+    ctx.drawImage(baseCanvas, 0, headerH);
+    return out;
+  } catch {
+    return baseCanvas;
+  }
+}
+
 export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
@@ -98,13 +124,10 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
     setReportBusy(true);
     try {
       const { default: html2canvas } = await import("html2canvas");
-      // Ensure the club logo finished loading — otherwise html2canvas may snapshot it blank.
-      const logoImg = reportRef.current.querySelector("img");
-      if (logoImg && !logoImg.complete) {
-        await new Promise((res) => { logoImg.onload = res; logoImg.onerror = res; });
-      }
-      const canvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: "#ffffff" });
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      const tableCanvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: "#ffffff" });
+      // Composite the logo on top ourselves — html2canvas doesn't reliably paint <img> on mobile.
+      const finalCanvas = await withLogoHeader(tableCanvas, logoDataUrl || clubLogo);
+      const blob = await new Promise((resolve) => finalCanvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("no blob");
       const fileName = `לוח-אימונים-${reportTeamName}-${weekStart}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
@@ -276,7 +299,6 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
         style={{ position: "fixed", top: 0, left: "-10000px", width: "720px", background: "#fff", padding: "24px" }}
       >
         <div style={{ textAlign: "center", marginBottom: "10px" }}>
-          <img src={logoDataUrl || clubLogo} alt="" style={{ height: "64px", width: "auto", objectFit: "contain", display: "block", margin: "0 auto 6px" }} />
           <div style={{ fontSize: "13px", color: "#57534E" }}>{CLUB_NAME}</div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>לוח אימונים שבועי — {reportTeamName}</h1>
           <div style={{ fontSize: "14px", color: "#57534E" }}>{formatWeekRange(weekStart)}</div>

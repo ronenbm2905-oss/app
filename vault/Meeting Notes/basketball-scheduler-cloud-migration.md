@@ -554,6 +554,21 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** אותו דפוס יידרש אם נוסיף לוגו לתמונת ההסעות (ראה [[basketball-transport-logo-todo]]). לא חי עד deploy.
 - **Related:** [[push-workflow]]
 
+### 2026-08-05 — לוגו בנייד: data URI לא הספיק → קומפוזיציה ידנית על ה-canvas [built, ממתין ל-deploy]
+- **What was done:** אחרי deploy, המשתמש דיווח שהלוגו **עדיין לא מופיע בנייד** (הטבלה כן). מסקנה: html2canvas
+  בנייד לא מצייר תגי `<img>` בתוך האלמנט המצולם — גם כ-data URI. פתרון סופי ב-`CoachView.jsx`: **הפרדת הלוגו
+  מ-html2canvas לגמרי.** נוסף helper `withLogoHeader(baseCanvas, logoSrc)` — טוען `Image` (data URI/URL) עם
+  `decode()`, יוצר canvas חדש גבוה יותר, מצייר רקע לבן + לוגו ממורכז למעלה (`ctx.drawImage`) ואז את
+  `tableCanvas` מתחתיו. `shareOrDownloadReport` מצלם את הטבלה בלבד ואז קורא ל-`withLogoHeader`; ה-`<img>`
+  הוסר מהבלוק ה-off-screen (הלוגו מצויר ידנית → אין כפילות במחשב). `logoDataUrl` נשמר כמקור ל-drawImage
+  (same-origin/data URI → אין taint, `toBlob` עובד).
+- **Decisions:** ציור ידני על canvas הוא הדרך היחידה שאמינה חוצה-מכשירים ל-html2canvas + תמונות; לא מסתמכים
+  על רינדור ה-`<img>` של html2canvas. גובה לוגו מוגבל ל-170px canvas, רוחב לפי יחס טבעי (בלי עיוות).
+- **Verification:** `npm run build` נקי. אימות סופי בנייד אצל המשתמש.
+- **Notes / Caveats:** לתמונת ההסעות (TODO) — להשתמש **באותו** `withLogoHeader` (קומפוזיציה), לא ב-`<img>` בתוך
+  הבלוק. עדכנתי את [[basketball-transport-logo-todo]]. לא חי עד deploy.
+- **Related:** [[push-workflow]]
+
 ### 2026-08-05 — עמודת "סה"כ שבוע": עורכים בלבד + אופציה להשמיט מהדפסה [built, ממתין ל-deploy]
 - **What was done:** בקשת המשתמש — עמודת "סה"כ שבוע" בלוח השבועי תוצג **רק למנהל/עורך**, ותהיה **אופציה
   להשמיט אותה מהדפסה**. ב-`WeeklyScheduleView.jsx`: ה-th וה-td של העמודה עוטפו ב-`{canEdit && ...}` (מאמן צופה
@@ -594,4 +609,15 @@ admin = `ronenbm2905@gmail.com`.
   ובחירה עובדים כרגיל). משפיע על כל מקום שמשתמש ב-SessionForm (ניהול + הלוח השבועי).
 - **Verification:** `npm run build` נקי.
 - **Notes / Caveats:** קבוצה בלי מאמן מוצגת בשם בלבד. לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
+### 2026-08-06 — הדפסת הלוז: כיוון לרוחב אמין + חזרת כותרת הימים בכל עמוד [built, ממתין ל-deploy]
+- **What was done:** שתי תלונות על הדפסת/PDF של הלוז השבועי (`window.print()` ב-WeeklyScheduleView):
+  (1) **יוצא portrait במחשב** למרות בחירת landscape — הסיבה: כלל ה-`@page { size: A4 landscape }` היה מקונן
+  בתוך `@media print`, וחלק מדפדפני הדסקטופ מתעלמים מ-`@page` מקונן ונופלים ל-portrait (הנייד כיבד אותו → "בטלפון יוצא טוב").
+  הוצאתי את `@page` לרמה העליונה ב-`index.css`. (2) **הכותרת (שורת הימים) לא חזרה בעמודים 2+** כשיש הרבה קבוצות —
+  הוספתי `.weekly-table thead { display: table-header-group !important }` ו-`.weekly-table tr { break-inside: avoid }`
+  כדי לחזור על ה-thead בכל עמוד ולא לשבור שורת קבוצה באמצע.
+- **Verification:** `npm run build` נקי. הדפסה עצמה נבדקת ידנית בדפדפן (media print לא נצפה ב-preview).
+- **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`. הטבלה מנסה עדיין להתכווץ לעמוד אחד (9px); החזרת הכותרת רלוונטית כשגולשים.
 - **Related:** [[push-workflow]]
