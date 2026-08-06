@@ -678,3 +678,28 @@ admin = `ronenbm2905@gmail.com`.
 - **Notes / Caveats:** לא הועתק מבנה הפורטל של IBBA (מגה-מניו/ספונסרים/טיקר) — לא רלוונטי לכלי פנימי. `COLORS[0]=#EA580C`
   (כתום) נשאר כצבע קבוצה מובחן (נתונים). `LoginPage` נשאר נייטרלי (מחוץ לסקופ). לא חי עד `firebase deploy --only hosting`.
 - **Related:** [[push-workflow]]
+
+### 2026-08-06 — הבלטת חפיפת אולם + הסתרת באנרים בהדפסה [built+verified, ממתין ל-deploy]
+- **What was done:** שתי בקשות. (1) **חפיפת אולם** — שני אימונים באותו אולם בזמן חופף = double-booking, מוצג בצבע בולט.
+  נוספה `findHallClashes(sessions)` ב-`utils/conflicts.js` (Set של session ids שחולקים hallId + חפיפת זמן באותו יום+שבוע,
+  ממוקד באולם בלבד — לא מאמן, בשונה מ-`findConflicts`). ב-`WeeklyScheduleView` חושב memo `hallClashes` והוחל: תאי הלוח
+  (mode=team) בתא חופף → רקע `#FEE2E2`, מסגרת `#DC2626`, `ring-red-500`, ומרקר "⚠ חפיפת אולם"; שורות דוח-אולם (mode=hall)
+  → רקע אדום + "⚠" בשעות. (2) **הסתרת באנרים בהדפסה** — `no-print` נוסף ל-root של `AnnouncementBanner` ו-`SchedulePublishedBanner`
+  (הבאנרים הגלובליים ב-App.jsx) — התראות מסך, לא חלק מדוח מודפס.
+- **Verification:** preview מקומי עם seed של חפיפה (h1, יום שני, 17:00–18:30 מול 18:00–19:30): 2 מרקרים בדיוק, רקע
+  `rgb(254,226,226)`, border `rgb(220,38,38)`, ring; אימון שלישי (לבד) לא מסומן. שני הבאנרים עם `no-print` (אומת className).
+  אין שגיאות קונסול. `npm run build` נקי + cloud mode מאושר (project id ב-dist).
+- **Notes / Caveats:** הזהירות מ-[[basketball-envlocal-build-gotcha]] יושמה — הוסר `.env.local` לפני ה-build. לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]
+
+### 2026-08-06 — הבלטת הפרת-אילוץ (מאמן/אולם) בלוח, בצבע נבדל [built+verified, ממתין ל-deploy]
+- **What was done:** המשך הבקשה הקודמת — להבליט גם אימון שמתנגש עם אילוץ. ב-`WeeklyScheduleView` נוסף memo
+  `violations = findConstraintViolations(weekSessions, data.constraints)` (הפונקציה כבר קיימת ב-conflicts.js) + `violationLabel(id)`
+  שמחזיר "מאמן"/"אולם"/"מאמן ואולם" לפי `c.type`. **סכמת צבע:** אדום = חפיפת אולם (קשה, קדימות), **ענבר = הפרת אילוץ**
+  (`#FEF3C7` bg, `#D97706` border, `ring-amber-500`, מרקר "⚠ אילוץ <סוג>"). הוחל גם על תאי mode=team וגם על שורות
+  דוח-אולם (mode=hall). כשיש גם וגם — האדום מקבל קדימות בסגנון.
+- **Verification:** preview מקומי, seed עם אילוץ מאמן (c1, שלישי 17:00–19:00) שחופף את s3: תא ענבר יחיד (`rgb(254,243,199)`,
+  border `rgb(217,119,6)`, ring), מרקר "⚠ אילוץ מאמן"; במקביל s1/s2 נשארו 2 תאים אדומים (חפיפת אולם) — הצבעים נבדלים.
+  `npm run build` נקי + cloud mode מאושר.
+- **Notes / Caveats:** אילוצים אינם תלויי-שבוע (חלים על היום בכל שבוע) — כך גם ההבלטה. לא חי עד `firebase deploy --only hosting`.
+- **Related:** [[push-workflow]]

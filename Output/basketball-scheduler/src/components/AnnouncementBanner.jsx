@@ -5,7 +5,7 @@ export function AnnouncementBanner({ data, onOpen }) {
   if (!text) return null;
 
   return (
-    <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-2.5" dir="rtl">
+    <div className="no-print mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-2.5" dir="rtl">
       <span aria-hidden="true" className="text-lg leading-none mt-0.5">📢</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-amber-800 mb-0.5">הודעה למאמנים</p>

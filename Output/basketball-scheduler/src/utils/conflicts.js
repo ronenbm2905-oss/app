@@ -24,6 +24,25 @@ export function findConflicts(sessions) {
   return conflicts;
 }
 
+// Session ids that share a hall with another session at an overlapping time (same day + week).
+// A hard double-booking — two teams in one gym at once — highlighted boldly on the board.
+export function findHallClashes(sessions) {
+  const clash = new Set();
+  for (let i = 0; i < sessions.length; i++) {
+    for (let j = i + 1; j < sessions.length; j++) {
+      const a = sessions[i];
+      const b = sessions[j];
+      if (!a.hallId || a.hallId !== b.hallId) continue;
+      if (a.day !== b.day) continue;
+      if ((a.weekOf || "") !== (b.weekOf || "")) continue;
+      if (!overlaps(a.start, a.end, b.start, b.end)) continue;
+      clash.add(a.id);
+      clash.add(b.id);
+    }
+  }
+  return clash;
+}
+
 // ---------- Constraint violation detection ----------
 export function findConstraintViolations(sessions, constraints) {
   const violations = {};

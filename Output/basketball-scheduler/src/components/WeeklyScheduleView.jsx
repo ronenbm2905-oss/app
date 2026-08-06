@@ -3,6 +3,7 @@ import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
+import { findHallClashes, findConstraintViolations } from "../utils/conflicts";
 import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
@@ -142,6 +143,28 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   }, [selectedHallId, data.sessions, weekStart]);
 
   const selectedHallName = nameOf(data.halls, selectedHallId);
+
+  const weekSessions = useMemo(
+    () => data.sessions.filter((s) => (s.weekOf || "") === weekStart),
+    [data.sessions, weekStart]
+  );
+  // Hard double-bookings: sessions sharing a hall at an overlapping time this week → bold red.
+  const hallClashes = useMemo(() => findHallClashes(weekSessions), [weekSessions]);
+  // Sessions colliding with a coach/hall constraint → bold amber. { sessionId: [constraint,...] }
+  const violations = useMemo(
+    () => findConstraintViolations(weekSessions, data.constraints || []),
+    [weekSessions, data.constraints]
+  );
+  // Which constraint kinds a session violates, as a Hebrew label ("מאמן", "אולם", "מאמן ואולם").
+  const violationLabel = (id) => {
+    const list = violations[id];
+    if (!list || !list.length) return "";
+    const types = new Set(list.map((c) => c.type));
+    const parts = [];
+    if (types.has("coach")) parts.push("מאמן");
+    if (types.has("hall")) parts.push("אולם");
+    return parts.join(" ו");
+  };
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -302,10 +325,18 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                   {sessions.map((s) => {
                                     const color = typeColor(s.type || "אימון");
                                     const editable = canEdit && !s.fromGame;
+                                    const clash = hallClashes.has(s.id); // same hall + overlapping time
+                                    const violates = !!violations[s.id]; // collides with a coach/hall constraint
+                                    const cellStyle = {
+                                      backgroundColor: clash ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
+                                      borderRight: `3px solid ${clash ? "#DC2626" : violates ? "#D97706" : color}`,
+                                    };
                                     const inner = (
                                       <>
-                                        <div className="font-semibold tabular-nums" style={{ color }}>{s.start}–{s.end}</div>
-                                        <div className="text-stone-600 mt-0.5">{nameOf(data.halls, s.hallId)}</div>
+                                        {clash && <div className="font-bold text-red-700 flex items-center gap-0.5">⚠ חפיפת אולם</div>}
+                                        {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
+                                        <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}>{s.start}–{s.end}</div>
+                                        <div className={`mt-0.5 ${clash ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
                                         {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
                                         {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
                                       </>
@@ -314,14 +345,14 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                       <button
                                         key={s.id}
                                         onClick={() => setEditingSession(s)}
-                                        title="לחץ לעריכה / הזזת האימון"
-                                        className="block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400"
-                                        style={{ backgroundColor: `${color}15`, borderRight: `3px solid ${color}` }}
+                                        title={clash ? "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן — לחץ לעריכה" : violates ? `אילוץ פעיל (${violationLabel(s.id)}) בזמן הזה — לחץ לעריכה` : "לחץ לעריכה / הזזת האימון"}
+                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
+                                        style={cellStyle}
                                       >
                                         {inner}
                                       </button>
                                     ) : (
-                                      <div key={s.id} className="rounded px-1.5 py-1 text-xs leading-tight" style={{ backgroundColor: `${color}15`, borderRight: `3px solid ${color}` }}>
+                                      <div key={s.id} className={`rounded px-1.5 py-1 text-xs leading-tight ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`} style={cellStyle}>
                                         {inner}
                                       </div>
                                     );
@@ -449,7 +480,9 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 <tbody>
                   {hallSessions.map((s, i) => {
                     const dayIdx = DAYS.indexOf(s.day);
-                    const bg = DAY_BG_COLORS[dayIdx] || "#ffffff";
+                    const clash = hallClashes.has(s.id); // two teams in this hall at overlapping times
+                    const violates = !!violations[s.id]; // collides with a coach/hall constraint
+                    const bg = clash ? "#FEE2E2" : violates ? "#FEF3C7" : DAY_BG_COLORS[dayIdx] || "#ffffff";
                     const date = weekDates[s.day];
                     return (
                       <tr key={s.id || i} style={{ backgroundColor: bg }}>
@@ -462,7 +495,11 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                           </div>
                         </td>
                         <td className="border border-stone-200 px-3 py-2 text-sm text-stone-600">{nameOf(data.coaches, s.coachId)}</td>
-                        <td className="border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums text-stone-700">{s.start}–{s.end}</td>
+                        <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${clash ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
+                          {clash && <span title="חפיפת אולם — שתי קבוצות באותו זמן">⚠ </span>}
+                          {!clash && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
+                          {s.start}–{s.end}
+                        </td>
                         <td className="border border-stone-200 px-3 py-2 text-xs text-stone-500">
                           {s.type && s.type !== "אימון" && <span className="font-medium" style={{ color: typeColor(s.type) }}>{s.type} </span>}
                           {s.notes || ""}

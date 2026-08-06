@@ -18,7 +18,7 @@ export function SchedulePublishedBanner({ data }) {
   if (!(ageDays >= 0) || ageDays > MAX_AGE_DAYS) return null;
 
   return (
-    <div className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 flex items-start gap-2.5" dir="rtl">
+    <div className="no-print mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 flex items-start gap-2.5" dir="rtl">
       <span aria-hidden="true" className="text-lg leading-none mt-0.5">📅</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-emerald-800 mb-0.5">לוח האימונים פורסם</p>
