@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
-import { timeToMinutes, getWeekDates, formatDate } from "../utils/dates";
+import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
+import { captureNode, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
@@ -18,6 +19,42 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
   const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
+  const [shareBusy, setShareBusy] = useState(false); // producing the shareable board image
+  const boardRef = useRef(null); // the team-mode <table> captured into the WhatsApp image
+  const [logoDataUrl, setLogoDataUrl] = useState(""); // inline logo so html2canvas paints it on mobile too
+
+  // Inline the bundled logo once as a data URI (mobile browsers fail to paint a fetched <img>).
+  useEffect(() => {
+    let cancelled = false;
+    loadImageDataUrl(clubLogo).then((url) => { if (!cancelled && url) setLogoDataUrl(url); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Share/save the whole weekly board as a single landscape PNG — the reliable path for
+  // WhatsApp. Sidesteps the browser print dialog (which kept forcing portrait). We flip the
+  // table into its print-style read-only view during capture via the `capturing` class.
+  async function shareBoardImage() {
+    const node = boardRef.current;
+    if (!node || shareBusy) return;
+    setShareBusy(true);
+    let blob;
+    try {
+      node.classList.add("capturing");
+      try {
+        blob = await captureNode(node, {
+          logoSrc: logoDataUrl || clubLogo,
+          title: `${title} · ${formatWeekRange(weekStart)}`,
+        });
+      } finally {
+        node.classList.remove("capturing"); // restore the interactive view immediately
+      }
+      await shareOrDownloadBlob(blob, `לוז-שבועי-${weekStart}.png`, title);
+    } catch (e) {
+      alert("לא הצלחנו להפיק את התמונה. נסה שוב.");
+    } finally {
+      setShareBusy(false);
+    }
+  }
 
   // MVP "notification": stamp this week as published → every coach sees the banner live.
   const publishSchedule = () => {
@@ -135,8 +172,18 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 <IconCheck size={15} /> {justPublished ? "פורסם ✓" : "פרסם לו״ז לשבוע"}
               </button>
             )}
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">
-              <IconDownload size={15} /> הדפסה / שמור PDF
+            {mode === "team" && (
+              <button
+                onClick={shareBoardImage}
+                disabled={shareBusy}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-60"
+                title="שמור/שתף את הלוז כתמונה לרוחב — מומלץ לשליחה בווטאפ"
+              >
+                <IconDownload size={15} /> {shareBusy ? "מכין תמונה…" : "שיתוף / שמירת תמונה"}
+              </button>
+            )}
+            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50">
+              <IconDownload size={15} /> הדפסה / PDF
             </button>
           </div>
         </div>
@@ -162,7 +209,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             כלול את עמודת "סה״כ שבוע" גם בהדפסה
           </label>
         )}
-        <p className="text-xs text-stone-600">לחץ "הדפסה / שמור PDF" ובחלון ההדפסה בחר "שמור כ-PDF". מומלץ: כיוון דף לרוחב (Landscape).</p>
+        <p className="text-xs text-stone-600">לשליחה בווטאפ מומלץ "שיתוף / שמירת תמונה" — יוצא תמונה אחת לרוחב עם הלוגו, בלי בעיות כיוון או פיצול לעמודים. "הדפסה / PDF" נשאר למי שרוצה קובץ PDF.</p>
       </div>
 
       {/* TEAM MODE */}
@@ -176,7 +223,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             {data.teams.length === 0 ? (
               <div className="p-8 text-center text-stone-600 text-sm">אין קבוצות רשומות עדיין.</div>
             ) : (
-              <table className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 108 + 360 }}>
+              <table ref={boardRef} className="w-full border-collapse text-sm weekly-table" style={{ minWidth: activeDays.length * 108 + 360 }}>
                 <thead>
                   <tr>
                     <th className="border border-stone-200 bg-stone-50 px-3 py-2 text-right text-xs font-semibold text-stone-600 w-28">קבוצה</th>

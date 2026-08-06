@@ -80,6 +80,16 @@ body {
   display: none;
 }
 
+/* Image capture (html2canvas → PNG for WhatsApp): render the print-style read-only
+   view — hide on-screen controls (dropdowns, ＋ buttons, totals-when-off) and reveal
+   the print-only values (playing/secretary teams, "—" placeholders). */
+.capturing .no-print {
+  display: none !important;
+}
+.capturing .print-only {
+  display: block !important;
+}
+
 /* Screen: always allow horizontal scroll on the weekly table */
 .weekly-table-wrap {
   overflow-x: auto;

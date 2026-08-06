@@ -7,35 +7,10 @@ import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
+import { captureNode, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import clubLogo from "../assets/club-logo.jpg";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
-
-// Draw the club logo centered above an already-captured canvas and return a new, taller canvas.
-// We composite the logo ourselves because html2canvas does not reliably paint <img> on mobile.
-async function withLogoHeader(baseCanvas, logoSrc) {
-  try {
-    const logo = new Image();
-    logo.src = logoSrc;
-    try { await logo.decode(); } catch { await new Promise((r) => { logo.onload = r; logo.onerror = r; }); }
-    if (!logo.naturalWidth) return baseCanvas;
-    const pad = 28;
-    const logoH = Math.min(170, logo.naturalHeight);
-    const logoW = Math.round(logoH * (logo.naturalWidth / logo.naturalHeight));
-    const headerH = logoH + pad * 2;
-    const out = document.createElement("canvas");
-    out.width = baseCanvas.width;
-    out.height = baseCanvas.height + headerH;
-    const ctx = out.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, out.width, out.height);
-    ctx.drawImage(logo, Math.round((out.width - logoW) / 2), pad, logoW, logoH);
-    ctx.drawImage(baseCanvas, 0, headerH);
-    return out;
-  } catch {
-    return baseCanvas;
-  }
-}
 
 export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
@@ -49,15 +24,7 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   // time, which is what mobile browsers were failing to paint into the html2canvas snapshot.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(clubLogo);
-        const blob = await res.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => { if (!cancelled) setLogoDataUrl(reader.result); };
-        reader.readAsDataURL(blob);
-      } catch { /* fall back to the URL src */ }
-    })();
+    loadImageDataUrl(clubLogo).then((url) => { if (!cancelled && url) setLogoDataUrl(url); });
     return () => { cancelled = true; };
   }, []);
 
@@ -123,32 +90,9 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
     if (!reportRef.current || !reportTeamId || reportBusy) return;
     setReportBusy(true);
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const tableCanvas = await html2canvas(reportRef.current, { scale: 2, backgroundColor: "#ffffff" });
-      // Composite the logo on top ourselves — html2canvas doesn't reliably paint <img> on mobile.
-      const finalCanvas = await withLogoHeader(tableCanvas, logoDataUrl || clubLogo);
-      const blob = await new Promise((resolve) => finalCanvas.toBlob(resolve, "image/png"));
-      if (!blob) throw new Error("no blob");
       const fileName = `לוח-אימונים-${reportTeamName}-${weekStart}.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: `לוח אימונים — ${reportTeamName}` });
-          return;
-        } catch (err) {
-          if (err && err.name === "AbortError") return; // coach cancelled the share sheet
-          // otherwise fall through to download
-        }
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const blob = await captureNode(reportRef.current, { logoSrc: logoDataUrl || clubLogo });
+      await shareOrDownloadBlob(blob, fileName, `לוח אימונים — ${reportTeamName}`);
     } catch (e) {
       alert("לא הצלחנו להפיק את הדוח. נסה שוב, או הפק אותו מהמחשב.");
     } finally {

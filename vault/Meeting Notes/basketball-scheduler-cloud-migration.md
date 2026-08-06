@@ -621,3 +621,19 @@ admin = `ronenbm2905@gmail.com`.
 - **Verification:** `npm run build` נקי. הדפסה עצמה נבדקת ידנית בדפדפן (media print לא נצפה ב-preview).
 - **Notes / Caveats:** לא חי עד `firebase deploy --only hosting`. הטבלה מנסה עדיין להתכווץ לעמוד אחד (9px); החזרת הכותרת רלוונטית כשגולשים.
 - **Related:** [[push-workflow]]
+
+### 2026-08-06 — ייצוא הלוז כתמונה לרוחב (PNG) לווטאפ — נטישת window.print לכיוון [built+verified, ממתין ל-deploy]
+- **What was done:** תיקון ה-`@page landscape` לא הספיק — במחשב עדיין יצא portrait/מסובב (המשתמש אישר). ההחלטה: לעקוף
+  לגמרי את דיאלוג ההדפסה של הדפדפן ולייצא את הלוז כ**תמונה אחת לרוחב** (PNG), בדיוק כמו דוח המאמן שכבר עובד לו בכל מכשיר.
+  נבנה util משותף `src/utils/imageExport.js` עם `loadImageDataUrl`, `withLogoHeader` (הורחב לכותרת אופציונלית),
+  `captureNode`, `shareOrDownloadBlob`. `WeeklyScheduleView` קיבל כפתור "שיתוף / שמירת תמונה" (mode=team) שמצלם את
+  ה-`<table>` דרך html2canvas ומרכיב לוגו+כותרת+טווח שבוע מעל; "הדפסה / PDF" נשאר כמשני. `CoachView` עבר לאותו util
+  (נמחקה ה-`withLogoHeader` הכפולה). **מפתח:** מחלקת `capturing` חדשה ב-index.css שמחליפה את הטבלה לתצוגת-הדפסה
+  read-only בזמן הצילום (`.capturing .no-print{display:none}` + `.capturing .print-only{display:block}`) — כך התמונה
+  יוצאת נקייה בלי תפריטי בחירה/כפתורי ＋/עמודת סה״כ, ועם ערכי "משחקת/מזכירות".
+- **Verification:** `npm run build` נקי. אומת ב-preview במצב מקומי: מחלקת `capturing` מסתירה no-print ומציגה print-only
+  כצפוי; לחיצה על הכפתור הפיקה PNG תקין (~127KB, image/png) והמחלקה נוקתה מיד אחרי הצילום. אין שגיאות קונסול אמיתיות.
+- **Notes / Caveats:** התמונה של לוח רחב יוצאת רחבה (טקסט קטן יותר) — בווטאפ אפשר לזום פנימה. `navigator.share` בנייד →
+  ווטאפ; בדסקטופ נופל להורדה. לא חי עד `firebase deploy --only hosting`. ה-util המשותף מוכן גם ל-TODO של לוגו בהסעות
+  ([[basketball-transport-logo-todo]]).
+- **Related:** [[push-workflow]]
