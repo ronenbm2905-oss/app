@@ -45,6 +45,16 @@ function InvalidClub({ slug }) {
   );
 }
 
+// Registered only in a real build: during development a service worker intercepting
+// requests just fights with Vite's dev server and hides changes.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Installability is a nicety; the app works fine without it.
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>

@@ -11,7 +11,14 @@
         "destination": "/index.html"
       }
     ],
+    "_comment_headers": "First match wins. The service worker MUST come before any glob that could freeze it: it is served from the root with a stable name, so a long cache would pin every phone to one version of the update mechanism itself — unrecoverable without clearing site data. Only /assets/** gets the immutable year, because Vite content-hashes those filenames; the root-level icons and manifest keep stable names and so get a day.",
     "headers": [
+      {
+        "source": "/sw.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
       {
         "source": "/index.html",
         "headers": [
@@ -25,9 +32,15 @@
         ]
       },
       {
-        "source": "**/*.@(js|css|jpg|jpeg|png|gif|svg|webp|ico|woff|woff2|ttf|eot)",
+        "source": "/assets/**",
         "headers": [
           { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "**/*.@(png|ico|svg|webmanifest)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=86400" }
         ]
       }
     ]
