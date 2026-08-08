@@ -75,17 +75,24 @@ service cloud.firestore {
     // document explicitly — a subtle difference that would otherwise look correct and
     // fail only at runtime.
 
+    // Every field read here is guarded for existence first. Reading a field that is not
+    // on the document is an ERROR in rules, not `false` — and an error fails the whole
+    // expression, including the `||` branch that would have granted access. A club
+    // created with only `admins` (no `members` yet) therefore locked its own parents
+    // out of the portal, while looking like a permissions problem on their side.
     function clubData(clubId) {
       return get(/databases/$(database)/documents/clubs/$(clubId)).data;
     }
     function isClubStaff(clubId) {
       return signedIn() && (
-        authEmail() in clubData(clubId).admins ||
-        authEmail() in clubData(clubId).members
+        ('admins' in clubData(clubId) && authEmail() in clubData(clubId).admins) ||
+        ('members' in clubData(clubId) && authEmail() in clubData(clubId).members)
       );
     }
     function isClubAdmin(clubId) {
-      return signedIn() && authEmail() in clubData(clubId).admins;
+      return signedIn() &&
+        'admins' in clubData(clubId) &&
+        authEmail() in clubData(clubId).admins;
     }
     function portalUser() {
       return get(/databases/$(database)/documents/portalUsers/$(request.auth.uid)).data;
@@ -93,6 +100,7 @@ service cloud.firestore {
     function isPortalMemberOf(clubId) {
       return signedIn() &&
         exists(/databases/$(database)/documents/portalUsers/$(request.auth.uid)) &&
+        'clubId' in portalUser() &&
         portalUser().clubId == clubId;
     }
 
@@ -147,7 +155,11 @@ service cloud.firestore {
       allow update: if signedIn() &&
         request.auth.uid == uid &&
         presentsValidCode() &&
-        (request.resource.data.clubId == resource.data.clubId
+        // Same existence-guard discipline as above: a link document written before these
+        // rules existed may be missing a field, and reading it would error out into a
+        // denial the parent cannot act on. Treat "can't tell" as "start fresh".
+        ('clubId' in resource.data && 'teamIds' in resource.data &&
+         request.resource.data.clubId == resource.data.clubId
           ? request.resource.data.teamIds.toSet()
               .difference(resource.data.teamIds.toSet())
               .hasOnly([unlockedTeam()])
