@@ -11,7 +11,7 @@ import { formatCurrency, formatDate, whatsappLink, telLink } from "../../utils/f
 import { activeLeaseFor, tenantById } from "../../utils/display.js";
 
 // טאב דייר וחוזה. בפרוסה 1: דייר יחיד + חוזה יחיד לנכס (המודל תומך ביותר).
-export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLease, canEdit }) {
+export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLease, onDeleteTenant, canEdit }) {
   const { t, lang } = useI18n();
   const [tenantModal, setTenantModal] = useState(false);
   const [leaseModal, setLeaseModal] = useState(false);
@@ -27,10 +27,23 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-700">{t("tenant.title")}</h3>
           {canEdit && (
-            <Button variant="secondary" onClick={() => setTenantModal(true)}>
-              {tenant ? <IconEdit size={16} /> : <IconPlus size={16} />}
-              {tenant ? t("common.edit") : t("tenant.add")}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => setTenantModal(true)}>
+                {tenant ? <IconEdit size={16} /> : <IconPlus size={16} />}
+                {tenant ? t("common.edit") : t("tenant.add")}
+              </Button>
+              {/* B-RET: מחיקת דייר עם כל הנתונים המקושרים (זכות מחיקה). */}
+              {tenant && onDeleteTenant && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(t("tenant.deleteConfirm"))) onDeleteTenant(tenant.id);
+                  }}
+                  className="text-xs font-medium text-red-600 hover:underline"
+                >
+                  {t("tenant.delete")}
+                </button>
+              )}
+            </div>
           )}
         </div>
         {tenant ? (

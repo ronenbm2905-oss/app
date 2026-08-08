@@ -18,6 +18,7 @@ import { ReminderPanel } from "./components/ReminderPanel.jsx";
 import { Modal } from "./components/ui/Modal.jsx";
 import { PropertyForm } from "./components/PropertyForm.jsx";
 import { createProperty, createTicket } from "./schema.js";
+import { removeTenantCascade } from "./utils/retention.js";
 import { isFirebaseConfigured } from "./firebase.js";
 
 export default function App() {
@@ -71,6 +72,8 @@ export default function App() {
         if (i >= 0) d.leases[i] = withOwner;
         else d.leases.push(withOwner);
       }),
+    // B-RET: מחיקת דייר עם cascade (חוזים/מסמכים/תקלות/חובות מקושרים).
+    deleteTenant: (tenantId) => update((d) => removeTenantCascade(d, tenantId)),
     saveTransaction: (tx) =>
       update((d) => {
         d.transactions.push({ ...tx, ownerId });

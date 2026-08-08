@@ -85,6 +85,17 @@ export const DOCUMENT_TYPES = [
   "other",
 ];
 
+// B-AI-2 (שער עדי): סריקת AI מותרת רק למסמכים סטרוקטורים מה-MVP (allowlist).
+// כל השאר — ובמיוחד `id` (צילום ת.ז.) — חסום מסריקה אוטומטית כדי לא לשלוח
+// מסמך זיהוי ממשלתי / PII עודף למעבד חיצוני. חילוץ ידני עדיין מותר לכל הסוגים.
+export const AI_SCANNABLE_TYPES = [
+  "saleContract", // חוזה מכר
+  "leaseContract", // חוזה שכירות
+  "municipalTax", // ארנונה
+  "electricity", // חשבון חשמל
+  "water", // חשבון מים
+];
+
 export const REMINDER_TYPES = [
   "leaseRenewal", // חידוש חוזה
   "insurance", // חידוש ביטוח

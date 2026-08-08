@@ -5,7 +5,7 @@ import { Modal } from "../ui/Modal.jsx";
 import { Field, Select } from "../ui/Field.jsx";
 import { IconPlus, IconDelete, IconDoc } from "../ui/icons.jsx";
 import { enumOptions } from "../../utils/options.js";
-import { DOCUMENT_TYPES } from "../../constants.js";
+import { DOCUMENT_TYPES, AI_SCANNABLE_TYPES } from "../../constants.js";
 import { createDocument } from "../../schema.js";
 import { formatDate, formatCurrency } from "../../utils/format.js";
 import { extractDocument } from "../../utils/aiExtract.js";
@@ -94,6 +94,8 @@ function DocModal({ initial, onClose, onSave }) {
   const [result, setResult] = useState(null); // תוצאת החילוץ
   const [scanError, setScanError] = useState(null);
   const set = (k, v) => setD({ ...d, [k]: v });
+  // B-AI-2: סריקת AI מותרת רק לסוגי מסמך סטרוקטורים (allowlist). ת.ז. וכו' חסומים.
+  const canScan = AI_SCANNABLE_TYPES.includes(d.type);
 
   const onPickFile = async (e) => {
     const f = e.target.files?.[0];
@@ -153,6 +155,11 @@ function DocModal({ initial, onClose, onSave }) {
           <p className="mb-2 text-xs text-slate-500">{t("ai.optInNote")}</p>
           <p className="mb-3 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-800">{t("ai.gateNote")}</p>
 
+          {/* B-AI-2: סוג מסמך רגיש (ת.ז. וכו') — סריקת AI חסומה, חילוץ ידני בלבד. */}
+          {!canScan ? (
+            <p className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{t("ai.blockedType")}</p>
+          ) : (
+          <>
           <input
             type="file"
             accept=".pdf,image/*"
@@ -186,6 +193,8 @@ function DocModal({ initial, onClose, onSave }) {
                 <Button onClick={applyResult}>{t("ai.apply")}</Button>
               </div>
             </div>
+          )}
+          </>
           )}
         </fieldset>
       </div>
