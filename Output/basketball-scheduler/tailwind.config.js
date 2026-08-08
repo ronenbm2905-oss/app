@@ -4,25 +4,28 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Club / association identity. brand = Kiryat Ono royal blue (≈ IBBA #2355A5),
-        // the single primary for all interaction. accent = the club-logo orange, used
-        // only as a small branding touch — never for buttons/links.
+        // Club / association identity, resolved at RUNTIME so one build can serve
+        // any club. The actual values live in CSS variables: defaults in index.css
+        // (:root), overridden per club by applyTheme() in src/utils/theme.js.
+        // brand = the club's primary, used for all interaction. accent = a small
+        // branding touch only — never for buttons/links.
+        // Channels are space-separated RGB so `<alpha-value>` (bg-brand-600/50) works.
         brand: {
-          50: "#EEF3FA",
-          100: "#D6E1F2",
-          200: "#B0C4E4",
-          300: "#7F9FD1",
-          400: "#4E79BD",
-          500: "#2F5FAC",
-          600: "#2355A5",
-          700: "#1D4788",
-          800: "#17386B",
-          900: "#122A50",
+          50: "rgb(var(--brand-50) / <alpha-value>)",
+          100: "rgb(var(--brand-100) / <alpha-value>)",
+          200: "rgb(var(--brand-200) / <alpha-value>)",
+          300: "rgb(var(--brand-300) / <alpha-value>)",
+          400: "rgb(var(--brand-400) / <alpha-value>)",
+          500: "rgb(var(--brand-500) / <alpha-value>)",
+          600: "rgb(var(--brand-600) / <alpha-value>)",
+          700: "rgb(var(--brand-700) / <alpha-value>)",
+          800: "rgb(var(--brand-800) / <alpha-value>)",
+          900: "rgb(var(--brand-900) / <alpha-value>)",
         },
         accent: {
-          400: "#F79A5B",
-          500: "#F58634",
-          600: "#E5731F",
+          400: "rgb(var(--accent-400) / <alpha-value>)",
+          500: "rgb(var(--accent-500) / <alpha-value>)",
+          600: "rgb(var(--accent-600) / <alpha-value>)",
         },
       },
     },

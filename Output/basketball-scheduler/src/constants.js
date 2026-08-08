@@ -1,6 +1,9 @@
 // ---------- Constants ----------
 export const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 export const STORAGE_KEY = "bball-schedule-v1";
+// Local-mode store for the weeks published to the parent portal (cloud mode uses the
+// clubs/{id}/published subcollection instead).
+export const PUBLISHED_STORAGE_KEY = "bball-published-v1";
 
 // Club home base — the pickup point for away-game transportation.
 export const CLUB_PICKUP_POINT = "אולם עלומים, הכפר 2, קריית אונו";
@@ -31,8 +34,39 @@ export const DAY_BG_COLORS = [
   "#F1F5F9", // שבת - slate
 ];
 
+// ---------- Per-club settings ----------
+// Everything that used to be hardcoded to Kiryat Ono lives here, so one build can
+// serve any club. These specific values are the LEGACY FALLBACK: the live
+// `clubs/main` document predates this field, and without them it would lose its
+// name, colors and home/away detection. A newly created club always writes its
+// own `settings` explicitly (see the club-creation flow), so it never inherits these.
+export const DEFAULT_SETTINGS = {
+  name: "קרית אונו – דור העתיד",
+  shortName: "קרית אונו",
+  logoUrl: "", // empty → the logo bundled at build time (src/assets/club-logo.jpg)
+  primaryColor: "#2355A5", // drives every brand-* class at runtime (utils/theme.js)
+  accentColor: "#F58634",
+  pickupPoint: CLUB_PICKUP_POINT,
+  // Used to tell home from away when importing the federation's game file. Getting
+  // this wrong makes EVERY game an away game, so it must be set per club.
+  homeKeywords: ["קרית אונו", "ק. אונו", "ק.אונו", "קריית אונו"],
+  // Substituted into the privacy / terms / accessibility documents at render time.
+  // These are the legacy values for the existing deployment; a club that leaves a
+  // field empty gets a visible "to be filled" marker rather than someone else's
+  // legal entity, which would be a misrepresentation.
+  legal: {
+    operator: "קרית אונו – דור העתיד",
+    address: "הכפר 2, קרית אונו",
+    email: "ronenbm2905@gmail.com",
+    a11yContact: "רונן בן מאיר",
+    a11yPhone: "054-6696288",
+  },
+  subscription: { plan: "", validUntil: "" }, // display only — no billing in the app
+};
+
 // Shape of an empty club dataset
 export const EMPTY = {
+  settings: DEFAULT_SETTINGS,
   teams: [],
   coaches: [],
   halls: [],

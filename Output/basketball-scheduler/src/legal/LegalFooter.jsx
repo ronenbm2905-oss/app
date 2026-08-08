@@ -7,7 +7,10 @@ const ORDER = ["privacy", "terms", "accessibility"];
 // login screen and at the bottom of the app. Opens each document in a modal.
 // Note: text is stone-600 (never stone-400) to satisfy WCAG AA contrast, and the
 // "·" separators are aria-hidden so screen readers skip them.
-export function LegalFooter({ className = "" }) {
+// `data` supplies the club's legal details. It is absent on the login screen (club
+// data can only be read after sign-in), where the documents fall back to the default
+// operator — see the note in utils/club.js about pre-auth branding.
+export function LegalFooter({ className = "", data }) {
   const [openDoc, setOpenDoc] = useState(null);
 
   return (
@@ -28,7 +31,7 @@ export function LegalFooter({ className = "" }) {
         </nav>
         <p className="text-center text-xs text-stone-500 mt-2">© כל הזכויות שמורות לרונן בן מאיר</p>
       </div>
-      {openDoc && <LegalModal docId={openDoc} onClose={() => setOpenDoc(null)} />}
+      {openDoc && <LegalModal docId={openDoc} onClose={() => setOpenDoc(null)} data={data} />}
     </>
   );
 }

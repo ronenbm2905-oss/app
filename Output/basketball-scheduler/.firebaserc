@@ -1,5 +1,8 @@
 {
+  "_comment": "On the saas branch there is deliberately NO usable 'default' project: a bare `firebase deploy` must fail rather than reach the live Kiryat Ono app. Deploy explicitly — `--project saas` for the multi-club version, `--project prod` only when you really mean the live one. The main branch keeps default=prod for Kiryat Ono hotfixes.",
   "projects": {
-    "default": "basketball-schedule-f0f57"
+    "default": "UNSET-PASS-PROJECT-EXPLICITLY",
+    "prod": "basketball-schedule-f0f57",
+    "saas": "basketball-all"
   }
 }

@@ -1,0 +1,401 @@
+import { useState, useEffect, useRef } from "react";
+import { DEFAULT_SETTINGS } from "../constants";
+import { clubSettings } from "../utils/club";
+import { clubLogoSrc } from "../utils/clubLogo";
+import { applyTheme } from "../utils/theme";
+import { legalDetailsComplete, legalLooksInherited, LEGAL_FIELD_LABELS } from "../legal/fillTemplate";
+import { fileToLogoDataUrl, dataUrlBytes, LOGO_MAX_BYTES } from "../utils/imageResize";
+import { generateJoinCode, formatJoinCode } from "../utils/joinCode";
+import { IconTrash, IconCheck } from "./ui/icons";
+
+const KB = (bytes) => `${Math.round(bytes / 1024)} KB`;
+
+// Firestore refuses a document over 1 MiB. Everything for a club lives in one
+// document, so surface the headroom before a paying customer hits the wall.
+const DOC_LIMIT_BYTES = 1024 * 1024;
+
+function Card({ title, hint, children, badge }) {
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="bg-stone-50 px-4 py-2.5 border-b border-stone-200 flex items-center justify-between gap-2">
+        <div className="text-stone-700 font-semibold text-sm">{title}</div>
+        {badge}
+      </div>
+      <div className="p-4 space-y-3">
+        {hint && <p className="text-xs text-stone-500">{hint}</p>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, hint, children }) {
+  return (
+    <label className="block">
+      <span className="text-xs text-stone-500 mb-1 block">{label}</span>
+      {children}
+      {hint && <span className="text-[11px] text-stone-500 mt-1 block">{hint}</span>}
+    </label>
+  );
+}
+
+const inputCls =
+  "w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+
+// Club settings: everything that used to be hardcoded to one club. Admin-only.
+// Per-team join codes for the parent portal, plus the link to hand out.
+function PortalCard({ data, save, syncJoinCode, clubId }) {
+  const [msg, setMsg] = useState("");
+  const teams = data.teams || [];
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const portalUrl = `${origin}/c/${clubId}/portal`;
+
+  const setCode = async (team) => {
+    const newCode = generateJoinCode();
+    const oldCode = team.joinCode || "";
+    save({
+      ...data,
+      teams: teams.map((t) => (t.id === team.id ? { ...t, joinCode: newCode } : t)),
+    });
+    await syncJoinCode({ oldCode, newCode, teamId: team.id, teamName: team.name });
+    setMsg(oldCode ? `הקוד של "${team.name}" הוחלף. הקוד הקודם הפסיק לעבוד.` : `נוצר קוד עבור "${team.name}".`);
+  };
+
+  const copy = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMsg(`${label} הועתק.`);
+    } catch {
+      setMsg("ההעתקה נכשלה — סמן והעתק ידנית.");
+    }
+  };
+
+  return (
+    <Card
+      title="פורטל הורים"
+      hint="כל קבוצה מקבלת קוד. הורה נכנס לקישור, מזין את הקוד של הקבוצה, ורואה את לו״ז האימונים והמשחקים שלה בלבד."
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        <code dir="ltr" className="text-xs bg-stone-100 border border-stone-200 rounded px-2 py-1.5 flex-1 min-w-0 truncate">{portalUrl}</code>
+        <button onClick={() => copy(portalUrl, "הקישור")} className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700">
+          העתק קישור
+        </button>
+      </div>
+
+      <p className="text-xs text-stone-500">
+        הפורטל מציג <strong>רק</strong> את הלו״ז שפורסם — לא שמות שחקנים, לא טלפונים ולא תאריכי לידה.
+        הלו״ז מתפרסם בלחיצה על "פרסם לו״ז לשבוע" בלוח השבועי.
+      </p>
+
+      {teams.length === 0 ? (
+        <p className="text-sm text-stone-500 py-2">אין עדיין קבוצות. הוסף קבוצות כדי לייצר קודים.</p>
+      ) : (
+        <ul className="divide-y divide-stone-100 border border-stone-200 rounded-lg">
+          {teams.map((t) => (
+            <li key={t.id} className="flex items-center justify-between gap-2 px-3 py-2 flex-wrap">
+              <span className="text-sm text-stone-800">{t.name}</span>
+              <div className="flex items-center gap-2">
+                {t.joinCode ? (
+                  <>
+                    <code dir="ltr" className="text-sm font-mono tracking-widest bg-brand-50 text-brand-700 border border-brand-200 rounded px-2 py-1">
+                      {formatJoinCode(t.joinCode)}
+                    </code>
+                    <button onClick={() => copy(t.joinCode, "הקוד")} className="text-xs text-stone-600 underline underline-offset-2">העתק</button>
+                    <button onClick={() => setCode(t)} className="text-xs text-stone-600 underline underline-offset-2">החלף</button>
+                  </>
+                ) : (
+                  <button onClick={() => setCode(t)} className="px-3 py-1.5 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700">
+                    צור קוד
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {msg && <p className="text-xs text-stone-600">{msg}</p>}
+    </Card>
+  );
+}
+
+export function SettingsView({ data, save, canEdit, syncJoinCode, clubId }) {
+  const saved = clubSettings(data);
+  const [draft, setDraft] = useState(saved);
+  const [logoMsg, setLogoMsg] = useState("");
+  const [savedMsg, setSavedMsg] = useState(false);
+  const fileRef = useRef(null);
+
+  // Re-sync when another admin's change arrives over onSnapshot, but never clobber
+  // an edit in progress.
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    if (!dirtyRef.current) setDraft(saved);
+  }, [saved]);
+
+  // Live preview: paint the draft colors as they change, and put the saved ones back
+  // if the admin leaves without saving.
+  useEffect(() => {
+    applyTheme(draft);
+  }, [draft.primaryColor, draft.accentColor]);
+  useEffect(() => {
+    return () => applyTheme(clubSettings(data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
+  const setLegal = (patch) => setDraft((d) => ({ ...d, legal: { ...d.legal, ...patch } }));
+
+  const onSave = () => {
+    save({ ...data, settings: draft });
+    setSavedMsg(true);
+    setTimeout(() => setSavedMsg(false), 2500);
+  };
+
+  const onCancel = () => {
+    setDraft(saved);
+    applyTheme(saved);
+    setLogoMsg("");
+  };
+
+  async function onLogoPick(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setLogoMsg("מעבד...");
+    try {
+      const res = await fileToLogoDataUrl(file);
+      set({ logoUrl: res.dataUrl });
+      setLogoMsg(
+        res.bytes > LOGO_MAX_BYTES
+          ? `הלוגו נשמר אך גדול יחסית (${KB(res.bytes)}). מומלץ קובץ פשוט יותר.`
+          : `הלוגו עודכן (${res.width}×${res.height}, ${KB(res.bytes)}). לחץ "שמור" כדי להחיל.`
+      );
+    } catch (err) {
+      setLogoMsg(
+        err.message === "not-an-image"
+          ? "יש לבחור קובץ תמונה (PNG או JPG)."
+          : "לא הצלחתי לקרוא את התמונה. נסה קובץ אחר."
+      );
+    }
+  }
+
+  const legalOk = legalDetailsComplete(draft.legal);
+  const legalInherited = legalLooksInherited(draft, DEFAULT_SETTINGS);
+  const docBytes = new Blob([JSON.stringify(data)]).size;
+  const docPct = Math.min(100, Math.round((docBytes / DOC_LIMIT_BYTES) * 100));
+  const keywordsText = (draft.homeKeywords || []).join("\n");
+
+  if (!canEdit) {
+    return (
+      <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm">
+        רק מנהל יכול לצפות בהגדרות המועדון ולערוך אותן.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card
+        title="זהות המועדון"
+        hint="השם, הלוגו והצבעים שמופיעים בכל המסכים, בהדפסות ובתמונות שנשלחות בוואטסאפ."
+      >
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="שם המועדון" hint="מופיע בכותרת הדפדפן, בדוחות ובתמונות המשותפות.">
+            <input className={inputCls} value={draft.name || ""} onChange={(e) => set({ name: e.target.value })} />
+          </Field>
+          <Field label="שם קצר" hint="לשימוש במקומות צרים. אם ריק — ישתמש בשם המלא.">
+            <input className={inputCls} value={draft.shortName || ""} onChange={(e) => set({ shortName: e.target.value })} />
+          </Field>
+        </div>
+
+        <div>
+          <span className="text-xs text-stone-500 mb-1 block">לוגו</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            {clubLogoSrc({ settings: draft }) ? (
+              <img
+                src={clubLogoSrc({ settings: draft })}
+                alt=""
+                className="w-16 h-16 object-contain border border-stone-200 rounded-lg bg-white p-1"
+              />
+            ) : (
+              // Not an <img> with an empty src — that renders a broken-image icon.
+              <div className="w-16 h-16 flex items-center justify-center border border-dashed border-stone-300 rounded-lg bg-stone-50 text-[10px] text-stone-400 text-center leading-tight px-1">
+                אין לוגו
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" onChange={onLogoPick} className="hidden" />
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700"
+            >
+              העלה לוגו
+            </button>
+            {draft.logoUrl && (
+              <button
+                onClick={() => { set({ logoUrl: "" }); setLogoMsg("חזרה ללוגו ברירת המחדל."); }}
+                className="flex items-center gap-1 px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-600"
+              >
+                <IconTrash size={13} /> הסר
+              </button>
+            )}
+          </div>
+          {logoMsg && <p className="text-xs text-stone-600 mt-2">{logoMsg}</p>}
+          <p className="text-[11px] text-stone-500 mt-1">
+            התמונה מוקטנת אוטומטית ונשמרת בתוך נתוני המועדון, כך שהיא מופיעה גם בתמונות המיוצאות.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="צבע ראשי" hint="כפתורים, טאבים וכותרות — משתנה מיד לתצוגה מקדימה.">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={draft.primaryColor || DEFAULT_SETTINGS.primaryColor}
+                onChange={(e) => set({ primaryColor: e.target.value })}
+                className="h-9 w-14 rounded border border-stone-300 bg-white p-1 cursor-pointer"
+                aria-label="בחירת צבע ראשי"
+              />
+              <input
+                className={inputCls}
+                dir="ltr"
+                value={draft.primaryColor || ""}
+                onChange={(e) => set({ primaryColor: e.target.value })}
+              />
+            </div>
+          </Field>
+          <Field label="צבע משני (אקסנט)" hint="נגיעת צבע בלבד — לא לכפתורים.">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={draft.accentColor || DEFAULT_SETTINGS.accentColor}
+                onChange={(e) => set({ accentColor: e.target.value })}
+                className="h-9 w-14 rounded border border-stone-300 bg-white p-1 cursor-pointer"
+                aria-label="בחירת צבע משני"
+              />
+              <input
+                className={inputCls}
+                dir="ltr"
+                value={draft.accentColor || ""}
+                onChange={(e) => set({ accentColor: e.target.value })}
+              />
+            </div>
+          </Field>
+        </div>
+      </Card>
+
+      <Card
+        title="משחקים והסעות"
+        hint="שדות שמשפיעים על ייבוא קובץ המשחקים מהאיגוד ועל ייצוא ההסעות."
+      >
+        <Field
+          label="שמות המועדון בקובץ האיגוד — שורה לכל וריאציה"
+          hint='כך המערכת יודעת אילו משחקים הם משחקי בית. חשוב: אם הרשימה לא מתאימה — כל המשחקים ייחשבו כמשחקי חוץ.'
+        >
+          <textarea
+            rows={4}
+            dir="rtl"
+            className={`${inputCls} resize-y`}
+            value={keywordsText}
+            onChange={(e) =>
+              set({ homeKeywords: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })
+            }
+            placeholder={"קרית אונו\nק. אונו\nק.אונו"}
+          />
+        </Field>
+        {(draft.homeKeywords || []).length === 0 && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            ⚠ הרשימה ריקה — המערכת תשתמש בברירת המחדל. בלי וריאציות נכונות, כל משחק יסומן כמשחק חוץ.
+          </p>
+        )}
+        <Field label="נקודת איסוף להסעות" hint="מופיעה בקובץ ההסעות שנשלח לחברת ההסעות.">
+          <input className={inputCls} value={draft.pickupPoint || ""} onChange={(e) => set({ pickupPoint: e.target.value })} />
+        </Field>
+      </Card>
+
+      <Card
+        title="פרטים משפטיים"
+        hint="מוצגים בתוך מדיניות הפרטיות, תנאי השימוש והצהרת הנגישות של המועדון."
+        badge={
+          legalInherited ? (
+            <span className="text-xs text-red-700 font-semibold">טעון תיקון</span>
+          ) : legalOk ? (
+            <span className="text-xs text-emerald-700 flex items-center gap-1"><IconCheck size={13} /> הושלם</span>
+          ) : (
+            <span className="text-xs text-amber-700">חסרים פרטים</span>
+          )
+        }
+      >
+        {legalInherited && (
+          <p className="text-xs text-red-800 bg-red-50 border border-red-300 rounded-lg p-2.5 leading-relaxed">
+            <strong>⚠ הפרטים המשפטיים אינם של המועדון הזה.</strong> שם המועדון שונה, אך הפרטים כאן עדיין
+            שייכים ל־{DEFAULT_SETTINGS.legal.operator}. כתוצאה מכך מדיניות הפרטיות, תנאי השימוש והצהרת
+            הנגישות מציגים גוף משפטי אחר כאחראי על המידע — מצג שגוי. יש להחליף את כל השדות שלמטה
+            בפרטי המועדון בפועל לפני שהמערכת נמסרת למשתמשים.
+          </p>
+        )}
+        {!legalOk && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+            ⚠ שדה שנשאר ריק יופיע במסמכים כ״⟨... — למילוי⟩״. זה מכוון: מסמך משפטי לא יציג פרטים של גוף אחר.
+          </p>
+        )}
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label={LEGAL_FIELD_LABELS.operator} hint="הגוף המשפטי שמפעיל את השירות (עמותה / חברה).">
+            <input className={inputCls} value={draft.legal?.operator || ""} onChange={(e) => setLegal({ operator: e.target.value })} />
+          </Field>
+          <Field label={LEGAL_FIELD_LABELS.address}>
+            <input className={inputCls} value={draft.legal?.address || ""} onChange={(e) => setLegal({ address: e.target.value })} />
+          </Field>
+          <Field label={LEGAL_FIELD_LABELS.email} hint="לפניות בענייני פרטיות ונגישות.">
+            <input className={inputCls} dir="ltr" value={draft.legal?.email || ""} onChange={(e) => setLegal({ email: e.target.value })} />
+          </Field>
+          <Field label={LEGAL_FIELD_LABELS.a11yContact}>
+            <input className={inputCls} value={draft.legal?.a11yContact || ""} onChange={(e) => setLegal({ a11yContact: e.target.value })} />
+          </Field>
+          <Field label={LEGAL_FIELD_LABELS.a11yPhone}>
+            <input className={inputCls} dir="ltr" value={draft.legal?.a11yPhone || ""} onChange={(e) => setLegal({ a11yPhone: e.target.value })} />
+          </Field>
+        </div>
+      </Card>
+
+      <PortalCard data={data} save={save} syncJoinCode={syncJoinCode} clubId={clubId} />
+
+      <Card title="מידע טכני" hint="כל נתוני המועדון נשמרים במסמך אחד, שמוגבל ל-1 MB.">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-2 bg-stone-200 rounded-full overflow-hidden" role="img" aria-label={`נפח בשימוש: ${docPct} אחוז`}>
+            <div
+              className={`h-full ${docPct > 80 ? "bg-red-500" : docPct > 50 ? "bg-amber-500" : "bg-brand-600"}`}
+              style={{ width: `${Math.max(1, docPct)}%` }}
+            />
+          </div>
+          <span className="text-xs text-stone-600 shrink-0">{KB(docBytes)} מתוך 1 MB ({docPct}%)</span>
+        </div>
+        {docPct > 80 && (
+          <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">
+            ⚠ המסמך מתקרב למגבלה. יש לארכב עונות קודמות לפני שהשמירה תיכשל.
+          </p>
+        )}
+      </Card>
+
+      <div className="flex items-center gap-2 flex-wrap sticky bottom-0 bg-stone-50/95 py-3">
+        <button
+          onClick={onSave}
+          disabled={!dirty}
+          className="px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600"
+        >
+          שמור הגדרות
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={!dirty}
+          className="px-4 py-2 text-sm rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 disabled:opacity-40"
+        >
+          בטל שינויים
+        </button>
+        {savedMsg && <span className="text-xs text-emerald-700 flex items-center gap-1"><IconCheck size={13} /> ההגדרות נשמרו</span>}
+        {dirty && !savedMsg && <span className="text-xs text-amber-700">יש שינויים שלא נשמרו</span>}
+      </div>
+    </div>
+  );
+}

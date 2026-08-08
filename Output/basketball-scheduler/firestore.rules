@@ -9,24 +9,149 @@ service cloud.firestore {
     // A signed-in user whose Google email is in NEITHER list has NO access at
     // all (read is denied), so club data is never exposed to arbitrary Google
     // accounts. This mirrors the write model that was already admin-only.
+    //
+    // Multi-club note: the {clubId} wildcard already scopes every rule to a single
+    // club document, so one deployment serving many clubs needs no change here —
+    // each club's allowlists govern only its own document.
+    //
+    // IMPORTANT — store allowlist entries in LOWERCASE. The token side is lowercased
+    // below, but rules cannot lowercase the stored list, so an entry like
+    // "Ronen@Gmail.com" will never match. The client compares case-insensitively, so
+    // a mixed-case entry shows edit buttons while every write is rejected.
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function authEmail() {
+      return request.auth.token.email.lower();
+    }
 
     function isAdmin() {
-      return request.auth != null &&
+      return signedIn() &&
         'admins' in resource.data &&
-        request.auth.token.email in resource.data.admins;
+        authEmail() in resource.data.admins;
     }
 
     function isMember() {
-      return request.auth != null &&
+      return signedIn() &&
         'members' in resource.data &&
-        request.auth.token.email in resource.data.members;
+        authEmail() in resource.data.members;
+    }
+
+    // Operators of the service itself (not of any one club). Kept in a document the
+    // clients never read, and edited only from the Firebase console.
+    function isSuperAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/config/global) &&
+        authEmail() in get(/databases/$(database)/documents/config/global).data.superAdmins;
+    }
+
+    match /config/global {
+      allow read: if isSuperAdmin();
+      allow write: if false; // console only — never writable from the app
     }
 
     match /clubs/{clubId} {
       // Read limited to the allowlist (admins or members) — not any signed-in user.
       allow read: if isAdmin() || isMember();
-      // Write limited to admins only.
-      allow write: if isAdmin();
+      // Changes to an existing club: its own admins only.
+      allow update, delete: if isAdmin();
+      // Creating a NEW club is a service-operator action. It must arrive with at least
+      // one admin: `isAdmin()` reads the *existing* document, so a club created with an
+      // empty admins[] could never be read or written by anyone again.
+      allow create: if isSuperAdmin() &&
+        request.resource.data.admins is list &&
+        request.resource.data.admins.size() > 0;
+    }
+
+    // ---- Parent portal ----
+    // Parents must NEVER be able to read clubs/{clubId}: it holds players' names, phone
+    // numbers and dates of birth (minors), coaches' phones, and the allowlists. They read
+    // only the published projection below, which carries the schedule and nothing else.
+    //
+    // The helpers above cannot be reused here: they read `resource.data`, which inside a
+    // subcollection is the SUBCOLLECTION document, not the club. These fetch the club
+    // document explicitly — a subtle difference that would otherwise look correct and
+    // fail only at runtime.
+
+    function clubData(clubId) {
+      return get(/databases/$(database)/documents/clubs/$(clubId)).data;
+    }
+    function isClubStaff(clubId) {
+      return signedIn() && (
+        authEmail() in clubData(clubId).admins ||
+        authEmail() in clubData(clubId).members
+      );
+    }
+    function isClubAdmin(clubId) {
+      return signedIn() && authEmail() in clubData(clubId).admins;
+    }
+    function portalUser() {
+      return get(/databases/$(database)/documents/portalUsers/$(request.auth.uid)).data;
+    }
+    function isPortalMemberOf(clubId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/portalUsers/$(request.auth.uid)) &&
+        portalUser().clubId == clubId;
+    }
+
+    match /clubs/{clubId}/published/{weekOf} {
+      allow read: if isClubStaff(clubId) || isPortalMemberOf(clubId);
+      allow write: if isClubAdmin(clubId);
+    }
+
+    // Code → team lookup, used once when a parent joins.
+    // `get` only: a signed-in user may fetch a code they already know, but `list` stays
+    // denied so nobody can enumerate the collection and harvest every team's code.
+    match /clubs/{clubId}/joinCodes/{code} {
+      allow get: if signedIn();
+      allow list: if isClubAdmin(clubId);
+      allow write: if isClubAdmin(clubId);
+    }
+
+    // The parent's own account↔team link. Deliberately holds no child's name and no
+    // player record — the account belongs to the adult, and it points at a TEAM.
+    //
+    // This document IS the portal's access control: `isPortalMemberOf` above trusts its
+    // clubId. So the write rules must prove the writer actually holds a join code — an
+    // earlier version only type-checked the fields, which let ANY signed-in Google account
+    // write itself into any club and read that club's published schedules.
+
+    // The team unlocked by the join code presented in this very write.
+    function unlockedTeam() {
+      return get(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)/joinCodes/$(request.resource.data.joinCode)).data.teamId;
+    }
+    function presentsValidCode() {
+      return request.resource.data.clubId is string &&
+        request.resource.data.joinCode is string &&
+        request.resource.data.teamIds is list &&
+        request.resource.data.teamIds.size() > 0 &&
+        request.resource.data.teamIds.size() <= 10 &&
+        exists(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)/joinCodes/$(request.resource.data.joinCode));
+    }
+
+    match /portalUsers/{uid} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+
+      // First join: exactly the one team the code unlocks.
+      allow create: if signedIn() &&
+        request.auth.uid == uid &&
+        presentsValidCode() &&
+        request.resource.data.teamIds == [unlockedTeam()];
+
+      // A parent with a second child joins again. Within the same club they may add
+      // ONLY the team the newly presented code unlocks — not an arbitrary team id.
+      // Presenting a code for a different club resets the link to that club alone:
+      // one account is linked to one club at a time.
+      allow update: if signedIn() &&
+        request.auth.uid == uid &&
+        presentsValidCode() &&
+        (request.resource.data.clubId == resource.data.clubId
+          ? request.resource.data.teamIds.toSet()
+              .difference(resource.data.teamIds.toSet())
+              .hasOnly([unlockedTeam()])
+          : request.resource.data.teamIds == [unlockedTeam()]);
     }
   }
 }

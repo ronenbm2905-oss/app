@@ -1,11 +1,32 @@
 import { LegalFooter } from "../legal/LegalFooter";
-import clubLogo from "../assets/club-logo.jpg";
+
+// A brand-neutral mark for the one screen that cannot know which club it is serving.
+function BallMark() {
+  return (
+    <svg
+      viewBox="0 0 48 48"
+      className="mx-auto w-20 h-20 text-brand-600"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="24" cy="24" r="19" />
+      <path d="M24 5v38M5 24h38" />
+      <path d="M11 11c8 3 14 9 17 17M37 11c-8 3-14 9-17 17" />
+    </svg>
+  );
+}
 
 export function LoginPage({ onSignIn, authError }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 px-4 py-8" dir="rtl">
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-8 max-w-sm w-full text-center space-y-5">
-        <img src={clubLogo} alt="עירוני קריית אונו – כדורסל דור העתיד" className="mx-auto w-24 h-24 object-contain" />
+        {/* The club's own logo cannot be shown here: club data is only readable after
+            sign-in. It used to fall back to the bundled crest, which meant every club's
+            coaches and parents met Kiryat Ono's logo — and trademark — on the way in.
+            A neutral mark until a small publicly-readable branding document exists. */}
+        <BallMark />
         <div>
           <h1 className="text-xl font-bold text-stone-900">מערכת שעות אימוני כדורסל</h1>
           <p className="text-sm text-stone-600 mt-1">התחבר כדי להמשיך</p>

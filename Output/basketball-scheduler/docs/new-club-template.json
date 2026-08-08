@@ -1,0 +1,37 @@
+{
+  "_comment": "Template for a new clubs/<slug> document. See new-club-setup.md. Delete this _comment field before saving.",
+
+  "admins": ["manager@example.com"],
+  "members": [],
+
+  "settings": {
+    "name": "שם המועדון",
+    "shortName": "",
+    "logoUrl": "",
+    "primaryColor": "#2355A5",
+    "accentColor": "#F58634",
+    "pickupPoint": "",
+    "homeKeywords": [],
+    "legal": {
+      "operator": "",
+      "address": "",
+      "email": "",
+      "a11yContact": "",
+      "a11yPhone": ""
+    },
+    "subscription": { "plan": "", "validUntil": "" }
+  },
+
+  "teams": [],
+  "coaches": [],
+  "halls": [],
+  "sessions": [],
+  "constraints": [],
+  "games": [],
+  "gameMapping": [],
+  "players": [],
+  "holidays": [],
+  "announcement": { "text": "", "updatedAt": null },
+  "schedulePublished": null,
+  "weeklyAssignments": {}
+}

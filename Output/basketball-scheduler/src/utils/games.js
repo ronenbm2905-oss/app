@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { DAYS } from "../constants";
 import { formatDateFromExcel, parseDateDMY, HEB_DAY_MAP, weekStartOfDMY } from "./dates";
+import { clubHomeKeywords } from "./club";
 
 // Parse xlsx using SheetJS. In Vite we import the library directly (not window.XLSX).
 export function parseXlsxToRows(arrayBuffer) {
@@ -40,6 +41,9 @@ export function rowsToObjects(rows, headerIdx) {
 export function importGamesFile(rawRows, data) {
   const games = data.games || [];
   const mapping = data.gameMapping || [];
+  // Which host names mean "us". Per club — a wrong list makes every game an away
+  // game, which then breaks hall matching and the transport export as well.
+  const ourKeywords = clubHomeKeywords(data);
 
   const { format, headerIdx } = detectFileFormat(rawRows);
   const rows = rowsToObjects(rawRows, headerIdx);
@@ -118,8 +122,7 @@ export function importGamesFile(rawRows, data) {
       const ourTeamId = codeToTeamId[teamCode];
       const home = String(row["מארחת"] || "").trim();
       const away = String(row["אורחת"] || "").trim();
-      const OUR_KEYWORDS = ["קרית אונו", "ק. אונו", "ק.אונו", "קריית אונו"];
-      const homeIsOurs = OUR_KEYWORDS.some((k) => home.includes(k));
+      const homeIsOurs = ourKeywords.some((k) => home.includes(k));
       const isHome = homeIsOurs;
       const opponent = isHome ? away : home;
       const dateRaw = row["תאריך"];

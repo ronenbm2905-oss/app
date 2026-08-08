@@ -9,6 +9,13 @@
       "port": 5173
     },
     {
+      "name": "basketball-saas",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:saas", "--", "--port", "5176", "--strictPort"],
+      "cwd": "Output/basketball-scheduler",
+      "port": 5176
+    },
+    {
       "name": "haderech-lamilim",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

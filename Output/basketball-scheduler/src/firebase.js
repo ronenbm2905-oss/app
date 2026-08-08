@@ -30,7 +30,9 @@ if (isFirebaseConfigured) {
   googleProvider = new GoogleAuthProvider();
 }
 
-// The club document id. Single-club MVP uses "main" (spec §13.ד).
-export const CLUB_ID = import.meta.env.VITE_CLUB_ID || "main";
+// Fallback club document id, used when the URL does not name one (the bare "/" route).
+// The club is otherwise resolved at RUNTIME from the path (/c/<slug>), so a single
+// build serves every club — see src/utils/clubId.js.
+export const DEFAULT_CLUB_ID = import.meta.env.VITE_CLUB_ID || "main";
 
 export { db, auth, googleProvider };

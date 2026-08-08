@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Markdown } from "./Markdown";
+import { fillLegalTemplate } from "./fillTemplate";
+import { clubLegal } from "../utils/club";
 import { IconX } from "../components/ui/icons";
 import privacyMd from "./content/privacy-policy.md?raw";
 import termsMd from "./content/terms-of-use.md?raw";
@@ -11,7 +13,7 @@ export const LEGAL_DOCS = {
   accessibility: { label: "הצהרת נגישות", source: accessibilityMd },
 };
 
-export function LegalModal({ docId, onClose }) {
+export function LegalModal({ docId, onClose, data }) {
   const closeRef = useRef(null);
   const doc = LEGAL_DOCS[docId];
 
@@ -54,7 +56,7 @@ export function LegalModal({ docId, onClose }) {
           </button>
         </div>
         <div className="overflow-y-auto px-5 py-4">
-          <Markdown source={doc.source} />
+          <Markdown source={fillLegalTemplate(doc.source, clubLegal(data))} />
         </div>
       </div>
     </div>

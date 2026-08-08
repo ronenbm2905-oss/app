@@ -8,9 +8,8 @@ import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
 import { captureNode, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
-import clubLogo from "../assets/club-logo.jpg";
-
-const CLUB_NAME = "קרית אונו – דור העתיד";
+import { clubName as clubNameOf } from "../utils/club";
+import { clubLogoSrc } from "../utils/clubLogo";
 
 export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
@@ -20,13 +19,21 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
   const reportRef = useRef(null); // off-screen node captured into the shareable image
   const [logoDataUrl, setLogoDataUrl] = useState(""); // inline the logo so html2canvas renders it on mobile too
 
-  // Convert the bundled logo to a data URI once. As an inline image it needs no fetch at capture
+  const CLUB_NAME = clubNameOf(data);
+  const clubLogo = clubLogoSrc(data);
+
+  // Convert the club logo to a data URI. As an inline image it needs no fetch at capture
   // time, which is what mobile browsers were failing to paint into the html2canvas snapshot.
+  // A club-uploaded logo lives on another origin (Storage), so this also depends on CORS
+  // being configured there; loadImageDataUrl resolves empty on failure and we fall back to
+  // the URL, which at worst means the exported image has no logo rather than no image.
   useEffect(() => {
     let cancelled = false;
+    setLogoDataUrl("");
+    if (!clubLogo) return; // club has no logo of its own — export renders without one
     loadImageDataUrl(clubLogo).then((url) => { if (!cancelled && url) setLogoDataUrl(url); });
     return () => { cancelled = true; };
-  }, []);
+  }, [clubLogo]);
 
   const inWeek = (s) => (s.weekOf || "") === weekStart;
 

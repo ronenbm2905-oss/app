@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Club identity defaults, as space-separated RGB channels (see tailwind.config.js).
+   These reproduce the original Kiryat Ono palette exactly, so the app looks
+   unchanged before any club sets its own colors — and stays correct during the
+   first paint, before applyTheme() runs. Overridden per club by src/utils/theme.js. */
+:root {
+  --brand-50: 238 243 250;
+  --brand-100: 214 225 242;
+  --brand-200: 176 196 228;
+  --brand-300: 127 159 209;
+  --brand-400: 78 121 189;
+  --brand-500: 47 95 172;
+  --brand-600: 35 85 165;
+  --brand-700: 29 71 136;
+  --brand-800: 23 56 107;
+  --brand-900: 18 42 80;
+
+  --accent-400: 247 154 91;
+  --accent-500: 245 134 52;
+  --accent-600: 229 115 31;
+}
+
+/* Applied for a single frame while the club palette is swapped (utils/theme.js).
+   Without it, elements with `transition-colors` keep their old color, because
+   Chrome doesn't re-resolve a transitioned color when only its var() changed. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
 body {
   font-family: -apple-system, "Segoe UI", Arial, sans-serif;
 }

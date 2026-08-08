@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { CLUB_PICKUP_POINT } from "../constants";
+import { clubName as clubNameOf, clubPickupPoint } from "../utils/club";
 import { formatWeekRange } from "../utils/dates";
 import {
   awayGamesForWeek,
@@ -11,7 +11,6 @@ import {
 import { WeekNav } from "./ui/WeekNav";
 import { IconDownload, IconBus, IconMapPin } from "./ui/icons";
 
-const CLUB_NAME = "קרית אונו – דור העתיד";
 // Cells that read better centered (times / short codes) — by column index in TRANSPORT_HEADERS.
 const CENTER_COLS = new Set([1, 3, 8, 10, 11]); // יום, שעה, שעת התייצבות, איסוף חזרה, סוג רכב
 
@@ -23,12 +22,15 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
   const [busy, setBusy] = useState(false);
   const captureRef = useRef(null); // off-screen node snapshotted into the shareable image
 
+  const CLUB_NAME = clubNameOf(data);
+  const pickupPoint = clubPickupPoint(data);
+
   const awayGames = awayGamesForWeek(data.games || [], weekStart);
   const rows = buildTransportRows(awayGames, {
     teams: data.teams,
     coaches: data.coaches,
     departBefore,
-    pickupPoint: CLUB_PICKUP_POINT,
+    pickupPoint,
   });
   const weekLabel = formatWeekRange(weekStart);
   const hasRows = rows.length > 0;
@@ -103,7 +105,7 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
 
       <div className="text-xs text-indigo-800">
         {hasRows
-          ? `${rows.length} משחקי חוץ בשבוע ${weekLabel}. נקודת איסוף: ${CLUB_PICKUP_POINT}. איסוף חזרה = סיום המשחק.`
+          ? `${rows.length} משחקי חוץ בשבוע ${weekLabel}. נקודת איסוף: ${pickupPoint}. איסוף חזרה = סיום המשחק.`
           : `אין משחקי חוץ בשבוע ${weekLabel}.`}
       </div>
 
@@ -169,7 +171,7 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
           <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "4px 0" }}>הסעות — משחקי חוץ</h1>
           <div style={{ fontSize: "14px", color: "#57534E" }}>{weekLabel}</div>
           <div style={{ fontSize: "12px", color: "#6366F1", marginTop: "2px" }}>
-            התייצבות {departBefore} דק' לפני המשחק · איסוף חזרה = סיום המשחק · נקודת איסוף: {CLUB_PICKUP_POINT}
+            התייצבות {departBefore} דק' לפני המשחק · איסוף חזרה = סיום המשחק · נקודת איסוף: {pickupPoint}
           </div>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>

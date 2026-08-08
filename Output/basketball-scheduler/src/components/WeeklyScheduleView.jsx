@@ -9,9 +9,10 @@ import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
 import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
-import clubLogo from "../assets/club-logo.jpg";
+import { clubLogoSrc } from "../utils/clubLogo";
 
-export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart }) {
+export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, setWeekStart }) {
+  const clubLogo = clubLogoSrc(data);
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
@@ -24,12 +25,16 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const boardRef = useRef(null); // the team-mode <table> captured into the shared image/PDF
   const [logoDataUrl, setLogoDataUrl] = useState(""); // inline logo so html2canvas paints it on mobile too
 
-  // Inline the bundled logo once as a data URI (mobile browsers fail to paint a fetched <img>).
+  // Inline the club logo as a data URI (mobile browsers fail to paint a fetched <img>).
+  // Re-runs if the club swaps its logo; falls back to the URL when the fetch is blocked
+  // (a Storage-hosted logo needs CORS configured on the bucket).
   useEffect(() => {
     let cancelled = false;
+    setLogoDataUrl("");
+    if (!clubLogo) return; // club has no logo of its own — export renders without one
     loadImageDataUrl(clubLogo).then((url) => { if (!cancelled && url) setLogoDataUrl(url); });
     return () => { cancelled = true; };
-  }, []);
+  }, [clubLogo]);
 
   // Capture the whole board to a canvas with the logo + title composited on top. We flip the
   // table into its print-style read-only view during capture via the `capturing` class, so the
@@ -65,9 +70,11 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     }
   }
 
-  // MVP "notification": stamp this week as published → every coach sees the banner live.
-  const publishSchedule = () => {
+  // Publishing does two things: stamps the week so coaches see the banner, and writes
+  // the parent-facing projection (schedule only — no player or contact data).
+  const publishSchedule = async () => {
     save({ ...data, schedulePublished: { weekOf: weekStart, at: new Date().toISOString() } });
+    if (publish) await publish(weekStart);
     setJustPublished(true);
     setTimeout(() => setJustPublished(false), 2500);
   };
@@ -259,7 +266,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       {mode === "team" && (
         <>
           <div className="print-only text-center mb-3">
-            <img src={clubLogo} alt="" className="mx-auto h-16 object-contain mb-1" />
+            {clubLogo && <img src={clubLogo} alt="" className="mx-auto h-16 object-contain mb-1" />}
             <div className="text-xl font-bold text-stone-800">{title}</div>
           </div>
           <div className="bg-white rounded-xl border border-stone-200 overflow-auto weekly-table-wrap">
@@ -449,7 +456,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       {mode === "hall" && (
         <>
           <div className="print-only text-center mb-2">
-            <img src={clubLogo} alt="" className="mx-auto h-16 object-contain mb-1" />
+            {clubLogo && <img src={clubLogo} alt="" className="mx-auto h-16 object-contain mb-1" />}
             <div className="text-xl font-bold text-stone-800">{title} — אולם {selectedHallName}</div>
           </div>
           {!selectedHallId ? (
