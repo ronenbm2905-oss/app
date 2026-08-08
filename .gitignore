@@ -27,3 +27,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# property-management עבר לריפו ייעודי משלו (github.com/ronenbm2905-oss/property-management)
+Output/property-management/
