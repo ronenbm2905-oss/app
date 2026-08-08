@@ -149,6 +149,29 @@ API עברית + Web Audio API לצלילים מסונתזים). הבריף המ
   (פרסום הצהרת נגישות + בירור פטור-עוסק ⚖️), ורצוי R1 (תיעוד בעלות בכתב). deploy חסום ל-Claude.
 - **Related:** [[#2026-07-27 — שער משפטי (עדי): 🟠 אושר עם תיקונים חובה [shipped]]]
 
+### 2026-08-08 — נועם: הערכת הבאה לחנויות (PWA מול Capacitor) [shipped]
+- **What was done:** רונן שאל איך מביאים את האפליקציה ל-App Store / Google Play. הפעלתי את
+  נועם להערכה **קונקרטית מבוססת-קוד** (לא בנייה). קרא את `package.json`/`vite.config.js`/
+  `index.html`/`main.jsx`/`useSpeech.js`/`useSound.js`/`cards.js` + מבנה `src` ו-`public/cards`.
+  מסמך ההערכה נשמר ב-`noam/Outputs/haderech-lamilim-store-estimate.md`.
+- **Decisions / ממצאים:**
+  - **PWA** — `vite-plugin-pwa` + manifest + 3 icons + self-host פונט. **3–5 שעות, אפס עלות,
+    אפס תלות במשתמש.** `base:'./'` ו-Web Audio המסונתז כבר מוכנים. TTS אופליין תלוי בקול מותקן
+    (בד"כ עובד; לא קורס בהיעדרו).
+  - **Capacitor → Google Play** — 1.5–3 ימי עבודת נועם (אנדרואיד). **הסיכון האמיתי: Web Speech
+    (`speechSynthesis`) לא נתמך אמין ב-Android WebView** — TTS הוא לב החוויה → צריך לעטוף את
+    `useSpeech.js` בפלאגין `@capacitor-community/text-to-speech`. + safe-area + hardware-back.
+  - **App Store** — דורש Mac + $99/שנה + ביקורת קפדנית → לא כדאי כעת אלא אם דרישה מפורשת.
+  - **קטגוריית ילדים** — אפס איסוף/פרסומות/SDK צד-ג' (אומת ע"י עדי) → עומדים בקלות ב-Google
+    Families / Apple Kids. חובה: מדיניות פרטיות ב-URL ציבורי (יש טקסט מעדי).
+  - **תלוי-משתמש בחנות (חוסם, לא נועם):** חשבונות מפתח ($25 Play חד"פ / $99/שנה Apple), keystore,
+    חתימה, ביקורת, כרטיס חנות. פתיחת חשבונות ותשלום חסומים ל-Claude — דרך רונן.
+- **המלצת נועם:** להתחיל **PWA עכשיו**; Capacitar כשלב ב' רק אם נוכחות ב-Google Play שווה את
+  המחיר (ואז הבלוק היחיד הכבד = עטיפת TTS). **טרם הוחלט — רונן שוקל.**
+- **Notes / Caveats:** הערכה בלבד, לא נגעתי בקוד. קודם לזה עדיין פתוח לפרישת ווב: M1 (אישור דורית
+  על התוכן) + פרישת Netlify לגרסת הערות + M3-הצהרה.
+- **Related:** [[#2026-07-27 — דורית: יישום R3+R4 + רענון build [shipped]]], [[madbekot-laderech-landing]]
+
 ### 2026-07-27 — דורית: יישום R3+R4 + רענון build [shipped]
 - **What was done:** לפי "תיישמי מה שאת חושבת" — יישמתי את הפריטים החד-משמעיים בלבד:
   **R3** — שורת "אין איסוף מידע/עוגיות/מעקב" גלויה בפוטר (`Home.jsx`, אומת חי); **R4** —
