@@ -17,7 +17,11 @@
       "WebFetch(domain:trademarks.justia.com)",
       "mcp__c10f0f4a-d5f7-4e1b-8195-f312597adc2e__search_threads",
       "Bash(unzip -p \"C:/Users/RONEN/Desktop/cloud ai/app/Briefs/haderech/haderech_lamilim_spec.docx\" word/document.xml)",
-      "Bash(:)"
+      "Bash(:)",
+      "Bash(git switch *)",
+      "Bash(node theme-test.mjs)",
+      "Bash(npm run *)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }
