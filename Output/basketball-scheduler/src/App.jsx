@@ -20,6 +20,11 @@ import { LegalFooter } from "./legal/LegalFooter";
 import { IconLogOut, IconEye } from "./components/ui/icons";
 import { clubName as clubNameOf } from "./utils/club";
 import { clubLogoSrc } from "./utils/clubLogo";
+import {
+  subscriptionBlocksEditing,
+  subscriptionNeedsAttention,
+  describeSubscription,
+} from "./utils/subscription";
 
 const TABS = [
   { id: "announcements", label: "הודעות" },
@@ -62,7 +67,8 @@ function ClubNotFound({ clubId }) {
 
 export default function App({ clubId }) {
   const { user, authLoading, authError, signIn, signOut, isFirebaseConfigured } = useAuth();
-  const { data, save, publish, syncJoinCode, loaded, error, isAdmin, mode, missing } = useClubData(user, clubId);
+  const { data, save, publish, syncJoinCode, loaded, error, isAdmin, mode, missing, subscription } =
+    useClubData(user, clubId);
   const [tab, setTab] = useState("manager");
   // "" for a club that has not uploaded a logo — see utils/clubLogo.
   const clubLogo = clubLogoSrc(data);
@@ -89,7 +95,12 @@ export default function App({ clubId }) {
   // empty, fully-editable-looking app and start entering data that nobody can read.
   if (missing) return <ClubNotFound clubId={clubId} />;
 
-  const canEdit = isAdmin;
+  // Two different questions, deliberately kept apart:
+  //   isAdmin — who you are. Decides whether the settings tab exists at all, so a club
+  //             whose subscription lapsed can still reach the screen that renews it.
+  //   canEdit — what you may change right now. A lapsed subscription withholds editing
+  //             everywhere; nothing is hidden and nothing is deleted.
+  const canEdit = isAdmin && !subscriptionBlocksEditing(subscription);
 
   return (
     <div className="min-h-screen bg-stone-50" dir="rtl">
@@ -124,7 +135,7 @@ export default function App({ clubId }) {
               ⚠ מצב מקומי: הנתונים נשמרים בדפדפן הזה בלבד, ולא משותפים אוטומטית עם מכשירים אחרים. חבר את Firebase כדי לעבור לסנכרון בענן (ראה README).
             </p>
           )}
-          {mode === "cloud" && !canEdit && (
+          {mode === "cloud" && !isAdmin && (
             <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
               <IconEye size={13} /> מצב צפייה בלבד — רק מנהל יכול לערוך. אם אתה אמור להיות מנהל, פנה למי שמנהל את הרשימה.
             </p>
@@ -132,7 +143,7 @@ export default function App({ clubId }) {
         </header>
 
         <div role="tablist" aria-label="מסכי המערכת" className="flex gap-1 bg-stone-200/70 rounded-xl p-1 w-fit mb-5 flex-wrap">
-          {TABS.filter((tb) => canEdit || !ADMIN_ONLY_TABS.has(tb.id)).map((tb) => (
+          {TABS.filter((tb) => isAdmin || !ADMIN_ONLY_TABS.has(tb.id)).map((tb) => (
             <button
               key={tb.id}
               role="tab"
@@ -150,6 +161,28 @@ export default function App({ clubId }) {
         </div>
 
         {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
+
+        {/* Only the club's own admins ever see this — it is a billing matter, not
+            something to put in front of coaches or parents. */}
+        {isAdmin && subscriptionNeedsAttention(subscription) && (
+          <div
+            className={`mb-4 text-xs border rounded-lg p-2.5 flex items-start gap-2 ${
+              subscription.state === "expiring"
+                ? "bg-amber-50 border-amber-200 text-amber-900"
+                : "bg-red-50 border-red-200 text-red-800"
+            }`}
+          >
+            <span aria-hidden="true">⏳</span>
+            <span>
+              {describeSubscription(subscription)}{" "}
+              {tab !== "settings" && (
+                <button onClick={() => setTab("settings")} className="underline font-medium">
+                  פרטי המנוי
+                </button>
+              )}
+            </span>
+          </div>
+        )}
 
         <SchedulePublishedBanner data={data} />
         {tab !== "announcements" && <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />}
@@ -172,7 +205,15 @@ export default function App({ clubId }) {
         ) : tab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />
         ) : tab === "settings" ? (
-          <SettingsView data={data} save={save} canEdit={canEdit} syncJoinCode={syncJoinCode} clubId={clubId} />
+          <SettingsView
+            data={data}
+            save={save}
+            canEdit={canEdit}
+            syncJoinCode={syncJoinCode}
+            clubId={clubId}
+            subscription={subscription}
+            isAdmin={isAdmin}
+          />
         ) : (
           <ReportView data={data} />
         )}

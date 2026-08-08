@@ -3,6 +3,17 @@ import { doc, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
 import { db, DEFAULT_CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY, DEFAULT_SETTINGS, PUBLISHED_STORAGE_KEY } from "../constants";
 import { buildPublicWeek, findLeakedKeys } from "../utils/publish";
+import {
+  subscriptionState,
+  subscriptionBlocksEditing,
+  onlySubscriptionChanged,
+} from "../utils/subscription";
+import { toISODate } from "../utils/dates";
+
+// Refused because the subscription has lapsed. Renewing is still allowed — see
+// onlySubscriptionChanged — so this can never become a dead end.
+const LAPSED_SAVE_ERROR =
+  "המנוי פג והמערכת במצב צפייה בלבד. הנתונים שמורים במלואם; חידוש המנוי מחזיר את העריכה.";
 
 // Merge stored data over defaults so older/partial documents don't crash the UI.
 // `settings` is merged one level deeper (and `legal` one deeper still), because a
@@ -39,15 +50,24 @@ function useLocalClubData() {
     }
   }, []);
 
-  const save = useCallback((next) => {
-    setData(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      setError(null);
-    } catch {
-      setError("השמירה נכשלה, נסה שוב.");
-    }
-  }, []);
+  const subscription = subscriptionState(data.settings, toISODate(new Date()));
+
+  const save = useCallback(
+    (next) => {
+      if (subscriptionBlocksEditing(subscription) && !onlySubscriptionChanged(data, next)) {
+        setError(LAPSED_SAVE_ERROR);
+        return;
+      }
+      setData(next);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        setError(null);
+      } catch {
+        setError("השמירה נכשלה, נסה שוב.");
+      }
+    },
+    [data, subscription.state]
+  );
 
   // Local mode mirrors the cloud's published subcollection in localStorage, so the
   // parent portal can be exercised end-to-end without a Firebase project.
@@ -76,7 +96,10 @@ function useLocalClubData() {
   // syncJoinCode is a no-op: the portal resolves codes straight from the club data.
   const syncJoinCode = useCallback(async () => true, []);
 
-  return { data, save, publish, syncJoinCode, loaded, error, isAdmin: true, mode: "local", missing: false };
+  return {
+    data, save, publish, syncJoinCode, loaded, error,
+    isAdmin: true, mode: "local", missing: false, subscription,
+  };
 }
 
 // ---- CLOUD MODE (Firestore, real-time) ----
@@ -125,10 +148,17 @@ function useCloudClubData(user, clubId) {
       )
   );
 
+  const subscription = subscriptionState(data.settings, toISODate(new Date()));
+
   const save = useCallback(
     async (next) => {
       if (!isAdmin) {
         setError("רק מנהל יכול לשמור שינויים.");
+        return;
+      }
+      // A lapsed subscription withholds editing, but never the renewal itself.
+      if (subscriptionBlocksEditing(subscription) && !onlySubscriptionChanged(data, next)) {
+        setError(LAPSED_SAVE_ERROR);
         return;
       }
       try {
@@ -138,7 +168,7 @@ function useCloudClubData(user, clubId) {
         setError("השמירה נכשלה, נסה שוב.");
       }
     },
-    [isAdmin, clubId]
+    [isAdmin, clubId, data, subscription.state]
   );
 
   // Publishing writes the parent-facing projection to a SEPARATE document
@@ -192,7 +222,10 @@ function useCloudClubData(user, clubId) {
     [isAdmin, clubId]
   );
 
-  return { data, save, publish, syncJoinCode, loaded, error, isAdmin, mode: "cloud", missing, clubId };
+  return {
+    data, save, publish, syncJoinCode, loaded, error,
+    isAdmin, mode: "cloud", missing, clubId, subscription,
+  };
 }
 
 // Single entry point — picks the implementation based on configuration.

@@ -6,6 +6,7 @@ import { applyTheme } from "../utils/theme";
 import { legalDetailsComplete, legalLooksInherited, LEGAL_FIELD_LABELS } from "../legal/fillTemplate";
 import { fileToLogoDataUrl, dataUrlBytes, LOGO_MAX_BYTES } from "../utils/imageResize";
 import { generateJoinCode, formatJoinCode } from "../utils/joinCode";
+import { describeSubscription, WARN_DAYS, GRACE_DAYS } from "../utils/subscription";
 import { IconTrash, IconCheck } from "./ui/icons";
 
 const KB = (bytes) => `${Math.round(bytes / 1024)} KB`;
@@ -42,9 +43,95 @@ function Field({ label, hint, children }) {
 const inputCls =
   "w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
 
+// The renewal date, and nothing else. This card stays editable even while the
+// subscription has lapsed and the rest of the app is read-only — otherwise renewing
+// would require the Firebase console, and a lapsed club could never let itself back in.
+// It saves on its own rather than through the page's draft, so the narrow "only the
+// subscription changed" path in useClubData recognises it.
+function SubscriptionCard({ data, save, subscription, isAdmin }) {
+  const current = clubSettings(data).subscription || {};
+  const [plan, setPlan] = useState(current.plan || "");
+  const [validUntil, setValidUntil] = useState(current.validUntil || "");
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    setPlan(current.plan || "");
+    setValidUntil(current.validUntil || "");
+  }, [current.plan, current.validUntil]);
+
+  const dirty = plan !== (current.plan || "") || validUntil !== (current.validUntil || "");
+
+  const tone = {
+    lapsed: "bg-red-50 border-red-200 text-red-800",
+    grace: "bg-amber-50 border-amber-200 text-amber-900",
+    expiring: "bg-amber-50 border-amber-200 text-amber-900",
+  }[subscription?.state];
+
+  return (
+    <Card
+      title="מנוי"
+      hint="מועד החידוש נרשם כאן ומשמש להתראות בלבד. אין גבייה בתוך המערכת — התשלום מול חשבונית."
+      badge={
+        subscription?.state === "lapsed" ? (
+          <span className="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">פג</span>
+        ) : subscription?.state === "unmanaged" ? (
+          <span className="text-[11px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full">לא מוגדר</span>
+        ) : null
+      }
+    >
+      {tone && (
+        <p className={`text-xs border rounded-lg p-2.5 ${tone}`}>{describeSubscription(subscription)}</p>
+      )}
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Field label="תוכנית" hint="שם חופשי, לתיעוד מול החשבונית.">
+          <input className={inputCls} value={plan} disabled={!isAdmin} onChange={(e) => setPlan(e.target.value)} />
+        </Field>
+        <Field label="בתוקף עד" hint={`התראה מתחילה ${WARN_DAYS} ימים לפני. אחרי המועד יש ${GRACE_DAYS} ימי חסד לפני מעבר לצפייה בלבד.`}>
+          <input
+            type="date"
+            dir="ltr"
+            className={inputCls}
+            value={validUntil}
+            disabled={!isAdmin}
+            onChange={(e) => setValidUntil(e.target.value)}
+          />
+        </Field>
+      </div>
+
+      {isAdmin && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            disabled={!dirty}
+            onClick={() => {
+              save({
+                ...data,
+                settings: { ...clubSettings(data), subscription: { plan, validUntil } },
+              });
+              setMsg("המנוי עודכן.");
+            }}
+            className="px-3 py-2 text-sm rounded-lg bg-brand-600 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            שמור מנוי
+          </button>
+          {validUntil && (
+            <button
+              onClick={() => setValidUntil("")}
+              className="px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+            >
+              נקה תאריך
+            </button>
+          )}
+          {msg && <span className="text-xs text-emerald-700 flex items-center gap-1"><IconCheck size={13} /> {msg}</span>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // Club settings: everything that used to be hardcoded to one club. Admin-only.
 // Per-team join codes for the parent portal, plus the link to hand out.
-function PortalCard({ data, save, syncJoinCode, clubId }) {
+function PortalCard({ data, save, syncJoinCode, clubId, canEdit }) {
   const [msg, setMsg] = useState("");
   const teams = data.teams || [];
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -101,10 +188,22 @@ function PortalCard({ data, save, syncJoinCode, clubId }) {
                       {formatJoinCode(t.joinCode)}
                     </code>
                     <button onClick={() => copy(t.joinCode, "הקוד")} className="text-xs text-stone-600 underline underline-offset-2">העתק</button>
-                    <button onClick={() => setCode(t)} className="text-xs text-stone-600 underline underline-offset-2">החלף</button>
+                    {/* Issuing a code writes to the club document, so it follows canEdit.
+                        Copying an existing one does not, and stays available. */}
+                    <button
+                      onClick={() => setCode(t)}
+                      disabled={!canEdit}
+                      className="text-xs text-stone-600 underline underline-offset-2 disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+                    >
+                      החלף
+                    </button>
                   </>
                 ) : (
-                  <button onClick={() => setCode(t)} className="px-3 py-1.5 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700">
+                  <button
+                    onClick={() => setCode(t)}
+                    disabled={!canEdit}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
                     צור קוד
                   </button>
                 )}
@@ -118,7 +217,7 @@ function PortalCard({ data, save, syncJoinCode, clubId }) {
   );
 }
 
-export function SettingsView({ data, save, canEdit, syncJoinCode, clubId }) {
+export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscription, isAdmin }) {
   const saved = clubSettings(data);
   const [draft, setDraft] = useState(saved);
   const [logoMsg, setLogoMsg] = useState("");
@@ -359,7 +458,9 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId }) {
         </div>
       </Card>
 
-      <PortalCard data={data} save={save} syncJoinCode={syncJoinCode} clubId={clubId} />
+      <PortalCard data={data} save={save} syncJoinCode={syncJoinCode} clubId={clubId} canEdit={canEdit} />
+
+      <SubscriptionCard data={data} save={save} subscription={subscription} isAdmin={isAdmin} />
 
       <Card title="מידע טכני" hint="כל נתוני המועדון נשמרים במסמך אחד, שמוגבל ל-1 MB.">
         <div className="flex items-center gap-3">
