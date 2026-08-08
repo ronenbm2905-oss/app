@@ -15,6 +15,8 @@ import {
 } from "../src/utils/access.js";
 import { mockExtract, extractDocument, EXTRACTION_SCHEMA, AI_DOC_TYPES } from "../src/utils/aiExtract.js";
 import { computeReminders, activeReminders, DEFAULT_LEAD_DAYS } from "../src/utils/reminders.js";
+import { removeTenantCascade } from "../src/utils/retention.js";
+import { AI_SCANNABLE_TYPES } from "../src/constants.js";
 
 let pass = 0;
 function ok(name, cond) {
@@ -298,6 +300,34 @@ ok("reminders: overdue insurance daysUntil = -3", ins.daysUntil === -3);
 ok("reminders: sorted by urgency (overdue first)", rems[0].daysUntil <= rems[rems.length - 1].daysUntil);
 const active = activeReminders(remState, remToday);
 ok("activeReminders returns only within-window (2: soon + overdue)", active.length === 2);
+
+// ---- שער עדי: B-AI-2 (חסימת סריקת ת.ז.) + B-RET (מחיקת דייר cascade) ----
+ok("B-AI-2: id NOT in AI-scannable allowlist", !AI_SCANNABLE_TYPES.includes("id"));
+ok("B-AI-2: structured types ARE scannable", ["municipalTax", "electricity", "water", "leaseContract", "saleContract"].every((x) => AI_SCANNABLE_TYPES.includes(x)));
+ok("B-AI-2: houseRegulations/insurance NOT scannable", !AI_SCANNABLE_TYPES.includes("houseRegulations") && !AI_SCANNABLE_TYPES.includes("insurance"));
+
+const retState = {
+  ...EMPTY,
+  tenants: [{ id: "t1", ownerId: "o" }, { id: "t2", ownerId: "o" }],
+  leases: [{ id: "l1", tenantId: "t1", ownerId: "o" }, { id: "l2", tenantId: "t2", ownerId: "o" }],
+  documents: [
+    { id: "d1", tenantId: "t1", ownerId: "o" },
+    { id: "d2", leaseId: "l1", ownerId: "o" },
+    { id: "d3", tenantId: "t2", ownerId: "o" },
+  ],
+  tickets: [{ id: "tk1", reportedByTenantId: "t1", ownerId: "o" }, { id: "tk2", reportedByTenantId: "t2", ownerId: "o" }],
+  debts: [{ id: "db1", tenantId: "t1", ownerId: "o" }, { id: "db2", tenantId: "t2", ownerId: "o" }],
+};
+const afterDel = removeTenantCascade(retState, "t1");
+ok("B-RET: deleted tenant removed", !afterDel.tenants.some((x) => x.id === "t1"));
+ok("B-RET: other tenant kept", afterDel.tenants.some((x) => x.id === "t2"));
+ok("B-RET: tenant's lease removed", !afterDel.leases.some((x) => x.tenantId === "t1"));
+ok("B-RET: doc by tenantId removed", !afterDel.documents.some((x) => x.id === "d1"));
+ok("B-RET: doc by leaseId removed (cascade)", !afterDel.documents.some((x) => x.id === "d2"));
+ok("B-RET: other tenant's doc kept", afterDel.documents.some((x) => x.id === "d3"));
+ok("B-RET: tenant's reported ticket removed", !afterDel.tickets.some((x) => x.reportedByTenantId === "t1"));
+ok("B-RET: tenant's debt removed", !afterDel.debts.some((x) => x.tenantId === "t1"));
+ok("B-RET: other tenant's debt kept", afterDel.debts.some((x) => x.id === "db2"));
 
 console.log(`\nALL ${pass} CHECKS PASSED`);
 

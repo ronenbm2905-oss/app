@@ -12,7 +12,7 @@
 - מודל: `claude-opus-5` (קבוע ב-`config.js`, ניתן להחלפה).
 - structured output: `output_config.format = { type: "json_schema", schema }` — JSON מובטח.
 - קלט: PDF כ-block `document` (base64) לפני ה-`text`; תמונה כ-block `image`.
-- `thinking: { type: "enabled", effort: "low" }` + `max_tokens: 2048`. **בלי** `temperature`/`budget_tokens` (נדחים ב-opus-5).
+- `thinking: { type: "adaptive" }` + `output_config.effort: "low"` + `max_tokens: 4096`. **בלי** `temperature`/`budget_tokens` (נדחים ב-opus-5; `thinking:{type:"enabled"}` מחזיר 400).
 - בדיקת `stop_reason === "refusal"` לפני קריאת התוכן.
 
 ## הקמה + deploy (המשתמש מריץ — לא Claude)

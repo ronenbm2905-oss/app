@@ -10,6 +10,7 @@ import { createTicket } from "../schema.js";
 import { tenantView } from "../utils/access.js";
 import { addressLine } from "../utils/display.js";
 import { formatCurrency, formatDate } from "../utils/format.js";
+import { PrivacyPolicy } from "./PrivacyPolicy.jsx";
 
 const STATUS_TONE = { open: "amber", inProgress: "blue", closed: "green" };
 
@@ -17,6 +18,7 @@ const STATUS_TONE = { open: "amber", inProgress: "blue", closed: "green" };
 export function TenantPortal({ state, tenantId, ownerId, onReportTicket, onToggleLang }) {
   const { t, lang } = useI18n();
   const [reportOpen, setReportOpen] = useState(false);
+  const [privacy, setPrivacy] = useState(false);
   const view = tenantView(state, tenantId);
 
   if (!view) {
@@ -47,7 +49,14 @@ export function TenantPortal({ state, tenantId, ownerId, onReportTicket, onToggl
       </header>
 
       <main className="mx-auto max-w-3xl space-y-4 px-4 py-5">
-        <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">{t("portal.privacyNote")}</p>
+        {/* B-AI-3: יידוע דייר על עיבוד ה-AI + קישור להודעת הפרטיות. */}
+        <div className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
+          <p>{t("portal.privacyNote")}</p>
+          <p className="mt-1">{t("privacy.aiTenantNote")}</p>
+          <button onClick={() => setPrivacy(true)} className="mt-1 font-medium underline">
+            {t("privacy.link")}
+          </button>
+        </div>
 
         {/* הדירה שלי */}
         {property && (
@@ -144,6 +153,7 @@ export function TenantPortal({ state, tenantId, ownerId, onReportTicket, onToggl
           }}
         />
       )}
+      {privacy && <PrivacyPolicy mode="tenant" onClose={() => setPrivacy(false)} />}
     </div>
   );
 }

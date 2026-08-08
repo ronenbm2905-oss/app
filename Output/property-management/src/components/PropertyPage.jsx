@@ -75,6 +75,7 @@ export function PropertyPage({ property, data, ownerId, actions, canEdit, onBack
             ownerId={ownerId}
             onSaveTenant={actions.saveTenant}
             onSaveLease={actions.saveLease}
+            onDeleteTenant={actions.deleteTenant}
             canEdit={canEdit}
           />
         )}

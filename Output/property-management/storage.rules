@@ -33,10 +33,13 @@ service firebase.storage {
       return firestore.get(/databases/(default)/documents/owners/$(ownerId)/documents/$(docId)).data;
     }
 
-    // -- תמונות/קבלות של תקלה: owner מלא; assignee קריאה+כתיבה --
+    // -- תמונות/קבלות של תקלה: owner מלא (כולל מחיקה); assignee מעלה בלבד --
+    // R2 (שער עדי): assignee מקבל read+create+update (העלאת/החלפת תמונות שטח),
+    // אך **לא** delete — לא ימחק קבצים של הבעלים. delete = owner בלבד.
     match /owners/{ownerId}/tickets/{ticketId}/{allPaths=**} {
-      allow read, write: if isOwner(ownerId)
-        || (isSignedIn() && ticketData(ownerId, ticketId).assigneeUserId == request.auth.uid);
+      allow read, write: if isOwner(ownerId);
+      allow read, create, update: if isSignedIn()
+        && ticketData(ownerId, ticketId).assigneeUserId == request.auth.uid;
     }
 
     // -- מסמכים סרוקים: owner מלא; הדייר המקושר קריאה בלבד --
