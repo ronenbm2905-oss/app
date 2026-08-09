@@ -43,6 +43,29 @@ export function findHallClashes(sessions) {
   return clash;
 }
 
+// Session ids where the same coach is booked twice at an overlapping time (same day +
+// week). The counterpart to findHallClashes: a hall clash is two teams in one gym, this
+// is one coach in two places. It shows up while assigning a coach to a second team —
+// exactly when it is cheapest to fix, and easiest to miss on a board of a dozen rows.
+//
+// Sessions with no coach are skipped: "not yet assigned" twice over is not a clash.
+export function findCoachClashes(sessions) {
+  const clash = new Set();
+  for (let i = 0; i < sessions.length; i++) {
+    for (let j = i + 1; j < sessions.length; j++) {
+      const a = sessions[i];
+      const b = sessions[j];
+      if (!a.coachId || a.coachId !== b.coachId) continue;
+      if (a.day !== b.day) continue;
+      if ((a.weekOf || "") !== (b.weekOf || "")) continue;
+      if (!overlaps(a.start, a.end, b.start, b.end)) continue;
+      clash.add(a.id);
+      clash.add(b.id);
+    }
+  }
+  return clash;
+}
+
 // ---------- Constraint violation detection ----------
 export function findConstraintViolations(sessions, constraints) {
   const violations = {};

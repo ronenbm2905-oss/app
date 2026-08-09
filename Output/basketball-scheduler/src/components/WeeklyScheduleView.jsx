@@ -3,7 +3,7 @@ import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
-import { findHallClashes, findConstraintViolations } from "../utils/conflicts";
+import { findHallClashes, findCoachClashes, findConstraintViolations } from "../utils/conflicts";
 import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
@@ -13,6 +13,7 @@ import clubLogo from "../assets/club-logo.jpg";
 
 export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
+  const [filterCoachId, setFilterCoachId] = useState(""); // "" = every coach
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
@@ -40,7 +41,12 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     try {
       return await renderNodeCanvas(node, {
         logoSrc: logoDataUrl || clubLogo,
-        title: `${title} · ${formatWeekRange(weekStart)}`,
+        // Say so in the exported title when the board is filtered. The banner that warns
+        // about it on screen sits outside the captured node, so without this a one-coach
+        // board sent to the group would read as the whole week's schedule.
+        title:
+          `${title} · ${formatWeekRange(weekStart)}` +
+          (filterCoachId ? ` · ${nameOf(data.coaches, filterCoachId)} בלבד` : ""),
       });
     } finally {
       node.classList.remove("capturing"); // restore the interactive view immediately
@@ -123,9 +129,18 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
 
   const typeColor = (type) => sessionTypeColor(type);
 
+  // With a coach selected the board narrows to that coach's own sessions, so the row for
+  // a team they share with someone else shows only the slots they are actually in — which
+  // is what makes a double booking visible at a glance.
   const cellSessions = (teamId, day) =>
     data.sessions
-      .filter((s) => s.teamId === teamId && s.day === day && (s.weekOf || "") === weekStart)
+      .filter(
+        (s) =>
+          s.teamId === teamId &&
+          s.day === day &&
+          (s.weekOf || "") === weekStart &&
+          (!filterCoachId || s.coachId === filterCoachId)
+      )
       .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
   const teamWeekCount = (teamId) =>
@@ -150,6 +165,28 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   );
   // Hard double-bookings: sessions sharing a hall at an overlapping time this week → bold red.
   const hallClashes = useMemo(() => findHallClashes(weekSessions), [weekSessions]);
+  // The same coach booked in two places at once. Computed over the WHOLE week, never over
+  // the filtered view — a clash must not disappear because the board is showing one coach.
+  const coachClashes = useMemo(() => findCoachClashes(weekSessions), [weekSessions]);
+
+  // Rows to show. Filtering by coach keeps a team if the coach is its assigned coach OR
+  // runs any of its sessions this week — a coach often covers a team that is not formally
+  // theirs, and those are exactly the sessions that cause the overlap.
+  const visibleTeams = useMemo(() => {
+    if (!filterCoachId) return data.teams;
+    const ids = new Set([
+      ...data.teams.filter((t) => t.coachId === filterCoachId).map((t) => t.id),
+      ...weekSessions.filter((s) => s.coachId === filterCoachId).map((s) => s.teamId),
+    ]);
+    return data.teams.filter((t) => ids.has(t.id));
+  }, [filterCoachId, data.teams, weekSessions]);
+
+  // How many of this coach's sessions collide, so the toolbar can say so out loud rather
+  // than relying on the manager spotting red cells across a wide board.
+  const filteredCoachClashCount = useMemo(() => {
+    if (!filterCoachId) return 0;
+    return weekSessions.filter((s) => s.coachId === filterCoachId && coachClashes.has(s.id)).length;
+  }, [filterCoachId, weekSessions, coachClashes]);
   // Sessions colliding with a coach/hall constraint → bold amber. { sessionId: [constraint,...] }
   const violations = useMemo(
     () => findConstraintViolations(weekSessions, data.constraints || []),
@@ -191,6 +228,15 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             </div>
             {mode === "hall" && (
               <Select value={selectedHallId} onChange={setSelectedHallId} options={data.halls} placeholder="בחר אולם" className="w-40" />
+            )}
+            {mode === "team" && (
+              <Select
+                value={filterCoachId}
+                onChange={setFilterCoachId}
+                options={data.coaches}
+                placeholder="כל המאמנים"
+                className="w-40"
+              />
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -252,6 +298,32 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             כלול את עמודת "סה״כ שבוע" גם בהדפסה
           </label>
         )}
+        {/* Say plainly that the board is showing a slice. The export captures whatever is on
+            screen, and a filtered board sent to the coaches would look like the full week. */}
+        {mode === "team" && filterCoachId && (
+          <div
+            className={`text-xs rounded-lg border p-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 ${
+              filteredCoachClashCount
+                ? "bg-red-50 border-red-200 text-red-800"
+                : "bg-blue-50 border-blue-200 text-blue-800"
+            }`}
+          >
+            {/* Phrased without a pronoun on purpose — the app has no way to know a coach's
+                gender, and Hebrew would force a guess. */}
+            <span>
+              מוצגים רק האימונים ששובצו ל<strong>{nameOf(data.coaches, filterCoachId)}</strong>
+              {visibleTeams.length ? ` — ${visibleTeams.length} קבוצות` : ""}.
+            </span>
+            <span className="font-semibold">
+              {filteredCoachClashCount
+                ? `⚠ ${filteredCoachClashCount} אימונים בחפיפה.`
+                : "✓ אין חפיפות השבוע."}
+            </span>
+            <button onClick={() => setFilterCoachId("")} className="underline underline-offset-2">
+              הצג את כולם
+            </button>
+          </div>
+        )}
         <p className="text-xs text-stone-600">לשליחה בווטאפ: "שיתוף / שמירת תמונה" (תמונה אחת לרוחב) או "שמירת PDF" (עמוד אחד לרוחב עם הכותרת למעלה). שניהם עובדים גם בנייד — בלי בעיות כיוון או כותרות שנעלמות בין עמודים.</p>
       </div>
 
@@ -288,7 +360,17 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                   </tr>
                 </thead>
                 <tbody>
-                  {data.teams.map((team) => {
+                  {visibleTeams.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={1 + activeDays.length + 2 + (canEdit ? 1 : 0)}
+                        className="border border-stone-200 px-3 py-6 text-center text-sm text-stone-500"
+                      >
+                        אין קבוצות ל{nameOf(data.coaches, filterCoachId)} בשבוע הזה.
+                      </td>
+                    </tr>
+                  )}
+                  {visibleTeams.map((team) => {
                     const assignKey = `${weekStart}__${team.id}`;
                     const assignment = (data.weeklyAssignments || {})[assignKey] || { playing: "", secretary: "" };
                     const rowColor = colorForTeamByCoach(team, data.teams);
@@ -325,7 +407,9 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                   {sessions.map((s) => {
                                     const color = typeColor(s.type || "אימון");
                                     const editable = canEdit && !s.fromGame;
-                                    const clash = hallClashes.has(s.id); // same hall + overlapping time
+                                    const hallClash = hallClashes.has(s.id); // two teams in one gym
+                                    const coachClash = coachClashes.has(s.id); // one coach, two places
+                                    const clash = hallClash || coachClash;
                                     const violates = !!violations[s.id]; // collides with a coach/hall constraint
                                     const cellStyle = {
                                       backgroundColor: clash ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
@@ -333,7 +417,14 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                     };
                                     const inner = (
                                       <>
-                                        {clash && <div className="font-bold text-red-700 flex items-center gap-0.5">⚠ חפיפת אולם</div>}
+                                        {hallClash && <div className="font-bold text-red-700 flex items-center gap-0.5">⚠ חפיפת אולם</div>}
+                                        {/* Name the coach: without the filter on, the row's own coach
+                                            may not be the one taking this session. */}
+                                        {coachClash && (
+                                          <div className="font-bold text-red-700 flex items-center gap-0.5">
+                                            ⚠ חפיפת מאמן{s.coachId ? ` — ${nameOf(data.coaches, s.coachId)}` : ""}
+                                          </div>
+                                        )}
                                         {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
                                         <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}>{s.start}–{s.end}</div>
                                         <div className={`mt-0.5 ${clash ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
@@ -345,7 +436,19 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                       <button
                                         key={s.id}
                                         onClick={() => setEditingSession(s)}
-                                        title={clash ? "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן — לחץ לעריכה" : violates ? `אילוץ פעיל (${violationLabel(s.id)}) בזמן הזה — לחץ לעריכה` : "לחץ לעריכה / הזזת האימון"}
+                                        title={
+                                          clash
+                                            ? [
+                                                hallClash && "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן",
+                                                coachClash &&
+                                                  `חפיפת מאמן! ${nameOf(data.coaches, s.coachId)} משובץ ליותר מקבוצה אחת באותו זמן`,
+                                              ]
+                                                .filter(Boolean)
+                                                .join(" · ") + " — לחץ לעריכה"
+                                            : violates
+                                            ? `אילוץ פעיל (${violationLabel(s.id)}) בזמן הזה — לחץ לעריכה`
+                                            : "לחץ לעריכה / הזזת האימון"
+                                        }
                                         className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
                                         style={cellStyle}
                                       >
