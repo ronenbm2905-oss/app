@@ -19,13 +19,13 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
   const [printTotals, setPrintTotals] = useState(false); // editors only; keep the totals column out of print by default
-  // A constraint marker is a scheduling aid for whoever builds the board. Once the manager
-  // has looked at it and decided to keep the session there anyway, it is just noise on the
-  // sheet the coaches receive — so the shared copy leaves it out by default.
-  // Hall and coach clashes are NOT covered by this: those are unresolved problems, not
-  // accepted ones, and hiding them from the people affected is how they go unnoticed.
-  const [hideConstraintMarks, setHideConstraintMarks] = useState(true);
-  const [suppressViolations, setSuppressViolations] = useState(false); // on only while exporting/printing
+  // Warning marks — constraint violations AND hall/coach clashes — are a scheduling aid for
+  // whoever builds the board, and they stay fully visible here. The printed copy goes to
+  // coaches who do not use the app: they cannot act on a warning, so it reads to them as a
+  // schedule nobody finished checking. The manager resolves or accepts each one on screen;
+  // what leaves the building is the decision, not the working notes.
+  const [hideWarningMarks, setHideWarningMarks] = useState(true);
+  const [suppressWarnings, setSuppressWarnings] = useState(false); // on only while exporting/printing
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
   const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
@@ -44,16 +44,16 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // treatment. beforeprint fires before the page is snapshotted, and flushSync makes the
   // re-render land inside that window — a queued update would not.
   useEffect(() => {
-    if (!hideConstraintMarks) return;
-    const before = () => flushSync(() => setSuppressViolations(true));
-    const after = () => flushSync(() => setSuppressViolations(false));
+    if (!hideWarningMarks) return;
+    const before = () => flushSync(() => setSuppressWarnings(true));
+    const after = () => flushSync(() => setSuppressWarnings(false));
     window.addEventListener("beforeprint", before);
     window.addEventListener("afterprint", after);
     return () => {
       window.removeEventListener("beforeprint", before);
       window.removeEventListener("afterprint", after);
     };
-  }, [hideConstraintMarks]);
+  }, [hideWarningMarks]);
 
   // Capture the whole board to a canvas with the logo + title composited on top. We flip the
   // table into its print-style read-only view during capture via the `capturing` class, so the
@@ -64,7 +64,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     // flushSync, not a plain setState: html2canvas reads the DOM on the very next line, and
     // a normal React update would still be queued at that point — the markers would land in
     // the image anyway, intermittently, which is the worst kind of bug to chase.
-    if (hideConstraintMarks) flushSync(() => setSuppressViolations(true));
+    if (hideWarningMarks) flushSync(() => setSuppressWarnings(true));
     try {
       return await renderNodeCanvas(node, {
         logoSrc: logoDataUrl || clubLogo,
@@ -79,7 +79,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       });
     } finally {
       node.classList.remove("capturing"); // restore the interactive view immediately
-      if (hideConstraintMarks) flushSync(() => setSuppressViolations(false));
+      if (hideWarningMarks) flushSync(() => setSuppressWarnings(false));
     }
   }
 
@@ -349,26 +349,29 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             ))}
           </div>
         )}
-        {mode === "team" && canEdit && (
+        {canEdit && (
           <div className="flex flex-col gap-1.5">
+            {mode === "team" && (
+              <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={printTotals}
+                  onChange={(e) => setPrintTotals(e.target.checked)}
+                  className="accent-brand-600"
+                />
+                כלול את עמודת "סה״כ שבוע" גם בהדפסה
+              </label>
+            )}
+            {/* Offered in both modes: the hall report is printed and handed out too. */}
             <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
               <input
                 type="checkbox"
-                checked={printTotals}
-                onChange={(e) => setPrintTotals(e.target.checked)}
+                checked={hideWarningMarks}
+                onChange={(e) => setHideWarningMarks(e.target.checked)}
                 className="accent-brand-600"
               />
-              כלול את עמודת "סה״כ שבוע" גם בהדפסה
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hideConstraintMarks}
-                onChange={(e) => setHideConstraintMarks(e.target.checked)}
-                className="accent-brand-600"
-              />
-              הסתר סימוני אילוץ בהדפסה ובתמונה
-              <span className="text-stone-400">— חפיפות ימשיכו להופיע</span>
+              דוח נקי בהדפסה ובתמונה
+              <span className="text-stone-400">— בלי סימוני אילוץ וחפיפה</span>
             </label>
           </div>
         )}
@@ -481,13 +484,13 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                   {sessions.map((s) => {
                                     const color = typeColor(s.type || "אימון");
                                     const editable = canEdit && !s.fromGame;
-                                    const hallClash = hallClashes.has(s.id); // two teams in one gym
-                                    const coachClash = coachClashes.has(s.id); // one coach, two places
+                                    // All three are suppressed together during export/print when
+                                    // the manager has asked for it — one flag clears every tint,
+                                    // ring, ⚠ line and coloured word, in the place they are decided.
+                                    const hallClash = hallClashes.has(s.id) && !suppressWarnings; // two teams in one gym
+                                    const coachClash = coachClashes.has(s.id) && !suppressWarnings; // one coach, two places
                                     const clash = hallClash || coachClash;
-                                    // Suppressed during export/print when the manager has asked
-                                    // for it — one flag clears the tint, the ring, the ⚠ line
-                                    // and the amber text in a single place.
-                                    const violates = !!violations[s.id] && !suppressViolations;
+                                    const violates = !!violations[s.id] && !suppressWarnings;
                                     const cellStyle = {
                                       backgroundColor: clash ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
                                       borderRight: `3px solid ${clash ? "#DC2626" : violates ? "#D97706" : color}`,
@@ -660,8 +663,10 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 <tbody>
                   {hallSessions.map((s, i) => {
                     const dayIdx = DAYS.indexOf(s.day);
-                    const clash = hallClashes.has(s.id); // two teams in this hall at overlapping times
-                    const violates = !!violations[s.id]; // collides with a coach/hall constraint
+                    // Same suppression as the team board: the hall report is printed and handed
+                    // out too, and a stripe means nothing to someone who cannot act on it.
+                    const clash = hallClashes.has(s.id) && !suppressWarnings; // two teams here at once
+                    const violates = !!violations[s.id] && !suppressWarnings; // collides with a constraint
                     // The day colour always wins the row background — it is what makes this
                     // report readable as bands of days. Warnings used to REPLACE it, which
                     // both broke a day into two colours and, worse, disguised the day: the
