@@ -13,7 +13,7 @@ import clubLogo from "../assets/club-logo.jpg";
 
 export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
-  const [filterCoachId, setFilterCoachId] = useState(""); // "" = every coach
+  const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
@@ -46,7 +46,9 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
         // board sent to the group would read as the whole week's schedule.
         title:
           `${title} · ${formatWeekRange(weekStart)}` +
-          (filterCoachId ? ` · ${nameOf(data.coaches, filterCoachId)} בלבד` : ""),
+          (filterCoachIds.length
+            ? ` · ${data.coaches.filter((c) => filterCoachIds.includes(c.id)).map((c) => c.name).join(" · ")} בלבד`
+            : ""),
       });
     } finally {
       node.classList.remove("capturing"); // restore the interactive view immediately
@@ -139,7 +141,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
           s.teamId === teamId &&
           s.day === day &&
           (s.weekOf || "") === weekStart &&
-          (!filterCoachId || s.coachId === filterCoachId)
+          (!filterCoachIds.length || filterCoachIds.includes(s.coachId))
       )
       .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
@@ -173,20 +175,30 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // runs any of its sessions this week — a coach often covers a team that is not formally
   // theirs, and those are exactly the sessions that cause the overlap.
   const visibleTeams = useMemo(() => {
-    if (!filterCoachId) return data.teams;
+    if (!filterCoachIds.length) return data.teams;
     const ids = new Set([
-      ...data.teams.filter((t) => t.coachId === filterCoachId).map((t) => t.id),
-      ...weekSessions.filter((s) => s.coachId === filterCoachId).map((s) => s.teamId),
+      ...data.teams.filter((t) => filterCoachIds.includes(t.coachId)).map((t) => t.id),
+      ...weekSessions.filter((s) => filterCoachIds.includes(s.coachId)).map((s) => s.teamId),
     ]);
     return data.teams.filter((t) => ids.has(t.id));
-  }, [filterCoachId, data.teams, weekSessions]);
+  }, [filterCoachIds, data.teams, weekSessions]);
 
   // How many of this coach's sessions collide, so the toolbar can say so out loud rather
   // than relying on the manager spotting red cells across a wide board.
   const filteredCoachClashCount = useMemo(() => {
-    if (!filterCoachId) return 0;
-    return weekSessions.filter((s) => s.coachId === filterCoachId && coachClashes.has(s.id)).length;
-  }, [filterCoachId, weekSessions, coachClashes]);
+    if (!filterCoachIds.length) return 0;
+    return weekSessions.filter((s) => filterCoachIds.includes(s.coachId) && coachClashes.has(s.id))
+      .length;
+  }, [filterCoachIds, weekSessions, coachClashes]);
+
+  const toggleCoach = (id) =>
+    setFilterCoachIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+
+  // Selected coaches in the order they appear in the club's list, not the order they were
+  // clicked — so the same selection always reads the same way in the banner and the export.
+  const selectedCoachNames = data.coaches
+    .filter((c) => filterCoachIds.includes(c.id))
+    .map((c) => c.name);
   // Sessions colliding with a coach/hall constraint → bold amber. { sessionId: [constraint,...] }
   const violations = useMemo(
     () => findConstraintViolations(weekSessions, data.constraints || []),
@@ -228,15 +240,6 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             </div>
             {mode === "hall" && (
               <Select value={selectedHallId} onChange={setSelectedHallId} options={data.halls} placeholder="בחר אולם" className="w-40" />
-            )}
-            {mode === "team" && (
-              <Select
-                value={filterCoachId}
-                onChange={setFilterCoachId}
-                options={data.coaches}
-                placeholder="כל המאמנים"
-                className="w-40"
-              />
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -287,6 +290,37 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             ))}
           </div>
         )}
+
+        {/* Same chip idiom as the day filter above, which is what makes it obvious that
+            several can be on at once — a dropdown would have implied "pick one". */}
+        {mode === "team" && data.coaches.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-xs text-stone-500 self-center">מאמנים:</span>
+            <button
+              onClick={() => setFilterCoachIds([])}
+              className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                filterCoachIds.length === 0
+                  ? "bg-brand-600 text-white border-brand-600"
+                  : "bg-white text-stone-500 border-stone-300 hover:bg-stone-50"
+              }`}
+            >
+              כולם
+            </button>
+            {data.coaches.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => toggleCoach(c.id)}
+                className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                  filterCoachIds.includes(c.id)
+                    ? "bg-brand-600 text-white border-brand-600"
+                    : "bg-white text-stone-500 border-stone-300 hover:bg-stone-50"
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
         {mode === "team" && canEdit && (
           <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
             <input
@@ -300,7 +334,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
         )}
         {/* Say plainly that the board is showing a slice. The export captures whatever is on
             screen, and a filtered board sent to the coaches would look like the full week. */}
-        {mode === "team" && filterCoachId && (
+        {mode === "team" && filterCoachIds.length > 0 && (
           <div
             className={`text-xs rounded-lg border p-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 ${
               filteredCoachClashCount
@@ -311,7 +345,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             {/* Phrased without a pronoun on purpose — the app has no way to know a coach's
                 gender, and Hebrew would force a guess. */}
             <span>
-              מוצגים רק האימונים ששובצו ל<strong>{nameOf(data.coaches, filterCoachId)}</strong>
+              מוצגים רק האימונים ששובצו ל<strong>{selectedCoachNames.join(" · ")}</strong>
               {visibleTeams.length ? ` — ${visibleTeams.length} קבוצות` : ""}.
             </span>
             <span className="font-semibold">
@@ -319,7 +353,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 ? `⚠ ${filteredCoachClashCount} אימונים בחפיפה.`
                 : "✓ אין חפיפות השבוע."}
             </span>
-            <button onClick={() => setFilterCoachId("")} className="underline underline-offset-2">
+            <button onClick={() => setFilterCoachIds([])} className="underline underline-offset-2">
               הצג את כולם
             </button>
           </div>
@@ -366,7 +400,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                         colSpan={1 + activeDays.length + 2 + (canEdit ? 1 : 0)}
                         className="border border-stone-200 px-3 py-6 text-center text-sm text-stone-500"
                       >
-                        אין קבוצות ל{nameOf(data.coaches, filterCoachId)} בשבוע הזה.
+                        אין קבוצות ל{selectedCoachNames.join(" · ")} בשבוע הזה.
                       </td>
                     </tr>
                   )}
