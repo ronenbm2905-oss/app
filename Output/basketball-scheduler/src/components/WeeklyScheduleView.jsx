@@ -619,11 +619,26 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                     const dayIdx = DAYS.indexOf(s.day);
                     const clash = hallClashes.has(s.id); // two teams in this hall at overlapping times
                     const violates = !!violations[s.id]; // collides with a coach/hall constraint
-                    const bg = clash ? "#FEE2E2" : violates ? "#FEF3C7" : DAY_BG_COLORS[dayIdx] || "#ffffff";
+                    // The day colour always wins the row background — it is what makes this
+                    // report readable as bands of days. Warnings used to REPLACE it, which
+                    // both broke a day into two colours and, worse, disguised the day: the
+                    // constraint amber is a near-match for Sunday's yellow and the clash red
+                    // for Friday's. A warning now shows as a stripe down the row's edge, so
+                    // both signals are readable at once instead of competing.
+                    const bg = DAY_BG_COLORS[dayIdx] || "#ffffff";
+                    const stripe = clash ? "#DC2626" : violates ? "#D97706" : "";
                     const date = weekDates[s.day];
                     return (
                       <tr key={s.id || i} style={{ backgroundColor: bg }}>
-                        <td className="border border-stone-200 px-3 py-2 text-sm tabular-nums font-medium text-stone-700">{date ? formatDate(date) : "—"}</td>
+                        {/* The stripe lives on the first and last cells rather than the row:
+                            with border-collapse a <tr> cannot reliably paint its own border
+                            or shadow, so a row-level rule would silently render nothing. */}
+                        <td
+                          className="border border-stone-200 px-3 py-2 text-sm tabular-nums font-medium text-stone-700"
+                          style={stripe ? { borderInlineStartWidth: "4px", borderInlineStartColor: stripe } : undefined}
+                        >
+                          {date ? formatDate(date) : "—"}
+                        </td>
                         <td className="border border-stone-200 px-3 py-2 text-sm text-stone-600">{s.day}</td>
                         <td className="border border-stone-200 px-3 py-2">
                           <div className="flex items-center gap-1.5">
@@ -637,7 +652,10 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                           {!clash && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
                           {s.start}–{s.end}
                         </td>
-                        <td className="border border-stone-200 px-3 py-2 text-xs text-stone-500">
+                        <td
+                          className="border border-stone-200 px-3 py-2 text-xs text-stone-500"
+                          style={stripe ? { borderInlineEndWidth: "4px", borderInlineEndColor: stripe } : undefined}
+                        >
                           {s.type && s.type !== "אימון" && <span className="font-medium" style={{ color: typeColor(s.type) }}>{s.type} </span>}
                           {s.notes || ""}
                         </td>
