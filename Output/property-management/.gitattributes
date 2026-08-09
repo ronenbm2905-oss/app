@@ -1,0 +1,6 @@
+# נרמול סופי-שורה: הריפו שומר LF, checkout ב-Windows כרצון המקומי.
+# מחסל את רעש ה"modified" מ-autocrlf.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
