@@ -299,7 +299,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
           </div>
           <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
             {data.teams.length === 0 ? (
-              <div className="p-6 text-center text-stone-600 text-sm">הוסף קבוצות קודם בטאב "קבוצות, מאמנים ואולמות".</div>
+              <div className="p-6 text-center text-stone-600 text-sm">הוסף קבוצות קודם במסך "קבוצות ואולמות".</div>
             ) : (
               <div className="divide-y divide-stone-100">
                 {data.teams.map((team) => {
