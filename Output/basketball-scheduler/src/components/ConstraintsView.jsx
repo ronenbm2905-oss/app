@@ -358,7 +358,7 @@ export function ConstraintsView({ data, save, canEdit }) {
                       </div>
                       <div className="w-16 text-sm font-medium text-stone-700 shrink-0">{c.day}</div>
                       <div className="w-28 text-sm text-stone-500 shrink-0 tabular-nums">
-                        {c.start}–{c.end}
+                        <span dir="ltr">{c.start}–{c.end}</span>
                       </div>
                       <div className="flex-1 flex flex-wrap items-center gap-1.5">
                         <span className="text-sm text-stone-700 font-medium">

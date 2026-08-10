@@ -160,7 +160,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
             return (
               <div key={s.id} className="flex items-center gap-2 bg-amber-100/60 rounded px-2 py-1 flex-wrap">
                 <span className="tabular-nums font-medium">
-                  {s.start}–{s.end}
+                  <span dir="ltr">{s.start}–{s.end}</span>
                 </span>
                 <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>
                   {nameOf(data.teams, s.teamId)}

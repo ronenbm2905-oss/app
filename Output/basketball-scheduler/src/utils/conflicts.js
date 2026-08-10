@@ -1,5 +1,22 @@
 import { overlaps } from "./dates";
 
+// ---------- Coaches who run groups side by side ----------
+// Some coaches take two squads at the same hour, every single week. Left alone, every one
+// of those sessions is reported as a coach clash, and a board that is permanently half red
+// teaches everyone to ignore the colour — which is how the one real clash gets missed.
+//
+// Flagged on the coach (`parallelGroups`) rather than on each session: it is a fact about
+// how that coach works, not about a particular week, so it survives duplicating a week —
+// and it keeps the coach's name out of the code, unlike the hardcoding this replaces.
+//
+// The flag suppresses the COACH warning only, in every hall, by explicit instruction. The
+// trade-off is real and accepted: a genuine impossible booking for this coach — two gyms
+// at the same hour — will no longer be flagged either. Hall clashes and constraint
+// violations are untouched, so two teams in one gym still shows up as before.
+export function parallelCoachIdSet(coaches) {
+  return new Set((coaches || []).filter((c) => c && c.parallelGroups).map((c) => c.id));
+}
+
 // ---------- Conflict detection ----------
 // Two sessions conflict if: same day + overlapping times + (same hall OR same coach)
 export function findConflicts(sessions) {
@@ -49,13 +66,16 @@ export function findHallClashes(sessions) {
 // exactly when it is cheapest to fix, and easiest to miss on a board of a dozen rows.
 //
 // Sessions with no coach are skipped: "not yet assigned" twice over is not a clash.
-export function findCoachClashes(sessions) {
+// Coaches marked `parallelGroups` are skipped too — see the note at the top of this file.
+export function findCoachClashes(sessions, parallelIds) {
   const clash = new Set();
+  const skip = parallelIds || new Set();
   for (let i = 0; i < sessions.length; i++) {
     for (let j = i + 1; j < sessions.length; j++) {
       const a = sessions[i];
       const b = sessions[j];
       if (!a.coachId || a.coachId !== b.coachId) continue;
+      if (skip.has(a.coachId)) continue;
       if (a.day !== b.day) continue;
       if ((a.weekOf || "") !== (b.weekOf || "")) continue;
       if (!overlaps(a.start, a.end, b.start, b.end)) continue;

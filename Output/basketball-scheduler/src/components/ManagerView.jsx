@@ -252,7 +252,7 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
                     >
                       <div className="w-16 text-sm font-medium text-stone-700 shrink-0">{s.day}</div>
                       <div className="w-28 text-sm text-stone-500 shrink-0 tabular-nums">
-                        {s.start}–{s.end}
+                        <span dir="ltr">{s.start}–{s.end}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">

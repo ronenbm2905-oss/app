@@ -4,7 +4,12 @@ import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
-import { findHallClashes, findCoachClashes, findConstraintViolations } from "../utils/conflicts";
+import {
+  findHallClashes,
+  findCoachClashes,
+  findConstraintViolations,
+  parallelCoachIdSet,
+} from "../utils/conflicts";
 import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
@@ -197,7 +202,13 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const hallClashes = useMemo(() => findHallClashes(weekSessions), [weekSessions]);
   // The same coach booked in two places at once. Computed over the WHOLE week, never over
   // the filtered view — a clash must not disappear because the board is showing one coach.
-  const coachClashes = useMemo(() => findCoachClashes(weekSessions), [weekSessions]);
+  // Coaches marked as running groups in parallel are excluded — otherwise their board is
+  // permanently red and the colour stops meaning anything.
+  const parallelCoaches = useMemo(() => parallelCoachIdSet(data.coaches), [data.coaches]);
+  const coachClashes = useMemo(
+    () => findCoachClashes(weekSessions, parallelCoaches),
+    [weekSessions, parallelCoaches]
+  );
 
   // Rows to show. Filtering by coach keeps a team if the coach is its assigned coach OR
   // runs any of its sessions this week — a coach often covers a team that is not formally
@@ -506,7 +517,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                           </div>
                                         )}
                                         {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
-                                        <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}>{s.start}–{s.end}</div>
+                                        <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}><span dir="ltr">{s.start}–{s.end}</span></div>
                                         <div className={`mt-0.5 ${clash ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
                                         {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
                                         {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
@@ -698,7 +709,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                         <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${clash ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
                           {clash && <span title="חפיפת אולם — שתי קבוצות באותו זמן">⚠ </span>}
                           {!clash && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
-                          {s.start}–{s.end}
+                          <span dir="ltr">{s.start}–{s.end}</span>
                         </td>
                         <td
                           className="border border-stone-200 px-3 py-2 text-xs text-stone-500"
