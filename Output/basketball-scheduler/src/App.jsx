@@ -13,6 +13,7 @@ import { PlayersView } from "./components/PlayersView";
 import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
+import { BirthdayReminder } from "./components/BirthdayReminder";
 import { SchedulePublishedBanner } from "./components/SchedulePublishedBanner";
 import { LegalFooter } from "./legal/LegalFooter";
 import { IconLogOut, IconEye } from "./components/ui/icons";
@@ -110,11 +111,19 @@ export default function App() {
         {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
 
         <SchedulePublishedBanner data={data} />
-        {tab !== "announcements" && <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />}
+        {tab !== "announcements" && (
+          <>
+            <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />
+            {/* Alongside the notice rather than inside it: coaches live on the board and the
+                coach view, and a birthday nobody sees until they open the notices tab is a
+                birthday nobody wished. Hidden on the notices tab, which shows the full list. */}
+            <BirthdayReminder coaches={data.coaches} weekStart={weekStart} compact />
+          </>
+        )}
 
         <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {tab === "announcements" ? (
-          <AnnouncementsView data={data} save={save} canEdit={canEdit} />
+          <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
         ) : tab === "rosters" ? (
           <RostersView data={data} save={save} canEdit={canEdit} />
         ) : tab === "manager" ? (
