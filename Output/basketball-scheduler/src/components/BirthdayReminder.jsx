@@ -18,7 +18,7 @@ export function BirthdayReminder({ coaches, weekStart, compact = false }) {
   if (compact) {
     return (
       <div
-        className="no-print mb-4 rounded-xl border border-pink-200 bg-pink-50 px-4 py-3 flex items-start gap-2.5"
+        className="no-print rounded-xl border border-pink-200 bg-pink-50 px-4 py-3 flex items-start gap-2.5"
         dir="rtl"
       >
         <span aria-hidden="true" className="text-lg leading-none mt-0.5">🎂</span>

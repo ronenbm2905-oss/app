@@ -17,19 +17,27 @@ import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { BirthdayReminder } from "./components/BirthdayReminder";
 import { SchedulePublishedBanner } from "./components/SchedulePublishedBanner";
 import { LegalFooter } from "./legal/LegalFooter";
-import { IconLogOut, IconEye } from "./components/ui/icons";
+import { TodayStrip } from "./components/TodayStrip";
+import {
+  IconLogOut, IconEye,
+  IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
+  IconCalendarDays, IconUser, IconUsers, IconClock,
+} from "./components/ui/icons";
 import clubLogo from "./assets/club-logo.jpg";
 
+// The label was "קבוצות, מאמנים ואולמות" — 170px on its own, and the single reason nine
+// tabs could not sit on one line. The screen still holds all three; the tab only has to
+// name it.
 const TABS = [
-  { id: "announcements", label: "הודעות" },
-  { id: "rosters", label: "קבוצות, מאמנים ואולמות" },
-  { id: "manager", label: "ניהול" },
-  { id: "constraints", label: "אילוצים" },
-  { id: "games", label: "משחקים" },
-  { id: "weekly", label: "לוח שבועי" },
-  { id: "coach", label: "תצוגת מאמן" },
-  { id: "players", label: "שחקנים" },
-  { id: "report", label: "דו\"ח שעות" },
+  { id: "announcements", label: "הודעות", Icon: IconMegaphone },
+  { id: "rosters", label: "קבוצות ואולמות", Icon: IconBuilding },
+  { id: "manager", label: "ניהול", Icon: IconClipboard },
+  { id: "constraints", label: "אילוצים", Icon: IconBan },
+  { id: "games", label: "משחקים", Icon: IconTrophy },
+  { id: "weekly", label: "לוח שבועי", Icon: IconCalendarDays },
+  { id: "coach", label: "תצוגת מאמן", Icon: IconUser },
+  { id: "players", label: "שחקנים", Icon: IconUsers },
+  { id: "report", label: "דו\"ח שעות", Icon: IconClock },
 ];
 
 // Screens only the club's managers see. The rest are read-only for everyone else, which
@@ -66,73 +74,100 @@ export default function App() {
   const visibleTabs = visibleTabsFor(TABS, ADMIN_ONLY_TABS, canEdit);
   const activeTab = resolveActiveTab(visibleTabs, tab);
 
+  // Was max-w-4xl (896px) everywhere but the board, which is what forced nine tabs onto
+  // two rows. The header and the content share it so the tabs stay aligned with the screen
+  // they open.
+  const headerWidth = activeTab === "weekly" ? "max-w-7xl" : "max-w-6xl";
+
   return (
     <div className="min-h-screen bg-stone-50" dir="rtl">
-      {/* Club identity accent: royal-blue bar with a short orange segment, echoing the logo (blue ribbon + orange stars). */}
-      <div className="h-1.5 bg-brand-600 flex" aria-hidden="true">
-        <span className="h-full w-24 bg-accent-500" />
-      </div>
-      <div className={`${activeTab === "weekly" ? "max-w-7xl" : "max-w-4xl"} mx-auto px-4 py-6`}>
-        <header className="mb-5">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
+      {/* The club's own colours carry the top of the app, and the tabs sit on them like
+          tabs on a folder. Everything below stays quiet — a full blue band is a welcome
+          for two seconds and a weight for an hour, and the hour is where the work happens. */}
+      <div className="bg-gradient-to-bl from-brand-800 via-brand-600 to-brand-500">
+        <div className={`${headerWidth} mx-auto px-4 pt-5`}>
+          <div className="flex items-start justify-between gap-3 flex-wrap pb-4">
             <div className="flex items-center gap-3">
-              <img src={clubLogo} alt="עירוני קריית אונו – כדורסל דור העתיד" className="w-14 h-14 object-contain shrink-0" />
+              <img src={clubLogo} alt="עירוני קריית אונו – כדורסל דור העתיד" className="w-16 h-16 object-contain shrink-0" />
               <div>
-                <h1 className="text-2xl font-bold text-brand-700 tracking-tight">מערכת שעות אימוני כדורסל</h1>
-                <p className="text-sm text-stone-500 mt-0.5">תיאום קבוצות, מאמנים ואולמות במקום אחד</p>
+                <h1 className="text-[25px] font-bold text-white tracking-tight leading-tight">
+                  קרית אונו — דור העתיד
+                </h1>
+                <p className="text-[13px] text-brand-100 mt-0.5">
+                  מערכת שעות אימונים · תיאום קבוצות, מאמנים ואולמות
+                </p>
               </div>
             </div>
             {isFirebaseConfigured && user && (
-              <div className="flex items-center gap-2 text-xs text-stone-500">
+              <div className="flex items-center gap-2 text-xs text-brand-100">
                 <span className="hidden sm:inline">{user.displayName || user.email}</span>
-                <button onClick={signOut} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-600">
+                <button
+                  onClick={signOut}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 text-white transition-colors"
+                >
                   <IconLogOut size={13} /> יציאה
                 </button>
               </div>
             )}
           </div>
 
-          {mode === "local" && (
-            <p className="text-xs text-amber-600 mt-1">
-              ⚠ מצב מקומי: הנתונים נשמרים בדפדפן הזה בלבד, ולא משותפים אוטומטית עם מכשירים אחרים. חבר את Firebase כדי לעבור לסנכרון בענן (ראה README).
-            </p>
-          )}
-          {mode === "cloud" && !canEdit && (
-            <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
-              <IconEye size={13} /> מצב צפייה בלבד — רק מנהל יכול לערוך. אם אתה אמור להיות מנהל, פנה למי שמנהל את הרשימה.
-            </p>
-          )}
-        </header>
-
-        <div role="tablist" aria-label="מסכי המערכת" className="flex gap-1 bg-stone-200/70 rounded-xl p-1 w-fit mb-5 flex-wrap">
-          {visibleTabs.map((tb) => (
-            <button
-              key={tb.id}
-              role="tab"
-              id={`tab-${tb.id}`}
-              aria-selected={activeTab === tb.id}
-              aria-controls="tabpanel"
-              onClick={() => setTab(tb.id)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === tb.id ? "bg-brand-600 text-white shadow-sm" : "text-stone-600 hover:text-stone-800"
-              }`}
-            >
-              {tb.label}
-            </button>
-          ))}
+          {/* One row. Scrolls sideways on a narrow phone rather than stacking, so the
+              header keeps a fixed height wherever you open it. */}
+          <div
+            role="tablist"
+            aria-label="מסכי המערכת"
+            className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1"
+          >
+            {visibleTabs.map((tb) => {
+              const on = activeTab === tb.id;
+              return (
+                <button
+                  key={tb.id}
+                  role="tab"
+                  id={`tab-${tb.id}`}
+                  aria-selected={on}
+                  aria-controls="tabpanel"
+                  onClick={() => setTab(tb.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg whitespace-nowrap transition-colors ${
+                    on
+                      ? "bg-stone-50 text-brand-700 font-semibold"
+                      : "text-brand-100 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <tb.Icon size={15} className="shrink-0" />
+                  {tb.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+      </div>
+
+      <div className={`${headerWidth} mx-auto px-4 py-6`}>
+        {mode === "local" && (
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-4">
+            ⚠ מצב מקומי: הנתונים נשמרים בדפדפן הזה בלבד, ולא משותפים אוטומטית עם מכשירים אחרים. חבר את Firebase כדי לעבור לסנכרון בענן (ראה README).
+          </p>
+        )}
+        {mode === "cloud" && !canEdit && (
+          <p className="text-xs text-blue-800 bg-blue-50 rounded-lg px-3 py-2 mb-4 flex items-center gap-1.5">
+            <IconEye size={13} /> מצב צפייה בלבד — רק מנהל יכול לערוך. אם אתה אמור להיות מנהל, פנה למי שמנהל את הרשימה.
+          </p>
+        )}
 
         {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
 
+        <TodayStrip data={data} />
+
         <SchedulePublishedBanner data={data} />
+        {/* Side by side rather than stacked: three full-width bars pushed the board most of
+            a screen down, and neither of these needs the whole width to be read. They drop
+            to one column on a phone, where there is no width to share. */}
         {activeTab !== "announcements" && (
-          <>
+          <div className="grid sm:grid-cols-2 gap-3 empty:hidden mb-4">
             <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />
-            {/* Alongside the notice rather than inside it: coaches live on the board and the
-                coach view, and a birthday nobody sees until they open the notices tab is a
-                birthday nobody wished. Hidden on the notices tab, which shows the full list. */}
             <BirthdayReminder coaches={data.coaches} weekStart={weekStart} compact />
-          </>
+          </div>
         )}
 
         <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>

@@ -125,3 +125,14 @@ body {
 .weekly-table-wrap {
   overflow-x: auto;
 }
+
+/* The tab row scrolls sideways on a narrow phone instead of stacking, so the header keeps
+   one height everywhere. The scrollbar itself would be a grey slab across the club's
+   colours — the row's own overflow is the affordance. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
