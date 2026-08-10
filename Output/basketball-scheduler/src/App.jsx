@@ -18,8 +18,9 @@ import { BirthdayReminder } from "./components/BirthdayReminder";
 import { SchedulePublishedBanner } from "./components/SchedulePublishedBanner";
 import { LegalFooter } from "./legal/LegalFooter";
 import { TodayStrip } from "./components/TodayStrip";
+import { HomeView } from "./components/HomeView";
 import {
-  IconLogOut, IconEye,
+  IconLogOut, IconEye, IconHome,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
   IconCalendarDays, IconUser, IconUsers, IconClock,
 } from "./components/ui/icons";
@@ -29,6 +30,7 @@ import clubLogo from "./assets/club-logo.jpg";
 // tabs could not sit on one line. The screen still holds all three; the tab only has to
 // name it.
 const TABS = [
+  { id: "home", label: "בית", Icon: IconHome },
   { id: "announcements", label: "הודעות", Icon: IconMegaphone },
   { id: "rosters", label: "קבוצות ואולמות", Icon: IconBuilding },
   { id: "manager", label: "ניהול", Icon: IconClipboard },
@@ -61,7 +63,9 @@ function Loading() {
 export default function App() {
   const { user, authLoading, authError, signIn, signOut, isFirebaseConfigured } = useAuth();
   const { data, save, loaded, error, isAdmin, mode } = useClubData(user);
-  const [tab, setTab] = useState("manager");
+  // Everyone lands on the tiles. It is the screen that says where you are and what there
+  // is, and it costs the manager one click to leave — the tab bar is still right there.
+  const [tab, setTab] = useState("home");
   const [weekStart, setWeekStart] = useState(todayWeekStart());
 
   // Cloud mode: wait for auth, then require sign-in.
@@ -171,7 +175,16 @@ export default function App() {
         )}
 
         <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
-        {activeTab === "announcements" ? (
+        {activeTab === "home" ? (
+          // The tiles show only what this user may open — same list that builds the tabs,
+          // minus the tile that would just lead back here.
+          <HomeView
+            tabs={visibleTabs.filter((t) => t.id !== "home")}
+            data={data}
+            weekStart={weekStart}
+            onOpen={setTab}
+          />
+        ) : activeTab === "announcements" ? (
           <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
         ) : activeTab === "rosters" ? (
           <RostersView data={data} save={save} canEdit={canEdit} />
