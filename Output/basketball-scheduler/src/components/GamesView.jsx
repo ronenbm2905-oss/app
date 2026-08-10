@@ -4,6 +4,7 @@ import { colorFor } from "../utils/colors";
 import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/games";
 import { TransportExport } from "./TransportExport";
 import { Select } from "./ui/Select";
+import { teamsWithCoach } from "../utils/teams";
 import { Pill } from "./ui/Pill";
 import {
   IconPlus, IconTrash, IconX, IconCheck, IconRefresh,
@@ -40,7 +41,14 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-stone-500 mb-1 block">קבוצה</label>
-          <Select value={teamId} onChange={setTeamId} options={data.teams} placeholder="בחר קבוצה" />
+          {/* With the coach's name attached: "נערים א" and "נערים ב" are hard to tell
+              apart in a list, and picking the wrong one puts a game on the wrong team. */}
+          <Select
+            value={teamId}
+            onChange={setTeamId}
+            options={teamsWithCoach(data.teams, data.coaches)}
+            placeholder="בחר קבוצה"
+          />
         </div>
         <div>
           <label className="text-xs text-stone-500 mb-1 block">יריב</label>
