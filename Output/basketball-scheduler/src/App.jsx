@@ -20,7 +20,7 @@ import { LegalFooter } from "./legal/LegalFooter";
 import { TodayStrip } from "./components/TodayStrip";
 import { HomeView } from "./components/HomeView";
 import {
-  IconLogOut, IconEye, IconHome,
+  IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
   IconCalendarDays, IconUser, IconUsers, IconClock,
 } from "./components/ui/icons";
@@ -82,6 +82,7 @@ export default function App() {
   // two rows. The header and the content share it so the tabs stay aligned with the screen
   // they open.
   const headerWidth = activeTab === "weekly" ? "max-w-7xl" : "max-w-6xl";
+  const activeScreen = visibleTabs.find((t) => t.id === activeTab);
 
   return (
     <div className="min-h-screen bg-stone-50" dir="rtl">
@@ -115,35 +116,27 @@ export default function App() {
             )}
           </div>
 
-          {/* One row. Scrolls sideways on a narrow phone rather than stacking, so the
-              header keeps a fixed height wherever you open it. */}
-          <div
-            role="tablist"
-            aria-label="מסכי המערכת"
-            className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1"
-          >
-            {visibleTabs.map((tb) => {
-              const on = activeTab === tb.id;
-              return (
-                <button
-                  key={tb.id}
-                  role="tab"
-                  id={`tab-${tb.id}`}
-                  aria-selected={on}
-                  aria-controls="tabpanel"
-                  onClick={() => setTab(tb.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-t-lg whitespace-nowrap transition-colors ${
-                    on
-                      ? "bg-stone-50 text-brand-700 font-semibold"
-                      : "text-brand-100 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <tb.Icon size={15} className="shrink-0" />
-                  {tb.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* No tab bar: the home screen's buttons are the navigation, and two mechanisms
+              for the same job is one too many. What every screen does need is a way back —
+              without it, opening a screen is a one-way door. */}
+          {activeTab !== "home" && (
+            <nav className="flex items-center gap-2 pb-4" aria-label="ניווט">
+              <button
+                onClick={() => setTab("home")}
+                // min-h-11 is 44px: with the tab bar gone this is the most-used control in
+                // the app, and it is pressed with a thumb.
+                className="flex items-center gap-1.5 px-4 py-2 min-h-11 rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
+              >
+                {/* In a right-to-left page, "back" points right. */}
+                <IconArrowRight size={15} /> חזרה לבית
+              </button>
+              <span className="text-white/40" aria-hidden="true">·</span>
+              <span className="text-white text-sm font-semibold flex items-center gap-1.5">
+                {activeScreen?.Icon && <activeScreen.Icon size={15} className="text-brand-100" />}
+                {activeScreen?.label}
+              </span>
+            </nav>
+          )}
         </div>
       </div>
 
@@ -174,7 +167,9 @@ export default function App() {
           </div>
         )}
 
-        <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
+        {/* Plain region now, not a tab panel: `role="tabpanel"` without a tablist points a
+            screen reader at a control that no longer exists. */}
+        <div id="screen" role="region" aria-label={activeScreen?.label || "מסך"}>
         {activeTab === "home" ? (
           // The tiles show only what this user may open — same list that builds the tabs,
           // minus the tile that would just lead back here.
