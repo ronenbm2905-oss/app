@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
 import { todayWeekStart } from "./utils/dates";
+import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
 import { LoginPage } from "./components/LoginPage";
 import { RostersView } from "./components/RostersView";
 import { ManagerView } from "./components/ManagerView";
@@ -31,6 +32,16 @@ const TABS = [
   { id: "report", label: "דו\"ח שעות" },
 ];
 
+// Screens only the club's managers see. The rest are read-only for everyone else, which
+// is what the "view only" notice has always meant — these three are hidden outright
+// because they are building tools: entering sessions, maintaining constraints, and the
+// monthly hours report. A coach has nothing to do with any of them.
+//
+// This hides screens; it is NOT a security boundary. Access to the club's data is decided
+// by the Firestore rules and the admins/members lists, and every write still goes through
+// the same check. Hiding a tab keeps the app uncluttered — it does not protect anything.
+const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "report"]);
+
 function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
@@ -52,13 +63,16 @@ export default function App() {
 
   const canEdit = isAdmin;
 
+  const visibleTabs = visibleTabsFor(TABS, ADMIN_ONLY_TABS, canEdit);
+  const activeTab = resolveActiveTab(visibleTabs, tab);
+
   return (
     <div className="min-h-screen bg-stone-50" dir="rtl">
       {/* Club identity accent: royal-blue bar with a short orange segment, echoing the logo (blue ribbon + orange stars). */}
       <div className="h-1.5 bg-brand-600 flex" aria-hidden="true">
         <span className="h-full w-24 bg-accent-500" />
       </div>
-      <div className={`${tab === "weekly" ? "max-w-7xl" : "max-w-4xl"} mx-auto px-4 py-6`}>
+      <div className={`${activeTab === "weekly" ? "max-w-7xl" : "max-w-4xl"} mx-auto px-4 py-6`}>
         <header className="mb-5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
@@ -91,16 +105,16 @@ export default function App() {
         </header>
 
         <div role="tablist" aria-label="מסכי המערכת" className="flex gap-1 bg-stone-200/70 rounded-xl p-1 w-fit mb-5 flex-wrap">
-          {TABS.map((tb) => (
+          {visibleTabs.map((tb) => (
             <button
               key={tb.id}
               role="tab"
               id={`tab-${tb.id}`}
-              aria-selected={tab === tb.id}
+              aria-selected={activeTab === tb.id}
               aria-controls="tabpanel"
               onClick={() => setTab(tb.id)}
               className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                tab === tb.id ? "bg-brand-600 text-white shadow-sm" : "text-stone-600 hover:text-stone-800"
+                activeTab === tb.id ? "bg-brand-600 text-white shadow-sm" : "text-stone-600 hover:text-stone-800"
               }`}
             >
               {tb.label}
@@ -111,7 +125,7 @@ export default function App() {
         {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
 
         <SchedulePublishedBanner data={data} />
-        {tab !== "announcements" && (
+        {activeTab !== "announcements" && (
           <>
             <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />
             {/* Alongside the notice rather than inside it: coaches live on the board and the
@@ -121,22 +135,22 @@ export default function App() {
           </>
         )}
 
-        <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
-        {tab === "announcements" ? (
+        <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
+        {activeTab === "announcements" ? (
           <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
-        ) : tab === "rosters" ? (
+        ) : activeTab === "rosters" ? (
           <RostersView data={data} save={save} canEdit={canEdit} />
-        ) : tab === "manager" ? (
+        ) : activeTab === "manager" ? (
           <ManagerView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
-        ) : tab === "constraints" ? (
+        ) : activeTab === "constraints" ? (
           <ConstraintsView data={data} save={save} canEdit={canEdit} />
-        ) : tab === "games" ? (
+        ) : activeTab === "games" ? (
           <GamesView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
-        ) : tab === "weekly" ? (
+        ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
-        ) : tab === "coach" ? (
+        ) : activeTab === "coach" ? (
           <CoachView data={data} weekStart={weekStart} setWeekStart={setWeekStart} />
-        ) : tab === "players" ? (
+        ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />
         ) : (
           <ReportView data={data} />
