@@ -2,8 +2,21 @@
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>מערכת שעות אימוני כדורסל</title>
+
+    <!-- Added to the home screen, this is what the phone shows. Without it iOS invents a
+         grey square with the first letter, and truncates the <title> to "מערכתשעותק…". -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#2355a5" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+
+    <!-- iOS reads none of the manifest for this; it needs its own tags. The title has to
+         be short — anything past about a dozen characters is cut off under the icon. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="קרית אונו" />
   </head>
   <body class="bg-stone-50">
     <div id="root"></div>
