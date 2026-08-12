@@ -219,7 +219,7 @@
       var KEY = "madbekot-cookie-consent-v3"; // אותו מפתח כמו בדף המכירה (per-origin)
       var SUM_PARAM = "sum";                  // שם הפרמטר שמעביר Tranzila את סכום העסקה
       var DEFAULT_VALUE = 24;                 // ברירת מחדל בטוחה (מחיר מארז בודד) אם הסכום חסר/לא-תקין
-      var PIXEL_ID = "1155607796337708";      // Meta Pixel — "תנועה פלוס"
+      var PIXEL_ID = "1655326862290518";      // Meta Pixel — פיקסל עסקי קבוע
       var pixelLoaded = false;
       var purchaseFired = false;
 
@@ -256,7 +256,8 @@
       function applyConsent(val){
         if (val === "all"){
           loadMarketingPixel();
-          firePurchase();
+          // Purchase מושבת לבקשת דורית: Tranzila אינה מחזירה כרגע אישור רכישה, לכן לא שולחים Purchase.
+          // (firePurchase נשאר בקוד אך אינו נקרא; יופעל רק כשיהיה מנגנון אישור-רכישה אמין + אישור עדי/עו"ד.)
         }
       }
 

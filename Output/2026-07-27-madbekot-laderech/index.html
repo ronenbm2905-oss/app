@@ -1017,14 +1017,14 @@
       function loadMarketingPixel(){
         if (pixelLoaded) return;              // מניעת טעינה כפולה (G-3)
         pixelLoaded = true;
-        // Meta Pixel (תנועה פלוס · 1155607796337708) — נטען אך ורק כאן, אחרי opt-in אקטיבי.
+        // Meta Pixel (פיקסל עסקי קבוע · 1655326862290518) — נטען אך ורק כאן, אחרי opt-in אקטיבי.
         // לעולם לא ב-<head> ולעולם לא בטעינת העמוד. init + PageView יורים רק פוסט-הסכמה.
         !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
         n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
         n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
         t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
         (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init','1155607796337708');
+        fbq('init','1655326862290518');
         fbq('track','PageView');
       }
 
@@ -1049,13 +1049,21 @@
 
       // ----- G-4: InitiateCheckout על כפתורי ההזמנה -----
       // יורה אך ורק אם הפיקסל כבר נטען (כלומר יש הסכמה "all"). ללא הסכמה — לא נורה כלום.
-      // הערך נקרא מ-data-value של הכפתור: מארז אחד=24, כפול=68, רביעייה=99 (₪).
+      // כל מוצר מזוהה לפי data-cta. להוספת מוצר עתידי — רק להוסיף שורה למפה (content_name/content_id/value).
+      var PRODUCTS = {
+        single: { value: 24, content_id: "madbekot_1", content_name: "מדבקות לדרך – מארז אחד" },
+        double: { value: 68, content_id: "madbekot_2", content_name: "מדבקות לדרך – מארז כפול" },
+        quad:   { value: 99, content_id: "madbekot_4", content_name: "מדבקות לדרך – ארבעה מארזים" }
+      };
       document.addEventListener("click", function(e){
         var el = e.target.closest('[data-event="order-click"]');
         if (!el) return;
         if (window.fbq && pixelLoaded){
-          var val = Number(el.getAttribute("data-value")) || 0;
-          if (val > 0) fbq('track','InitiateCheckout', {value: val, currency: 'ILS'});
+          var p = PRODUCTS[el.getAttribute("data-cta")];
+          if (p) fbq('track','InitiateCheckout', {
+            value: p.value, currency: "ILS",
+            content_name: p.content_name, content_ids: [p.content_id], content_type: "product"
+          });
         }
       });
 
