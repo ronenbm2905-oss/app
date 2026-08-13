@@ -4,10 +4,15 @@ import { useState } from "react";
 // SmartImage — תמונות תכשיטים הן כבדות, וזו דרישת ביצועים מפורשת באפיון.
 //
 //   • `loading="lazy"` + `decoding="async"` — לא טוענים 40 תמונות בקטלוג.
-//   • `aspect-square` + שלד shimmer — שומר על מקום קבוע. בלי זה הגריד קופץ
-//     בזמן הטעינה (CLS), וזה נראה כמו באג.
-//   • כישלון טעינה → fallback שקט במקום אייקון תמונה שבורה.
+//   • יחס קבוע — שומר על מקום קבוע. בלי זה הגריד קופץ בטעינה (CLS).
 //   • `sizes` — נותן לדפדפן לבחור גודל כשה-src הוא srcSet.
+//
+// מה השתנה בשפה החדשה:
+//   • **ה-shimmer ירד.** אנימציה מסחרית שסותרת את השקט. במקומה מילוי `alt`
+//     סטטי + fade-in 250ms.
+//   • כשל טעינה / אין תמונה → **הפס האלכסוני** של השפה + כיתוב mono 11px
+//     עם תיאור הצילום המיועד — בדיוק דפוס ה-placeholder של מסמך המקור.
+//   • radius 0 בכל השימושים.
 // ============================================================================
 
 export default function SmartImage({
@@ -16,6 +21,7 @@ export default function SmartImage({
   className = "",
   imgClassName = "",
   fallback = null,
+  caption = null,
   priority = false,
   sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
 }) {
@@ -24,18 +30,20 @@ export default function SmartImage({
   if (!src || state === "error") {
     return (
       <div
-        className={`flex items-center justify-center overflow-hidden bg-sand ${className}`}
+        className={`stripe flex flex-col items-center justify-center gap-2 overflow-hidden p-4 text-center ${className}`}
         role={alt ? "img" : undefined}
         aria-label={alt || undefined}
       >
         {fallback}
+        {/* תיאור הצילום המיועד. לא `micro-en` — הטקסט כאן עברי, ו-mono
+            + uppercase + ls .14em הוא מנגנון לטיני בלבד (§2.5). */}
+        {caption || alt ? <span className="text-eyebrow text-muted">{caption || alt}</span> : null}
       </div>
     );
   }
 
   return (
-    <div className={`relative overflow-hidden bg-sand ${className}`}>
-      {state === "loading" ? <div className="skeleton absolute inset-0" aria-hidden="true" /> : null}
+    <div className={`relative overflow-hidden bg-alt ${className}`}>
       <img
         src={src}
         alt={alt}
@@ -45,7 +53,7 @@ export default function SmartImage({
         fetchpriority={priority ? "high" : undefined}
         onLoad={() => setState("loaded")}
         onError={() => setState("error")}
-        className={`h-full w-full object-cover transition-opacity duration-300 ${
+        className={`h-full w-full object-cover transition-opacity duration-[250ms] ${
           state === "loaded" ? "opacity-100" : "opacity-0"
         } ${imgClassName}`}
       />

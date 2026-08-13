@@ -70,6 +70,13 @@
       "runtimeArgs": ["run", "dev", "--", "--port", "5183", "--strictPort"],
       "cwd": "Output/absolut-diamonds",
       "port": 5183
+    },
+    {
+      "name": "absolut-diamonds-demo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "-l", "5184", "-s", "dist"],
+      "cwd": "Output/absolut-diamonds",
+      "port": 5184
     }
   ]
 }

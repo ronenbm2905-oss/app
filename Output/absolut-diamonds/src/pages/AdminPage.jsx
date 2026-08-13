@@ -42,7 +42,7 @@ export default function AdminPage(props) {
   if (!isLocal && !auth.user) {
     return (
       <div className="container-page py-16">
-        <div className="mx-auto max-w-md card p-6 text-center">
+        <div className="mx-auto max-w-md panel p-6 text-center">
           <h1 className="text-2xl font-semibold">{t("admin.signIn")}</h1>
           <p className="mt-2 text-muted">{t("admin.signInHint")}</p>
           <Button className="mt-5 w-full" size="lg" onClick={auth.signIn}>
@@ -189,7 +189,7 @@ function ModelsTab({ allModels, saveModel, deleteModel }) {
       ) : (
         <ul className="space-y-3">
           {list.map((m) => (
-            <li key={m.id} className="card p-4">
+            <li key={m.id} className="panel p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold">
@@ -247,7 +247,7 @@ function ModelEditor({ model, allModels, onSave, onCancel }) {
   }
 
   return (
-    <form onSubmit={submit} className="card p-5">
+    <form onSubmit={submit} className="panel p-5">
       <h2 className="mb-4 text-xl font-semibold">{v.id ? t("admin.editModel") : t("admin.newModel")}</h2>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -413,7 +413,7 @@ function ModelEditor({ model, allModels, onSave, onCancel }) {
           ))}
         </div>
         {errors.compatibleShapes ? (
-          <p className="mt-1 text-sm text-red-700">{t(errors.compatibleShapes)}</p>
+          <p className="mt-1 text-sm text-danger">{t(errors.compatibleShapes)}</p>
         ) : null}
       </fieldset>
 
@@ -510,7 +510,7 @@ function DiamondsTab({ allDiamonds, saveDiamond, deleteDiamond }) {
       ) : (
         <ul className="space-y-3">
           {list.map((d) => (
-            <li key={d.id} className="card p-4">
+            <li key={d.id} className="panel p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold num">{d.stoneId}</p>
@@ -575,7 +575,7 @@ function DiamondEditor({ diamond, allDiamonds, onSave, onCancel }) {
   }
 
   return (
-    <form onSubmit={submit} className="card p-5">
+    <form onSubmit={submit} className="panel p-5">
       <h2 className="mb-4 text-xl font-semibold">{v.id ? t("admin.editDiamond") : t("admin.newDiamond")}</h2>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -746,7 +746,7 @@ function DiamondEditor({ diamond, allDiamonds, onSave, onCancel }) {
             </Chip>
           ))}
         </div>
-        {errors.treatments ? <p className="mt-1 text-sm text-red-700">{t(errors.treatments)}</p> : null}
+        {errors.treatments ? <p className="mt-1 text-sm text-danger">{t(errors.treatments)}</p> : null}
       </fieldset>
 
       {isTreated ? (
@@ -792,7 +792,7 @@ function LeadsTab({ leads, leadsLoading, updateLead, deleteLead, findLeadsByPhon
 
       {/* 🔴 A7.7 — למבקר אין חשבון, ולכן אין לו דרך עצמאית לעיין או למחוק.
           בלי החיפוש והמחיקה כאן אי אפשר לכבד בקשת מחיקה בכלל. */}
-      <div className="card mb-5 p-4">
+      <div className="panel mb-5 p-4">
         <Field label={t("admin.leadSearchByPhone")} hint={t("admin.leadSearchHint")}>
           {(p) => (
             <div className="flex gap-2">
@@ -817,7 +817,7 @@ function LeadsTab({ leads, leadsLoading, updateLead, deleteLead, findLeadsByPhon
       ) : (
         <ul className="space-y-3">
           {list.map((l) => (
-            <li key={l.id} className="card p-4">
+            <li key={l.id} className="panel p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-semibold">{l.name}</p>
@@ -929,7 +929,7 @@ function SettingsTab({ settings, saveSettingsPublic, resetDemoData, isLocal }) {
       ) : null}
       {brandIsPlaceholder(v) ? <Notice tone="warn">{t("admin.brandPlaceholderWarn")}</Notice> : null}
 
-      <section className="card p-5">
+      <section className="panel p-5">
         <h2 className="text-lg font-semibold">{t("admin.sBrand")}</h2>
         <p className="mt-1 text-sm text-muted">{t("admin.sBrandNote")}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -970,7 +970,7 @@ function SettingsTab({ settings, saveSettingsPublic, resetDemoData, isLocal }) {
         </div>
       </section>
 
-      <section className="card p-5">
+      <section className="panel p-5">
         <h2 className="text-lg font-semibold">{t("admin.sContact")}</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label={t("admin.sWhatsapp")} hint={t("admin.sWhatsappHint")} className="sm:col-span-2">
@@ -1052,7 +1052,7 @@ function SettingsTab({ settings, saveSettingsPublic, resetDemoData, isLocal }) {
         </div>
       </section>
 
-      <section className="card p-5">
+      <section className="panel p-5">
         <h2 className="text-lg font-semibold">{t("admin.sLangSection", { lang: t(`admin.lang${lang === "he" ? "He" : "En"}`) })}</h2>
         <div className="mt-4 space-y-4">
           <Field label={t("admin.sHeroTitle")}>

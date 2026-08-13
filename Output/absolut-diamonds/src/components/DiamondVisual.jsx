@@ -38,21 +38,23 @@ export default function DiamondVisual({ diamond, className = "", showNote = fals
           priority={priority}
           fallback={<DiamondShape shape={diamond?.shape} className="h-1/2 w-1/2" />}
         />
-        {showNote ? <p className="mt-2 text-sm text-muted">{t("diamond.realPhoto")}</p> : null}
+        {showNote ? <p className="mt-2 text-meta text-muted">{t("diamond.realPhoto")}</p> : null}
       </div>
     );
   }
 
   return (
     <div className={className}>
-      <div className="flex aspect-square h-full w-full items-center justify-center bg-gradient-to-br from-white to-sand">
+      {/* רקע `alt` שטוח — בלי גרדיינט. השרטוט הוא קו, לא אובייקט מבריק. */}
+      <div className="flex aspect-square h-full w-full items-center justify-center bg-alt">
         <DiamondShape
           shape={diamond?.shape}
           className="h-[62%] w-[62%]"
           title={t("diamond.schematicAlt", { shape: shapeLabel })}
         />
       </div>
-      {showNote ? <p className="mt-2 text-sm text-muted">{t("diamond.schematicNote")}</p> : null}
+      {/* O5/1.4.5 — הכיתוב הוא טקסט אמיתי ב-DOM, לא צרוב באיור. */}
+      {showNote ? <p className="mt-2 text-meta text-muted">{t("diamond.schematicNote")}</p> : null}
     </div>
   );
 }

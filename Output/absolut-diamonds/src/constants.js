@@ -105,6 +105,16 @@ export const CERT_VERIFY_URL = {
 export const METAL_KARATS = ["14k", "18k"];
 export const METAL_COLORS = ["yellow", "white", "rose"];
 
+// 🎨 דגימת חומר 12px בבורר הגוון — **יוצא הדופן היחיד לצבע בממשק.**
+// זו לא צבעוניות ממשק אלא דגימת חומר, מאותה קטגוריה של צילום. תמיד מוצגת
+// **לצד** התווית המילולית ולעולם לא במקומה (WCAG 1.4.1).
+// ⚠️ ללבן יש קו שיער `line.strong` ברכיב, אחרת הוא נעלם על רקע surface.
+export const METAL_SWATCH = {
+  yellow: "#C6A44E",
+  white: "#D8D8D4",
+  rose: "#C99B87",
+};
+
 // ---- מסחרי ----
 export const STATUSES = ["available", "sold", "hidden"];
 // 🔴 A4.5 + A6.4 — רק "available" נקרא פומבית. פריט שנמכר אינו חושף

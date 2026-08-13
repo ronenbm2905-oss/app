@@ -1,17 +1,22 @@
 import { useState } from "react";
-import { SlidersHorizontal, MessageCircle } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
-import DiamondCard from "../components/DiamondCard.jsx";
+import DiamondRow from "../components/DiamondRow.jsx";
 import DiamondFilters from "../components/DiamondFilters.jsx";
 import Sheet from "../components/ui/Sheet.jsx";
 import Button from "../components/ui/Button.jsx";
-import { EmptyState, SectionTitle } from "../components/ui/Bits.jsx";
+import WhatsAppButton from "../components/ui/WhatsAppButton.jsx";
+import { EmptyState, PageTitle } from "../components/ui/Bits.jsx";
 import { filterDiamonds, sortDiamonds, countActiveFilters } from "../utils/filters.js";
 import { contactFor } from "../utils/defaults.js";
 import { whatsappHref, diamondMessage } from "../utils/whatsapp.js";
 import { EMPTY_DIAMOND_FILTERS, DIAMOND_SORTS } from "../constants.js";
 
 // עמוד מלאי האבנים. הכניסה ההפוכה לקונפיגורטור: מי שמתחיל מהאבן ולא מהדגם.
+//
+// 🔴 השינוי המבני: **רשימת מסמכים, לא גריד כרטיסים.** אבן היא מפרט + תעודה,
+// והצילום שלה כמעט תמיד לא קיים (וכשהוא לא קיים — אסור להחליף אותו בסטוק).
+// שורה ברוחב מלא נותנת מקום למקור, לטיפולים ולמספר התעודה בלי לדחוס אותם.
 export default function DiamondsPage({ diamonds, settings }) {
   const { t, lang } = useI18n();
   const [filters, setFilters] = useState(EMPTY_DIAMOND_FILTERS);
@@ -25,18 +30,18 @@ export default function DiamondsPage({ diamonds, settings }) {
   const panel = <DiamondFilters filters={filters} onChange={setFilters} />;
 
   return (
-    <div className="container-page py-8">
-      <SectionTitle sub={t("diamondsPage.subtitle")}>{t("diamondsPage.title")}</SectionTitle>
+    <div className="container-page py-8 lg:py-12">
+      <PageTitle sub={t("diamondsPage.subtitle")}>{t("diamondsPage.title")}</PageTitle>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button variant="secondary" className="lg:hidden" onClick={() => setSheetOpen(true)}>
-          <SlidersHorizontal size={18} aria-hidden="true" />
+      <div className="mb-6 flex flex-wrap items-center gap-4 border-y border-line py-3">
+        <Button variant="link" className="lg:hidden" onClick={() => setSheetOpen(true)}>
+          <SlidersHorizontal size={18} strokeWidth={1.5} aria-hidden="true" />
           {t("catalog.openFilters")}
           {activeCount ? <span className="num">({activeCount})</span> : null}
         </Button>
 
-        <div className="ms-auto flex items-center gap-2">
-          <label htmlFor="d-sort" className="text-sm text-muted">
+        <div className="ms-auto flex items-center gap-3">
+          <label htmlFor="d-sort" className="text-meta text-muted">
             {t("catalog.sortLabel")}
           </label>
           <select id="d-sort" className="input w-auto" value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -49,19 +54,19 @@ export default function DiamondsPage({ diamonds, settings }) {
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[18rem_1fr]">
+      <div className="grid gap-10 lg:grid-cols-[18rem_1fr] lg:gap-12">
         <aside className="hidden lg:block">
-          <h2 className="mb-4 text-lg font-semibold">{t("catalog.filtersTitle")}</h2>
+          <h2 className="eyebrow mb-5">{t("catalog.filtersTitle")}</h2>
           {panel}
           {activeCount ? (
-            <Button variant="ghost" className="mt-4" onClick={() => setFilters(EMPTY_DIAMOND_FILTERS)}>
+            <Button variant="link" className="mt-6" onClick={() => setFilters(EMPTY_DIAMOND_FILTERS)}>
               {t("catalog.clearAll")}
             </Button>
           ) : null}
         </aside>
 
         <div>
-          <p className="mb-4 text-sm font-medium" aria-live="polite">
+          <p className="mb-2 text-meta font-medium" aria-live="polite">
             {visible.length === 1
               ? t("diamondsPage.resultsCountOne")
               : t("diamondsPage.resultsCount", { count: visible.length })}
@@ -70,26 +75,18 @@ export default function DiamondsPage({ diamonds, settings }) {
           {visible.length === 0 ? (
             <EmptyState title={t("diamondsPage.resultsNone")} body={t("diamondsPage.noResultsHint")} />
           ) : (
-            <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="border-t border-line">
               {visible.map((d) => {
                 const wa = whatsappHref(contact.whatsapp, diamondMessage(t, d, contact, lang));
                 return (
                   <li key={d.id}>
-                    <DiamondCard
+                    <DiamondRow
                       diamond={d}
                       action={
                         wa ? (
-                          <Button
-                            as="a"
-                            href={wa}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            variant="whatsapp"
-                            className="w-full"
-                          >
-                            <MessageCircle size={18} aria-hidden="true" />
+                          <WhatsAppButton href={wa} size="sm">
                             {t("diamondsPage.askAbout")}
-                          </Button>
+                          </WhatsAppButton>
                         ) : null
                       }
                     />
@@ -106,12 +103,12 @@ export default function DiamondsPage({ diamonds, settings }) {
         onClose={() => setSheetOpen(false)}
         title={t("catalog.filtersTitle")}
         footer={
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button className="flex-1" onClick={() => setSheetOpen(false)}>
               {t("common.apply")}
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => {
                 setFilters(EMPTY_DIAMOND_FILTERS);
                 setSheetOpen(false);

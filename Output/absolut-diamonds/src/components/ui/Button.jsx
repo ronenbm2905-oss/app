@@ -1,32 +1,47 @@
+// ============================================================================
+// Button — שלוש רמות היררכיה, כמו בשפה: מלא / מסגרת / קו-תחתון.
+// radius 0, בלי צל, בלי צבע. `primary`(rose) ו-`whatsapp`(ירוק) ירדו.
+//
+// focus-visible: על `filled` ה-outline הכהה בלתי-נראה על מילוי ink — לכן
+// `.on-ink` מחליף אותו ל-paper (ראה index.css).
+// ============================================================================
+
 const VARIANTS = {
-  primary: "bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 border-rose-600",
-  secondary: "bg-white text-ink hover:bg-sand border-line",
-  ghost: "bg-transparent text-ink hover:bg-sand border-transparent",
-  whatsapp: "bg-[#128C7E] text-white hover:bg-[#0F6F64] border-[#128C7E]",
-  danger: "bg-white text-red-700 hover:bg-red-50 border-red-300",
+  filled: "on-ink bg-ink text-paper hover:bg-ink-80 active:bg-[#2C2825]",
+  outline: "border border-ink text-ink hover:bg-ink hover:text-paper",
+  link: "text-ink border-b border-current pb-1 hover:border-gold hover:text-ink-80",
+  // 🔴 מסך הניהול בלבד. לא באתר הפומבי.
+  danger: "border border-danger text-danger hover:bg-danger hover:text-paper",
 };
 
+// תאימות לאחור: השמות הישנים ממופים להיררכיה החדשה במקום להישבר בשקט.
+const ALIASES = { primary: "filled", secondary: "outline", ghost: "link", whatsapp: "filled" };
+
 const SIZES = {
-  // min-h-11 = 44px — יעד המגע המינימלי של WCAG 2.5.5.
-  md: "min-h-11 px-4 text-base",
-  lg: "min-h-12 px-6 text-base sm:text-lg",
-  sm: "min-h-9 px-3 text-sm",
+  // גובה כפתור 48px מובייל / 52px דסקטופ (יעד מגע WCAG 2.5.5 בנוי פנימה).
+  md: "min-h-12 px-6 lg:min-h-[3.25rem]",
+  lg: "min-h-12 px-8 lg:min-h-[3.25rem]",
+  sm: "min-h-11 px-4",
+  // `link` לא צריך גובה כפתור — הוא טקסט עם קו.
+  none: "min-h-0 px-0",
 };
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-xl border font-medium transition-colors " +
-  "disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 text-button font-medium transition-colors duration-hover " +
+  "disabled:cursor-not-allowed disabled:border-line disabled:bg-transparent disabled:text-muted";
 
 export default function Button({
   as = "button",
-  variant = "primary",
-  size = "md",
+  variant = "filled",
+  size,
   className = "",
   children,
   ...props
 }) {
   const Tag = as;
-  const cls = `${BASE} ${VARIANTS[variant] || VARIANTS.primary} ${SIZES[size] || SIZES.md} ${className}`;
+  const v = ALIASES[variant] || variant;
+  const s = size || (v === "link" ? "none" : "md");
+  const cls = `${BASE} ${VARIANTS[v] || VARIANTS.filled} ${SIZES[s] || SIZES.md} ${className}`;
   // תגית <a> בלי href אינה ניתנת למיקוד — נופלים ל-<button> כדי לא לייצר
   // "כפתור" שהמקלדת לא מגיעה אליו.
   if (Tag === "a" && !props.href) {

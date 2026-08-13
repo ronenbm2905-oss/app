@@ -1,15 +1,23 @@
-import { MessageCircle } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import ModelCard from "../components/ModelCard.jsx";
 import LeadForm from "../components/LeadForm.jsx";
 import Button from "../components/ui/Button.jsx";
+import WhatsAppButton from "../components/ui/WhatsAppButton.jsx";
 import SmartImage from "../components/ui/SmartImage.jsx";
-import { SectionTitle, EmptyState, Notice } from "../components/ui/Bits.jsx";
-import DiamondShape from "../components/ui/DiamondShape.jsx";
+import { SectionTitle, EmptyState, Flag } from "../components/ui/Bits.jsx";
 import { href } from "../utils/routes.js";
 import { contentFor, contactFor } from "../utils/defaults.js";
 import { whatsappHref, generalMessage } from "../utils/whatsapp.js";
 import { CATEGORIES } from "../constants.js";
+
+// לטינית לצימוד הדו-לשוני (§2.5, מנגנון 2). קבוע-תצוגה, לא תוכן —
+// ולכן הוא כאן ולא ב-i18n: הוא זהה בשתי השפות ומופיע רק לצד עברית.
+const CATEGORY_LATIN = {
+  rings: "RINGS",
+  earrings: "EARRINGS",
+  necklaces: "NECKLACES",
+  bracelets: "BRACELETS",
+};
 
 export default function HomePage({ models, diamonds, settings, submitLead }) {
   const { t, lang } = useI18n();
@@ -22,92 +30,126 @@ export default function HomePage({ models, diamonds, settings, submitLead }) {
 
   return (
     <>
-      {/* ---------------- Hero ---------------- */}
-      <section className="relative overflow-hidden border-b border-line bg-sand">
-        {content.heroImage ? (
-          <>
-            <SmartImage src={content.heroImage} alt="" className="absolute inset-0 h-full w-full" priority />
-            {/* O5.1 — scrim אטום מתחת לטקסט. טקסט מעל תמונה עמוסה בלי זה
-                נכשל בניגודיות, וזה בדיוק הסיכון של רקע דמשק/שיש. */}
-            <div className="absolute inset-0 bg-ink/60" aria-hidden="true" />
-          </>
-        ) : null}
+      {/* ================= Hero =================
+          🔴 **טקסט לא יושב על צילום.** ה-`bg-ink/60` הישן היה שכבת ערפול
+          גורפת שהרגה את הצילום ועדיין לא נתנה ודאות ניגודיות.
 
-        <div className={`container-page relative py-16 sm:py-24 ${content.heroImage ? "text-white" : ""}`}>
-          <div className="max-w-2xl">
-            <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">{content.heroTitle}</h1>
-            <p className={`mt-4 text-lg ${content.heroImage ? "text-white/90" : "text-muted"}`}>
-              {content.heroSubtitle}
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button as="a" href={href.catalog()} size="lg">
-                {t("home.heroCtaCatalog")}
-              </Button>
-              {waHref ? (
-                <Button as="a" href={waHref} target="_blank" rel="noopener noreferrer" variant="whatsapp" size="lg">
-                  <MessageCircle size={20} aria-hidden="true" />
-                  {t("home.heroCtaWhatsapp")}
-                </Button>
-              ) : null}
+          רמה A (מובייל, רוב התנועה): תמונה full-bleed ומתחתיה בלוק על
+          `paper`. אפס scrim, אפס סיכון, וה-H1 ב-32px נקרא.
+          התמונה מוגבלת ל-42vh כדי שה-H1 וה-CTA ייראו בלי גלילה ב-375×667.
+
+          רמה B (דסקטופ): הטקסט בטורים הפנימיים על `paper` — לוח אטום
+          בעל קצוות חדים, לא שכבת ערפול. הקומפוזיציה נשארת full-bleed
+          והטקסט לא נוגע בפיקסל אחד של צילום. */}
+      <section className="border-b border-line">
+        <div className="lg:grid lg:grid-cols-12 lg:items-stretch">
+          {content.heroImage ? (
+            <div className="lg:col-span-7">
+              <SmartImage
+                src={content.heroImage}
+                alt=""
+                className="max-h-[42vh] w-full lg:aspect-[16/10] lg:max-h-none lg:h-full"
+                sizes="(max-width: 1024px) 100vw, 58vw"
+                priority
+              />
+            </div>
+          ) : null}
+
+          <div
+            className={`bg-paper ${
+              content.heroImage ? "lg:col-span-5" : "lg:col-span-12"
+            } flex items-center`}
+          >
+            <div className="container-page py-10 lg:py-16">
+              <div className="max-w-2xl">
+                {/* משקל 200 מותר רק מ-44px ומעלה → 300 במובייל, 200 מ-52px. */}
+                <h1 className="text-display1 font-light lg:text-display1Lg lg:font-extralight">
+                  {content.heroTitle}
+                </h1>
+                <p className="mt-5 max-w-prose text-body text-ink-80 lg:text-bodyLg">
+                  {content.heroSubtitle}
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <Button as="a" href={href.catalog()} size="lg">
+                    {t("home.heroCtaCatalog")}
+                  </Button>
+                  {waHref ? (
+                    <WhatsAppButton href={waHref} size="lg">
+                      {t("home.heroCtaWhatsapp")}
+                    </WhatsAppButton>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ---------------- איך זה עובד ---------------- */}
-      <section className="container-page py-14" aria-labelledby="how-title">
-        <SectionTitle id="how-title">{t("home.howTitle")}</SectionTitle>
-        <ol className="grid gap-6 sm:grid-cols-3">
-          {[1, 2, 3].map((n) => (
-            <li key={n} className="card p-5">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-600 font-semibold text-white num">
-                {n}
-              </span>
-              <h3 className="mt-3 text-lg font-semibold">{t(`home.howStep${n}Title`)}</h3>
-              <p className="mt-1 text-muted">{t(`home.howStep${n}Body`)}</p>
-            </li>
-          ))}
-        </ol>
+      {/* ================= איך זה עובד =================
+          רקע 2 של העמוד (`alt`). כלל שני הרקעים: זה והפוטר. */}
+      <section className="bg-alt py-12 lg:py-24" aria-labelledby="how-title">
+        <div className="container-page">
+          <SectionTitle id="how-title" latin="HOW IT WORKS">
+            {t("home.howTitle")}
+          </SectionTitle>
+          <ol className="grid gap-8 sm:grid-cols-3 sm:gap-6">
+            {[1, 2, 3].map((n) => (
+              <li key={n} className="border-t border-ink pt-4">
+                <span className="micro-en">{`0${n}`}</span>
+                <h3 className="mt-2 text-titleLg font-medium">{t(`home.howStep${n}Title`)}</h3>
+                {/* muted על alt = 5.14:1 — בדיוק המקום שבו ה-Muted הישן נכשל. */}
+                <p className="mt-2 text-meta text-muted">{t(`home.howStep${n}Body`)}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
-      {/* ---------------- קטגוריות ---------------- */}
-      <section className="container-page py-6" aria-labelledby="cat-title">
-        <SectionTitle id="cat-title" sub={t("home.categoriesSub")}>
+      {/* ================= קטגוריות ================= */}
+      <section className="container-page py-12 lg:py-24" aria-labelledby="cat-title">
+        <SectionTitle id="cat-title" sub={t("home.categoriesSub")} latin="COLLECTIONS">
           {t("home.categoriesTitle")}
         </SectionTitle>
-        <ul className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* אריח צילומי — בלי מסגרת, בלי צל, בלי אייקון במרכז.
+            עד שיהיו צילומים: הפס האלכסוני של השפה (SmartImage בלי src). */}
+        <ul className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 lg:grid-cols-4">
           {CATEGORIES.map((c) => (
             <li key={c}>
-              <a
-                href={href.catalog({ category: c })}
-                className="card flex flex-col items-center gap-3 p-6 text-center transition-shadow hover:shadow-lg"
-              >
-                <DiamondShape shape="round" className="h-12 w-12" />
-                <span className="text-lg font-medium">{t(`taxonomy.category.${c}`)}</span>
+              <a href={href.catalog({ category: c })} className="group block">
+                <SmartImage
+                  src={null}
+                  alt=""
+                  caption={t("home.categoryImagePending")}
+                  className="aspect-square w-full"
+                />
+                <span className="mt-3 block text-spec font-medium text-ink group-hover:underline">
+                  {t(`taxonomy.category.${c}`)}
+                </span>
+                {lang === "he" ? <span className="micro-en">{CATEGORY_LATIN[c]}</span> : null}
               </a>
             </li>
           ))}
         </ul>
       </section>
 
-      {/* ---------------- דגמים נבחרים ---------------- */}
-      <section className="container-page py-14" aria-labelledby="featured-title">
-        <SectionTitle id="featured-title" sub={t("home.featuredSub")}>
+      {/* ================= דגמים נבחרים ================= */}
+      <section className="container-page py-12 lg:py-24" aria-labelledby="featured-title">
+        <SectionTitle id="featured-title" sub={t("home.featuredSub")} latin="SELECTED">
           {t("home.featuredTitle")}
         </SectionTitle>
         {featured.length === 0 ? (
           <EmptyState title={t("home.empty")} />
         ) : (
           <>
-            <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-3 sm:gap-x-6">
               {featured.map((m) => (
                 <li key={m.id}>
                   <ModelCard model={m} diamonds={diamonds} />
                 </li>
               ))}
             </ul>
-            <div className="mt-6">
-              <Button as="a" href={href.catalog()} variant="secondary">
+            <div className="mt-10">
+              <Button as="a" href={href.catalog()} variant="outline">
                 {t("home.featuredCta")}
               </Button>
             </div>
@@ -115,57 +157,57 @@ export default function HomePage({ models, diamonds, settings, submitLead }) {
         )}
       </section>
 
-      {/* ---------------- מלאי יהלומים ---------------- */}
-      <section className="border-y border-line bg-white py-14">
-        <div className="container-page flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* ================= מלאי יהלומים ================= */}
+      <section className="container-page py-12 lg:py-16">
+        <div className="flex flex-col items-start gap-5 border-y border-line py-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">{t("home.diamondsTeaserTitle")}</h2>
-            <p className="mt-1 text-muted">{t("home.diamondsTeaserSub", { count: diamonds.length })}</p>
+            <h2 className="text-section font-medium tracking-heLabel lg:text-sectionLg lg:font-light">
+              {t("home.diamondsTeaserTitle")}
+            </h2>
+            <p className="mt-2 text-meta text-muted">
+              {t("home.diamondsTeaserSub", { count: diamonds.length })}
+            </p>
           </div>
-          <Button as="a" href={href.diamonds()}>
+          <Button as="a" href={href.diamonds()} variant="outline">
             {t("home.diamondsTeaserCta")}
           </Button>
         </div>
       </section>
 
-      {/* ---------------- סיפור ---------------- */}
-      <section className="container-page py-14" aria-labelledby="story-title">
-        <div className="max-w-3xl">
+      {/* ================= סיפור ================= */}
+      <section className="container-page py-12 lg:py-24" aria-labelledby="story-title">
+        <div className="max-w-prose">
           <SectionTitle id="story-title">{content.storyTitle}</SectionTitle>
-          <p className="whitespace-pre-line leading-relaxed">{content.storyBody}</p>
-          <Button as="a" href={href.about()} variant="ghost" className="mt-4">
+          <p className="whitespace-pre-line text-body text-ink-80">{content.storyBody}</p>
+          <Button as="a" href={href.about()} variant="link" className="mt-6">
             {t("home.storyCta")}
           </Button>
         </div>
       </section>
 
-      {/* ---------------- FAQ ---------------- */}
-      <section className="container-page py-6" aria-labelledby="faq-title">
+      {/* ================= FAQ ================= */}
+      <section className="container-page py-12 lg:py-16" aria-labelledby="faq-title">
         <SectionTitle id="faq-title">{t("home.faqTitle")}</SectionTitle>
-        <dl className="max-w-3xl space-y-4">
+        <dl className="max-w-prose border-t border-line">
           {faq.map((item, i) => (
-            <div key={i} className="card p-5">
-              <dt className="font-semibold">{item.q}</dt>
-              <dd className="mt-2 leading-relaxed text-muted">{item.a}</dd>
+            <div key={i} className="border-b border-line py-6">
+              <dt className="text-title font-medium">{item.q}</dt>
+              <dd className="mt-2 text-body text-ink-80">{item.a}</dd>
             </div>
           ))}
         </dl>
-        <Button as="a" href={href.about()} variant="ghost" className="mt-4">
+        <Button as="a" href={href.about()} variant="link" className="mt-6">
           {t("home.faqCta")}
         </Button>
       </section>
 
-      {/* ---------------- יצירת קשר ---------------- */}
-      <section className="container-page py-14" aria-labelledby="contact-title">
+      {/* ================= יצירת קשר ================= */}
+      <section className="container-page py-12 lg:py-24" aria-labelledby="contact-title">
         <div className="max-w-2xl">
           <SectionTitle id="contact-title" sub={t("home.contactSub")}>
             {t("home.contactTitle")}
           </SectionTitle>
-          {!contact.whatsapp ? (
-            <Notice tone="warn" className="mb-4">
-              {t("whatsapp.unavailable")}
-            </Notice>
-          ) : null}
+          {!contact.whatsapp ? <Flag className="mb-6">{t("whatsapp.unavailable")}</Flag> : null}
           <LeadForm onSubmit={submitLead} source="contactForm" />
         </div>
       </section>

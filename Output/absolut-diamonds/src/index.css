@@ -9,30 +9,35 @@
   }
 
   body {
-    @apply bg-ivory text-ink font-sans antialiased;
+    @apply bg-paper font-sans text-ink antialiased;
     /* מונע קפיצה אופקית במובייל כשגלריה או מגירה נכנסות מהצד */
     overflow-x: hidden;
   }
 
-  /* WCAG 2.4.7 — פוקוס נראה תמיד, גם כשמעצבים כפתור מחדש. */
+  /* WCAG 2.4.7 — פוקוס נראה תמיד.
+     בפלטה כמעט-מונוכרומטית קל לאבד אותו, ולכן הוא קו ink מלא ולא ring רך.
+     על מילוי ink הוא היה נעלם — שם מחליפים ל-paper דרך `.on-ink`. */
   :focus-visible {
-    @apply outline-none ring-2 ring-rose-600 ring-offset-2 ring-offset-ivory;
+    outline: 2px solid #14110f;
+    outline-offset: 2px;
+  }
+
+  .on-ink:focus-visible {
+    outline-color: #f7f7f7;
   }
 
   /* יעד מגע מינימלי 44px (WCAG 2.5.5) על כל דבר לחיץ במובייל. */
   button,
   a[role="button"],
-  [role="tab"] {
+  [role="tab"],
+  [role="radio"] {
     touch-action: manipulation;
   }
 
-  h1,
-  h2,
-  h3 {
-    @apply font-display;
-    /* עברית ב-Cormorant נראית שבורה — הפונט לטיני בלבד.
-       ה-fallback ב-tailwind.config מחזיר את Heebo לעברית אוטומטית. */
-    font-feature-settings: "kern" 1;
+  /* אין נטוי — ל-Assistant אין נטוי אמיתי, והדפדפן מזייף אותו. */
+  i,
+  em {
+    font-style: normal;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -49,47 +54,88 @@
 
 @layer components {
   /* מספרים, מק״טים ומזהי תעודה — תמיד LTR, גם בתוך משפט בעברית.
-     בלי זה "IGI-621904331" מוצג הפוך ולקוח לא יכול להשוות לתעודה. */
+     בלי זה "IGI-621904331" מוצג הפוך ולקוח לא יכול להשוות לתעודה.
+     ⚠️ נשאר בדיוק כפי שהיה — הוא נכון. */
   .num {
     direction: ltr;
     unicode-bidi: isolate;
     font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
   }
 
   .container-page {
-    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+    @apply mx-auto w-full max-w-content px-6 sm:px-8 lg:px-12;
   }
 
-  .card {
-    @apply rounded-2xl border border-line bg-white shadow-card;
+  /* קו שיער מפריד — דקורטיבי. **אסור** כגבול של רכיב אינטראקטיבי (1.23:1). */
+  .rule {
+    border-bottom: 1px solid #e2e0dc;
+  }
+
+  /* 🔴 המנגנון היחיד ל"עובדה שחייבים לקרוא".
+     שלושה שימושים ובשלושתם בלבד: שורת טיפולים (A3.2), disclaimer הצעת
+     המחיר (A5.8א), שגיאת טופס. מחליף את כל ה-Notice tone="warn" הענברים.
+     חומרה = קו + משקל, לא צבע → מקיים גם 1.4.1. */
+  .flag {
+    border-inline-start: 2px solid #14110f;
+    padding-inline-start: 12px;
+  }
+
+  .flag-danger {
+    border-inline-start-color: #8a2c22;
   }
 
   .label {
-    @apply mb-1 block text-sm font-medium text-ink;
+    @apply mb-2 block text-meta font-medium text-ink;
   }
 
+  /* גובה 48px, radius 0, גבול line.strong (1.4.11), טקסט 16px —
+     מתחת ל-16px ה-iOS מזום את העמוד. */
   .input {
-    @apply w-full rounded-xl border border-line bg-white px-3 py-2.5 text-base text-ink
-           placeholder:text-muted/70 focus:border-rose-600 focus:outline-none
-           focus:ring-2 focus:ring-rose-600/30;
+    @apply block min-h-12 w-full border border-line-strong bg-surface px-3 py-2.5 text-base
+           text-ink placeholder:text-muted focus:border-ink;
   }
 
   .input-error {
-    @apply border-red-600 focus:border-red-600 focus:ring-red-600/30;
+    @apply border-danger focus:border-danger;
   }
 
-  /* שלד טעינה לתמונות תכשיטים — הן כבדות, והקפיצה בלעדיו צורמת. */
-  .skeleton {
-    @apply relative overflow-hidden bg-sand;
+  /* מנגנון החלופה ל-uppercase בעברית (§2.5, מנגנון 1):
+     קו שיער 24px + רווח 8px. נייטרלי-לשפה, ומייצר את אותה מחווה אופקית. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-eyebrow font-semibold tracking-heLabel text-muted;
   }
-  .skeleton::after {
+
+  .eyebrow::before {
     content: "";
-    @apply absolute inset-0 animate-shimmer;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
-    transform: translateX(-100%);
+    width: 24px;
+    height: 1px;
+    flex: none;
+    background: #e2e0dc;
   }
 
-  .brand-mark {
-    @apply font-display tracking-brand;
+  /* צימוד דו-לשוני (§2.5, מנגנון 2) — לטינית בלבד, תמיד LTR, גם ב-RTL. */
+  .micro-en {
+    @apply font-mono text-micro font-medium uppercase text-muted;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  /* לינק: הזהב יצא מהטקסט ונשאר בקו. hover → הקו הופך זהוב. */
+  .link-ink {
+    @apply border-b border-current text-ink transition-colors duration-hover
+           hover:border-gold hover:text-ink-80;
+  }
+
+  /* 🔧 `.panel` — **מסך הניהול בלבד.** באתר הפומבי אין קופסאות: `.card`
+     נמחק וההפרדה עברה לרווח ולקו שיער. לאדמין מותר לחרוג — הוא כלי פנימי,
+     ו-`surface` שם הוא רקע לגיטימי (כלל שני הרקעים, שורת "ניהול"). */
+  .panel {
+    @apply border border-line bg-surface;
+  }
+
+  /* תמונה חסרה / כשל טעינה — הפס האלכסוני של השפה. */
+  .stripe {
+    @apply bg-stripe;
   }
 }

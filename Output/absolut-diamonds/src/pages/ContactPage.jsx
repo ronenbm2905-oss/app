@@ -1,8 +1,8 @@
-import { MessageCircle, Mail, Phone } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import LeadForm from "../components/LeadForm.jsx";
-import Button from "../components/ui/Button.jsx";
-import { SectionTitle, Notice } from "../components/ui/Bits.jsx";
+import WhatsAppButton from "../components/ui/WhatsAppButton.jsx";
+import { PageTitle, Flag } from "../components/ui/Bits.jsx";
 import { contactFor } from "../utils/defaults.js";
 import { whatsappHref, generalMessage } from "../utils/whatsapp.js";
 
@@ -12,52 +12,46 @@ export default function ContactPage({ settings, submitLead }) {
   const waHref = whatsappHref(contact.whatsapp, generalMessage(t));
 
   return (
-    <div className="container-page py-10">
-      <SectionTitle sub={t("contact.subtitle")}>{t("contact.title")}</SectionTitle>
+    <div className="container-page py-10 lg:py-16">
+      <PageTitle sub={t("contact.subtitle")}>{t("contact.title")}</PageTitle>
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_20rem]">
+      <div className="grid gap-12 lg:grid-cols-[1fr_20rem]">
         <div className="max-w-2xl">
           <LeadForm onSubmit={submitLead} source="contactForm" />
         </div>
 
-        <aside className="space-y-4">
+        <aside className="space-y-6">
           {waHref ? (
             <div>
-              <Button
-                as="a"
-                href={waHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="whatsapp"
-                size="lg"
-                className="w-full"
-              >
-                <MessageCircle size={20} aria-hidden="true" />
+              <WhatsAppButton href={waHref} size="lg" className="w-full">
                 {t("contact.whatsapp")}
-              </Button>
+              </WhatsAppButton>
               {/* A7.5 — העברה לצד שלישי, נאמר ליד הכפתור ולא רק במדיניות. */}
-              <p className="mt-2 text-sm text-muted">{t("whatsapp.metaNotice")}</p>
+              <p className="mt-3 text-meta text-muted">{t("whatsapp.metaNotice")}</p>
             </div>
           ) : (
-            <Notice tone="warn">{t("whatsapp.unavailable")}</Notice>
+            <Flag>{t("whatsapp.unavailable")}</Flag>
           )}
 
-          <ul className="card divide-y divide-line">
+          <ul className="border-t border-line">
             {contact.publicEmail ? (
-              <li>
+              <li className="border-b border-line">
                 <a
-                  className="flex min-h-12 items-center gap-3 px-4 hover:bg-sand"
+                  className="flex min-h-12 items-center gap-3 text-spec text-ink hover:text-ink-80"
                   href={`mailto:${contact.publicEmail}`}
                 >
-                  <Mail size={18} aria-hidden="true" />
+                  <Mail size={18} strokeWidth={1.5} aria-hidden="true" />
                   <span className="num">{contact.publicEmail}</span>
                 </a>
               </li>
             ) : null}
             {contact.phone ? (
-              <li>
-                <a className="flex min-h-12 items-center gap-3 px-4 hover:bg-sand" href={`tel:${contact.phone}`}>
-                  <Phone size={18} aria-hidden="true" />
+              <li className="border-b border-line">
+                <a
+                  className="flex min-h-12 items-center gap-3 text-spec text-ink hover:text-ink-80"
+                  href={`tel:${contact.phone}`}
+                >
+                  <Phone size={18} strokeWidth={1.5} aria-hidden="true" />
                   <span className="num">{contact.phone}</span>
                 </a>
               </li>
@@ -65,7 +59,7 @@ export default function ContactPage({ settings, submitLead }) {
           </ul>
 
           {contact.legalEntityName ? (
-            <p className="text-sm text-muted">
+            <p className="text-meta text-muted">
               {contact.legalEntityName}
               {contact.legalEntityId ? ` · ${contact.legalEntityId}` : ""}
               {contact.legalEntityAddress ? ` · ${contact.legalEntityAddress}` : ""}

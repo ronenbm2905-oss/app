@@ -69,15 +69,19 @@ export default function Sheet({ open, onClose, title, children, footer, side = "
 
   if (!open) return null;
 
+  // radius 0. מה שמפריד את המגירה מהעמוד הוא **קו ink**, לא צל —
+  // `shadow-sheet` נמחק מהשפה.
   const panelPos =
     side === "bottom"
-      ? "inset-x-0 bottom-0 max-h-[88vh] rounded-t-3xl animate-sheetUp sm:inset-x-auto sm:bottom-0 sm:top-0 sm:end-0 sm:max-h-none sm:w-[26rem] sm:rounded-t-none sm:rounded-s-3xl"
-      : "inset-y-0 end-0 w-full max-w-md rounded-s-3xl";
+      ? "inset-x-0 bottom-0 max-h-[88vh] animate-sheetUp border-t border-ink " +
+        "sm:inset-x-auto sm:bottom-0 sm:top-0 sm:end-0 sm:max-h-none sm:w-[26.25rem] " +
+        "sm:border-t-0 sm:border-s sm:border-ink"
+      : "inset-y-0 end-0 w-full max-w-[26.25rem] border-s border-ink";
 
   return (
     <div className="fixed inset-0 z-50">
       <div
-        className="absolute inset-0 animate-fadeIn bg-ink/40"
+        className="absolute inset-0 animate-fadeIn bg-[rgba(20,17,15,0.55)]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -87,25 +91,25 @@ export default function Sheet({ open, onClose, title, children, footer, side = "
         aria-modal="true"
         aria-labelledby="sheet-title"
         tabIndex={-1}
-        className={`absolute flex flex-col bg-ivory shadow-sheet outline-none ${panelPos}`}
+        className={`absolute flex flex-col bg-surface outline-none ${panelPos}`}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <h2 id="sheet-title" className="text-lg font-semibold">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3">
+          <h2 id="sheet-title" className="text-titleLg font-medium">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-sand"
+            className="inline-flex h-11 w-11 items-center justify-center text-ink hover:text-ink-80"
             aria-label={t("common.close")}
           >
-            <X size={20} aria-hidden="true" />
+            <X size={20} strokeWidth={1.5} aria-hidden="true" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">{children}</div>
 
-        {footer ? <div className="border-t border-line bg-white px-4 py-3">{footer}</div> : null}
+        {footer ? <div className="border-t border-line px-6 py-4">{footer}</div> : null}
       </div>
     </div>
   );

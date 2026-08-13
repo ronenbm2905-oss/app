@@ -52,7 +52,7 @@ export default function DiamondFilters({ filters, onChange, showShapes = true })
       <fieldset>
         <legend className="label">{t("filters.origin")}</legend>
         <div className="flex flex-wrap gap-2">
-          <Chip selected={!filters.origin} onClick={() => set({ origin: null })}>
+          <Chip selected={!filters.origin} dismissible={false} onClick={() => set({ origin: null })}>
             {t("filters.any")}
           </Chip>
           {ORIGINS.map((o) => (

@@ -61,6 +61,7 @@ export default {
     howStep3Body: "Send us what you configured on WhatsApp and we'll take it from there.",
     categoriesTitle: "Categories",
     categoriesSub: "Every setting is matched to the diamond you choose.",
+    categoryImagePending: "Category photo — not yet supplied",
     featuredTitle: "Featured settings",
     featuredSub: "A selection from the current collection.",
     featuredCta: "See the full catalog",

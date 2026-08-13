@@ -38,6 +38,10 @@ const CONNECTORS = {
   heart: "M6 37 L26 44 M50 27 L50 45 M94 37 L74 44 M50 93 L50 72",
 };
 
+// 🔴 טיפול מחדש לפי השפה: **monoline.** הגרדיינט התכלת ירד — הוא היה משפחת
+// גוונים שלא קיימת בשפה, והפך שרטוט ל"אייקון אפליקציה". עכשיו: קו שיער
+// `currentColor` (ברירת מחדל ink) ברוחב 1.4 ב-viewBox 100, בלי מילוי,
+// קווי הפאסטות ב-opacity .55.
 export default function DiamondShape({ shape = "round", className = "", title, size }) {
   const outline = OUTLINES[shape] || OUTLINES.round;
   const connectors = CONNECTORS[shape] || CONNECTORS.round;
@@ -45,7 +49,7 @@ export default function DiamondShape({ shape = "round", className = "", title, s
   return (
     <svg
       viewBox="0 0 100 100"
-      className={className}
+      className={`text-ink ${className}`}
       width={size}
       height={size}
       role={title ? "img" : "presentation"}
@@ -53,28 +57,21 @@ export default function DiamondShape({ shape = "round", className = "", title, s
       aria-hidden={title ? undefined : "true"}
       focusable="false"
     >
-      <defs>
-        <linearGradient id={`ds-${shape}`} x1="0" y1="0" x2="0.7" y2="1">
-          <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="45%" stopColor="#EAF4FA" />
-          <stop offset="100%" stopColor="#C7DEED" />
-        </linearGradient>
-      </defs>
-      <g fill={`url(#ds-${shape})`} stroke="#7E99AA" strokeWidth="2.2" strokeLinejoin="round">
+      <g fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
         {outline}
       </g>
       {/* הטבלה — אותו קו מתאר, מוקטן למרכז */}
       <g
         fill="none"
-        stroke="#7E99AA"
-        strokeWidth="2"
+        stroke="currentColor"
+        strokeWidth="1.4"
         strokeLinejoin="round"
-        opacity="0.85"
+        opacity="0.55"
         transform="translate(50 50) scale(0.5) translate(-50 -50)"
       >
         {outline}
       </g>
-      <path d={connectors} fill="none" stroke="#7E99AA" strokeWidth="1.4" opacity="0.7" />
+      <path d={connectors} fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.55" />
     </svg>
   );
 }

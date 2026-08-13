@@ -1,5 +1,5 @@
 import { useI18n } from "../hooks/useI18n.jsx";
-import { SectionTitle, Notice } from "../components/ui/Bits.jsx";
+import { PageTitle, Flag } from "../components/ui/Bits.jsx";
 import { legalFor, contactFor } from "../utils/defaults.js";
 
 // ============================================================================
@@ -21,33 +21,36 @@ export default function LegalPage({ settings, doc }) {
   const body = doc === "accessibility" ? legal.accessibility : legal.privacy;
 
   return (
-    <div className="container-page py-10">
-      <div className="max-w-3xl">
-        <SectionTitle>{title}</SectionTitle>
+    <div className="container-page py-10 lg:py-16">
+      <div className="max-w-prose">
+        <PageTitle>{title}</PageTitle>
 
         {!body ? (
           <>
-            <Notice tone="danger">{t("legal.draftBanner")}</Notice>
-            <p className="mt-4 text-muted">{t("legal.draftBody")}</p>
+            {/* `.flag` ולא באנר צבעוני — אותו מנגנון חומרה כמו בשורת
+                הטיפולים וב-disclaimer. role="alert" נשמר. */}
+            <Flag role="alert" note={t("legal.draftBody")}>
+              {t("legal.draftBanner")}
+            </Flag>
           </>
         ) : (
-          <div className="whitespace-pre-line leading-relaxed">{body}</div>
+          <div className="whitespace-pre-line text-body text-ink-80">{body}</div>
         )}
 
         {/* O5.9 — רכז נגישות: שם, מייל וטלפון. בלעדיו ההצהרה אינה שלמה. */}
         {doc === "accessibility" && contact.accessibilityContactName ? (
-          <div className="mt-8 card p-5">
-            <h2 className="text-lg font-semibold">{contact.accessibilityContactName}</h2>
+          <div className="mt-10 border-t border-ink pt-5">
+            <h2 className="text-titleLg font-medium">{contact.accessibilityContactName}</h2>
             {contact.accessibilityContactEmail ? (
-              <p className="num mt-1">{contact.accessibilityContactEmail}</p>
+              <p className="num mt-1 text-spec">{contact.accessibilityContactEmail}</p>
             ) : null}
             {contact.accessibilityContactPhone ? (
-              <p className="num">{contact.accessibilityContactPhone}</p>
+              <p className="num text-spec">{contact.accessibilityContactPhone}</p>
             ) : null}
           </div>
         ) : null}
 
-        <p className="mt-8 text-sm text-muted num">v{legal.policyVersion}</p>
+        <p className="num mt-10 text-meta text-muted">v{legal.policyVersion}</p>
       </div>
     </div>
   );

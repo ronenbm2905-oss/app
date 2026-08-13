@@ -65,6 +65,8 @@ export default {
     howStep3Body: "שולחים לנו את מה שהרכבתם בוואטסאפ, ואנחנו סוגרים את הפרטים.",
     categoriesTitle: "הקטגוריות שלנו",
     categoriesSub: "כל דגם מותאם לאבן שתבחרו.",
+    // כיתוב ה-placeholder של אריח הקטגוריה עד שיוזנו צילומים.
+    categoryImagePending: "צילום קטגוריה — טרם הוזן",
     featuredTitle: "דגמים נבחרים",
     featuredSub: "מבחר מהאוסף העדכני.",
     featuredCta: "לכל הקטלוג",

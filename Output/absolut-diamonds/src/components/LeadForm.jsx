@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import { Field, TextInput, TextArea, Checkbox } from "./ui/Field.jsx";
 import Button from "./ui/Button.jsx";
-import { Notice } from "./ui/Bits.jsx";
+import { Flag } from "./ui/Bits.jsx";
 import { validateLead, hasErrors } from "../utils/validate.js";
 import { href } from "../utils/routes.js";
 
@@ -70,10 +70,10 @@ export default function LeadForm({ onSubmit, source = "contactForm", listingSnap
 
   if (state === "sent") {
     return (
-      <div className="card p-6" role="status">
-        <h3 className="text-xl font-semibold">{t("lead.successTitle")}</h3>
-        <p className="mt-2 text-muted">{t("lead.successBody")}</p>
-        <Button className="mt-4" variant="secondary" onClick={() => setState("idle")}>
+      <div className="border-t border-ink pt-6" role="status">
+        <h3 className="text-titleLg font-medium">{t("lead.successTitle")}</h3>
+        <p className="mt-2 text-body text-ink-80">{t("lead.successBody")}</p>
+        <Button className="mt-6" variant="outline" onClick={() => setState("idle")}>
           {t("lead.sendAnother")}
         </Button>
       </div>
@@ -81,14 +81,15 @@ export default function LeadForm({ onSubmit, source = "contactForm", listingSnap
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className={compact ? "" : "card p-5 sm:p-6"}>
-      {!compact ? <h3 className="mb-4 text-xl font-semibold">{t("lead.title")}</h3> : null}
+    // בלי `.card` — המסגור הוא קו ink עליון וכותרת.
+    <form onSubmit={handleSubmit} noValidate className={compact ? "" : "border-t border-ink pt-6"}>
+      {!compact ? <h3 className="mb-6 text-titleLg font-medium">{t("lead.title")}</h3> : null}
 
       {listingSnapshot ? (
-        <Notice className="mb-4">{t("lead.attachedConfig")}</Notice>
+        <p className="mb-6 text-meta text-muted">{t("lead.attachedConfig")}</p>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <Field label={t("lead.name")} required error={errors.name ? t(errors.name) : null}>
           {(p) => (
             <TextInput
@@ -150,17 +151,19 @@ export default function LeadForm({ onSubmit, source = "contactForm", listingSnap
         </Field>
       </div>
 
-      {/* O2 — היידוע **בנקודה שבה הוא נקרא**, לא רק בעמוד נפרד. */}
-      <div className="mt-5 rounded-xl border border-line bg-sand/50 p-4">
-        <h4 className="text-sm font-semibold">{t("lead.privacyNoticeTitle")}</h4>
-        <p className="mt-1 text-sm leading-relaxed text-muted">{t("lead.privacyNoticeBody")}</p>
-        <a className="mt-1 inline-block text-sm underline hover:text-rose-700" href={href.privacy()}>
+      {/* O2 — היידוע **בנקודה שבה הוא נקרא**, לא רק בעמוד נפרד.
+          רקע `alt` בלבד — בלי radius ובלי גבול. הרקע לבדו מפריד.
+          `muted` על `alt` = 5.14:1 ✅ (זה בדיוק המקום שבו הגוון הישן נכשל). */}
+      <div className="mt-6 bg-alt p-4">
+        <h4 className="text-meta font-semibold text-ink">{t("lead.privacyNoticeTitle")}</h4>
+        <p className="mt-1 text-meta leading-relaxed text-muted">{t("lead.privacyNoticeBody")}</p>
+        <a className="link-ink mt-2 inline-block text-meta" href={href.privacy()}>
           {t("lead.privacyLink")}
         </a>
       </div>
 
       {/* 🔴 A7.1 — שתי תיבות נפרדות, שתיהן לא מסומנות מראש. */}
-      <div className="mt-4 space-y-3">
+      <div className="mt-6 space-y-4">
         <Checkbox
           checked={values.consentContact}
           onChange={set("consentContact")}
@@ -185,12 +188,12 @@ export default function LeadForm({ onSubmit, source = "contactForm", listingSnap
       </div>
 
       {state === "error" ? (
-        <Notice tone="danger" className="mt-4">
+        <Flag danger role="alert" className="mt-6">
           {t("lead.errorGeneric")}
-        </Notice>
+        </Flag>
       ) : null}
 
-      <Button type="submit" size="lg" className="mt-5 w-full sm:w-auto" disabled={state === "sending"}>
+      <Button type="submit" size="lg" className="mt-8 w-full sm:w-auto" disabled={state === "sending"}>
         {state === "sending" ? t("lead.submitting") : t("lead.submit")}
       </Button>
     </form>

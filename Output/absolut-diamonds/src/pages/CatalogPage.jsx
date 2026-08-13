@@ -4,7 +4,7 @@ import { useI18n } from "../hooks/useI18n.jsx";
 import ModelCard from "../components/ModelCard.jsx";
 import Sheet from "../components/ui/Sheet.jsx";
 import Button from "../components/ui/Button.jsx";
-import { Chip, EmptyState, SectionTitle } from "../components/ui/Bits.jsx";
+import { Chip, EmptyState, PageTitle } from "../components/ui/Bits.jsx";
 import { Field, SelectInput, TextInput } from "../components/ui/Field.jsx";
 import { filterModels, sortModels, countActiveFilters } from "../utils/filters.js";
 import { toAgorot, toShekels } from "../utils/money.js";
@@ -62,18 +62,18 @@ export default function CatalogPage({ models, diamonds, route, navigate }) {
   const filterPanel = <ModelFilters filters={filters} onChange={setFilters} />;
 
   return (
-    <div className="container-page py-8">
-      <SectionTitle sub={t("catalog.subtitle")}>{t("catalog.title")}</SectionTitle>
+    <div className="container-page py-8 lg:py-12">
+      <PageTitle sub={t("catalog.subtitle")}>{t("catalog.title")}</PageTitle>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button variant="secondary" className="lg:hidden" onClick={() => setSheetOpen(true)}>
-          <SlidersHorizontal size={18} aria-hidden="true" />
+      <div className="mb-6 flex flex-wrap items-center gap-4 border-y border-line py-3">
+        <Button variant="link" className="lg:hidden" onClick={() => setSheetOpen(true)}>
+          <SlidersHorizontal size={18} strokeWidth={1.5} aria-hidden="true" />
           {t("catalog.openFilters")}
           {activeCount ? <span className="num">({activeCount})</span> : null}
         </Button>
 
-        <div className="ms-auto flex items-center gap-2">
-          <label htmlFor="catalog-sort" className="text-sm text-muted">
+        <div className="ms-auto flex items-center gap-3">
+          <label htmlFor="catalog-sort" className="text-meta text-muted">
             {t("catalog.sortLabel")}
           </label>
           <select
@@ -91,12 +91,12 @@ export default function CatalogPage({ models, diamonds, route, navigate }) {
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">
+      <div className="grid gap-10 lg:grid-cols-[16rem_1fr] lg:gap-12">
         <aside className="hidden lg:block">
-          <h2 className="mb-4 text-lg font-semibold">{t("catalog.filtersTitle")}</h2>
+          <h2 className="eyebrow mb-5">{t("catalog.filtersTitle")}</h2>
           {filterPanel}
           {activeCount ? (
-            <Button variant="ghost" className="mt-4" onClick={() => setFilters(EMPTY_MODEL_FILTERS)}>
+            <Button variant="link" className="mt-6" onClick={() => setFilters(EMPTY_MODEL_FILTERS)}>
               {t("catalog.clearAll")}
             </Button>
           ) : null}
@@ -104,7 +104,7 @@ export default function CatalogPage({ models, diamonds, route, navigate }) {
 
         <div>
           {/* O5.5 — מונה התוצאות מוכרז ב-aria-live בכל שינוי סינון. */}
-          <p className="mb-4 text-sm font-medium" aria-live="polite">
+          <p className="mb-5 text-meta font-medium" aria-live="polite">
             {visible.length === 1
               ? t("catalog.resultsCountOne")
               : t("catalog.resultsCount", { count: visible.length })}
@@ -113,7 +113,8 @@ export default function CatalogPage({ models, diamonds, route, navigate }) {
           {visible.length === 0 ? (
             <EmptyState title={t("catalog.resultsNone")} body={t("catalog.noResultsHint")} />
           ) : (
-            <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            // גריד מובייל: 2 טורים / gap 12 · ≥640: 3 · ≥1024: 4 / gap 24
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-10 sm:grid-cols-3 sm:gap-x-6 xl:grid-cols-4">
               {visible.map((m) => (
                 <li key={m.id}>
                   <ModelCard model={m} diamonds={diamonds} />
@@ -134,7 +135,7 @@ export default function CatalogPage({ models, diamonds, route, navigate }) {
               {t("common.apply")}
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => {
                 setFilters(EMPTY_MODEL_FILTERS);
                 setSheetOpen(false);
@@ -161,7 +162,7 @@ function ModelFilters({ filters, onChange }) {
       <fieldset>
         <legend className="label">{t("filters.category")}</legend>
         <div className="flex flex-wrap gap-2">
-          <Chip selected={!filters.category} onClick={() => set({ category: null, subcategory: null })}>
+          <Chip selected={!filters.category} dismissible={false} onClick={() => set({ category: null, subcategory: null })}>
             {t("filters.any")}
           </Chip>
           {CATEGORIES.map((c) => (
@@ -180,7 +181,7 @@ function ModelFilters({ filters, onChange }) {
         <fieldset>
           <legend className="label">{t("filters.subcategory")}</legend>
           <div className="flex flex-wrap gap-2">
-            <Chip selected={!filters.subcategory} onClick={() => set({ subcategory: null })}>
+            <Chip selected={!filters.subcategory} dismissible={false} onClick={() => set({ subcategory: null })}>
               {t("filters.any")}
             </Chip>
             {subs.map((s) => (
@@ -208,7 +209,7 @@ function ModelFilters({ filters, onChange }) {
       <fieldset>
         <legend className="label">{t("filters.metalColor")}</legend>
         <div className="flex flex-wrap gap-2">
-          <Chip selected={!filters.metalColor} onClick={() => set({ metalColor: null })}>
+          <Chip selected={!filters.metalColor} dismissible={false} onClick={() => set({ metalColor: null })}>
             {t("filters.any")}
           </Chip>
           {METAL_COLORS.map((m) => (
