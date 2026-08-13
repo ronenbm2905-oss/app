@@ -322,7 +322,10 @@ function hitsFor(re, { skipAdmin = false } = {}) {
   const out = [];
   for (const f of SRC) {
     if (skipAdmin && isAdmin(f)) continue;
-    for (const line of readFileSync(f, "utf8").split("\n")) {
+    // ⚠️ `\r?\n` ולא `\n`. ב-Windows git מחזיר CRLF ב-checkout, ואז נשאר `\r`
+    // בסוף השורה — ומכיוון ש-`.` ב-JS אינו תופס `\r` ו-`$` בלי `m` דורש סוף
+    // מחרוזת ממש, הסרת ההערות למטה נכשלת בשקט וכל הערה נספרת כקוד.
+    for (const line of readFileSync(f, "utf8").split(/\r?\n/)) {
       const code = line.replace(/\/\/.*$/, "").replace(/\{?\/\*[\s\S]*?\*\/\}?/g, "");
       // ⚠️ שומרים את השורה **המלאה** לבדיקה, ומקצרים רק לתצוגה — אחרת
       // אסרשן כמו "מופיע רק עם uppercase" נכשל על חיתוך המחרוזת ולא על הקוד.
@@ -376,7 +379,7 @@ ok(
 // `Notice tone="warn"` הענבר הוחלף ב-`.flag` — באתר הפומבי, לא באדמין.
 const warnHits = hitsFor(/tone="warn"/, { skipAdmin: true });
 ok(
-  `★ אין Notice tone="warn" באתר הפומבי${warnHits.length ? ` (${warnHits[0]})` : ""}`,
+  `★ אין Notice tone="warn" באתר הפומבי${show(warnHits)}`,
   warnHits.length === 0
 );
 
