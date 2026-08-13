@@ -299,14 +299,22 @@ function walk(dir) {
   }
   return out;
 }
+// השומר בודק את **השם הנוכחי**, לא שם היסטורי. אחרת ברגע שמחליפים מותג
+// הבדיקה ממשיכה לעבור ומפסיקה להגן על משהו.
 // ⚠️ `absolut(?!e)` — אחרת כל `class="absolute"` של Tailwind נספר כהיט.
-const hits = walk(join(ROOT, "src")).filter((f) =>
-  /absolut(?!e)/i.test(readFileSync(f, "utf8"))
-);
-ok(
-  `★ "absolut" מופיע רק ב-brand.js${hits.length ? ` (${hits.map((h) => h.split(/[\\/]/).pop()).join(", ")})` : ""}`,
-  hits.length === 1 && hits[0].endsWith("brand.js")
-);
+const BRAND_NEEDLES = [
+  { re: /absolut(?!e)/i, label: "absolut", legacy: true },
+  { re: /amour|brillant/i, label: "Amour Brillant" },
+];
+for (const { re, label, legacy } of BRAND_NEEDLES) {
+  const hits = walk(join(ROOT, "src")).filter((f) => re.test(readFileSync(f, "utf8")));
+  const names = hits.map((h) => h.split(/[\\/]/).pop()).join(", ");
+  ok(
+    `★ "${label}" מופיע רק ב-brand.js${hits.length ? ` (${names})` : legacy ? " — ירד מהקוד" : ""}`,
+    // שם היסטורי מותר גם להיעלם לגמרי; שם פעיל חייב להופיע, ורק שם.
+    hits.every((h) => h.endsWith("brand.js")) && (legacy || hits.length === 1)
+  );
+}
 
 // ============================================================================
 // שומרי שפת העיצוב — "נייר אחד, דיו אחד, קו אחד" נאכף בקוד, לא בזיכרון.

@@ -23,7 +23,11 @@
 // משפטית, ומפתח אחסון שנושא אותו הוא עוד מקום שצריך לשנות ביום ההחלפה
 // (וגם שובר את הנתונים הקיימים אצל מי שכבר ביקר). הכלל: שם המותג מופיע
 // בקוד **אך ורק** ב-brand.js — נאכף בבדיקה ב-render-check.
-export const LOCAL_DATA_KEY = "jewelry_catalog_v3";
+// ⚠️ מעלים את המספר בכל שינוי ל-`defaults.js` שחייב להגיע גם למי שכבר טען
+// את האתר. `settings.brand` מועתק ל-localStorage בזמן ה-seed, ולכן שינוי שם
+// מותג בקוד **אינו** מגיע לדפדפן שכבר זרע — בלי העלאת גרסה, מבקר חוזר ימשיך
+// לראות את השם הישן. v4 = החלפת שם המותג (2026-08-13, ראה `brand.js`).
+export const LOCAL_DATA_KEY = "jewelry_catalog_v4";
 export const LOCAL_LANG_KEY = "jewelry_catalog_lang";
 
 export const COL_MODELS = "models";
