@@ -49,6 +49,27 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "Output/property-management",
       "port": 5175
+    },
+    {
+      "name": "fleet-management",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5177", "--strictPort"],
+      "cwd": "Output/fleet-management",
+      "port": 5177
+    },
+    {
+      "name": "nrcar",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5182", "--strictPort"],
+      "cwd": "Output/nrcar",
+      "port": 5182
+    },
+    {
+      "name": "absolut-diamonds",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5183", "--strictPort"],
+      "cwd": "Output/absolut-diamonds",
+      "port": 5183
     }
   ]
 }

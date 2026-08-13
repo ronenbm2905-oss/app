@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// ============================================================================
+// deny-by-default. כל מה שלא נכתב כאן במפורש — חסום.
+//
+// מבוסס על A6 בסקירת עדי 2026-08-13. ארבעת הדברים שהיא הדגישה:
+//
+//  1. 🔴 `leads` — **קריאה אפס למי שאינו אדמין.** `allow read` אחד על leads
+//     הוא דליפת כל בסיס הלקוחות. זו אינה "רשימת דיוור": זו רשימת אנשים בעלי
+//     אמצעים, עם שם וטלפון, לצד הפריט היקר שהתעניינו בו והסכום — כלומר סיכון
+//     פיזי-ביטחוני ולא רק פרטיות.
+//
+//  2. 🔴 `isAdmin()` **לפי תפקיד, לא לפי קיום סשן.** `request.auth != null`
+//     אינו מספיק: ביום שבו יופעל ספק הרשמה כלשהו או Anonymous Auth, כל מבקר
+//     הופך לאדמין. לכן — מסמך ב-`admins/{uid}`.
+//
+//  3. 🔴 קטלוג — **קריאה מסוננת בשרת לפי `status`.** שאילתת
+//     `where('status','==','available')` בלקוח אינה בקרת אבטחה. פריט `hidden`
+//     הוא תמחור שטרם פורסם; פריט `sold` הוא מספר תעודה שכבר אינו נכון.
+//
+//  4. 🔴 `settings` מפוצל — public קריא לכולם, private אדמין בלבד.
+//
+// ⚠️ שני דברים שאינם כאן ועדיין חסרים לפני deploy:
+//    • **App Check** (A6.3) — מופעל בקונסולה, לא בקובץ הזה.
+//    • אימות באמולטור של שלושת התרחישים ב-A6.8.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- זהות אדמין לפי תפקיד ----
+    // מסמך `admins/{uid}` שנוצר ידנית בקונסולה. קיומו = הרשאה.
+    // ⚠️ המסמך עצמו אינו קריא לאיש — אין סיבה שהציבור יֵדע מי המנהלים.
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid; // בדיקה עצמית בלבד
+      allow write: if false; // נוצר ידנית ב-Firebase Console
+    }
+
+    // ---- models: דגמים. קריאה פומבית — אך ורק מה שפורסם ----
+    match /models/{modelId} {
+      allow get, list: if resource.data.status == 'available' || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- diamonds: מלאי האבנים. אותו כלל בדיוק ----
+    // A4.5 — אבן שנמכרה אינה קריאה פומבית, ולכן מספר התעודה שלה אינו מוגש.
+    match /diamonds/{diamondId} {
+      allow get, list: if resource.data.status == 'available' || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---- settings: מפוצל (A6.5) ----
+    match /settings/public {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /settings/private {
+      allow read, write: if isAdmin(); // מייל פנימי, יעדי התראה, הערות
+    }
+
+    // ---- leads: PII + הצעת המחיר שהוצגה ----
+    match /leads/{leadId} {
+      // 🔴 אין read ואין list למי שאינו אדמין — גם לא ליוצר הליד עצמו.
+      allow read, update, delete: if isAdmin();
+
+      // כתיבה פומבית, מאומתת כאן ולא בטופס (הלקוח אינו גבול אבטחה).
+      allow create: if
+        // hasOnly ולא hasAll — בלי זה כל אחד כותב מסמכים שרירותיים למסד.
+        request.resource.data.keys().hasOnly([
+          'name','phone','email','message','source','lang',
+          'createdAt','consent','listingSnapshot'
+        ])
+        && request.resource.data.keys().hasAll(['name','phone','consent','createdAt'])
+
+        // ⚠️ שדות שהלקוח לעולם אינו כותב — status/internalNotes/assignedTo/
+        // isSpam. הם אינם ברשימת hasOnly, ולכן הם חסומים מעצם ההגדרה.
+        // הסטטוס ההתחלתי נקבע ע"י האדמין, לא ע"י מי שממלא את הטופס.
+
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 9
+        && request.resource.data.phone.size() <= 20
+        && request.resource.data.phone.matches('^[0-9+\\-() ]+$')
+        && (!('email' in request.resource.data) || request.resource.data.email.size() <= 120)
+        && (!('message' in request.resource.data) || request.resource.data.message.size() <= 1000)
+        && request.resource.data.createdAt == request.time
+
+        // 🔴 A7.1 — ליד בלי הסכמה ליצירת קשר **לא נכתב בכלל.**
+        && request.resource.data.consent.contact.granted == true
+        && request.resource.data.consent.contact.text is string
+        && request.resource.data.consent.contact.policyVersion is string;
+    }
+  }
+}

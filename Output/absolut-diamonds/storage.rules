@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// תמונות הקטלוג ותעודות: קריאה פומבית, כתיבה אדמין בלבד (A6.7).
+// deny-by-default: כל נתיב אחר חסום לחלוטין.
+//
+// ⚠️ A4.6 — תעודת מעבדה עשויה לשאת פרטי בעלים/סוחר. הקובץ נגיש פומבית
+// (זו מהותו), ולכן חובה **לבדוק ידנית בהעלאה** שאין בו פרטים אישיים של צד ג'.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // אותה זהות-לפי-תפקיד כמו ב-firestore.rules — לא "יש סשן".
+    function isAdmin() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+    }
+
+    function validImage() {
+      return request.resource.size < 6 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    function validCert() {
+      return request.resource.size < 10 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+            || request.resource.contentType == 'application/pdf');
+    }
+
+    // תמונות דגם — models/{modelId}/{metalColor}/{file}
+    match /models/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && validImage();
+      allow delete: if isAdmin();
+    }
+
+    // תמונות אבן ספציפית
+    match /diamonds/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && validImage();
+      allow delete: if isAdmin();
+    }
+
+    // קובצי תעודה (A4.1 — התעודה נועדה להיות מוצגת ולהיבדק)
+    match /certificates/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && validCert();
+      allow delete: if isAdmin();
+    }
+  }
+}

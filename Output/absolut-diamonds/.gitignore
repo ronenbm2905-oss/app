@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+.render-tmp
+*.local
+.env
+.env.*
+!.env.example
+.firebase
+firebase-debug.log
+.DS_Store
