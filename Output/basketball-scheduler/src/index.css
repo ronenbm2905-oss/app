@@ -27,10 +27,19 @@ body {
     background: white !important;
     font-family: Arial, sans-serif;
   }
-  #root > div > div > header,
-  #root > div > div > div.flex.gap-1,
+  /* Structural selectors used to live here to hide the header and the tab bar. Both
+     broke silently when the layout changed — the rule kept matching nothing, and the
+     chrome printed. Everything that must stay off paper now says so with .no-print. */
   .no-print {
     display: none !important;
+  }
+
+  /* A container with `overflow: hidden` clips its content to the first printed page, so
+     the rest never reaches the printer. Rounded corners need the clip on screen; on
+     paper neither is wanted. */
+  .print-flow {
+    overflow: visible !important;
+    border-radius: 0 !important;
   }
   .print-only {
     display: block !important;

@@ -651,7 +651,11 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
           ) : hallSessions.length === 0 ? (
             <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm">אין אימונים באולם זה בשבוע הנבחר.</div>
           ) : (
-            <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+            <div className="bg-white rounded-xl border border-stone-200 overflow-hidden print-flow">
+              {/* print-flow drops the rounding and the overflow clip when printing. A
+                  container with `overflow: hidden` clips its content to the first printed
+                  page — anything past it silently never comes out of the printer, which
+                  is exactly what a busy hall's report runs into. */}
               <div className="px-4 py-2.5 bg-stone-700 text-white text-sm font-bold flex items-center justify-between">
                 <span>אולם {selectedHallName}</span>
                 {weekStart && (
@@ -660,7 +664,11 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                   </span>
                 )}
               </div>
-              <table className="w-full border-collapse text-sm">
+              {/* Same class as the board: repeats the header row on every printed page and
+                  stops a session being split across a page break. The report never carried
+                  it, so a hall with more sessions than fit on one page printed a headless
+                  second page — if it printed at all. */}
+              <table className="w-full border-collapse text-sm weekly-table">
                 <thead>
                   <tr className="bg-stone-50">
                     <th className="border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-600">תאריך</th>

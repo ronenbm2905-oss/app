@@ -89,7 +89,11 @@ export default function App() {
       {/* The club's own colours carry the top of the app, and the tabs sit on them like
           tabs on a folder. Everything below stays quiet — a full blue band is a welcome
           for two seconds and a weight for an hour, and the hour is where the work happens. */}
-      <div className="bg-gradient-to-bl from-brand-800 via-brand-600 to-brand-500">
+      {/* no-print by class, not by position. The old stylesheet hid the header with
+          `#root > div > div > header`, which stopped matching the moment this band
+          replaced the old header — so the app chrome started printing on top of every
+          report. A class cannot be broken by rearranging the page. */}
+      <div className="no-print bg-gradient-to-bl from-brand-800 via-brand-600 to-brand-500">
         <div className={`${headerWidth} mx-auto px-4 pt-5`}>
           <div className="flex items-start justify-between gap-3 flex-wrap pb-4">
             <div className="flex items-center gap-3">
