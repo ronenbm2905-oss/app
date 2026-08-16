@@ -38,5 +38,7 @@ export function homeStats(data, weekStart) {
     coach: "הלו״ז שלך, לשליחה בוואטסאפ",
     players: plural(count(d.players), "שחקן אחד", "שחקנים"),
     report: "שעות לפי מאמן, לפי חודש",
+    // Multi-club only: the settings tile does not exist on the single-club branch.
+    settings: "מיתוג המועדון, מנהלים, קוד הצטרפות ומנוי",
   };
 }
