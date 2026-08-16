@@ -1,0 +1,38 @@
+{
+  "name": "NRCAR — הרכב שלי",
+  "short_name": "NRCAR",
+  "description": "טסט, ביטוח, טיפולים ומסמכים — במקום אחד, עם גישת חירום בכפתור אחד.",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef4fa",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "מצב חירום",
+      "short_name": "חירום",
+      "description": "כל המסמכים לזירת תאונה, במסך אחד",
+      "url": "/#/emergency",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
