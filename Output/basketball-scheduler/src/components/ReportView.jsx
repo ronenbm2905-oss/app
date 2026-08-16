@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { DAYS } from "../constants";
 import { IconDownload, IconChevronRight, IconChevronLeft } from "./ui/icons";
+import { IndoorBalanceCard } from "./IndoorBalanceCard";
 
 // כל יחידת אימון = שעה וחצי. סוגי אימון שאינם נספרים בדו"ח השעות.
 const HOURS_PER_UNIT = 1.5;
@@ -34,7 +35,7 @@ function sessionDate(s) {
   return d;
 }
 
-export function ReportView({ data }) {
+export function ReportView({ data, weekStart }) {
   const [month, setMonth] = useState(currentMonth());
 
   const inMonth = (s) => {
@@ -63,6 +64,7 @@ export function ReportView({ data }) {
 
   return (
     <div className="space-y-4" dir="rtl">
+      <IndoorBalanceCard data={data} weekStart={weekStart} />
       {/* Controls */}
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

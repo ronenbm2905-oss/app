@@ -200,7 +200,7 @@ export default function App() {
         ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />
         ) : (
-          <ReportView data={data} />
+          <ReportView data={data} weekStart={weekStart} />
         )}
         </div>
 

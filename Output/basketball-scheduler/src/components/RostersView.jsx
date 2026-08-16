@@ -2,6 +2,7 @@ import { useState } from "react";
 import { VEHICLE_TYPES } from "../constants";
 import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
+import { looksIndoor } from "../utils/indoorBalance";
 import { Select } from "./ui/Select";
 import {
   IconPlus, IconTrash, IconPencil, IconCheck, IconAlert, IconX,
@@ -17,11 +18,12 @@ function birthLabel(iso) {
 
 // `withPhone` adds a phone field (used for coaches — feeds the transport export's contact column).
 // `withBirthDate` adds a birthday field (used for coaches — feeds the birthday reminder on the notice board).
-function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups, onSave, onCancel }) {
+function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups, withIndoor, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [phone, setPhone] = useState(initial?.phone || "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate || "");
   const [parallelGroups, setParallelGroups] = useState(!!initial?.parallelGroups);
+  const [indoor, setIndoor] = useState(!!initial?.indoor);
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -62,6 +64,22 @@ function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups
           />
         </div>
       )}
+      {withIndoor && (
+        <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={indoor}
+            onChange={(e) => setIndoor(e.target.checked)}
+            className="accent-brand-600 mt-0.5"
+          />
+          <span>
+            אולם מקורה
+            <span className="block text-xs text-stone-500">
+              משמש לדוח חלוקת המקורה בין המאמנים. מסומן על האולם ולא לפי שמו, כדי ששינוי שם לא ישבש את הדוח.
+            </span>
+          </span>
+        </label>
+      )}
       {withParallelGroups && (
         <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
           <input
@@ -91,6 +109,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups
               ...(withPhone ? { phone: phone.trim() } : {}),
               ...(withBirthDate ? { birthDate } : {}),
               ...(withParallelGroups ? { parallelGroups } : {}),
+              ...(withIndoor ? { indoor } : {}),
             })
           }
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
@@ -102,7 +121,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups
   );
 }
 
-function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone, withBirthDate, withParallelGroups }) {
+function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone, withBirthDate, withParallelGroups, withIndoor, headerExtra }) {
   const [editingId, setEditingId] = useState(null);
 
   const handleSave = (item) => {
@@ -117,19 +136,22 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
         <div className="flex items-center gap-2 text-stone-700 font-semibold text-sm">
           {icon} {title}
         </div>
-        {canEdit && (
-          <button
-            onClick={() => setEditingId("new")}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
-          >
-            <IconPlus size={13} /> הוסף {label}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canEdit && headerExtra}
+          {canEdit && (
+            <button
+              onClick={() => setEditingId("new")}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <IconPlus size={13} /> הוסף {label}
+            </button>
+          )}
+        </div>
       </div>
 
       {canEdit && editingId === "new" && (
         <div className="p-3 border-b border-stone-100">
-          <NameForm label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
+          <NameForm label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} withIndoor={withIndoor} onSave={handleSave} onCancel={() => setEditingId(null)} />
         </div>
       )}
 
@@ -146,7 +168,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
               <div key={item.id}>
                 {canEdit && isEditing ? (
                   <div className="p-3">
-                    <NameForm initial={item} label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
+                    <NameForm initial={item} label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} withIndoor={withIndoor} onSave={handleSave} onCancel={() => setEditingId(null)} />
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 px-4 py-2.5">
@@ -154,6 +176,11 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
                       {item.name}
                       {withPhone && item.phone && (
                         <span className="text-xs text-stone-500 mr-2" dir="ltr">{item.phone}</span>
+                      )}
+                      {withIndoor && item.indoor && (
+                        <span className="text-[11px] text-brand-700 bg-brand-50 border border-brand-100 rounded-full px-2 py-0.5 mr-2">
+                          מקורה
+                        </span>
                       )}
                       {withBirthDate && item.birthDate && (
                         <span className="text-xs text-stone-500 mr-2">🎂 {birthLabel(item.birthDate)}</span>
@@ -350,6 +377,26 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
 export function RostersView({ data, save, canEdit }) {
   const [blockedMsg, setBlockedMsg] = useState(null);
 
+  // One-time convenience for a club whose halls are already named "… מקורה": tick them all
+  // at once instead of opening seven records. It only ever ADDS the flag — it never clears
+  // one — so a hall marked by hand cannot be undone by pressing this.
+  const unmarkedIndoor = (data.halls || []).filter((h) => looksIndoor(h) && !h.indoor);
+  const markIndoorByName = () => {
+    save({
+      ...data,
+      halls: (data.halls || []).map((h) => (looksIndoor(h) && !h.indoor ? { ...h, indoor: true } : h)),
+    });
+  };
+  const indoorHelper = unmarkedIndoor.length ? (
+    <button
+      onClick={markIndoorByName}
+      title={unmarkedIndoor.map((h) => h.name).join(", ")}
+      className="px-2.5 py-1 text-xs rounded-lg border border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
+    >
+      סמן {unmarkedIndoor.length} אולמות כמקורה לפי השם
+    </button>
+  ) : null;
+
   const coachUsage = (id) =>
     data.sessions.filter((s) => s.coachId === id).length +
     (data.constraints || []).filter((c) => c.type === "coach" && c.refId === id).length;
@@ -417,7 +464,7 @@ export function RostersView({ data, save, canEdit }) {
       <div className="grid sm:grid-cols-3 gap-4">
         <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
         <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withBirthDate withParallelGroups />
-        <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} />
+        <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} withIndoor headerExtra={indoorHelper} />
       </div>
     </div>
   );
