@@ -1,0 +1,17 @@
+{
+  "indexes": [
+    {
+      "//": "★ הסריקה של פרוסה 2 היא שאילתת collection-group אחת על כל המשימות הבשלות. Firestore יוצר אינדקסים לשדה בודד אוטומטית — אבל **לא בהיקף collection-group**. בלי האינדקס הזה ה-scheduler נופל בפרודקשן עם FAILED_PRECONDITION, והאמולטור לא מתלונן.",
+      "collectionGroup": "tasks",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [{ "fieldPath": "schedule.nextFireAt", "order": "ASCENDING" }]
+    },
+    {
+      "//": "ניקוי ה-retention של reminderLog לפי firedAt.",
+      "collectionGroup": "reminderLog",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "firedAt", "order": "ASCENDING" }]
+    }
+  ],
+  "fieldOverrides": []
+}

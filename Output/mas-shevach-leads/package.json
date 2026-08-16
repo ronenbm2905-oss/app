@@ -1,0 +1,34 @@
+{
+  "name": "mas-shevach-leads",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run check && vite build && npm run build:intake",
+    "build:intake": "vite build --config vite.intake.config.js",
+    "preview": "vite preview",
+    "check": "node scripts/check.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "emu": "node scripts/emu.mjs",
+    "emu:rules": "node scripts/emu.mjs \"node scripts/rules-tests.mjs\"",
+    "emu:intake": "node scripts/emu.mjs \"node scripts/intake-wire-tests.mjs\"",
+    "verify": "npm run check && npm run smoke && npm run emu:rules && npm run emu:intake",
+    "functions:build": "npm --prefix functions run build"
+  },
+  "dependencies": {
+    "firebase": "^10.12.0",
+    "lucide-react": "^0.400.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.19",
+    "firebase-tools": "^13.29.1",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.0"
+  }
+}

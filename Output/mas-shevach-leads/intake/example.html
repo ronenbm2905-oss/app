@@ -1,0 +1,95 @@
+<!doctype html>
+<!--
+  דוגמת שילוב מינימלית ל-`lead-intake.js` — **לעומר**.
+
+  זה אינו הדף. אין כאן עיצוב, אין קופי מאושר ואין בודק התאמה — רק החוזה
+  הטכני: אילו שמות שדות הקובץ מצפה להם, ואיך מחברים אותו.
+
+  🔴 שלושה דברים שחייבים להגיע מהדף האמיתי ואינם באחריותי:
+     · נוסח היידוע לפי ס' 11 **ליד כפתור השליחה** (עדי S3) — לא רק בפוטר;
+     · תיבת ה-opt-in נפרדת, לא-מסומנת-מראש, **ואינה תנאי לשליחה** (S9);
+     · נגישות מלאה לפי S10 — כאן יש רק את המינימום שמדגים את החיבור.
+-->
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>דוגמת שילוב — lead-intake</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 30rem; margin: 2rem auto; padding: 0 1rem; }
+      label { display: block; margin-top: 1rem; font-weight: 600; }
+      input[type="text"], input[type="tel"], input[type="email"] { width: 100%; padding: .5rem; font: inherit; }
+      .err { color: #98322b; font-size: .875rem; margin-top: .25rem; }
+      .note { font-size: .8125rem; color: #4a5a6a; line-height: 1.6; margin-top: 1rem; }
+      button { margin-top: 1rem; padding: .625rem 1.25rem; font: inherit; }
+    </style>
+  </head>
+  <body>
+    <h1>השאירו פרטים</h1>
+
+    <form id="lead-form" novalidate>
+      <label for="firstName">שם פרטי</label>
+      <input id="firstName" name="firstName" type="text" autocomplete="given-name"
+             aria-describedby="err-firstName" required />
+      <p class="err" id="err-firstName" role="alert"></p>
+
+      <label for="phone">טלפון</label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel"
+             aria-describedby="err-phone" required />
+      <p class="err" id="err-phone" role="alert"></p>
+
+      <label for="email">אימייל (לא חובה)</label>
+      <input id="email" name="email" type="email" autocomplete="email"
+             aria-describedby="err-email" />
+      <p class="err" id="err-email" role="alert"></p>
+
+      <!--
+        🔴 M4 — כאן ישבה תיבת ה-opt-in לדיוור. **הוסרה לגמרי** בשער של עדי.
+        אין להחזיר אותה לדף. ההנמקה: התיבה הבטיחה מסרונים בזמן שנשמר אימייל
+        בלבד, האימייל אופציונלי ולכן הסכמות נפלו בשקט, ולא היה מנגנון הסרה
+        בקוד — וס' 30א מחייב אותו בכל הודעה.
+        **עדיף לא לאסוף מאשר לאסוף חלקית.**
+      -->
+
+      <button type="submit">שליחה</button>
+
+      <!-- 🔴 נוסח היידוע (ס' 11) יושב **כאן**, ליד הכפתור. הנוסח המחייב
+           נמצא ב-S3 בסקירה של עדי, והוא תלוי בפרטי העסק של משה. -->
+      <p class="note">[כאן נכנס נוסח היידוע לפי ס' 11 — ראו עדי S3]</p>
+    </form>
+
+    <p id="thanks" hidden role="status">תודה. נחזור אליכם.</p>
+
+    <script>
+      window.MAS_SHEVACH_CONFIG = {
+        projectId: "REPLACE_ME",
+        apiKey: "REPLACE_ME",
+        appId: "1:000000000000:web:REPLACE_ME",
+        recaptchaSiteKey: "REPLACE_ME",
+      };
+    </script>
+    <script defer src="../dist-intake/lead-intake.min.js"></script>
+    <script defer>
+      window.addEventListener("load", function () {
+        MasShevachLeads.init();
+
+        var form = document.getElementById("lead-form");
+        MasShevachLeads.attach({
+          form: form,
+          // דגל בלבד. התשובות עצמן לא עוזבות את הדפדפן.
+          screened: function () { return window.__checkerPassed === true; },
+          onSuccess: function () {
+            form.hidden = true;
+            document.getElementById("thanks").hidden = false;
+          },
+          onError: function (errors) {
+            ["firstName", "phone", "email"].forEach(function (f) {
+              document.getElementById("err-" + f).textContent = errors[f] || "";
+            });
+            if (errors._) console.error("[lead] שגיאה:", errors._);
+          },
+        });
+      });
+    </script>
+  </body>
+</html>

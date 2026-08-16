@@ -1,0 +1,148 @@
+rules_version = '2';
+
+// ============================================================================
+// 🔴🔴 לקרוא לפני שנוגעים בקובץ הזה — ובקובץ firestore.rules.
+//
+// **כללי Firebase הם אדיטיביים. אין `deny`.**
+// התוצאה היא ה-OR של **כל** כלל שמתאים לנתיב. כלל ספציפי מחמיר **אינו**
+// גובר על כלל רחב מתיר — הוא פשוט חסר משמעות לידו.
+//
+// לכן: **אסור `{allPaths=**}` או `{document=**}` מתיר בשום מקום שיש בו
+// הגבלה ספציפית.** "ליתר ביטחון" ב-rules הוא תמיד ההפך מביטחון.
+//
+// **בקובץ הזה זה קרה בפועל.** כלל רחב שנועד להיות "רשת ביטחון" נתן לבעלים
+// קריאה על `people/{driverId}/docs/`, ובכך ביטל את כל בידוד המסמכים האישיים
+// — ואיפשר לו **להנפיק טוקן הורדה קבוע ובלתי-מאומת על מסמך הזהות של אדם
+// אחר**. נתפס רק בהרצה מול אמולטור. ראו את ההנמקה המלאה בגוף הקובץ.
+// ============================================================================
+
+// ============================================================================
+// Storage — deny-by-default.
+//
+// **ארבעה דומיינים בנתיב עצמו, מהיום הראשון.** זה החסם המפורש של עדי:
+// נתיב שממופתח רק ב-vehicleId מדליף את סריקות הפוליסה והקבלות של הבעלים לכל
+// בן משפחה שיצורף לרכב משותף בפרוסה 2. **העברת קבצים בדיעבד היא המיגרציה
+// הכי כואבת שיש** — ולכן הנתיב נקבע עכשיו, כשכל הכללים ממילא בעלים-בלבד.
+//
+//   households/{hid}/vehicles/{vid}/shared/{file}   ← רישיון רכב, ביטוח חובה
+//   households/{hid}/vehicles/{vid}/owner/{file}    ← פוליסות, קבלות — לתמיד
+//   households/{hid}/vehicles/{vid}/photo/{file}    ← תמונת הרכב
+//   households/{hid}/people/{driverId}/docs/{file}  ← אותו אדם בלבד
+//
+// 🔴 N4 — התפקיד נקרא מ-`members` במסמך משק הבית, **לעולם לא מ-
+// `hid == request.auth.uid`**. אין בקובץ הזה שום השוואה כזאת (נאכף ב-smoke).
+//
+// 🔴 O6 — הגבלת contentType (תמונות + PDF) וגודל בכל ארבעת הדומיינים.
+// מונע שימוש באחסון כערוץ צדדי, וגם מגן על משתמש מבוגר מהעלאה שגויה.
+//
+// ⚠️ getDownloadURL מחזיר כתובת עם **טוקן קבוע שאינו פג**. לכן, ובנפרד
+// מהכללים כאן: הכתובת לעולם לא נשמרת ב-Firestore ולא במטמון, ונפתרת על פי
+// דרישה בתוך `src/utils/files.js` בלבד (N2). ה-signed URLs האמיתיים (V4)
+// נוחתים בפרוסה 2, יחד עם הזמנות הנהגים — לא לפניהן.
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // N4 — מקור האמת היחיד לתפקיד.
+    // ⚠️ `.get(uid, '')` ולא `members[uid]`: גישה למפתח שאינו קיים במפה
+    // זורקת שגיאת הערכה. השגיאה אמנם נחשבת דחייה, אבל היא מסתירה תקלות
+    // אמיתיות בלוגים ומסתמכת על התנהגות-שגיאה במקום על ביטוי מפורש.
+    // (אומת מול האמולטור: "Property uid_x is undefined on object".)
+    function isOwner(hid) {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/households/$(hid)).data.household.members.get(request.auth.uid, '') == 'owner';
+    }
+
+    // פרוסה 2: הנהג שהוקצה לרכב. המזהה המורכב הוא מה שמאפשר exists() בלי
+    // שאילתה.
+    function hasVehicle(hid, vid) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/households/$(hid)/vehicleAccess/$(request.auth.uid + '__' + vid));
+    }
+
+    // O6 — תמונות ו-PDF בלבד, עד 10MB.
+    function isAllowedUpload() {
+      return request.resource.size < 10 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/(png|jpeg|webp)')
+          || request.resource.contentType == 'application/pdf'
+        );
+    }
+
+    // -- דומיין 1: מסמכים משותפים לרכב -----------------------------------
+    // רישיון רכב וביטוח חובה. נהג שנעצר צריך אותם, ולכן פרוסה 2 תוסיף כאן:
+    //   allow read: if isOwner(hid) || hasVehicle(hid, vid);
+    // N3 — המשמעות המודעת: המסמכים האלה נושאים את ת.ז. של הבעלים.
+    match /households/{hid}/vehicles/{vid}/shared/{file} {
+      allow read: if isOwner(hid);
+      allow create, update: if isOwner(hid) && isAllowedUpload();
+      allow delete: if isOwner(hid);
+    }
+
+    // -- דומיין 2: מסמכי בעלים — **לתמיד** ---------------------------------
+    // פוליסות וקבלות. **אין כאן סעיף read לנהג, גם לא בפרוסה 2.**
+    // זה מה שמונע שת.ז. של הבעלים תזלוג פעמיים.
+    match /households/{hid}/vehicles/{vid}/owner/{file} {
+      allow read: if isOwner(hid);
+      allow create, update: if isOwner(hid) && isAllowedUpload();
+      allow delete: if isOwner(hid);
+    }
+
+    // -- דומיין 3: תמונת הרכב ----------------------------------------------
+    // לא רגישה (וה-EXIF מופשט בהעלאה, כולל GPS). פרוסה 2:
+    //   allow read: if isOwner(hid) || hasVehicle(hid, vid);
+    match /households/{hid}/vehicles/{vid}/photo/{file} {
+      allow read: if isOwner(hid);
+      allow create, update: if isOwner(hid) && isAllowedUpload();
+      allow delete: if isOwner(hid);
+    }
+
+    // -- דומיין 4: מסמכים אישיים (רישיון נהיגה) -----------------------------
+    // 🔴 read = **נושא המידע בלבד**. גם הבעלים לא קורא.
+    // Storage rules לא יכולים לקרוא את מסמך ה-PersonalDoc כדי לגזור את
+    // driverUid, ולכן ההרשאה נשענת על המפתח בנתיב: drivers/{driverId}.userUid.
+    // הבעלים מקבל **delete** לצורך ה-cascade — בלי read.
+    // ⚠️ פער לאימות באמולטור לפני deploy: מחיקת אובייקט **בלי** הרשאת קריאה.
+    //    אם זה לא עובד, cascade של נהג ייכשל בשקט ויישארו סריקות רישיון
+    //    יתומות עם טוקן פעיל. זה בדיוק סוג הבאג שהאמולטור נועד לתפוס.
+    match /households/{hid}/people/{driverId}/docs/{file} {
+      allow read: if isSignedIn()
+        && firestore.get(/databases/(default)/documents/households/$(hid)/drivers/$(driverId)).data.userUid == request.auth.uid;
+      allow create, update: if isSignedIn()
+        && firestore.get(/databases/(default)/documents/households/$(hid)/drivers/$(driverId)).data.userUid == request.auth.uid
+        && isAllowedUpload();
+      allow delete: if isOwner(hid)
+        || (isSignedIn()
+            && firestore.get(/databases/(default)/documents/households/$(hid)/drivers/$(driverId)).data.userUid == request.auth.uid);
+    }
+
+    // ============================================================================
+    // 🔴🔴 כאן **הייתה** "רשת ביטחון": `match /households/{hid}/{allPaths=**}`
+    // שנתנה לבעלים read/write על כל נתיב תחת משק הבית.
+    //
+    // היא הוסרה, וזו ההסרה החשובה ביותר בקובץ. הסיבה:
+    // **כללי Storage הם אדיטיביים — התוצאה היא ה-OR של כל הכללים שמתאימים.**
+    // כלל ספציפי שאוסר **אינו** גובר על כלל רחב שמתיר. כלומר: הכלל הרחב נתן
+    // לבעלים גישת קריאה ל-`people/{driverId}/docs/` — ובכך **ביטל בשקט את כל
+    // בידוד המסמכים האישיים**. הבעלים יכול היה לקרוא (ולהעלות!) את סריקת
+    // רישיון הנהיגה של כל נהג במשק הבית.
+    //
+    // זה לא נתפס בשום סריקה סטטית ולא בשום code review — רק בהרצה מול
+    // האמולטור, שבה `getMetadata` ו-`getDownloadURL` של הבעלים **הצליחו**.
+    //
+    // המסקנה שנשארת בקובץ: **אין כללים רחבים לצד כללים מגבילים.** ארבעת
+    // הדומיינים למעלה הם היחידים ש-`utils/files.js#storagePath` מייצר, וכל
+    // נתיב אחר נופל ל-deny הגורף שלמטה — כפי שהכותרת מבטיחה.
+    // ============================================================================
+
+    // כל שאר הנתיבים — חסום מפורשות.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- שם המותג: "Run2dream" · טאגליין: "להגשים את חלום הריצה".
+     שינוי שם עתידי = החלפת המחרוזת "Run2dream" בקובץ הזה בלבד: title · og:* · JSON-LD ×2 ·
+     alt של הלוגו · טקסט ה-hero והפוטר · ארבע כתובות wa.me · ה-alt של התמונות. -->
+<title>קבוצת ריצה ראשון לציון — אימוני בוקר לכל הרמות | Run2dream</title>
+<meta name="description" content="קבוצת ריצה במערב ראשון לציון בהובלת משה — אימוני בוקר 4 פעמים בשבוע, מעל 10 שנים, לכל הרמות: ממתחילים ועד רצים מנוסים. אימון ניסיון ראשון חינם.">
+
+<!-- ANALYTICS: נקודת ההזרקה היחידה לסניפט פיקסל/אנליטיקס (טל).
+     נכון לעכשיו ה-<head> נקי מכל סקריפט צד-שלישי — אין fbq, אין gtag (עדי, R6).
+     הזרקה מותרת אך ורק דרך loadMarketingPixel() בתחתית הדף, ורק אחרי הסכמת opt-in. -->
+
+<meta property="og:type" content="website">
+<meta property="og:locale" content="he_IL">
+<meta property="og:site_name" content="Run2dream">
+<meta property="og:title" content="קבוצת ריצה בראשון לציון לכל הרמות | Run2dream">
+<meta property="og:description" content="Run2dream — להגשים את חלום הריצה. אימוני בוקר 4 פעמים בשבוע במערב ראשל&quot;צ, בהובלת משה. אימון ניסיון ראשון חינם.">
+<!-- הדומיין החי: https://run2dream.netlify.app (נקבע 15.8.2026).
+     og:image ו-og:url חייבים URL מוחלט — פייסבוק/וואטסאפ לא מרנדרים נתיב יחסי,
+     וכתובת שגויה = התמונה לא תופיע בשיתוף.
+     אם עוברים לדומיין אחר: המחרוזת run2dream.netlify.app מופיעה ב-6 מקומות —
+       canonical · og:url · og:image · twitter:image  (בראש הקובץ)
+       JSON-LD: "url" · "image"                        (בבלוק SportsActivityLocation)
+     החלפה גורפת מכסה את כולם. -->
+<link rel="canonical" href="https://run2dream.netlify.app/">
+<meta property="og:url" content="https://run2dream.netlify.app/">
+<meta property="og:image" content="https://run2dream.netlify.app/assets/2026-08-15-run2dream-img06-og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="רצות ורצים מקבוצת Run2dream עומדים יחד על מסלול אתלטיקה, לפני אימון בוקר">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://run2dream.netlify.app/assets/2026-08-15-run2dream-img06-og.jpg">
+
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<meta name="theme-color" content="#FDFAF5">
+
+<!-- אין תלויות חיצוניות ואין CDN — גם לא לגופנים. סטאק הפונטים מעדיף Rubik/Assistant אם
+     הם מותקנים מקומית, ונופל לפונט מערכת עברי קריא. להטמעה עצמית: לצרף woff2 ל-assets/. -->
+
+<style>
+/* ============================================================
+   Run2dream — Design tokens
+   ============================================================ */
+:root{
+  --c-bg:#FDFAF5; --c-bg-warm:#F7EFE2; --c-surface:#FFFFFF; --c-navy:#16283D;
+  --c-ink:#16283D; --c-ink-muted:#55616F; --c-ink-invert:#FFFFFF;
+  --c-primary:#C2410C; --c-primary-hover:#A8380C;
+  --c-accent:#F2A65A; --c-accent-soft:#F7D9B8;
+  --c-border:#E3D9C9; --c-border-strong:#8C7E68;
+  --c-wa:#0E7D6F; --c-wa-hover:#0A6558;
+  --c-error:#B3261E; --c-success:#1F7A4D;
+
+  --r-sm:8px; --r-md:12px; --r-lg:20px; --r-pill:999px;
+  --sh-sm:0 1px 2px rgba(64,44,24,.06), 0 2px 8px rgba(64,44,24,.05);
+  --sh-md:0 4px 16px rgba(64,44,24,.08);
+  --sh-lg:0 12px 32px rgba(64,44,24,.10);
+  --sh-cta:0 6px 18px rgba(194,65,12,.28);
+
+  --grad-dawn:linear-gradient(180deg,#FDFAF5 0%,#FBF1E2 45%,#F7D9B8 100%);
+
+  /* spacing scale: 4 8 12 16 24 32 48 64 96 */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:24px;
+  --s-6:32px; --s-7:48px; --s-8:64px; --s-9:96px;
+
+  --wrap:1120px; --measure:680px;
+
+  --font-head:"Rubik","Assistant","Heebo","Segoe UI",system-ui,-apple-system,"Arial Hebrew",Arial,sans-serif;
+  --font-body:"Assistant","Rubik","Heebo","Segoe UI",system-ui,-apple-system,"Arial Hebrew",Arial,sans-serif;
+
+  --fs-h1:clamp(2rem, 1.35rem + 2.9vw, 3.25rem);
+  --fs-h2:clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
+  --fs-h3:clamp(1.25rem, 1.15rem + .5vw, 1.5rem);
+  --fs-lead:clamp(1.125rem, 1.05rem + .4vw, 1.3125rem);
+  --fs-body:clamp(1.0625rem, 1.03rem + .2vw, 1.125rem);
+  --fs-small:.9375rem;
+  --fs-btn:1.0625rem;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{ -webkit-text-size-adjust:100%; scroll-behavior:smooth; }
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} }
+
+body{
+  margin:0;
+  background:var(--c-bg);
+  color:var(--c-ink);
+  font-family:var(--font-body);
+  font-size:var(--fs-body);
+  line-height:1.7;
+  letter-spacing:0;           /* עברית — לעולם לא letter-spacing שלילי */
+  overflow-x:hidden;          /* רשת ביטחון מול גלילה אופקית במובייל */
+}
+
+h1,h2,h3,h4{ font-family:var(--font-head); letter-spacing:0; margin:0 0 var(--s-3); text-wrap:balance; }
+h1{ font-size:var(--fs-h1); line-height:1.15; font-weight:700 }
+h2{ font-size:var(--fs-h2); line-height:1.2;  font-weight:700 }
+h3{ font-size:var(--fs-h3); line-height:1.3;  font-weight:600 }
+p{ margin:0 0 var(--s-4) }
+p:last-child{ margin-bottom:0 }
+ul,ol{ margin:0 0 var(--s-4); padding-inline-start:1.25em }
+li{ margin-bottom:var(--s-2) }
+strong{ font-weight:600 }
+a{ color:var(--c-primary); text-underline-offset:3px }
+
+/* בידוד מחרוזות לטיניות בתוך RTL — בלי זה הפיסוק והמקפים קופצים לצד הלא נכון */
+.ltr{ direction:ltr; unicode-bidi:isolate; }
+
+/* Focus — חיווי גלוי תמיד, בשום מצב לא מוסתר */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--c-primary); outline-offset:2px; border-radius:4px;
+}
+.on-dark a:focus-visible,.on-dark button:focus-visible,.on-dark summary:focus-visible{
+  outline-color:var(--c-accent);
+}
+
+.visually-hidden{
+  position:absolute!important; width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
+}
+
+.skip-link{
+  position:absolute; inset-inline-start:var(--s-4); top:-100px; z-index:200;
+  background:var(--c-primary); color:#fff; padding:var(--s-3) var(--s-5);
+  border-radius:0 0 var(--r-md) var(--r-md); font-weight:600; text-decoration:none;
+}
+.skip-link:focus{ top:0 }
+
+.wrap{ width:100%; max-width:var(--wrap); margin-inline:auto; padding-inline:20px }
+@media (min-width:768px){ .wrap{ padding-inline:32px } }
+
+.section{ padding-block:56px }
+@media (min-width:768px){ .section{ padding-block:72px } }
+@media (min-width:1024px){ .section{ padding-block:96px } }
+
+.bg-warm{ background:var(--c-bg-warm) }
+.bg-navy{ background:var(--c-navy); color:var(--c-ink-invert) }
+.bg-navy h2,.bg-navy h3{ color:#fff }
+.bg-navy p,.bg-navy li{ color:#E8EDF2 }
+
+.measure{ max-width:var(--measure) }
+.center{ text-align:center }
+.center .measure{ margin-inline:auto }
+.lead{ font-size:var(--fs-lead); line-height:1.55; color:var(--c-ink-muted) }
+.bg-navy .lead{ color:#C9D4E0 }
+.small{ font-size:var(--fs-small) }
+.muted{ color:var(--c-ink-muted) }
+.eyebrow{
+  font-family:var(--font-head); font-weight:600; font-size:var(--fs-small);
+  color:var(--c-ink-muted); margin:0 0 var(--s-2);
+}
+
+/* ---------- סמן פער / חוסם — מכוער בכוונה, לא אמור לעלות לאוויר ---------- */
+.gap{
+  display:inline-block; background:#FFF3BF; color:#5B4A00;
+  border:2px dashed #B3261E; border-radius:4px;
+  padding:1px 6px; font-size:.875rem; font-weight:600;
+  font-family:var(--font-head); line-height:1.4;
+}
+.gap-block{
+  display:block; background:#FFF3BF; color:#5B4A00;
+  border:2px dashed #B3261E; border-radius:var(--r-sm);
+  padding:var(--s-3) var(--s-4); margin-block:var(--s-4);
+  font-size:var(--fs-small); font-weight:600;
+}
+
+/* ---------- כפתורים ---------- */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--s-2);
+  font-family:var(--font-head); font-weight:600; font-size:var(--fs-btn); line-height:1.2;
+  padding:16px 28px; min-height:52px; border-radius:var(--r-pill);
+  text-decoration:none; border:2px solid transparent; cursor:pointer;
+  transition:background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  text-align:center;
+}
+@media (min-width:1024px){ .btn{ min-height:56px } }
+
+.btn-primary{ background:var(--c-primary); color:#fff; box-shadow:var(--sh-cta) }
+.btn-secondary{ background:transparent; color:var(--c-ink); border-color:var(--c-ink) }
+.btn-wa{ background:var(--c-wa); color:#fff }
+
+@media (hover:hover){
+  .btn-primary:hover{ background:var(--c-primary-hover); transform:translateY(-1px); box-shadow:0 10px 24px rgba(194,65,12,.32) }
+  .btn-secondary:hover{ background:var(--c-ink); color:#fff }
+  .btn-wa:hover{ background:var(--c-wa-hover) }
+}
+.btn:active{ transform:translateY(0); box-shadow:var(--sh-sm) }
+@media (prefers-reduced-motion:reduce){ .btn{ transition:none } .btn:hover,.btn:active{ transform:none } }
+
+.btn-block{ width:100%; max-width:420px }
+@media (min-width:768px){ .btn-block{ width:auto } }
+
+.cta-note{ font-size:var(--fs-small); color:var(--c-ink-muted); margin:var(--s-2) 0 0 }
+.bg-navy .cta-note{ color:#C9D4E0 }
+
+/* שורת הסייג שמתחת ל-CTA הראשי */
+.free-note{
+  font-size:var(--fs-small); line-height:1.6; color:var(--c-ink-muted);
+  margin:var(--s-3) 0 0; max-width:var(--measure);
+}
+.free-note strong{ color:var(--c-ink) }
+
+/* חץ "המשך" — SVG ולא התו «/» :
+   התווים « » הם bidi-mirrored ומתהפכים חזותית בהקשר RTL. */
+.chev{ flex:none; width:.7em; height:.7em }
+
+/* ---------- Header ---------- */
+.site-header{ background:transparent }
+.site-header .wrap{ display:flex; align-items:center; min-height:56px; padding-block:var(--s-2) }
+.logo img{ display:block; height:32px; width:auto }
+@media (min-width:1024px){ .logo img{ height:40px } }
+
+/* ---------- Hero ---------- */
+.hero{ background:var(--grad-dawn); padding-block:var(--s-5) 0 }
+.hero .wrap{ padding-bottom:var(--s-7) }
+.hero h1{ margin-top:var(--s-3) }
+.hero .lead{ color:var(--c-ink); max-width:var(--measure) }
+.hero-body{ max-width:var(--measure); margin-top:var(--s-5) }
+.hero-hook{
+  font-family:var(--font-head); font-weight:600; font-size:var(--fs-lead);
+  line-height:1.5; margin-top:var(--s-4);
+}
+.hero-cta{ margin-top:var(--s-5) }
+.hero-link{
+  display:inline-flex; align-items:center; gap:var(--s-2);
+  margin-top:var(--s-4); color:var(--c-ink); font-weight:600;
+  text-decoration:underline;
+}
+
+/* רצועת אופק — מעוגנת לתחתית ה-hero */
+.horizon{
+  height:120px; background-image:url("assets/hero-dawn.png");
+  background-size:cover; background-position:center 62%; background-repeat:no-repeat;
+}
+@media (min-width:1024px){ .horizon{ height:220px } }
+
+/* רצועת אמון — יושבת על "הקרקע" הנייבי, ניגודיות 14.95:1 */
+.trust-strip{
+  background:var(--c-navy); color:#fff;
+  margin-top:-1px; padding-block:var(--s-4);
+}
+.trust-strip ul{
+  list-style:none; margin:0; padding:0;
+  display:flex; flex-wrap:wrap; gap:var(--s-2) var(--s-4);
+  justify-content:center; font-size:var(--fs-small);
+}
+.trust-strip li{ margin:0; display:flex; align-items:center; gap:var(--s-4) }
+.trust-strip li:not(:last-child)::after{ content:"·"; color:var(--c-accent) }
+
+/* ---------- רצועת עובדות ---------- */
+.facts-grid{
+  display:grid; gap:var(--s-4); margin-top:var(--s-6);
+  grid-template-columns:1fr;
+}
+@media (min-width:600px){ .facts-grid{ grid-template-columns:repeat(2,1fr) } }
+@media (min-width:1024px){ .facts-grid{ grid-template-columns:repeat(4,1fr); gap:var(--s-5) } }
+.fact{
+  background:var(--c-surface); border-radius:var(--r-lg);
+  padding:var(--s-5); box-shadow:var(--sh-sm);
+}
+.fact img{ display:block; width:56px; height:56px; margin-bottom:var(--s-3) }
+@media (min-width:1024px){ .fact img{ width:64px; height:64px } }
+.fact h3{ margin-bottom:var(--s-2) }
+.fact p{ font-size:var(--fs-small); line-height:1.6; color:var(--c-ink-muted) }
+.facts-close{
+  margin-top:var(--s-6); padding:var(--s-4) var(--s-5);
+  border:1px solid var(--c-border); border-radius:var(--r-lg);
+  background:var(--c-surface); font-size:var(--fs-small);
+}
+
+/* ---------- תמונות ---------- */
+/* aspect-ratio על ה-figure + width/height על ה-img ⇒ אפס CLS */
+.photo{
+  margin:0 0 var(--s-5); overflow:hidden;
+  border-radius:var(--r-lg); background:var(--c-bg-warm);
+  box-shadow:var(--sh-sm);
+}
+.photo picture,.photo img{ display:block; width:100%; height:100%; object-fit:cover }
+.photo-wide{ max-width:100%; margin-bottom:var(--s-6) }
+/* כשיש כיתוב, ה-aspect-ratio יושב על ה-<picture> ולא על ה-<figure>,
+   אחרת הכיתוב "אוכל" מגובה התמונה והיחס נשבר. */
+.photo-cap{
+  padding:var(--s-3) var(--s-4); background:var(--c-surface);
+  font-size:var(--fs-small); line-height:1.6; color:var(--c-ink);
+  border-top:1px solid var(--c-border);
+}
+
+/* רצועת התמונה שמתחת ל-hero — רוחב מלא.
+   במובייל: aspect-ratio של הקובץ ⇒ התמונה נראית במלואה, בלי חיתוך ובלי CLS.
+   בדסקטופ: תקרת גובה + object-position גבוה, כדי שהפנים יישארו בפריים ולא ייחתכו לפס. */
+.photo-band{ margin:0; background:var(--c-bg) }
+.photo-band picture{
+  display:block; overflow:hidden; background:var(--c-navy);
+  aspect-ratio:1200/630; max-height:220px;
+}
+@media (min-width:768px){ .photo-band picture{ max-height:300px } }
+@media (min-width:1280px){ .photo-band picture{ max-height:380px } }
+.photo-band img{
+  display:block; width:100%; height:100%;
+  object-fit:cover; object-position:center 25%;
+}
+.band-cap{
+  background:transparent; border-top:0; text-align:center;
+  color:var(--c-ink-muted); max-width:var(--wrap); margin-inline:auto;
+}
+
+/* ---------- סקשן 3 — חששות ---------- */
+.fear-grid{ display:grid; gap:var(--s-4); margin-top:var(--s-6); grid-template-columns:1fr }
+@media (min-width:768px){ .fear-grid{ grid-template-columns:repeat(2,1fr) } }
+.fear{
+  background:var(--c-surface); border-radius:var(--r-lg);
+  padding:var(--s-5); box-shadow:var(--sh-sm);
+}
+.fear .thought{
+  background:var(--c-bg-warm); border-radius:var(--r-md);
+  padding:var(--s-3) var(--s-4); margin:0 0 var(--s-4);
+  color:var(--c-ink-muted); font-weight:400;
+}
+.fear .reality{
+  border-inline-start:3px solid var(--c-primary);
+  padding-inline-start:var(--s-4); margin:0; color:var(--c-ink);
+}
+.health-line{
+  margin-top:var(--s-5); padding:var(--s-4) var(--s-5);
+  border:1px solid var(--c-border); border-radius:var(--r-lg);
+  background:var(--c-surface); font-size:var(--fs-small); font-style:italic;
+}
+.closing-card{
+  margin-top:var(--s-5); background:var(--c-navy); color:#fff;
+  border-radius:var(--r-lg); padding:var(--s-5) var(--s-5);
+  font-family:var(--font-head); font-weight:600; font-size:1.25rem; line-height:1.45;
+}
+
+/* ---------- שלבים ממוספרים ---------- */
+.steps{ list-style:none; margin:var(--s-6) 0 0; padding:0; counter-reset:step }
+.steps li{
+  position:relative; counter-increment:step;
+  padding-inline-start:56px; margin-bottom:var(--s-5);
+}
+.steps li::before{
+  content:counter(step);
+  position:absolute; inset-inline-start:0; top:0;
+  width:40px; height:40px; border-radius:var(--r-pill);
+  background:var(--c-navy); color:#fff;
+  font-family:var(--font-head); font-weight:600; font-size:1.0625rem;
+  display:flex; align-items:center; justify-content:center;
+}
+.bg-navy .steps li::before{ background:var(--c-accent); color:var(--c-navy) }
+.steps h3{ margin-bottom:var(--s-1) }
+.steps p{ margin:0; color:var(--c-ink-muted) }
+
+.callout{
+  margin-top:var(--s-6); background:var(--c-surface);
+  border:1px solid var(--c-border); border-radius:var(--r-lg);
+  padding:var(--s-5); box-shadow:var(--sh-sm);
+}
+.callout h3{ margin-bottom:var(--s-3) }
+.section-close{ margin-top:var(--s-5); font-size:var(--fs-small); color:var(--c-ink-muted) }
+
+/* גלריית שלושת רגעי הבוקר (IMG-03) */
+.moments{ display:grid; gap:var(--s-4); margin-top:var(--s-6); grid-template-columns:1fr }
+@media (min-width:768px){ .moments{ grid-template-columns:repeat(3,1fr) } }
+.moments .photo{ margin:0 }
+
+/* ---------- סקשן 5 — משה ---------- */
+.moshe-grid{ display:grid; gap:var(--s-6); grid-template-columns:1fr; margin-top:var(--s-6) }
+@media (min-width:1024px){ .moshe-grid{ grid-template-columns:340px 1fr; gap:var(--s-7); align-items:start } }
+.badges{ list-style:none; margin:0 0 var(--s-6); padding:0; display:grid; gap:var(--s-3) }
+.badges li{
+  margin:0; background:rgba(255,255,255,.07);
+  border:1px solid rgba(242,166,90,.35); border-radius:var(--r-md);
+  padding:var(--s-3) var(--s-4); font-size:var(--fs-small);
+}
+.why-list{ list-style:none; margin:var(--s-5) 0 0; padding:0 }
+.why-list li{ position:relative; padding-inline-start:var(--s-5); margin-bottom:var(--s-4) }
+.why-list li::before{
+  content:""; position:absolute; inset-inline-start:0; top:.6em;
+  width:9px; height:9px; border-radius:50%; background:var(--c-accent);
+}
+.health-block{
+  margin-top:var(--s-6); border-radius:var(--r-lg);
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+  padding:var(--s-5);
+}
+.quote-moshe{
+  margin:var(--s-6) 0 0; border-inline-start:3px solid var(--c-accent);
+  padding-inline-start:var(--s-5); color:var(--c-accent);
+  font-family:var(--font-head); font-weight:500; font-size:1.3125rem; line-height:1.5;
+}
+
+/* ---------- סקשן 6 — המלצות ---------- */
+.tst-grid{ display:grid; gap:var(--s-4); margin-top:var(--s-6); grid-template-columns:1fr }
+@media (min-width:1024px){ .tst-grid{ grid-template-columns:repeat(3,1fr); align-items:center } }
+.tst{
+  background:var(--c-surface); border-radius:var(--r-lg);
+  padding:var(--s-5); box-shadow:var(--sh-sm); margin:0;
+}
+.tst blockquote{ margin:0 0 var(--s-4); font-size:var(--fs-lead); line-height:1.5 }
+.tst.hero-tst blockquote{ font-size:1.5rem; font-family:var(--font-head); font-weight:600; line-height:1.35 }
+.tst.hero-tst{ box-shadow:var(--sh-md) }
+.tst .tagline-echo{
+  font-size:var(--fs-small); color:var(--c-ink-muted); margin:0 0 var(--s-2);
+}
+.tst figcaption{ display:flex; align-items:center; gap:var(--s-3); font-size:var(--fs-small) }
+.avatar{
+  flex:none; width:64px; height:64px; border-radius:50%;
+  background:var(--c-accent-soft); color:var(--c-ink);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-head); font-weight:600; font-size:1.25rem;
+}
+.tst-bridge{ margin-top:var(--s-6); font-size:var(--fs-lead); text-align:center }
+
+/* ---------- סקשן 8 — מחיר ---------- */
+.price-card{
+  background:var(--c-surface); border-radius:var(--r-lg);
+  box-shadow:var(--sh-md); padding:var(--s-5); margin-top:var(--s-6);
+  max-width:620px;
+}
+@media (min-width:768px){ .price-card{ padding:var(--s-6) } }
+.price-amount{
+  font-family:var(--font-head); font-weight:700;
+  font-size:clamp(2rem,1.5rem + 2vw,2.75rem); line-height:1.1; margin:0 0 var(--s-2);
+}
+.price-card ul{ list-style:none; margin:var(--s-5) 0; padding:0 }
+.price-card ul li{ position:relative; padding-inline-start:var(--s-5); font-size:var(--fs-small) }
+.price-card ul li::before{
+  content:""; position:absolute; inset-inline-start:0; top:.55em;
+  width:9px; height:9px; border-radius:50%; background:var(--c-accent);
+}
+.value-line{
+  margin-top:var(--s-6); padding:var(--s-4) var(--s-5);
+  background:var(--c-surface); border:2px solid var(--c-border);
+  border-radius:var(--r-lg); font-family:var(--font-head); font-weight:600;
+  font-size:var(--fs-lead); line-height:1.45;
+}
+.no-commit{
+  margin-top:var(--s-4); padding:var(--s-4) var(--s-5);
+  background:var(--c-surface); border:1px solid var(--c-border);
+  border-radius:var(--r-lg); font-weight:600;
+}
+
+/* ---------- סקשן 9 — מרחוק ---------- */
+.remote-quote{
+  margin:var(--s-6) 0; background:var(--c-bg-warm);
+  border-radius:var(--r-lg); padding:var(--s-5);
+}
+.remote-quote blockquote{ margin:0 0 var(--s-3); font-size:var(--fs-lead); line-height:1.5 }
+.remote-quote figcaption{ font-size:var(--fs-small); color:var(--c-ink-muted) }
+
+/* ---------- סקשן 10 — טופס ---------- */
+.form-card{
+  background:var(--c-surface); border-radius:var(--r-lg);
+  box-shadow:var(--sh-md); padding:var(--s-5);
+  max-width:560px; margin:var(--s-6) auto 0;
+}
+@media (min-width:768px){ .form-card{ padding:var(--s-6) } }
+.field{ margin-bottom:var(--s-5) }
+.field > label,.field legend{
+  display:block; font-family:var(--font-head); font-weight:600;
+  font-size:var(--fs-small); margin-bottom:var(--s-2); padding:0;
+}
+.field input[type=text],.field input[type=tel],.field select,.field textarea{
+  width:100%; font-family:var(--font-body); font-size:1.0625rem; color:var(--c-ink);
+  background:var(--c-surface); border:1.5px solid var(--c-border-strong);
+  border-radius:var(--r-md); padding:12px var(--s-4); min-height:52px;
+}
+.field textarea{ min-height:96px; resize:vertical; line-height:1.6 }
+.field input[type=tel]{ direction:ltr; text-align:right }
+.field input:focus,.field select:focus,.field textarea:focus{
+  border-color:var(--c-primary); box-shadow:0 0 0 3px rgba(194,65,12,.18);
+}
+.field fieldset{ border:0; margin:0; padding:0 }
+.field-help{ margin:6px 0 0; font-size:var(--fs-small); color:var(--c-ink-muted) }
+.field-error{
+  margin:6px 0 0; font-size:var(--fs-small); color:var(--c-error);
+  font-weight:600; display:none; align-items:center; gap:6px;
+}
+.field.has-error .field-error{ display:flex }
+.field.has-error input,.field.has-error select,.field.has-error textarea{ border-color:var(--c-error) }
+.field.has-error 
+/* מסלול גיבוי למי שאין לו וואטסאפ — גלוי תמיד, לא מוסתר */
+.fallback-route{
+  margin:var(--s-3) 0 0; font-size:var(--fs-small); line-height:1.6;
+  color:var(--c-ink); text-align:center;
+}
+
+.notice-box{
+  margin-top:var(--s-5); background:var(--c-bg-warm);
+  border:1px solid var(--c-border); border-radius:var(--r-lg);
+  padding:var(--s-4) var(--s-5); font-size:var(--fs-small); line-height:1.65;
+}
+.notice-box h3{ font-size:1.0625rem; margin-bottom:var(--s-2) }
+.notice-box p{ margin-bottom:var(--s-2) }
+
+[hidden]{ display:none!important }
+
+/* ---------- FAQ ---------- */
+.faq-list{ margin-top:var(--s-6); max-width:820px }
+.faq-item{
+  background:var(--c-surface); border:1px solid var(--c-border);
+  border-radius:var(--r-md); margin-bottom:var(--s-3); overflow:hidden;
+}
+.faq-item summary{
+  cursor:pointer; padding:var(--s-4) var(--s-5); min-height:52px;
+  font-family:var(--font-head); font-weight:600; font-size:1.0625rem;
+  display:flex; align-items:center; justify-content:space-between; gap:var(--s-3);
+  list-style:none;
+}
+.faq-item summary::-webkit-details-marker{ display:none }
+.faq-item summary::after{
+  content:"+"; flex:none; font-size:1.5rem; font-weight:400; color:var(--c-primary); line-height:1;
+}
+.faq-item[open] summary::after{ content:"–" }
+.faq-item .answer{ padding:0 var(--s-5) var(--s-5); font-size:var(--fs-small); line-height:1.7 }
+
+/* ---------- סקשן 12 — CTA סופי ---------- */
+.final-cta{ position:relative; isolation:isolate; background:var(--c-bg) }
+.final-cta::before{
+  content:""; position:absolute; inset:0; z-index:-2;
+  background-image:url("assets/hero-dawn.png");
+  background-size:cover; background-position:center 30%;
+}
+/* Scrim: לא סומכים על ה-crop. שכבת קרם מבטיחה AA לטקסט הנייבי בכל breakpoint. */
+.final-cta::after{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:linear-gradient(180deg, rgba(253,250,245,.90) 0%, rgba(253,250,245,.86) 55%, rgba(253,250,245,.94) 100%);
+}
+.final-cta .btn-row{ display:flex; flex-wrap:wrap; gap:var(--s-3); margin-top:var(--s-5) }
+
+/* ---------- בלוקים משפטיים ---------- */
+.legal{ background:var(--c-bg-warm); padding-block:var(--s-7) }
+.legal details{
+  background:var(--c-surface); border:1px solid var(--c-border);
+  border-radius:var(--r-md); margin-bottom:var(--s-3);
+}
+.legal summary{
+  cursor:pointer; padding:var(--s-4) var(--s-5); min-height:52px;
+  font-family:var(--font-head); font-weight:600; display:flex; align-items:center;
+}
+.legal .legal-body{ padding:0 var(--s-5) var(--s-5); font-size:var(--fs-small); line-height:1.7 }
+.legal h3{ font-size:1.0625rem; margin:var(--s-4) 0 var(--s-2) }
+
+/* ---------- פוטר ---------- */
+footer.site-footer{ background:var(--c-navy); color:#fff; padding-block:var(--s-7) }
+footer.site-footer img.flogo{ height:36px; width:auto; display:block; margin-bottom:var(--s-3);
+  background:var(--c-bg); border-radius:var(--r-sm); padding:6px 10px }
+footer.site-footer p{ color:#D7DEE7; font-size:var(--fs-small) }
+footer.site-footer a{ color:#fff }
+footer.site-footer nav{ margin-top:var(--s-4); display:flex; flex-wrap:wrap; gap:var(--s-2) var(--s-4) }
+footer.site-footer nav a{ font-size:var(--fs-small) }
+
+/* ---------- וואטסאפ: FAB בדסקטופ, סרגל דביק במובייל ---------- */
+.wa-fab{
+  position:fixed; inset-inline-start:24px; bottom:24px; z-index:90;
+  display:none; align-items:center; gap:var(--s-2);
+  background:var(--c-wa); color:#fff; text-decoration:none;
+  border-radius:var(--r-pill); padding:12px 20px; min-height:56px;
+  box-shadow:var(--sh-lg); font-family:var(--font-head); font-weight:600; font-size:1rem;
+}
+@media (hover:hover){ .wa-fab:hover{ background:var(--c-wa-hover) } }
+@media (min-width:768px){ .wa-fab{ display:inline-flex } }
+
+.sticky-bar{
+  position:fixed; inset-inline:0; bottom:0; z-index:95;
+  display:flex; gap:var(--s-3); align-items:center;
+  background:var(--c-surface); border-top:1px solid var(--c-border);
+  box-shadow:0 -4px 16px rgba(64,44,24,.10);
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  transform:translateY(110%); transition:transform .2s ease; visibility:hidden;
+}
+.sticky-bar.is-visible{ transform:translateY(0); visibility:visible }
+@media (prefers-reduced-motion:reduce){ .sticky-bar{ transition:none } }
+.sticky-bar .btn{ flex:1; min-height:52px; padding:12px 16px; font-size:1rem }
+.sticky-bar .wa-square{
+  flex:none; width:52px; height:52px; border-radius:var(--r-md);
+  background:var(--c-wa); color:#fff; display:flex; align-items:center; justify-content:center;
+  text-decoration:none;
+}
+@media (min-width:768px){ .sticky-bar{ display:none } }
+body.has-sticky{ padding-bottom:88px }
+@media (min-width:768px){ body.has-sticky{ padding-bottom:0 } }
+
+@media (prefers-reduced-motion:reduce){ *{ animation:none!important } }
+</style>
+</head>
+
+<body>
+
+<a class="skip-link" href="#main">דילוג לתוכן</a>
+
+<header class="site-header">
+  <div class="wrap">
+    <p class="logo" style="margin:0">
+      <img src="assets/logo-lockup.png"
+           alt="Run2dream — להגשים את חלום הריצה"
+           width="1536" height="1024"
+           loading="eager" fetchpriority="high" decoding="sync">
+    </p>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ===== סקשן 1 — HERO · ה-LCP הוא ה-H1, אין תמונה גדולה מעל הקיפול ===== -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <p class="eyebrow"><span class="ltr">Run2dream</span> · להגשים את חלום הריצה</p>
+
+    <h1 id="hero-title">כאן רצים כל הרמות — מהקילומטר הראשון ועד המרתון</h1>
+
+    <p class="lead">4 בקרים בשבוע במערב ראשון לציון, קבוצה שרצה יחד כבר מעל 10 שנים — וכל רץ חדש מקבל בה את הקצב שלו, לא את הקצב של מישהו אחר.</p>
+
+    <div class="hero-cta">
+      <a class="btn btn-primary btn-block js-goto-form"
+         href="#lead"
+         data-cta="primary" data-event="trial-signup" data-variant="hero" data-intent="trial">
+        מגיע/ה לאימון ניסיון חינם
+      </a>
+      <p class="cta-note">אימון אחד להתנסות · בלי עלות ובלי התחייבות להמשך</p>
+
+      <p class="free-note">
+        <strong>אימון קבוצתי אחד להתנסות, ללא עלות.</strong> אין חיוב ואין צורך למסור אמצעי תשלום.<br>
+        מי שממשיך — 350 ₪ לחודש (כולל מע"מ), ללא התחייבות.
+      </p>
+
+      <!-- chevron ב-SVG ולא בתו «/» — התווים האלה מתהפכים חזותית ב-RTL. -->
+      <a class="hero-link js-goto-form" href="#lead"
+         data-cta="secondary" data-event="lead-form-open" data-variant="hero-link" data-intent="form">
+        מעדיפים לדבר קודם? השאירו פרטים ומשה יחזור אליכם
+        <svg class="chev" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M10 2 4 8l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+
+    <div class="hero-body">
+      <p>אתם לא צריכים להיות רצים כדי להצטרף. אתם צריכים בוקר אחד שבו אתם מגיעים.</p>
+      <p>ב-<span class="ltr">Run2dream</span> רצים יחד כבר מעל 10 שנים במערב ראשון לציון — קבוצה שיש בה מי שרץ מרתונים, ויש בה מי שבשבוע שעבר רץ בפעם הראשונה בחיים. שניהם יוצאים לאותו בוקר, וכל אחד מקבל את הקצב, ההנחיה והליווי שמתאימים לו.</p>
+      <p><strong>האימון הראשון שלכם עלינו.</strong></p>
+      <p class="hero-hook">בלי להתחייב, בלי להתאמן קודם בבית, ובלי להתנצל על הכושר שלכם.</p>
+    </div>
+  </div>
+
+  <div class="horizon" role="presentation"></div>
+</section>
+
+<!-- רצועת אמון — על "הקרקע" הנייבי של רצועת האופק -->
+<div class="trust-strip on-dark">
+  <div class="wrap">
+    <ul>
+      <li>מעל 10 שנים</li>
+      <li>4 בקרים בשבוע</li>
+      <li>מערב ראשון לציון</li>
+      <li>מתחילים ומנוסים באותה קבוצה</li>
+      <li>האימון הראשון עלינו</li>
+    </ul>
+  </div>
+</div>
+
+<!-- רצועת התמונה שמתחת ל-hero. object-position גבוה כדי לשמור את הפנים בפריים. -->
+<figure class="photo-band">
+  <picture>
+    <source type="image/webp" srcset="assets/2026-08-15-run2dream-img06-og.webp">
+    <img src="assets/2026-08-15-run2dream-img06-og.jpg"
+         alt="רצות ורצים מקבוצת Run2dream עומדים יחד באחד ממקומות האימון, לפני אימון בוקר"
+         width="1200" height="630" loading="lazy" decoding="async">
+  </picture>
+  <figcaption class="photo-cap band-cap">אחד המקומות שאנחנו רצים בהם. המיקום מתחלף מאימון לאימון.</figcaption>
+</figure>
+
+<!-- ===== סקשן 2 — רצועת עובדות ===== -->
+<section class="section" aria-labelledby="facts-title">
+  <div class="wrap">
+    <h2 id="facts-title">אימוני בוקר במערב ראשון לציון — מה, מתי, איפה</h2>
+    <p class="lead measure">בשורה אחת: מה, מתי, איפה.</p>
+
+    <div class="facts-grid">
+      <div class="fact">
+        <img src="assets/icon-mornings.png" alt="" aria-hidden="true" width="1024" height="1024" loading="lazy" decoding="async">
+        <h3>שני · רביעי · שישי · שבת</h3>
+        <p>4 בקרים בשבוע. מגיעים לכמה שמתאים לכם; גם בוקר אחד בשבוע זו התחלה.</p>
+      </div>
+      <div class="fact">
+        <img src="assets/icon-years.png" alt="" aria-hidden="true" width="1024" height="1024" loading="lazy" decoding="async">
+        <h3>05:30–06:30</h3>
+        <p>מסיימים לפני שהיום שלכם בכלל מתחיל. <strong>בשבת</strong> השעה והמשך נקבעים לפי אופי האימון.</p>
+      </div>
+      <div class="fact">
+        <img src="assets/icon-location.png" alt="" aria-hidden="true" width="1024" height="1024" loading="lazy" decoding="async">
+        <h3>מערב ראשון לציון</h3>
+        <p><strong>כל בוקר במקום אחר</strong>, ולפעמים גם על מסלול אתלטיקה. נקודת המפגש נשלחת לכם בוואטסאפ מראש, כך שתמיד תדעו בדיוק לאן להגיע.</p>
+      </div>
+      <div class="fact">
+        <img src="assets/icon-levels.png" alt="" aria-hidden="true" width="1024" height="1024" loading="lazy" decoding="async">
+        <h3>קבוצה של כ-10 רצים</h3>
+        <p>מספיק בשביל האנרגיה של קבוצה, ומעט מספיק בשביל שמשה יראה כל אחד.</p>
+      </div>
+    </div>
+
+    <p class="facts-close">
+      מעל 10 שנים · כל הרמות, ממי שלא רץ מעולם ועד רצי מרחקים ארוכים ·
+      <strong>350 ₪ לחודש (כולל מע"מ), בלי התחייבות.</strong>
+      <a href="#terms" class="js-open-legal">תנאי הצטרפות ותשלום</a>
+    </p>
+  </div>
+</section>
+
+<!-- ===== סקשן 3 — הבלוק שמטפל בחשש · סדר נעול: חייב לבוא לפני סקשן 5 ===== -->
+<section class="section bg-warm" id="fears" aria-labelledby="fears-title" data-event="fears-section-view">
+  <div class="wrap">
+    <h2 id="fears-title">לא צריך להיות בכושר כדי להתחיל. צריך רק להגיע.</h2>
+    <p class="lead measure">אם אתם קוראים את זה ואומרים לעצמכם "זה בטח לא בשבילי" — הפסקה הבאה נכתבה בשבילכם.</p>
+
+    <!-- ⚠️ תמונה מחייבת. שני תנאים להחלפתה:
+         (א) חייבת להופיע בפריים אישה — הקופי אומר במפורש "גברים ונשים",
+             ואם התמונה מראה רק גברים היא מנצחת את הטקסט.
+         (ב) הכיתוב "אחד המקומות…" חייב להישאר — התמונה מצולמת על מסלול אתלטיקה
+             ובלעדיו היא יוצרת מצג של מקום אימון קבוע.
+         התמונה נשארת מעל הקיפול היחסי של הסקשן, לפני הכרטיסים. -->
+    <figure class="photo" style="max-width:720px">
+      <picture style="aspect-ratio:4/3">
+        <source type="image/webp" srcset="assets/2026-08-15-run2dream-img02-group.webp">
+        <img src="assets/2026-08-15-run2dream-img02-group.jpg"
+             alt="רצות ורצים מכל הגילים והרמות בקבוצת Run2dream עומדים יחד באחד ממקומות האימון, לפני אימון בוקר"
+             width="1200" height="900" loading="lazy" decoding="async">
+      </picture>
+      <figcaption class="photo-cap">אחד המקומות שאנחנו רצים בהם. המיקום מתחלף מאימון לאימון.</figcaption>
+    </figure>
+
+    <div class="measure">
+      <p>כמעט כל מי שהצטרף לקבוצה הגיע עם אותם שלושה משפטים בראש: <em>"אני אעכב את כולם"</em>, <em>"אני לא בכושר"</em>, <em>"כולם שם רצים יותר טוב ממני"</em>.</p>
+      <p>אז בואו נסדר את זה עכשיו, לפני שתגללו הלאה:</p>
+    </div>
+
+    <!-- כרטיסים ולא <table> — טבלה נשברת במובייל. -->
+    <div class="fear-grid">
+      <div class="fear">
+        <p class="thought">"אני אעכב את כולם"</p>
+        <p class="reality">לא. הקבוצה יוצאת בקבוצות קצב, וכל אחד רץ עם מי שבקצב שלו. אף אחד לא רודף אחרי אף אחד, ואף אחד לא מחכה לכם בקוצר רוח.</p>
+      </div>
+      <div class="fear">
+        <p class="thought">"אני לא בכושר בכלל"</p>
+        <p class="reality">זו בדיוק נקודת ההתחלה שאנחנו מכירים הכי טוב. מתחילים בשילוב הליכה-ריצה, ומעלים רק כשהגוף שלכם מוכן — לא לפי לוח זמנים של מישהו אחר.</p>
+      </div>
+      <div class="fear">
+        <p class="thought">"לא רצתי כבר שנים"</p>
+        <p class="reality">הגוף זוכר. השבועות הראשונים נועדו להחזיר אתכם בהדרגה ובזהירות — לא להוכיח כלום.</p>
+      </div>
+      <div class="fear">
+        <p class="thought">"אני מבוגר/ת מדי בשביל זה"</p>
+        <p class="reality">בקבוצה רצים אנשים בטווח גילים רחב. הריצה מתאימה את עצמה אליכם, לא הפוך.</p>
+      </div>
+      <div class="fear">
+        <p class="thought">"אני אהיה היחיד/ה שלא מכיר/ה אף אחד"</p>
+        <p class="reality">כל אחד ואחת היו חדשים בבוקר הראשון שלהם. מישהו יגש אליכם לפני שתספיקו להרגיש לא נעים.</p>
+      </div>
+      <div class="fear">
+        <p class="thought">"זו בטח קבוצה של גברים"</p>
+        <p class="reality">בקבוצה רצים <strong>גברים ונשים</strong>, מכל הרמות. אתן לא תהיו היחידות.</p>
+      </div>
+      <div class="fear">
+        <p class="thought">"אני בכלל לא יודע/ת איפה לרוץ"</p>
+        <p class="reality">וזה בסדר גמור — <strong>אתם לא צריכים לדעת.</strong> משה בוחר את המקום לכל אימון ושולח אותו מראש. אתם רק מגיעים ורצים.</p>
+      </div>
+    </div>
+
+    <p class="health-line">הדבר היחיד שכן נבקש: אם יש לכם מצב רפואי מוכר או פציעה פעילה — ספרו למשה בשיחה, כדי שנתאים לכם את הבוקר הראשון נכון.</p>
+
+    <p class="closing-card">הרף היחיד להצטרפות הוא שתגיעו. את השאר משה בונה אתכם מהנקודה שבה אתם נמצאים היום.</p>
+
+    <div style="margin-top:var(--s-6)">
+      <a class="btn btn-primary btn-block js-goto-form" href="#lead"
+         data-cta="primary" data-event="trial-signup" data-variant="fears" data-intent="trial">
+        אני רוצה לנסות בוקר אחד
+      </a>
+      <p class="cta-note"><strong>האימון הראשון חינם.</strong> בלי כושר מוקדם, בלי התחייבות — פשוט בואו.</p>
+
+      <p style="margin-top:var(--s-4)">
+        <a href="https://wa.me/972508688425?text=%D7%94%D7%99%D7%99%20%D7%9E%D7%A9%D7%94%2C%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%9E%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20Run2dream.%0A%D7%9C%D7%90%20%D7%A8%D7%A6%D7%AA%D7%99%20%D7%9B%D7%91%D7%A8%20%D7%94%D7%A8%D7%91%D7%94%20%D7%96%D7%9E%D7%9F%20%D7%95%D7%90%D7%A0%D7%99%20%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%94%D7%AA%D7%97%D7%99%D7%9C%20%E2%80%94%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A9%D7%9E%D7%95%D7%A2%20%D7%90%D7%9D%20%D7%96%D7%94%20%D7%9E%D7%AA%D7%90%D7%99%D7%9D%20%D7%9C%D7%99."
+           target="_blank" rel="noopener"
+           data-cta="whatsapp" data-event="whatsapp-click" data-variant="fears"
+           class="small">
+          לא בטוחים שזה מתאים לכם? כתבו למשה בוואטסאפ<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+        </a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== סקשן 4 — איך נראה אימון בוקר ===== -->
+<section class="section" aria-labelledby="morning-title">
+  <div class="wrap">
+    <h2 id="morning-title">איך נראה אימון בוקר בקבוצה</h2>
+    <p class="lead measure">בשביל שתדעו בדיוק לאן אתם מגיעים — עוד לפני שהגעתם.</p>
+
+    <!-- ⚠️ התמונה הזו מצולמת על מסלול אתלטיקה, והיא יוצרת מצג בפני עצמה:
+         בלי הכיתוב הקורא מסיק שזה מקום האימון הקבוע — גם אם אף מילה בדף לא אומרת זאת.
+         אין להסיר את ה-<figcaption>, ואין להחליף את התמונה בלי שהכיתוב נשאר. -->
+    <figure class="photo photo-wide">
+      <picture style="aspect-ratio:21/9">
+        <source type="image/webp" srcset="assets/2026-08-15-run2dream-img01-atmosphere.webp">
+        <img src="assets/2026-08-15-run2dream-img01-atmosphere.jpg"
+             alt="אחד ממקומות האימון של הקבוצה — מסלול אתלטיקה באור ראשון"
+             width="739" height="317" loading="lazy" decoding="async">
+      </picture>
+      <figcaption class="photo-cap">אחד המקומות שאנחנו רצים בהם. המיקום מתחלף מאימון לאימון.</figcaption>
+    </figure>
+
+    <ol class="steps measure">
+      <li>
+        <h3>05:30 — מתאספים</h3>
+        <p>בנקודת המפגש שנשלחה לכם בוואטסאפ ערב קודם. מגיעים כמה דקות לפני, אומרים שלום, וזהו.</p>
+      </li>
+      <li>
+        <h3>חימום משותף</h3>
+        <p>כל הקבוצה יחד. זה חלק מהאימון בדיוק כמו הריצה עצמה, והוא נועד להכין את הגוף ולהפחית סיכון לפציעה.</p>
+      </li>
+      <li>
+        <h3>רצים בקבוצות קצב</h3>
+        <p>מתפצלים לפי קצב ולפי מטרת האימון. אתם רצים עם אנשים שרצים כמוכם.</p>
+      </li>
+      <li>
+        <h3>משה עובר בין הרצים</h3>
+        <p>קבוצה של כ-10 אנשים היא בדיוק הגודל שמאפשר לו לתת לכל אחד תיקון טכניקה, הנחיה אישית ודחיפה קטנה ברגע שצריך אותה.</p>
+      </li>
+      <li>
+        <h3>06:30 — מסיימים</h3>
+        <p>שחרור קצר, וכולם ממשיכים ליום שלהם. אתם תגיעו לעבודה אחרי בוקר שכבר עשיתם בו משהו טוב לעצמכם.</p>
+      </li>
+    </ol>
+
+    <div class="moments">
+      <figure class="photo" style="aspect-ratio:1/1">
+        <picture>
+          <source type="image/webp" srcset="assets/2026-08-15-run2dream-img03a-gathering.webp">
+          <img src="assets/2026-08-15-run2dream-img03a-gathering.jpg" alt="התכנסות לפני האימון"
+               width="800" height="800" loading="lazy" decoding="async">
+        </picture>
+      </figure>
+      <figure class="photo" style="aspect-ratio:1/1">
+        <picture>
+          <source type="image/webp" srcset="assets/2026-08-15-run2dream-img03b-warmup.webp">
+          <img src="assets/2026-08-15-run2dream-img03b-warmup.jpg" alt="חימום קבוצתי משותף"
+               width="800" height="800" loading="lazy" decoding="async">
+        </picture>
+      </figure>
+      <figure class="photo" style="aspect-ratio:1/1">
+        <picture>
+          <source type="image/webp" srcset="assets/2026-08-15-run2dream-img03c-running.webp">
+          <img src="assets/2026-08-15-run2dream-img03c-running.jpg" alt="רצים על מסלול אתלטיקה במהלך אימון בוקר"
+               width="800" height="800" loading="lazy" decoding="async">
+        </picture>
+      </figure>
+    </div>
+
+    <div class="callout measure">
+      <h3>כל בוקר במקום אחר.</h3>
+      <p>אין אצלנו לופ אחד קבוע שרצים בו שוב ושוב עד שנמאס. <strong>המיקום מתחלף מאימון לאימון</strong> — כולם במערב ראשון לציון, ולפעמים גם על <strong>מסלול אתלטיקה</strong>, כשאופי האימון מתאים לזה.</p>
+      <p><strong>אתם לא צריכים לתכנן כלום ולא צריכים להכיר את האזור.</strong> משה בוחר את המקום, שולח אותו בוואטסאפ לפני האימון, ואתם פשוט מגיעים.</p>
+    </div>
+
+    <div class="callout measure">
+      <h3>בשבת האימון נבנה סביב המטרה שלכם.</h3>
+      <p>באמצע השבוע האימון הוא שעה, מ-05:30 עד 06:30. בשבת זה עובד אחרת: השעה, המשך ואופי האימון נקבעים לפי המטרה שלכם — מרחק שאתם רוצים להגיע אליו בפעם הראשונה, קצב שאתם רוצים להרגיש בו בנוח, או פשוט ריצה ארוכה ורגועה. זה לא "אימון ארוך" גנרי שכולם עושים אותו אותו דבר.</p>
+    </div>
+
+    <p class="section-close measure">משך: שעה באמצע השבוע · בשבת לפי המטרה · <strong>מה להביא:</strong> בגדי ספורט, נעלי ריצה ובקבוק מים. זה הכל.</p>
+  </div>
+</section>
+
+<!-- ===== סקשן 5 — מי זה משה (חדר כהה) · סדר נעול: בא אחרי סקשן 3 ===== -->
+<section class="section bg-navy on-dark" aria-labelledby="moshe-title">
+  <div class="wrap">
+    <h2 id="moshe-title">משה — מדריך ריצות ארוכות מוסמך (מכון וינגייט), אולטרה-מרתוניסט ואיש ברזל</h2>
+    <p class="lead measure">המרחקים שמשה רץ הם לא הרף שלכם — הם הסיבה שאפשר לסמוך עליו.</p>
+
+    <div class="moshe-grid">
+      <div>
+        <figure class="photo" style="aspect-ratio:3/4">
+          <picture>
+            <source type="image/webp" srcset="assets/2026-08-15-run2dream-img04-moshe.webp">
+            <img src="assets/2026-08-15-run2dream-img04-moshe.jpg"
+                 alt="משה עם רצות ורצי הקבוצה בסיום אימון בוקר"
+                 width="900" height="1200" loading="lazy" decoding="async">
+          </picture>
+        </figure>
+      </div>
+
+      <div>
+        <!-- התואר הרשמי היחיד לשימוש בדף: "מדריך ריצות ארוכות מוסמך מטעם מכון וינגייט".
+             התעודה עצמה אינה מתפרסמת בדף. -->
+        <p class="lead" style="margin-bottom:var(--s-5)">
+          משה בן מאיר —
+          <strong data-claim="certification">מדריך ריצות ארוכות מוסמך מטעם מכון וינגייט</strong>,
+          אולטרה-מרתוניסט ואיש ברזל. וזה בדיוק למה הוא יודע להדריך גם את מי שרץ היום 300 מטר.
+        </p>
+
+        <!-- רצועת הישגים — ניסוח מאושר בלבד. אין להוסיף מספר, זמן, דירוג או שם מרוץ. -->
+        <ul class="badges">
+          <li data-claim="certification"><strong>מדריך ריצות ארוכות מוסמך מטעם מכון וינגייט</strong></li>
+          <li data-claim="ultra"><strong>אולטרה 100 ק"מ, 2023</strong> — ולצדו אולטרות במרחקים קצרים יותר</li>
+          <!-- אין להטמיע נכסים גרפיים של מותגי תחרויות (לוגו/סמל/גופן) — טקסט בלבד. -->
+          <li data-claim="ironman">
+            <strong>איש ברזל — <span class="ltr">IRONMAN</span> המבורג, 2024</strong> — ולצדו חצאי איש-ברזל רבים
+          </li>
+          <li data-claim="tenure"><strong>מעל 10 שנים</strong> של אימוני בוקר קבוצתיים בשטח</li>
+        </ul>
+
+        <p>קל להסתכל על השורות האלה ולהגיד לעצמכם "אוקיי, זה בליגה אחרת, זה לא בשבילי". אז שנייה לפני שאתם עושים את זה — שימו לב מה הן באמת אומרות.</p>
+        <p>מי שרץ 100 ק"מ ומי שסיים <span class="ltr">IRONMAN</span> מלא עבר <strong>בעצמו</strong> את כל השלבים שאתם עומדים לעבור: את הריצה הראשונה שנגמרה מוקדם מדי, את הבוקר שבו לא בא לו לקום, את הפציעה הקטנה שחוזרת, ואת הרגע שבו הגוף אומר "מספיק" והראש צריך להחליט. הוא לא קרא על זה — הוא היה שם, שוב ושוב.</p>
+        <p>ומעל הכל: <strong data-claim="certification">משה הוא מדריך ריצות ארוכות מוסמך מטעם מכון וינגייט.</strong> כלומר מה שהוא נותן לכם בבוקר הוא לא "מה שעבד עליי" — זו הכשרה מקצועית, שיודעת להתאים את האימון לגוף שעומד מולה. בדיוק בגלל זה הוא לא מודד אתכם מול עצמו, אלא מול איפה שהייתם בשבוע שעבר.</p>
+
+        <ul class="why-list">
+          <li><strong>הוא מכיר את הקילומטר הראשון לא פחות מהקילומטר ה-100.</strong> מתחילים ומנוסים מקבלים ממנו התייחסות רצינית באותה מידה.</li>
+          <li><strong data-claim="certification">הסמכה מקצועית, לא רק ניסיון אישי.</strong> מדריך ריצות ארוכות מוסמך מטעם מכון וינגייט — עם הכלים לבנות התקדמות הדרגתית ולדעת מתי לדחוף ומתי דווקא להוריד הילוך, כדי לא להעמיס על הגוף יותר ממה שהוא מוכן לו.</li>
+          <li><strong>הוא רואה אתכם, גם בקבוצה.</strong> בקבוצה של כ-10 רצים ורצות אין איפה להתחבא, וגם אין צורך — כל אחד ואחת מקבלים תשומת לב.</li>
+        </ul>
+
+        <div class="health-block">
+          <p>לפני שמתחילים להתאמן, משה מחתים כל רץ על <strong>הצהרת בריאות</strong>. זה לוקח דקה, וזה חלק מהאופן שבו מתנהלת כאן קבוצה כבר יותר מעשור: ברצינות, ובלי לקצר דרכים על החלקים שחשובים באמת.</p>
+        </div>
+
+        <!-- ציטוט אישי בשמו של משה — הוסר. הנוסח הוא הצעה שנכתבה עבורו, והוא לא אמר אותו ולא אישר אותו.
+             ציטוט במירכאות בגוף ראשון, לצד שמו ותמונתו, מיוחס לו כאילו נאמר בפועל.
+             להחזרה — רק אחרי אישור מפורש של משה: להסיר את הערת הפתיחה והסגירה סביב הבלוק שלמטה.
+
+        <blockquote class="quote-moshe">
+          <p>"רצתי את המרחקים הארוכים שלי כדי לדעת מה הגוף מסוגל. אני מאמן כדי שאתם תגלו את זה בעצמכם — מהמקום שבו אתם נמצאים היום."</p>
+        </blockquote>
+
+        -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== סקשן 6 — המלצות · סדר שלושת הציטוטים נעול · הציטוטים כלשונם ===== -->
+<section class="section bg-warm" aria-labelledby="tst-title">
+  <div class="wrap">
+    <h2 id="tst-title">רצים מספרים על הקבוצה</h2>
+    <p class="lead measure">הם גם התחילו מבוקר אחד.</p>
+
+    <!-- אווטאר להמלצה: ראשי תיבות בעיגול. תמונת ממליץ/ה תיכנס רק בהסכמה נפרדת. -->
+    <div class="tst-grid">
+      <figure class="tst">
+        <blockquote><p>"כל אימון חוויה בפני עצמה"</p></blockquote>
+        <figcaption>
+          <span class="avatar" aria-hidden="true">נק</span>
+          <span><strong>נועם קונקי</strong><br>נס ציונה</span>
+        </figcaption>
+      </figure>
+
+      <!-- ה-hero של הסקשן. הטאגליין בקטן מעל, הציטוט בגדול מתחת —
+           בלי שום קופי שמצביע על ההקבלה. הרגע הזה עובד רק אם הוא לא מוסבר. -->
+      <figure class="tst hero-tst">
+        <p class="tagline-echo">להגשים את חלום הריצה</p>
+        <blockquote><p>"חלומות נועדו להגשים"</p></blockquote>
+        <figcaption>
+          <span class="avatar" aria-hidden="true">מג</span>
+          <span><strong>משה גריידי</strong><br>ראשון לציון</span>
+        </figcaption>
+      </figure>
+
+      <figure class="tst">
+        <blockquote><p>"אומנם אנחנו לא נפגשים, אבל מאמן אותי מרחוק ברמה שלא אימנו אותי אף פעם"</p></blockquote>
+        <figcaption>
+          <span class="avatar" aria-hidden="true">את</span>
+          <span><strong>אור טיטו</strong><br>מושב בצפון</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <p class="tst-bridge">שלושה רצים, שלוש נקודות התחלה שונות — וכולם מתאמנים עם משה.</p>
+  </div>
+</section>
+
+<!-- ===== סקשן 7 — אימון ניסיון: איך זה עובד (CTA ראשי) ===== -->
+<section class="section" id="trial" aria-labelledby="trial-title">
+  <div class="wrap">
+    <h2 id="trial-title">אימון ניסיון חינם בראשון לציון — איך זה עובד</h2>
+    <p class="lead measure">בואו לבוקר אחד, על חשבוננו. זה כל מה שצריך להחליט עכשיו.</p>
+    <p class="measure">אימון הניסיון הראשון הוא ללא עלות — לא חבילה, לא מנוי, לא התחייבות. בוקר אחד, ואתם תדעו לבד. אנחנו מוכנים לתת אותו בלי לגבות עליו, כי אנחנו יודעים מה קורה לאנשים אחרי הבוקר הראשון.</p>
+
+    <ol class="steps measure">
+      <li>
+        <h3>משאירים פרטים או שולחים וואטסאפ</h3>
+        <p>לוקח פחות מדקה.</p>
+      </li>
+      <li>
+        <h3>משה חוזר אליכם</h3>
+        <p>שיחה קצרה: מה הרמה שלכם היום, מה המטרה, ואיזה בוקר הכי מתאים לכם.</p>
+      </li>
+      <li>
+        <h3>מגיעים לאימון הניסיון</h3>
+        <p>עם בגדי ספורט, נעליים ובקבוק מים. משה מחכה לכם בנקודת המפגש. חותמים על אישור בריאות קצר, ויוצאים לדרך.</p>
+      </li>
+      <li>
+        <h3>מחליטים אחרי</h3>
+        <p>לא לפני. רציתם להמשיך? מצטרפים למנוי חודשי של 350 ₪, בלי התחייבות. לא רציתם? נפרדים כידידים, ולא שילמתם שקל.</p>
+      </li>
+    </ol>
+
+    <div style="margin-top:var(--s-6)">
+      <a class="btn btn-primary btn-block js-goto-form" href="#lead"
+         data-cta="primary" data-event="trial-signup" data-variant="trial" data-intent="trial">
+        מגיע/ה לאימון ניסיון חינם
+      </a>
+      <p class="cta-note">אימון אחד להתנסות · בלי עלות ובלי התחייבות להמשך</p>
+      <p class="free-note">
+        <strong>אימון קבוצתי אחד להתנסות, ללא עלות.</strong> אין חיוב ואין צורך למסור אמצעי תשלום.<br>
+        מי שממשיך — 350 ₪ לחודש (כולל מע"מ), ללא התחייבות.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== סקשן 8 — כמה זה עולה · הסכום-לאימון מופיע בשורת ערך אחת בלבד, תמיד עם ההתניה ===== -->
+<section class="section bg-warm" id="price" aria-labelledby="price-title">
+  <div class="wrap">
+    <h2 id="price-title">350 ₪ לחודש. בלי התחייבות.</h2>
+    <p class="lead measure">4 בקרים בשבוע, כל שבוע, עם מדריך ריצות ארוכות מוסמך מטעם מכון וינגייט — במחיר קבוע וידוע מראש.</p>
+
+    <div class="price-card">
+      <h3>מנוי חודשי</h3>
+      <!-- 350 ₪ כולל מע"מ — זהו המחיר הכולל. אין לכתוב "350 + מע"מ" בשום מקום. -->
+      <p class="price-amount">350 ₪ <span style="font-size:1rem;font-weight:400">לחודש, כולל מע"מ</span></p>
+      <ul>
+        <li><strong>כל 4 אימוני הבוקר בשבוע</strong> — שני, רביעי, שישי ושבת</li>
+        <li><strong data-claim="certification">אימון מלא עם מדריך ריצות ארוכות מוסמך מטעם מכון וינגייט</strong> — לא תוכנית שנשלחת במייל</li>
+        <li><strong>קבוצה של כ-10 רצים</strong> — יחס אישי, לא הרצאה לקהל</li>
+        <li><strong>מנוי מתחדש מדי חודש · ללא התחייבות · אפשר להפסיק בכל חודש</strong> — החודש ששולם ממשיך עד סופו, ואין תשלום נוסף אחריו</li>
+      </ul>
+
+      <a class="btn btn-primary btn-block js-goto-form" href="#lead"
+         data-cta="primary" data-event="trial-signup" data-variant="price" data-intent="trial">
+        מגיע/ה לאימון ניסיון חינם
+      </a>
+      <p class="cta-note"><em>האימון הראשון על חשבוננו — משלמים רק אם החלטתם להמשיך.</em></p>
+      <p class="free-note">
+        <strong>אימון קבוצתי אחד להתנסות, ללא עלות.</strong> אין חיוב ואין צורך למסור אמצעי תשלום.
+      </p>
+      <p class="small" style="margin-top:var(--s-3)">
+        <a href="#terms" class="js-open-legal">תנאי הצטרפות ותשלום</a> ·
+        <a href="#cancellation" class="js-open-legal">ביטול והפסקת מנוי</a>
+      </p>
+    </div>
+
+    <p class="measure" style="margin-top:var(--s-6)">אין כאן חבילות, אין מדרגות ואין מחיר שמשתנה לפי כמה שאלות שאלתם בטלפון. <strong>350 ₪ לחודש, וזהו</strong> — עם גישה לכל ארבעת אימוני הבוקר של השבוע. המחיר לא משתנה לפי כמה פעמים תגיעו, כך שככל שאתם מגיעים יותר, כל אימון עולה לכם פחות.</p>
+
+    <p class="value-line measure">מגיעים לכל ארבעת הבקרים בשבוע? המנוי יוצא לכם פחות מ-25 ₪ לאימון.</p>
+
+    <!-- ⚠️ הסייג של "ללא התחייבות" נכתב באותו גודל ובאותו משקל כמו הטענה עצמה.
+         אין להעבירו ל-small/muted ואין להפוך אותו להערת שוליים — סייג שמוקטן שובר את הטענה. -->
+    <p class="no-commit measure">זה מנוי חודשי מתחדש — לא חוזה שנתי ולא קנס יציאה. אתם נשארים כי הבוקר עובד בשבילכם, לא כי חתמתם.<br>
+      ללא התחייבות — אפשר להפסיק בכל חודש בהודעה בוואטסאפ, בטלפון או במייל. החודש ששולם ממשיך עד סופו, ואין תשלום נוסף אחריו.
+      <a href="#cancellation" class="js-open-legal">ביטול והפסקת מנוי</a>
+    </p>
+  </div>
+</section>
+
+<!-- ===== סקשן 9 — אימון מרחוק · אחרי המחיר, לפני הסגירה ===== -->
+<section class="section" id="remote" aria-labelledby="remote-title">
+  <div class="wrap">
+    <p class="eyebrow">לא גרים באזור? 05:30 לא אפשרי בשבילכם?</p>
+    <h2 id="remote-title">אותו מדריך. אותו מחיר. פורמט אחר.</h2>
+    <p class="lead measure">אימון ריצה מרחוק עם משה — לרצים שלא יכולים להגיע לבקרים במערב ראשון לציון, ולא מוכנים לוותר על ליווי מקצועי.</p>
+
+    <div class="measure">
+      <p>לא כל רץ יכול להגיע לראשון לציון ב-05:30 בבוקר. יש מי שגר רחוק, יש מי שהשעה הזו פשוט לא מסתדרת לו עם החיים, ויש מי שרץ במקום אחר בארץ ורוצה שמישהו מקצועי ילווה אותו.</p>
+      <p>בשביל זה קיים האימון מרחוק. <strong><span data-claim="certification">אותו מדריך מוסמך מטעם וינגייט</span>, אותו מחיר — 350 ₪ לחודש (כולל מע"מ), אותו חוסר התחייבות.</strong> מה שמשתנה הוא רק הפורמט: אתם רצים איפה שאתם נמצאים, ומשה מלווה אתכם משם.</p>
+    </div>
+
+    <figure class="remote-quote measure">
+      <blockquote><p>"אומנם אנחנו לא נפגשים, אבל מאמן אותי מרחוק ברמה שלא אימנו אותי אף פעם"</p></blockquote>
+      <figcaption>— <strong>אור טיטו</strong>, מושב בצפון</figcaption>
+    </figure>
+
+    <h3>מה כולל האימון מרחוק</h3>
+    <!-- התדירות לא נמסרה — אין לנקוב בשום מספר או תדירות. -->
+    <ul class="measure">
+      <li><strong>תוכנית אימונים אישית</strong> — נבנית לרמה ולמטרה שלכם.</li>
+      <li><strong>משוב על הריצות</strong> — משה עובר על מה שרצתם ומתקן תוך כדי.</li>
+      <li><strong>שיחות עם משה</strong> — כדי לכוון, לשנות ולהתאים לאורך הדרך.</li>
+    </ul>
+    <p class="measure">משה בונה לכל רץ מרחוק ליווי אישי שמתאים לרמה, למטרה ולתנאים שלו. <strong>המתכונת המדויקת נקבעת בשיחה אתו</strong> — כי אימון מרחוק של רץ שמתכונן למרוץ ראשון נראה אחרת מזה של רץ שמכוון לשיפור זמנים.</p>
+
+    <div style="margin-top:var(--s-6)">
+      <a class="btn btn-wa btn-block"
+         href="https://wa.me/972508688425?text=%D7%94%D7%99%D7%99%20%D7%9E%D7%A9%D7%94%2C%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%9E%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20Run2dream.%0A%D7%90%D7%A0%D7%99%20%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F%2F%D7%AA%20%D7%9C%D7%A9%D7%9E%D7%95%D7%A2%20%D7%A2%D7%9C%20%D7%94%D7%90%D7%99%D7%9E%D7%95%D7%9F%20%D7%9E%D7%A8%D7%97%D7%95%D7%A7%20%E2%80%94%20%D7%9C%D7%90%20%D7%A0%D7%95%D7%97%20%D7%9C%D7%99%20%D7%9C%D7%94%D7%92%D7%99%D7%A2%20%D7%9C%D7%90%D7%99%D7%9E%D7%95%D7%A0%D7%99%20%D7%94%D7%91%D7%95%D7%A7%D7%A8.%0A%D7%90%D7%A0%D7%99%20%D7%A8%D7%A5%2F%D7%94%20%D7%91%3A%20____"
+         target="_blank" rel="noopener"
+         data-cta="whatsapp-remote" data-event="whatsapp-remote-click" data-variant="remote">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.6-6c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.1 0-.3 0-.4l-.8-1.8c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.7.7-1 1.6-.9 2.5a6 6 0 0 0 1.2 2.6 10.6 10.6 0 0 0 4.1 3.6c1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
+        לשאול את משה על אימון מרחוק<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+      </a>
+      <p class="cta-note">350 ₪ לחודש · בלי התחייבות · המתכונת נסגרת בשיחה קצרה</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== סקשן 10 — טופס · אינו נשלח לשום שרת: מרכיב הודעת וואטסאפ ופותח אותה ===== -->
+<section class="section bg-warm" id="lead" aria-labelledby="lead-title">
+  <div class="wrap">
+    <h2 id="lead-title">מעדיפים לדבר קודם?</h2>
+    <p class="lead measure">מלאו את הפרטים — נרכיב מהם הודעת וואטסאפ מוכנה, היא תיפתח אצלכם, ואתם מחליטים אם לשלוח. משם זו שיחה קצרה עם משה: איפה אתם היום ומה הכי מתאים לכם. את המחיר אתם כבר יודעים, אז אין כאן מה למכור לכם.</p>
+
+    <div class="form-card">
+      <!-- LEAD-PIPE: אין action, אין method, אין endpoint, אפס בקשות רשת.
+        היעד היחיד הוא wa.me. אין להוסיף כאן fetch/XHR או שירות טפסים חיצוני. -->
+      <form id="lead-form" novalidate>
+        <input type="hidden" id="lead-intent" name="intent" value="form">
+
+        <div class="field" id="f-name">
+          <label for="lead-name">שם מלא</label>
+          <input type="text" id="lead-name" name="name" autocomplete="name"
+                 placeholder="לדוגמה: דנה כהן" required
+                 aria-describedby="lead-name-error" maxlength="60">
+          <p class="field-error" id="lead-name-error" role="alert">
+            <span aria-hidden="true">⚠</span> צריך שם כדי שנדע איך לפנות אליכם
+          </p>
+        </div>
+
+
+        <div class="field" id="f-level">
+          <fieldset>
+            <legend>איפה אתם היום?</legend>
+            <label class="visually-hidden" for="lead-level">איפה אתם היום?</label>
+            <select id="lead-level" name="level" required aria-describedby="lead-level-help lead-level-error">
+              <option value="" selected disabled>בחרו את מה שהכי מתאים</option>
+              <option>לא רצתי מעולם / לא רצתי כבר הרבה זמן</option>
+              <option>אני הולך/ת או רץ/ה קצת, בלי מסגרת</option>
+              <option>רץ/ה באופן קבוע לבד, רוצה להשתפר</option>
+              <option>רץ/ה מנוסה, רוצה להשתפר</option>
+            </select>
+            <p class="field-help" id="lead-level-help">אין תשובה נכונה — זה רק כדי שמשה ידע איך להתאים לכם את הבוקר הראשון</p>
+            <p class="field-error" id="lead-level-error" role="alert">
+              <span aria-hidden="true">⚠</span> בחרו אחת מהאפשרויות
+            </p>
+          </fieldset>
+        </div>
+
+        <div class="field" id="f-note">
+          <label for="lead-note">משהו שחשוב שמשה ידע לפני השיחה? (לא חובה)</label>
+          <textarea id="lead-note" name="note" rows="3"
+                    placeholder="למשל: איזה בוקר נוח לכם, מה המטרה שלכם, או כל שאלה"
+                    aria-describedby="lead-note-help" maxlength="200"></textarea>
+          <p class="field-help" id="lead-note-help">אין צורך לפרט כאן מידע רפואי — משה יעבור אתכם על זה בשיחה.</p>
+        </div>
+
+        <p class="field-help" style="margin-top:-8px">לא גרים באזור ראשון לציון? ציינו את זה בהערה — משה יתייחס גם לאימון מרחוק.</p>
+
+
+        <button type="submit" class="btn btn-primary btn-block"
+                aria-label="פתיחת הודעה מוכנה בוואטסאפ למשה"
+                data-cta="secondary" data-event="form-whatsapp" data-variant="lead-form">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.6-6c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.1 0-.3 0-.4l-.8-1.8c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.7.7-1 1.6-.9 2.5a6 6 0 0 0 1.2 2.6 10.6 10.6 0 0 0 4.1 3.6c1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
+          פתיחת הודעה מוכנה בוואטסאפ
+        </button>
+        <p class="cta-note">נפתחת אצלכם הודעה מוכנה בוואטסאפ עם הפרטים — צריך רק ללחוץ "שלח".</p>
+
+        <!-- מסלול גיבוי גלוי: בדסקטופ בלי WhatsApp Web מקושר, wa.me מוביל למסך התחברות. -->
+        <p class="fallback-route">
+          אין לכם וואטסאפ? התקשרו ל-<a href="tel:+972508688425">050-868-8425</a>
+          או כתבו ל-<a href="mailto:moshe@moshebm.co.il">moshe@moshebm.co.il</a>.
+        </p>
+
+        <div class="notice-box">
+          <p>הפרטים שתקלידו <strong>לא נשמרים באתר</strong> — הם רק מרכיבים הודעת וואטסאפ מוכנה שתיפתח אצלכם, ואתם מחליטים אם לשלוח. אחרי השליחה, ההודעה נשמרת בוואטסאפ של משה ומשמשת רק כדי לחזור אליכם בנוגע לאימונים. <a href="#privacy" class="js-open-legal">מדיניות פרטיות</a></p>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     סקשן 11 — FAQ
+     ============================================================ -->
+<section class="section" aria-labelledby="faq-title">
+  <div class="wrap">
+    <h2 id="faq-title">שאלות נפוצות על קבוצת הריצה</h2>
+    <p class="lead measure">שאלות שכל רץ חדש שואל (ואתם מוזמנים לשאול עוד).</p>
+
+    <div class="faq-list">
+      <details class="faq-item"><summary>אני איטי מדי. באמת אפשר להצטרף?</summary>
+        <!-- ⚠️ הסיוג "לא לכולם זה קורה באותו קצב… כל אחד מתקדם משלו" הוא חלק מההיתר
+             לנקוב ב-10 ק"מ. אין להסירו, אין להעבירו להערת שוליים ואין להקטין את גופנו —
+             הוא חייב להישאר באותו משפט ובאותו גודל. הכלל חל גם על ה-FAQPage ב-JSON-LD. -->
+        <div class="answer"><p>כן, ובלי כוכבית. הקבוצה מתפצלת לקבוצות קצב, ואתם רצים עם אנשים שרצים כמוכם. "איטי" זה יחסי — יש בקבוצה רצים שהתחילו בהליכה-ריצה והיום רצים 10 ק"מ. לא לכולם זה קורה באותו קצב, וזה בסדר גמור — כל אחד מתקדם משלו. הדבר היחיד שאנחנו מבקשים הוא שתגיעו.</p></div>
+      </details>
+
+      <details class="faq-item"><summary>מה אם לא אעמוד בקצב באמצע האימון?</summary>
+        <div class="answer"><p>זה קורה, וזה בסדר גמור. מאטים, עוברים להליכה, נושמים וממשיכים — זה חלק מהאימון ולא כישלון בו. משה עובר בין הרצים ומתאים את המאמץ בזמן אמת. אף אחד לא נשאר לבד בשטח.</p></div>
+      </details>
+
+      <details class="faq-item"><summary>לא רצתי כבר שנים. מאיפה מתחילים?</summary>
+        <!-- ⚠️ אין להסיר את הסיפא "אבל רק אם לא מזרזים אותו". היא מה שהופך את המשפט
+             מאמירה מעודדת להנחיה מסויגת, והיא חלק מהאישור לניסוח הזה.
+             הסרתה מחזירה את המשפט לבדיקת ניסוח. -->
+        <div class="answer"><p>מהתחלה, בהדרגה ובלי לשרוף שלבים. השבועות הראשונים בנויים על שילוב הליכה-ריצה והעלאה איטית של המאמץ — בדיוק כדי לחזור בהדרגה ובזהירות. הגוף מגיב מהר יותר ממה שאתם חושבים, אבל רק אם לא מזרזים אותו.</p></div>
+      </details>
+
+      <details class="faq-item"><summary>מה אם אחסיר אימון?</summary>
+        <div class="answer">
+          <p>לא נורא, וזה לא "מבטל" לכם את ההתקדמות. יש 4 אימונים בשבוע — שני, רביעי, שישי ושבת — בדיוק כדי שתהיה גמישות. מגיעים לכמה שמתאים לכם באותו שבוע, והמנוי לא משתנה. מה שקובע הוא ההתמדה, לא הכמות — עדיף פעמיים בשבוע באופן קבוע מארבע פעמים בשבוע אחד ואז הפסקה.</p>
+        </div>
+      </details>
+
+      <details class="faq-item"><summary>אני צריך/ה להיות בכושר לפני שאני מגיע/ה?</summary>
+        <div class="answer"><p>לא. זו הטעות הכי נפוצה — אנשים מחכים "להיכנס קצת לכושר" ואז להצטרף, ובסוף לא מגיעים בכלל. הכושר הוא התוצאה של ההגעה, לא התנאי לה.</p></div>
+      </details>
+
+      <details class="faq-item"><summary>מה צריך להביא לאימון הראשון?</summary>
+        <div class="answer"><p>בגדי ספורט נוחים, נעלי ריצה ובקבוק מים. זה הכל. לא צריך ציוד מיוחד, שעון או אפליקציה.</p></div>
+      </details>
+
+      <details class="faq-item"><summary>באילו ימים ושעות האימונים, ואיפה נפגשים?</summary>
+        <div class="answer">
+          <p>אימוני בוקר בימים <strong>שני, רביעי, שישי ושבת</strong>, בשעה <strong>05:30–06:30</strong>. בשבת השעה והמשך משתנים לפי אופי האימון והמטרה שאתם בונים לקראתה.</p>
+          <p><strong>המיקום מתחלף מאימון לאימון, וכולם במערב ראשון לציון</strong> — לפעמים גם על מסלול אתלטיקה, לפי אופי האימון. <strong>אין מקום קבוע אחד</strong>, וזה בכוונה: ככה לא רצים כל בוקר את אותו הדבר. את נקודת המפגש המדויקת שולחים לכם בוואטסאפ מראש, כך שתמיד תדעו לאן להגיע — גם אם אתם לא מכירים את האזור.</p>
+        </div>
+      </details>
+
+      <details class="faq-item"><summary>כמה זה עולה?</summary>
+        <div class="answer">
+          <p><strong>350 ₪ לחודש</strong> (כולל מע"מ), מנוי מתחדש <strong>ללא התחייבות</strong> — כולל את כל ארבעת אימוני הבוקר בשבוע. המחיר לא משתנה לפי כמה פעמים תגיעו, כך שככל שאתם מגיעים יותר, כל אימון עולה לכם פחות. <strong>אימון הניסיון הראשון הוא חינם</strong> — משלמים רק אם החלטתם להמשיך.</p>
+          <p><a href="#terms" class="js-open-legal">תנאי הצטרפות ותשלום</a></p>
+        </div>
+      </details>
+
+      <details class="faq-item"><summary>אני חייב/ת להתחייב לתקופה?</summary>
+        <div class="answer">
+          <p>לא. זה מנוי חודשי מתחדש, בלי חוזה שנתי ובלי קנס יציאה. אפשר להפסיק בכל חודש — החודש ששולם ממשיך עד סופו, ואין תשלום נוסף אחריו.</p>
+          <p>ההפסקה נעשית בהודעה בוואטסאפ, בטלפון או במייל — לפי מה שנוח לכם. <strong>החודש ששולם ממשיך עד סופו</strong>: אתם ממשיכים להתאמן עד תום החודש שכבר שילמתם עליו, ואין תשלום נוסף אחריו. הפירוט המלא: <a href="#cancellation" class="js-open-legal">ביטול והפסקת מנוי</a>.</p>
+        </div>
+      </details>
+
+      <details class="faq-item"><summary>05:30 בבוקר זה מוקדם מדי בשבילי. יש אופציה אחרת?</summary>
+        <div class="answer"><p>מבינים לגמרי, וזו שאלה נפוצה. אימוני הקבוצה מתחילים ב-05:30 בדיוק כדי שתסיימו לפני שהיום מתחיל — אבל אם השעה הזו לא מסתדרת עם החיים שלכם, או שאתם לא גרים באזור, יש <a href="#remote"><strong>אימון מרחוק</strong></a> עם משה: אותו מדריך, אותו מחיר, פורמט אחר. שווה לשאול אותו בוואטסאפ מה מתאים לכם.</p></div>
+      </details>
+
+      <details class="faq-item"><summary>כמה אנשים יש באימון?</summary>
+        <div class="answer"><p>בערך <strong>10 רצים</strong> באימון, והמספר משתנה קצת בין קיץ לחורף. זה בדיוק הגודל שנותן את האנרגיה של קבוצה, ועדיין מאפשר למשה לראות כל אחד ולתת הנחיה אישית תוך כדי.</p></div>
+      </details>
+
+      <details class="faq-item"><summary>צריך אישור רפואי?</summary>
+        <div class="answer">
+          <p>לפני האימון הראשון <strong>תתבקשו לחתום על אישור בריאות קצר</strong> — כמה שאלות כן/לא על מצב הבריאות שלכם. זה לוקח דקה, וזה מה שמאפשר למשה להתאים לכם את המאמץ נכון מהבוקר הראשון.</p>
+          <p>אם סימנתם "כן" באחת השאלות, או אם אתם מטופלים במצב לב, לחץ דם, סוכרת, בעיה נשימתית או פציעה פעילה — <strong>מומלץ להתייעץ עם הרופא/ה שלכם לפני שמתחילים</strong>, ולהביא אישור. זה לא נועד לעכב אתכם, אלא כדי שנדע איך לבנות אתכם.</p>
+          <p>אם אתם מעל גיל 40 ולא הייתם פעילים בשנים האחרונות — כדאי לעשות בדיקה אצל רופא/ת המשפחה לפני התחלת פעילות סדירה.</p>
+        </div>
+      </details>
+
+      <!-- שאלת מזג האוויר הוסרה: לא הייתה לה תשובה, רק קופסת השלמה גלויה.
+           להחזרה — לכתוב את המדיניות בפועל, לא להחזיר שאלה ריקה. -->
+
+      <details class="faq-item"><summary>אני לא גר/ה בראשון לציון. אפשר בכל זאת להתאמן עם משה?</summary>
+        <div class="answer"><p>כן — <a href="#remote"><strong>אימון מרחוק</strong></a>, באותו מחיר של 350 ₪ לחודש ובאותו חוסר התחייבות. אתם רצים איפה שאתם נמצאים, ומשה מלווה אתכם משם. המתכונת המדויקת נקבעת בשיחה אתו, כי היא נבנית לפי המטרה והתנאים שלכם.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== סקשן 12 — CTA סופי (על תמונת הזריחה + scrim) ===== -->
+<section class="section final-cta" id="final" aria-labelledby="final-title">
+  <div class="wrap">
+    <h2 id="final-title">הבוקר הראשון הוא היחיד שקשה</h2>
+    <div class="measure">
+      <p>אתם כבר יודעים שאתם רוצים לרוץ. השאלה היחידה שנשארה היא אם מחר בבוקר אתם קמים לבד — או שיש קבוצה שמחכה לכם במערב ראשון לציון.</p>
+      <p>בואו לאימון ניסיון אחד, על חשבוננו. מהמקום שבו אתם נמצאים היום, בקצב שלכם. ואם תחליטו להמשיך — 350 ₪ לחודש (כולל מע"מ), בלי התחייבות.</p>
+    </div>
+
+    <div class="btn-row">
+      <a class="btn btn-primary js-goto-form" href="#lead"
+         data-cta="primary" data-event="trial-signup" data-variant="final" data-intent="trial">
+        מגיע/ה לאימון ניסיון חינם
+      </a>
+      <a class="btn btn-secondary js-goto-form" href="#lead"
+         data-cta="secondary" data-event="lead-form-open" data-variant="final" data-intent="form">
+        רוצה שמשה יחזור אליי
+        <svg class="chev" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M10 2 4 8l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+
+    <p class="free-note">
+      <strong>אימון קבוצתי אחד להתנסות, ללא עלות.</strong> אין חיוב ואין צורך למסור אמצעי תשלום.<br>
+      מי שממשיך — 350 ₪ לחודש (כולל מע"מ), ללא התחייבות.
+    </p>
+
+    <p style="margin-top:var(--s-4)">
+      <a href="https://wa.me/972508688425?text=%D7%94%D7%99%D7%99%20%D7%9E%D7%A9%D7%94%2C%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%9E%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20Run2dream%20%F0%9F%8F%83%0A%D7%90%D7%A0%D7%99%20%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%94%D7%92%D7%99%D7%A2%20%D7%9C%D7%90%D7%99%D7%9E%D7%95%D7%9F%20%D7%94%D7%A0%D7%99%D7%A1%D7%99%D7%95%D7%9F.%0A%D7%94%D7%A8%D7%9E%D7%94%20%D7%A9%D7%9C%D7%99%20%D7%94%D7%99%D7%95%D7%9D%3A%20(%D7%9E%D7%AA%D7%97%D7%99%D7%9C%2F%D7%94%20%C2%B7%20%D7%A8%D7%A5%2F%D7%94%20%D7%9E%D7%93%D7%99%20%D7%A4%D7%A2%D7%9D%20%C2%B7%20%D7%A8%D7%A5%2F%D7%94%20%D7%91%D7%90%D7%95%D7%A4%D7%9F%20%D7%A7%D7%91%D7%95%D7%A2)"
+         target="_blank" rel="noopener"
+         data-cta="whatsapp" data-event="whatsapp-click" data-variant="final">
+        שאלה מהירה? כתבו למשה בוואטסאפ<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+      </a>
+    </p>
+  </div>
+</section>
+
+<!-- ===== בלוקים משפטיים ===== -->
+<section class="legal" id="legal" aria-labelledby="legal-title">
+  <div class="wrap">
+    <h2 id="legal-title" class="visually-hidden">מידע משפטי</h2>
+
+    <details id="terms">
+      <summary>תנאי הצטרפות ותשלום</summary>
+      <div class="legal-body">
+        <h3>מי נותן את השירות</h3>
+        <p>משה בן מאיר, עוסק מורשה 040788036, מערב ראשון לציון. יצירת קשר: <a href="tel:+972508688425">050-868-8425</a>.</p>
+
+        <h3>מה כולל השירות</h3>
+        <ul>
+          <li><strong>אימוני בוקר בקבוצה</strong> — 4 אימונים מודרכים בשבוע, בימים שני, רביעי, שישי ושבת, בשעות 05:30–06:30 (בשבת המשך והשעה משתנים לפי אופי האימון). <strong>אין מקום אימון קבוע:</strong> המיקום מתחלף מאימון לאימון, כולם במערב ראשון לציון — לפעמים גם על מסלול אתלטיקה — ונקודת המפגש המדויקת נשלחת מראש בהודעת וואטסאפ.</li>
+          <li><strong>אימון מרחוק</strong> — תוכנית אימונים אישית, משוב על הריצות ושיחות עם משה. המתכונת המדויקת נקבעת בשיחה, לפי המטרה והתנאים של הרץ.</li>
+        </ul>
+
+        <h3>המחיר</h3>
+        <p><strong>350 ₪ לחודש (כולל מע"מ)</strong>, לכל אחד מהמסלולים. אין דמי הרשמה ואין תשלום נוסף.</p>
+
+        <h3>תשלום</h3>
+        <p>התשלום מתבצע אחת לחודש, ישירות מול משה. אמצעי התשלום נקבע בתיאום אתכם בשיחה.
+          <strong>אין תשלום דרך האתר, ואין מסירת פרטי אשראי באתר.</strong>
+          אין דמי הרשמה, ואין תשלום נוסף מעבר לדמי המנוי החודשיים.</p>
+        <!-- אין לאסוף פרטי אמצעי תשלום בדף. אם תתווסף סליקה — קישור חיצוני בלבד. -->
+
+        <h3>תקופת ההתקשרות</h3>
+        <p>מנוי חודשי מתחדש, <strong>ללא תקופת התחייבות</strong>. חודש שכבר שולם ממשיך עד סופו.</p>
+
+        <h3>ביטול</h3>
+        <p>ראו <a href="#cancellation" class="js-open-legal">ביטול והפסקת מנוי</a>.</p>
+
+        <p><strong>לפני האימון הראשון</strong> תתבקשו לחתום על אישור בריאות קצר.</p>
+      </div>
+    </details>
+
+    <details id="cancellation">
+      <summary>ביטול והפסקת מנוי</summary>
+      <div class="legal-body">
+        <h3>ביטול תוך 14 יום מההצטרפות</h3>
+        <p>מכיוון שההצטרפות נעשית מרחוק (טלפון/וואטסאפ/אתר), אתם רשאים לבטל את העסקה <strong>בתוך 14 ימים ממועד ההצטרפות</strong> — גם אם כבר התחלתם להתאמן. במקרה כזה תשלמו רק על האימונים שכבר קיבלתם, ונחזיר לכם את היתרה בתוך 14 ימים. דמי ביטול, אם ייגבו, לא יעלו על 5% מהתשלום או 100 ₪ — לפי הנמוך.</p>
+
+        <h3>הפסקת המנוי בכל שלב</h3>
+        <p>המנוי חודשי ומתחדש, <strong>בלי תקופת התחייבות</strong>. אפשר להפסיק בכל רגע — בהודעה בוואטסאפ, בטלפון או במייל, לפי מה שנוח לכם. ההודעה נקלטת בתוך <strong>3 ימי עסקים</strong>, החידוש הבא מבוטל, והחודש ששולם ממשיך עד סופו.</p>
+        <p><strong>החודש ששולם ממשיך עד סופו, ואין תשלום נוסף אחריו.</strong> כלומר: אתם ממשיכים להתאמן עד תום החודש שכבר שילמתם עליו, ולא תחויבו על שום חודש שאחריו. אין החזר יחסי על החודש שכבר החל — אבל גם לא מפסידים אותו.</p>
+        <p class="small muted">שימו לב: זה שונה מזכות הביטול של 14 הימים שבסעיף הקודם, שבה כן מוחזרת היתרה.</p>
+
+        <h3>איך מודיעים</h3>
+        <p>וואטסאפ <a href="tel:+972508688425">050-868-8425</a> · טלפון <a href="tel:+972508688425">050-868-8425</a> · דוא"ל <a href="mailto:moshe@moshebm.co.il">moshe@moshebm.co.il</a></p>
+      </div>
+    </details>
+
+    <details id="privacy">
+      <summary>מדיניות פרטיות</summary>
+      <div class="legal-body">
+        <p class="small muted">עדכון אחרון: 15.8.2026</p>
+
+        <h3>1. מי אנחנו</h3>
+        <p>קבוצת הריצה <span class="ltr">Run2dream</span> מופעלת על ידי <strong>משה בן מאיר</strong>, עוסק מורשה 040788036, מערב ראשון לציון. לפניות: <a href="tel:+972508688425">050-868-8425</a> · <a href="mailto:moshe@moshebm.co.il">moshe@moshebm.co.il</a>.</p>
+
+        <h3>2. האתר הזה לא אוסף ולא שומר עליכם מידע</h3>
+        <p>אין באתר טופס שנשלח לשרת, אין מסד נתונים, ואין רישום משתמשים. <strong>שום פרט שתקלידו כאן לא נשמר אצלנו ולא עובר לשום שירות חיצוני.</strong></p>
+
+        <h3>3. מה כן קורה כשאתם משאירים פרטים</h3>
+        <p>הפרטים שתקלידו משמשים <strong>להרכבת הודעת וואטסאפ מוכנה</strong>, שנפתחת אצלכם באפליקציה. <strong>אתם</strong> מחליטים אם לשלוח אותה. שימו לב לשני דברים:</p>
+        <ul>
+          <li>תוכן ההודעה נכלל בכתובת האינטרנט שנפתחת, ולכן <strong>מגיע לשרתי <span class="ltr">WhatsApp</span> (חברת <span class="ltr">Meta</span>) כבר בעת הפתיחה</strong> — גם אם בסוף לא תשלחו. שרתי <span class="ltr">Meta</span> ממוקמים מחוץ לישראל, ופעילותם כפופה למדיניות הפרטיות שלה.</li>
+          <li>כתובת זו נשמרת בהיסטוריית הדפדפן שלכם. אם המכשיר משותף — כדאי לדעת.</li>
+        </ul>
+
+        <h3>4. מה קורה אחרי שההודעה נשלחת</h3>
+        <p>ההודעה מגיעה לוואטסאפ של משה, <strong>ונשמרת שם</strong> — כמו כל התכתבות. משה משתמש בה כדי לחזור אליכם ולתאם. <strong>איננו מוכרים ואיננו מעבירים את פרטיכם לאף גורם.</strong> רוצים שנמחק את ההתכתבות והפרטים? כתבו לנו ונמחק.</p>
+
+        <h3>5. כפתור הוואטסאפ באתר</h3>
+        <p>לחיצה על כפתור הוואטסאפ מעבירה אתכם לאפליקציית <span class="ltr">WhatsApp</span> (<span class="ltr">Meta</span>). מרגע המעבר חלה מדיניות הפרטיות של <span class="ltr">Meta</span>.</p>
+
+        <h3>6. עוגיות וכלי מדידה</h3>
+        <p><strong>איננו מפעילים עוגיות פרסום, פיקסלים או כלי מדידה של צד שלישי.</strong> אם נוסיף בעתיד — נעדכן מדיניות זו מראש ונבקש את הסכמתכם.</p>
+        <p class="small muted">הגופנים בדף אינם נטענים מ-<span class="ltr">Google Fonts</span> ולא מאף ספק חיצוני — ולכן אין כאן חשיפת כתובת <span class="ltr">IP</span> לצד שלישי בטעינה.</p>
+
+        <h3>7. אחסון האתר</h3>
+        <p>האתר מתארח אצל ספק אחסון חיצוני, השומר — כמו כל שרת אינטרנט — לוגים טכניים הכוללים כתובת <span class="ltr">IP</span> ומועד הגישה. איננו מוסרים לו שום מידע נוסף עליכם, ואיננו עושים שימוש בלוגים אלה.</p>
+
+        <h3>8. הזכויות שלכם</h3>
+        <p>לדעת איזה מידע שמור עליכם, לבקש לתקנו או למחקו: <a href="tel:+972508688425">050-868-8425</a> · <a href="mailto:moshe@moshebm.co.il">moshe@moshebm.co.il</a>.</p>
+
+        <h3>9. אישורי בריאות</h3>
+        <p>אישור הבריאות שתחתמו עליו לפני האימון הראשון <strong>אינו נאסף דרך האתר</strong>. הוא נשמר אצל משה בלבד, משמש להתאמת האימון, ומושמד בסיום ההשתתפות.</p>
+      </div>
+    </details>
+
+    <details id="accessibility">
+      <summary>הצהרת נגישות</summary>
+      <div class="legal-body">
+        <p>אנחנו רואים חשיבות בכך שכל אדם יוכל להשתמש בדף הזה. הדף פותח בהתאם ל<strong>תקן הישראלי ת"י 5568 ברמה <span class="ltr">AA</span></strong>, המבוסס על הנחיות <span class="ltr">WCAG 2.0</span>.</p>
+        <p><strong>מה נעשה:</strong> מבנה כותרות סמנטי · תמיכה מלאה בניווט מקלדת · חיווי פוקוס נראה · טקסט חלופי לתמונות · תוויות ברורות בטופס והודעות שגיאה מוקראות · יחסי ניגודיות תואמי <span class="ltr">AA</span> · תמיכה ב-<span class="ltr">RTL</span> · התאמה למסכי מובייל ולהגדלת טקסט.</p>
+        <p><strong>הסתייגות:</strong> ייתכנו רכיבים שטרם הונגשו במלואם. אנחנו פועלים לשיפור מתמיד.</p>
+        <!-- אין "רכז נגישות": החובה חלה על מעסיק 25 עובדים ומעלה. ציון תפקיד שלא מונה
+             היה יוצר מצג של מינוי פורמלי והכשרה שלא התקיימו. ערוץ הדיווח עצמו — חובה, ונשמר. -->
+        <p><strong>נתקלתם בבעיית נגישות?</strong> נשמח לדעת ונתקן. פנו אלינו: <a href="tel:+972508688425">050-868-8425</a> (טלפון או וואטסאפ).</p>
+        <p>תאריך עדכון ההצהרה: 15.8.2026</p>
+      </div>
+    </details>
+
+    <!-- באנר עוגיות — עוגן ריק בכוונה: אין באנר כל עוד אין פיקסל.
+         שכבת ההסכמה יושבת בסקריפט בתחתית הדף. -->
+    <div id="cookie-banner" hidden aria-hidden="true"></div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer on-dark">
+  <div class="wrap">
+    <img class="flogo" src="assets/logo-lockup.png" alt="Run2dream" width="1536" height="1024" loading="lazy" decoding="async">
+    <p style="color:#fff;font-family:var(--font-head);font-weight:600;margin-bottom:var(--s-2)">
+      <span class="ltr">Run2dream</span> · להגשים את חלום הריצה
+    </p>
+    <p>אימוני ריצה קבוצתיים במערב ראשון לציון · אימון ריצה מרחוק</p>
+    <p><strong style="color:#fff">משה בן מאיר</strong> · עוסק מורשה 040788036 · מערב ראשון לציון</p>
+    <p>וואטסאפ וטלפון: <a href="tel:+972508688425">050-868-8425</a>
+       · <a href="mailto:moshe@moshebm.co.il">moshe@moshebm.co.il</a></p>
+
+    <nav aria-label="מידע משפטי">
+      <a href="#terms" class="js-open-legal">תנאי הצטרפות ותשלום</a>
+      <a href="#cancellation" class="js-open-legal">ביטול והפסקת מנוי</a>
+      <a href="#privacy" class="js-open-legal">מדיניות פרטיות</a>
+      <a href="#accessibility" class="js-open-legal">הצהרת נגישות</a>
+    </nav>
+
+    <p class="small" style="margin-top:var(--s-5);color:#9FB0C2">
+      ראן טו דרים · <span class="ltr">Run2dream</span> — קבוצת ריצה בראשון לציון.
+    </p>
+  </div>
+</footer>
+
+<!-- CTA תמידי — דסקטופ: FAB בפינה השמאלית התחתונה (הצד הפחות דומיננטי ב-RTL) -->
+<a class="wa-fab"
+   href="https://wa.me/972508688425?text=%D7%94%D7%99%D7%99%20%D7%9E%D7%A9%D7%94%2C%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%9E%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20Run2dream%20%F0%9F%8F%83%0A%D7%90%D7%A0%D7%99%20%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%94%D7%92%D7%99%D7%A2%20%D7%9C%D7%90%D7%99%D7%9E%D7%95%D7%9F%20%D7%94%D7%A0%D7%99%D7%A1%D7%99%D7%95%D7%9F.%0A%D7%94%D7%A8%D7%9E%D7%94%20%D7%A9%D7%9C%D7%99%20%D7%94%D7%99%D7%95%D7%9D%3A%20(%D7%9E%D7%AA%D7%97%D7%99%D7%9C%2F%D7%94%20%C2%B7%20%D7%A8%D7%A5%2F%D7%94%20%D7%9E%D7%93%D7%99%20%D7%A4%D7%A2%D7%9D%20%C2%B7%20%D7%A8%D7%A5%2F%D7%94%20%D7%91%D7%90%D7%95%D7%A4%D7%9F%20%D7%A7%D7%91%D7%95%D7%A2)"
+   target="_blank" rel="noopener"
+   aria-label="שליחת הודעת וואטסאפ למשה"
+   data-cta="whatsapp" data-event="whatsapp-click" data-variant="fab">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.6-6c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.1 0-.3 0-.4l-.8-1.8c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.7.7-1 1.6-.9 2.5a6 6 0 0 0 1.2 2.6 10.6 10.6 0 0 0 4.1 3.6c1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
+  <span>שאלה מהירה? כתבו למשה</span>
+</a>
+
+<!-- CTA תמידי — מובייל: סרגל דביק אחד עם שני הכפתורים, כדי שלא יסתיר את ה-CTA הסופי. -->
+<div class="sticky-bar" id="sticky-bar">
+  <a class="btn btn-primary js-goto-form" href="#lead"
+     data-cta="primary" data-event="trial-signup" data-variant="sticky" data-intent="trial">
+    מגיע/ה לאימון ניסיון
+  </a>
+  <a class="wa-square"
+     href="https://wa.me/972508688425?text=%D7%94%D7%99%D7%99%20%D7%9E%D7%A9%D7%94%2C%20%D7%94%D7%92%D7%A2%D7%AA%D7%99%20%D7%9E%D7%94%D7%90%D7%AA%D7%A8%20%D7%A9%D7%9C%20Run2dream.%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%A4%D7%A8%D7%98%D7%99%D7%9D%20%D7%A2%D7%9C%20%D7%90%D7%99%D7%9E%D7%95%D7%9F%20%D7%94%D7%A0%D7%99%D7%A1%D7%99%D7%95%D7%9F."
+     target="_blank" rel="noopener"
+     aria-label="שליחת הודעת וואטסאפ למשה"
+     data-cta="whatsapp" data-event="whatsapp-click" data-variant="sticky">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.6-6c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.1 0-.3 0-.4l-.8-1.8c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.7.7-1 1.6-.9 2.5a6 6 0 0 0 1.2 2.6 10.6 10.6 0 0 0 4.1 3.6c1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3Z"/></svg>
+  </a>
+</div>
+
+<!-- Schema · SportsActivityLocation
+     אין address ואין geo — נקודת המפגש משתנה ואין כתובת קבועה.
+     אין להמציא כתובת כדי "לספק את הסכימה".
+     jobTitle = "מדריך ריצות ארוכות" בלבד, ובלי hasCredential של תעודת מאמן. -->
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"SportsActivityLocation",
+  "name":"Run2dream",
+  "alternateName":"קבוצת הריצה של משה",
+  "description":"קבוצת ריצה במערב ראשון לציון בהובלת משה — אימוני בוקר 4 פעמים בשבוע, לכל הרמות: ממתחילים ועד רצים מנוסים.",
+  "slogan":"להגשים את חלום הריצה",
+  "sport":"ריצה",
+  "url":"https://run2dream.netlify.app/",
+  "image":"https://run2dream.netlify.app/assets/2026-08-15-run2dream-img06-og.jpg",
+  "telephone":"+972-50-868-8425",
+  "areaServed":{"@type":"City","name":"ראשון לציון"},
+  "openingHoursSpecification":[
+    {"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Wednesday","Friday"],"opens":"05:30","closes":"06:30"},
+    {"@type":"OpeningHoursSpecification","dayOfWeek":"Saturday","description":"אימון שבת — השעה והמשך משתנים לפי אופי האימון"}
+  ],
+  "employee":{
+    "@type":"Person",
+    "name":"משה בן מאיר",
+    "jobTitle":"מדריך ריצות ארוכות"
+  },
+  "makesOffer":[
+    {
+      "@type":"Offer",
+      "name":"מנוי חודשי — אימוני בוקר קבוצתיים",
+      "price":"350",
+      "priceCurrency":"ILS",
+      "valueAddedTaxIncluded":true,
+      "availability":"https://schema.org/InStock",
+      "itemOffered":{"@type":"Service","name":"אימוני בוקר קבוצתיים","areaServed":"מערב ראשון לציון"}
+    },
+    {
+      "@type":"Offer",
+      "name":"מנוי חודשי — אימון ריצה מרחוק",
+      "price":"350",
+      "priceCurrency":"ILS",
+      "valueAddedTaxIncluded":true,
+      "availability":"https://schema.org/InStock",
+      "itemOffered":{"@type":"Service","name":"אימון ריצה מרחוק"}
+    }
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "אני איטי מדי. באמת אפשר להצטרף?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "כן, ובלי כוכבית. הקבוצה מתפצלת לקבוצות קצב, ואתם רצים עם אנשים שרצים כמוכם. \"איטי\" זה יחסי — יש בקבוצה רצים שהתחילו בהליכה-ריצה והיום רצים 10 ק\"מ. לא לכולם זה קורה באותו קצב, וזה בסדר גמור — כל אחד מתקדם משלו. הדבר היחיד שאנחנו מבקשים הוא שתגיעו."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "מה אם לא אעמוד בקצב באמצע האימון?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "זה קורה, וזה בסדר גמור. מאטים, עוברים להליכה, נושמים וממשיכים — זה חלק מהאימון ולא כישלון בו. משה עובר בין הרצים ומתאים את המאמץ בזמן אמת. אף אחד לא נשאר לבד בשטח."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "לא רצתי כבר שנים. מאיפה מתחילים?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "מהתחלה, בהדרגה ובלי לשרוף שלבים. השבועות הראשונים בנויים על שילוב הליכה-ריצה והעלאה איטית של המאמץ — בדיוק כדי לחזור בהדרגה ובזהירות. הגוף מגיב מהר יותר ממה שאתם חושבים, אבל רק אם לא מזרזים אותו."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "מה אם אחסיר אימון?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "לא נורא, וזה לא \"מבטל\" לכם את ההתקדמות. יש 4 אימונים בשבוע — שני, רביעי, שישי ושבת — בדיוק כדי שתהיה גמישות. מגיעים לכמה שמתאים לכם באותו שבוע, והמנוי לא משתנה. מה שקובע הוא ההתמדה, לא הכמות — עדיף פעמיים בשבוע באופן קבוע מארבע פעמים בשבוע אחד ואז הפסקה."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "אני צריך/ה להיות בכושר לפני שאני מגיע/ה?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "לא. זו הטעות הכי נפוצה — אנשים מחכים \"להיכנס קצת לכושר\" ואז להצטרף, ובסוף לא מגיעים בכלל. הכושר הוא התוצאה של ההגעה, לא התנאי לה."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "מה צריך להביא לאימון הראשון?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "בגדי ספורט נוחים, נעלי ריצה ובקבוק מים. זה הכל. לא צריך ציוד מיוחד, שעון או אפליקציה."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "באילו ימים ושעות האימונים, ואיפה נפגשים?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "אימוני בוקר בימים שני, רביעי, שישי ושבת, בשעה 05:30–06:30. בשבת השעה והמשך משתנים לפי אופי האימון והמטרה שאתם בונים לקראתה. המיקום מתחלף מאימון לאימון, וכולם במערב ראשון לציון — לפעמים גם על מסלול אתלטיקה, לפי אופי האימון. אין מקום קבוע אחד, וזה בכוונה: ככה לא רצים כל בוקר את אותו הדבר. את נקודת המפגש המדויקת שולחים לכם בוואטסאפ מראש, כך שתמיד תדעו לאן להגיע — גם אם אתם לא מכירים את האזור."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "כמה זה עולה?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "350 ₪ לחודש (כולל מע\"מ), מנוי מתחדש ללא התחייבות — כולל את כל ארבעת אימוני הבוקר בשבוע. המחיר לא משתנה לפי כמה פעמים תגיעו, כך שככל שאתם מגיעים יותר, כל אימון עולה לכם פחות. אימון הניסיון הראשון הוא חינם — משלמים רק אם החלטתם להמשיך. תנאי הצטרפות ותשלום"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "כמה אנשים יש באימון?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "בערך 10 רצים באימון, והמספר משתנה קצת בין קיץ לחורף. זה בדיוק הגודל שנותן את האנרגיה של קבוצה, ועדיין מאפשר למשה לראות כל אחד ולתת הנחיה אישית תוך כדי."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "צריך אישור רפואי?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "לפני האימון הראשון תתבקשו לחתום על אישור בריאות קצר — כמה שאלות כן/לא על מצב הבריאות שלכם. זה לוקח דקה, וזה מה שמאפשר למשה להתאים לכם את המאמץ נכון מהבוקר הראשון. אם סימנתם \"כן\" באחת השאלות, או אם אתם מטופלים במצב לב, לחץ דם, סוכרת, בעיה נשימתית או פציעה פעילה — מומלץ להתייעץ עם הרופא/ה שלכם לפני שמתחילים, ולהביא אישור. זה לא נועד לעכב אתכם, אלא כדי שנדע איך לבנות אתכם. אם אתם מעל גיל 40 ולא הייתם פעילים בשנים האחרונות — כדאי לעשות בדיקה אצל רופא/ת המשפחה לפני התחלת פעילות סדירה."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "אני לא גר/ה בראשון לציון. אפשר בכל זאת להתאמן עם משה?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "כן — אימון מרחוק, באותו מחיר של 350 ₪ לחודש ובאותו חוסר התחייבות. אתם רצים איפה שאתם נמצאים, ומשה מלווה אתכם משם. המתכונת המדויקת נקבעת בשיחה אתו, כי היא נבנית לפי המטרה והתנאים שלכם."
+      }
+    }
+  ]
+}
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ==========================================================
+     שכבת הסכמה — מוכנה, לא פעילה (עדי, R6)
+     אין באנר ואין פיקסל. הפונקציונליות קיימת ורדומה בכוונה:
+     באנר שמבקש הסכמה לדבר שלא קיים הוא מצג שווא.
+     ========================================================== */
+  var CONSENT_KEY = "runf2dream-consent-v1";  // מגורסף: פיקסל אמיתי -> v2
+
+  function loadMarketingPixel(){
+    // ריק בכוונה. נקודת ההזרקה היחידה לפיקסל Meta / GA.
+    // אין להזריק אף סקריפט צד-שלישי מחוץ לפונקציה הזו.
+  }
+  function getConsent(){ try { return localStorage.getItem(CONSENT_KEY); } catch(e){ return null; } }
+  function applyConsent(value){                     // "all" | "essential"
+    try { localStorage.setItem(CONSENT_KEY, value); } catch(e){}
+    if (value === "all") loadMarketingPixel();
+  }
+  function resetConsent(){                          // חזרה מהסכמה
+    try { localStorage.removeItem(CONSENT_KEY); } catch(e){}
+    location.reload();
+  }
+  window.Run2dreamConsent = { get:getConsent, apply:applyConsent, reset:resetConsent };
+  if (getConsent() === "all") loadMarketingPixel();
+
+  /* ==========================================================
+     פתיחת חלון עמידה.
+     הדפדפן הפנימי של פייסבוק/אינסטגרם מתעלם מ-target="_blank",
+     וחוסמי פופ-אפ חוסמים פתיחה שלא בתוך מחוות הלחיצה.
+     לכן: window.open סינכרוני בתוך המחווה + fallback לניווט באותו חלון.
+     ========================================================== */
+  function openExternal(url){
+    var tab = null;
+    try { tab = window.open(url, "_blank", "noopener"); } catch(e){}
+    var usable = false;
+    try { usable = !!tab && !tab.closed; } catch(e){ usable = !!tab; }
+    if (!usable) { window.location.href = url; return false; }
+    try { tab.opener = null; } catch(e){}
+    return true;
+  }
+
+  /* ==========================================================
+     CTA ראשי/משני → גלילה לטופס + קביעת ההקשר (ניסיון / שיחה)
+     ========================================================== */
+  var intentField = document.getElementById("lead-intent");
+  document.addEventListener("click", function(e){
+    var el = e.target.closest ? e.target.closest(".js-goto-form") : null;
+    if (!el) return;
+    e.preventDefault();
+    if (intentField) intentField.value = el.getAttribute("data-intent") || "form";
+    var target = document.getElementById("lead");
+    if (!target) return;
+    target.scrollIntoView({ behavior: prefersReduced() ? "auto" : "smooth", block: "start" });
+    var first = document.getElementById("lead-name");
+    if (first) setTimeout(function(){ try { first.focus({preventScroll:true}); } catch(err){ first.focus(); } }, prefersReduced() ? 0 : 450);
+  });
+
+  function prefersReduced(){
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  /* ==========================================================
+     פתיחת בלוק משפטי מקישור עוגן (<details> לא נפתח מאליו)
+     ========================================================== */
+  function openLegal(hash){
+    var id = (hash || "").replace("#","");
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (!el || el.tagName.toLowerCase() !== "details") return;
+    el.open = true;
+    el.scrollIntoView({ behavior: prefersReduced() ? "auto" : "smooth", block: "start" });
+    var s = el.querySelector("summary");
+    if (s) setTimeout(function(){ s.focus(); }, prefersReduced() ? 0 : 400);
+  }
+  document.addEventListener("click", function(e){
+    var a = e.target.closest ? e.target.closest("a.js-open-legal") : null;
+    if (!a) return;
+    var href = a.getAttribute("href") || "";
+    if (href.charAt(0) !== "#") return;
+    e.preventDefault();
+    history.replaceState(null, "", href);
+    openLegal(href);
+  });
+  if (location.hash) openLegal(location.hash);
+
+  /* ==========================================================
+     טופס → הודעת וואטסאפ.
+     אין action, אין method, אין fetch, אין XHR — אפס בקשות רשת.
+     ========================================================== */
+  var WA_BASE = "https://wa.me/972508688425?text=";
+  var form    = document.getElementById("lead-form");
+
+  function setError(fieldId, on){
+    var f = document.getElementById(fieldId);
+    if (f) f.classList.toggle("has-error", !!on);
+  }
+  function markInvalid(input, on){
+    if (input) input.setAttribute("aria-invalid", on ? "true" : "false");
+  }
+
+  // שדות: שם · רמה · הערה חופשית. אין שדה טלפון (הוואטסאפ נושא את המספר) ואין צ'קבוקסים.
+  function buildMessage(){
+    var name  = document.getElementById("lead-name").value.trim();
+    var level = document.getElementById("lead-level").value;
+    var note  = document.getElementById("lead-note").value.trim();
+    var intent= intentField ? intentField.value : "form";
+
+    var lines = [];
+    lines.push("היי משה, הגעתי מהאתר של Run2dream 🏃");
+    lines.push(intent === "trial"
+      ? "אני רוצה להגיע לאימון הניסיון."
+      : "אשמח לשמוע עוד על הקבוצה.");
+    lines.push("");
+    lines.push("השם שלי: " + name);
+    lines.push("איפה אני היום: " + level);
+    if (note) lines.push("משהו שחשוב שתדע: " + note);
+    return lines.join("\n");
+  }
+
+  // אין "מצב הצלחה" — כי אין הצלחה: המשתמש עדיין צריך ללחוץ "שלח" בתוך וואטסאפ.
+  // הכפתור מנווט, וזהו. מסלול הגיבוי (טלפון/דוא"ל) גלוי תמיד מתחתיו.
+  if (form) form.addEventListener("submit", function(e){
+    e.preventDefault();   // תמיד. הטופס לעולם לא מוגש לשום מקום ולא יוצר בקשת רשת.
+
+    var nameEl  = document.getElementById("lead-name");
+    var levelEl = document.getElementById("lead-level");
+
+    var okName  = nameEl.value.trim().length >= 2;
+    var okLevel = !!levelEl.value;
+
+    setError("f-name",  !okName);   markInvalid(nameEl,  !okName);
+    setError("f-level", !okLevel);  markInvalid(levelEl, !okLevel);
+
+    if (!okName)  { nameEl.focus();  return; }
+    if (!okLevel) { levelEl.focus(); return; }
+
+    // פתיחה סינכרונית בתוך מחוות הלחיצה — אחרת חוסם החלונות הקופצים חוסם,
+    // והדפדפן הפנימי של פייסבוק/אינסטגרם מתעלם מ-_blank. fallback: ניווט באותו חלון.
+    openExternal(WA_BASE + encodeURIComponent(buildMessage()));
+  });
+
+  /* ==========================================================
+     סרגל דביק במובייל:
+     מופיע אחרי שה-hero יצא מה-viewport, ונעלם כשהטופס או ה-CTA הסופי נכנסים.
+     ========================================================== */
+  var bar = document.getElementById("sticky-bar");
+  if (bar && "IntersectionObserver" in window){
+    var heroOut = false, blockerIn = false;
+
+    function paint(){
+      var show = heroOut && !blockerIn;
+      bar.classList.toggle("is-visible", show);
+      document.body.classList.toggle("has-sticky", show);
+    }
+
+    var hero = document.querySelector(".hero");
+    if (hero) new IntersectionObserver(function(en){
+      heroOut = !en[0].isIntersecting;
+      paint();
+    }, {threshold:0}).observe(hero);
+
+    var blockers = [document.getElementById("lead"), document.getElementById("final")].filter(Boolean);
+    var seen = new Map();
+    var blockObs = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ seen.set(en.target, en.isIntersecting); });
+      blockerIn = Array.from(seen.values()).some(Boolean);
+      paint();
+    }, {threshold:0});
+    blockers.forEach(function(el){ blockObs.observe(el); });
+  }
+
+  /* ==========================================================
+     עוגן מעקב לטל: צפייה בסקשן החששות (יורה פעם אחת)
+     כאן לא נשלח שום אירוע — רק נקודת חיבור מסומנת.
+     ========================================================== */
+  var fears = document.getElementById("fears");
+  if (fears && "IntersectionObserver" in window){
+    var fired = false;
+    var fo = new IntersectionObserver(function(en){
+      if (fired || !en[0].isIntersecting) return;
+      fired = true;
+      fo.disconnect();
+      // ANALYTICS: נקודת חיבור לאירוע "fears-section-view" (טל).
+      // לא נשלח כלום כל עוד אין פיקסל ואין הסכמה.
+      document.dispatchEvent(new CustomEvent("runf2dream:event", {
+        detail:{ event:"fears-section-view", variant:"section-3" }
+      }));
+    }, {threshold:0.5});
+    fo.observe(fears);
+  }
+
+  /* ==========================================================
+     ANALYTICS: נתב אירועים אחיד לכל [data-event].
+     טל מאזין ל-runf2dream:event ומחבר קמפיינים בלי לגעת בלוגיקה.
+     נכון לעכשיו: לא נשלחת שום בקשה ולא נטען שום סקריפט צד-שלישי.
+     ========================================================== */
+  document.addEventListener("click", function(e){
+    var el = e.target.closest ? e.target.closest("[data-event]") : null;
+    if (!el) return;
+    document.dispatchEvent(new CustomEvent("runf2dream:event", {
+      detail:{
+        event:   el.getAttribute("data-event"),
+        cta:     el.getAttribute("data-cta") || null,
+        variant: el.getAttribute("data-variant") || null
+      }
+    }));
+  }, true);
+})();
+</script>
+
+</body>
+</html>

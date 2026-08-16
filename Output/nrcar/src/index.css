@@ -1,0 +1,59 @@
+@import url("https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   מקור: itai/Outputs/2026-08-13-nrcar-design.md §4.2 — מועתק כלשונו.
+   ============================================================================ */
+
+@layer base {
+  /* 112.5% = 18px. כל סקאלת ה-rem נשענת על השורה הזאת. */
+  html {
+    font-size: 112.5%;
+    font-family: Assistant, "Segoe UI", system-ui, sans-serif;
+  }
+  body {
+    @apply bg-canvas text-ink antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* טבעת focus אחידה: 3px brand-600 + offset לבן. 6.70:1 מול לבן,
+     וה-offset הוא מה שמפריד אותה גם על גבי כפתור כחול. */
+  :focus-visible {
+    @apply outline-none ring-[3px] ring-brand-600 ring-offset-2 ring-offset-white;
+  }
+  /* מספרים, תאריכים ולוחיות רישוי — LTR מבודד גם בעמוד RTL */
+  .num {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
+  :root {
+    --nav-h: 76px;
+  }
+}
+
+@layer components {
+  /* מרווח תחתון שמפנה מקום לסרגל הניווט הקבוע + safe-area של האייפון */
+  .app-main {
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
+  }
+  /* אייקוני כיווניות בלבד (chevron/arrow) — לא Car, לא Phone, לא לוגו */
+  [dir="rtl"] .icon-flip {
+    transform: scaleX(-1);
+  }
+  .skeleton {
+    @apply animate-pulse rounded-xl bg-surface-sunken;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

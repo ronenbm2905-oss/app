@@ -36,6 +36,53 @@ API עברית + Web Audio API לצלילים מסונתזים). הבריף המ
 
 ## Session Log
 
+### 2026-08-15 — פרישת גרסת הערות ל-Netlify + מייל לדורית מוכן [shipped]
+- **What was done:** רונן פרס את `dist/` (כולל ה-PWA) ל-Netlify Drop → **האתר חי**:
+  `haderech-lamilim.netlify.app` (שינה שם מ-`leafy-pegasus-1730e2`). מחובר לחשבון → פרישה
+  קבועה, לא לינק זמני. אימתתי את האתר החי (in-app browser): כותרת "הדרך למילים", כל 8 מצבי
+  המשחק, שורת קרדיט דורית + שורת "אינה אוספת מידע", **אפס שגיאות console**. עדכנתי את טיוטת
+  המייל לדורית (`maya/Outputs/2026-07-29-email-dorit-haderech-app-feedback.md`) עם הלינק הסופי
+  + שורת "הוסף למסך הבית" (PWA).
+- **Decisions:** רינון השם ל-`haderech-lamilim` לפני נעילת הלינק במייל (מקצועי יותר לשליחה).
+- **Notes / Caveats:** המייל **מוכן אך לא נשלח** — חוק הברזל של מאיה, השליחה בידי רונן. גרסת
+  הערות בלבד; חוסמי public שנותרו: M1 (אישור תוכן+5 מיפויי-רגש ע"י דורית בן מאיר) + M3-הצהרה
+  (הצהרת נגישות + פטור-עוסק ⚖️). לעדכון עתידי: `npm run build` → גרירת `dist` שוב לאותו אתר.
+- **Related:** [[#2026-08-15 — נועם: יישום PWA (מסלול א') [shipped]]]
+
+### 2026-08-15 — נועם: יישום PWA (מסלול א') [shipped]
+- **What was done:** רונן אישר את מסלול א' מהערכת נועם → יישמתי PWA מלא על האפליקציה
+  הקיימת. (1) התקנתי `vite-plugin-pwa` והוספתי ל-`vite.config.js`: `registerType:'autoUpdate'`,
+  Workbox `globPatterns:**/*.{js,css,html,jpg,woff2,svg,png}`, `maximumFileSizeToCacheInBytes`
+  הוגדל ל-5MB (הקלפים גדולים), `base:'./'` נשמר. (2) manifest מלא: `name`/`short_name`
+  "הדרך למילים", `dir:rtl`, `lang:he`, `theme_color:#8ECFDD`, `background_color:#FAF7EF`,
+  `display:standalone`, `orientation:portrait`, `start_url`/`scope:'./'`, 3 icons (192/512/
+  512-maskable). (3) **3 אייקונים תקינים** נוצרו ב-`public/` דרך sharp (`scripts/gen-icons.mjs`)
+  — בועת דיבור קרם + 3 נקודות "שביל" על טורקיז המותג. + `apple-touch-icon` (180) ו-`favicon.png`.
+  (4) **self-host פונט Varela Round** — הורדתי את woff2 (עברית+לטינית) ל-`public/fonts/`, הוספתי
+  `@font-face` ב-`src/index.css`, והסרתי לגמרי את קישור Google Fonts CDN מ-`index.html`
+  (סוגר את R2 של עדי; גם יתרון פרטיות לקטגוריית ילדים — אפס קריאות רשת חיצוניות). (5) meta ל-iOS
+  ב-`index.html`: `apple-mobile-web-app-capable/-status-bar-style/-title` + `apple-touch-icon` +
+  `viewport-fit=cover`.
+- **QA (אומת, לא הוצהר):** `npm run build` נקי (1546 מודולים, PWA precache 69 entries / 2683 KiB).
+  `dist/` כולל `manifest.webmanifest` + `sw.js` + `workbox-*.js` + כל 5 האייקונים + `fonts/` +
+  **24 הקלפים** (אפס רגרסיה). `base:'./'` נשמר — כל נתיבי index.html יחסיים (`./assets/...`),
+  ו-Vite שכתב את url הפונט ב-CSS ל-`../fonts/` (פורטבילי, עקבי עם base). הרצתי `npm run preview`
+  ו-curl לכל הנכסים: index/manifest/sw/font/card/icon → כולם **200** עם content-type נכון
+  (`application/manifest+json`, `text/javascript`, `font/woff2`, `image/jpeg`, `image/png`).
+  `grep` על `dist/` → **אפס** שאריות googleapis/gstatic. אין שגיאות בלוג ה-preview.
+- **Decisions:**
+  - **אייקון = placeholder ממותג** (לא סופי). פונקציונלי ותקין (עובר דרישת maskable safe-zone,
+    צבע מותג), אבל **איתי יכול לייצר אייקון מלוטש** בהמשך דרך `gpt-image-gen`. הוסר favicon=card-01.
+  - **`/fonts/` → `../fonts/`:** ב-CSS השתמשתי ב-`/fonts/`; Vite שכתב אוטומטית ל-`../fonts/`
+    בבנייה (יחסי ל-`/assets/`) → עובד גם משורש דומיין וגם מתת-נתיב, עקבי עם `base:'./'`.
+  - **SW דורש http/https** — פתיחת `dist/index.html` מ-`file://` תעבוד אך בלי service worker;
+    תועד ב-README. יעד הפרישה: שורש דומיין על HTTPS (Netlify/Firebase Hosting).
+- **Notes / Caveats:** לא נגעתי ב-`src/data/cards.js` (תוכן ממתין לאישור דורית בן מאיר — M1).
+  `firebase deploy`/פרישה חסומים לי — רק הכנתי את `dist/`; הפרישה דרך רונן. חוסמי public שנותרו
+  ללא שינוי: M1 (אישור תוכן+רגשות) + M3-הצהרה (הצהרת נגישות + פטור-עוסק ⚖️). R2 (self-host פונט)
+  **נסגר** בסשן זה. אופציונלי: החלפת האייקון ב-placeholder בגרסת איתי.
+- **Related:** [[#2026-08-08 — נועם: הערכת הבאה לחנויות (PWA מול Capacitor) [shipped]]], [[#2026-07-27 — שער משפטי (עדי): 🟠 אושר עם תיקונים חובה [shipped]]]
+
 ### 2026-07-26 — קליטת בריף + ניתוב לנועם [planned]
 - **What was done:** רונן הניח בריף חדש `Briefs/haderech/` (spec.docx + 3 PDF). קראתי
   את האפיון המלא (חולץ מ-`document.xml`) ואת ה-vault. אימות סביבה: **אין Python/poppler/

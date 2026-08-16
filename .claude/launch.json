@@ -77,6 +77,29 @@
       "runtimeArgs": ["--yes", "serve", "-l", "5184", "-s", "dist"],
       "cwd": "Output/absolut-diamonds",
       "port": 5184
+    },
+    {
+      "name": "mas-shevach",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "."],
+      "cwd": "Output/2026-08-15-mas-shevach",
+      "port": 5185,
+      "autoPort": true
+    },
+    {
+      "name": "run2dream",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "."],
+      "cwd": "Output/runf2dream",
+      "port": 5187,
+      "autoPort": true
+    },
+    {
+      "name": "mas-shevach-leads",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5186", "--strictPort"],
+      "cwd": "Output/mas-shevach-leads",
+      "port": 5186
     }
   ]
 }

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>og:image — מס שבח</title>
+<style>
+  /* self-hosted (OFL 1.1) — same files the landing page ships, so the render
+     matches the page exactly and no network call is needed at render time */
+  @font-face{font-family:'Assistant';font-style:normal;font-weight:200 800;font-display:block;
+    src:url(../../Output/2026-08-15-mas-shevach/assets/fonts/assistant-hebrew.woff2) format('woff2');
+    unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Assistant';font-style:normal;font-weight:200 800;font-display:block;
+    src:url(../../Output/2026-08-15-mas-shevach/assets/fonts/assistant-latin.woff2) format('woff2')}
+  @font-face{font-family:'Frank Ruhl Libre';font-style:normal;font-weight:300 900;font-display:block;
+    src:url(../../Output/2026-08-15-mas-shevach/assets/fonts/frankruhllibre-hebrew.woff2) format('woff2');
+    unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+  @font-face{font-family:'Frank Ruhl Libre';font-style:normal;font-weight:300 900;font-display:block;
+    src:url(../../Output/2026-08-15-mas-shevach/assets/fonts/frankruhllibre-latin.woff2) format('woff2')}
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px}
+  body{
+    background:#08243D;
+    font-family:'Assistant',sans-serif;
+    display:grid;
+    grid-template-columns:1fr 470px;
+    align-items:center;
+    overflow:hidden;
+    position:relative;
+  }
+  /* hairline grid — abstract, ledger-like, very low contrast */
+  body::before{
+    content:'';position:absolute;inset:0;
+    background-image:repeating-linear-gradient(to left,rgba(220,231,240,.055) 0 1px,transparent 1px 60px);
+    pointer-events:none;
+  }
+  /* warm accent rule anchored to the right (RTL start) edge */
+  body::after{
+    content:'';position:absolute;top:0;right:0;width:12px;height:100%;
+    background:#E8A85C;z-index:1;
+  }
+
+  /* right padding clears the 12px spine + 80px breathing room */
+  .text{padding:0 92px 0 40px;position:relative;z-index:2}
+
+  .eyebrow{
+    font-size:23px;font-weight:700;letter-spacing:.16em;
+    color:#E8A85C;margin-bottom:26px;
+  }
+  h1{
+    font-family:'Frank Ruhl Libre',serif;font-weight:800;
+    font-size:68px;line-height:1.15;color:#FFFFFF;
+    letter-spacing:-.01em;margin-bottom:24px;
+  }
+  .sub{
+    font-size:29px;line-height:1.45;font-weight:400;color:#DCE7F0;
+    max-width:26ch;
+  }
+  .rule{width:88px;height:3px;background:#E8A85C;margin:34px 0 22px}
+  .meta{
+    font-size:22px;font-weight:600;color:#DCE7F0;letter-spacing:.01em;
+  }
+  .meta b{color:#FFFFFF;font-weight:700}
+
+  /* ---- abstract mechanism motif: one tall bar above the bracket line,
+         four short bars beneath it. No figures, no currency, no text. ---- */
+  .motif{position:relative;z-index:2;height:100%;display:flex;align-items:center;justify-content:center}
+  .plot{position:relative;width:340px;height:330px}
+  .baseline{position:absolute;right:0;left:0;bottom:0;height:2px;background:rgba(220,231,240,.38)}
+  .threshold{
+    position:absolute;right:-14px;left:-14px;bottom:150px;height:0;
+    border-top:2px dashed rgba(232,168,92,.75);
+  }
+  /* explicit grouping: [1 tall bar] — wide gap — [4 short bars].
+     direction:rtl puts the tall "sale year" bar at the right (RTL start). */
+  .bars{position:absolute;inset:0;display:flex;align-items:flex-end;
+        justify-content:flex-start;gap:18px;direction:rtl}
+  .bar{width:42px;border-radius:4px 4px 0 0;background:#1B5688;flex:none}
+  /* the single tall bar — the part breaking above the bracket line is the accent */
+  .tall{
+    width:62px;height:288px;background:#1B5688;position:relative;
+    border-radius:4px 4px 0 0;flex:none;margin-left:44px;
+  }
+  .tall span{
+    position:absolute;right:0;left:0;top:0;height:138px;
+    background:#E8A85C;border-radius:4px 4px 0 0;display:block;
+  }
+  .b1{height:128px}.b2{height:104px}.b3{height:136px}.b4{height:94px}
+</style>
+</head>
+<body>
+  <div class="text">
+    <div class="eyebrow">החזרי מס שבח</div>
+    <!-- 🔴 הכותרת כאן היא נוסח ביניים ניטרלי-קהל: הקהל התרחב לשכירים
+         ולעצמאיים, ושירה כותבת מחדש את ה-H1. אחרי שה-H1 ננעל — לעדכן כאן
+         ולרנדר מחדש בפקודה שבסעיף 8 של מפרט העיצוב. -->
+    <h1>מכרתם נכס<br>ושילמתם מס שבח?</h1>
+    <div class="sub">החוק מאפשר לפרוס אותו על פני עד ארבע שנות מס.</div>
+    <div class="rule"></div>
+    <!-- S2: "בדיקת התאמה ראשונית" ולא "בדיקת זכאות".
+         ההסמכה נסגרה: יועץ מס מייצג (משה אינו רו"ח). -->
+    <div class="meta">בדיקת התאמה ראשונית <b>ללא עלות</b> · יועץ מס מייצג מ־<b>2005</b></div>
+  </div>
+
+  <div class="motif">
+    <div class="plot">
+      <div class="bars">
+        <div class="tall"><span></span></div>
+        <div class="bar b1"></div>
+        <div class="bar b2"></div>
+        <div class="bar b3"></div>
+        <div class="bar b4"></div>
+      </div>
+      <div class="threshold"></div>
+      <div class="baseline"></div>
+    </div>
+  </div>
+</body>
+</html>

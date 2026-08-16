@@ -32,6 +32,12 @@ npm run preview
 
 > ⚠️ אין צורך בשרת, במסד נתונים או במשתני סביבה.
 
+> **PWA:** ה-build מייצר גם `manifest.webmanifest` ו-service worker (`sw.js`) — האפליקציה
+> ניתנת להתקנה למסך הבית ורצה **אופליין מלא** אחרי ביקור ראשון (כל 24 הקלפים, הפונט
+> והאייקונים ב-precache). מומלץ להגיש משורש הדומיין (Netlify/Firebase Hosting) על HTTPS,
+> שם ה-service worker פעיל. פתיחת `dist/index.html` ישירות מ-`file://` תציג את האפליקציה
+> אך **בלי** ה-service worker (דורש http/https).
+
 ## מבנה הפרויקט
 ```
 src/
@@ -57,7 +63,7 @@ npm run extract:images
 
 ## נגישות ופרטיות
 - נבנה לפי ת"י 5568 (WCAG 2.0 AA): טקסט חלופי בכל התמונות, תוויות ARIA, משוב מוקרא (`aria-live`), ניגודיות תקינה, יעדי-מגע גדולים, ותצוגה ניתנת להגדלה (zoom).
-- **אין איסוף מידע:** אין התחברות, אין עוגיות, אין analytics, אין קריאות רשת חיצוניות (למעט טעינת פונט מ-Google Fonts — לשקול self-hosting).
+- **אין איסוף מידע:** אין התחברות, אין עוגיות, אין analytics, ו**אין קריאות רשת חיצוניות** — הפונט Varela Round מוגש עצמאית מ-`public/fonts/` (self-host, בלי Google Fonts CDN).
 - **הצהרת נגישות פורמלית** טרם פורסמה — טיוטה ב-`../../adi/Outputs/haderech-lamilim-accessibility-statement.md` (טעונה השלמת פרטי רכז נגישות ובירור פטור-עוסק).
 
 ## הערה על התוכן

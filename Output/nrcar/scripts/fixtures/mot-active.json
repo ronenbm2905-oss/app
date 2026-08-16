@@ -1,0 +1,146 @@
+{
+  "help": "https://data.gov.il/api/3/action/help_show?name=datastore_search",
+  "success": true,
+  "result": {
+    "filters": {
+      "mispar_rechev": 68708404
+    },
+    "include_total": true,
+    "limit": 5,
+    "records_format": "objects",
+    "resource_id": "053cea08-09bc-40ec-8f7a-156f0677aff3",
+    "total_estimation_threshold": null,
+    "records": [
+      {
+        "_id": 1,
+        "mispar_rechev": 68708404,
+        "tozeret_cd": 1604,
+        "sug_degem": "P",
+        "tozeret_nm": "ג'אקו סין",
+        "degem_cd": 25,
+        "degem_nm": "BBDE",
+        "ramat_gimur": "ELEGANCE",
+        "ramat_eivzur_betihuty": 7,
+        "kvutzat_zihum": 2,
+        "shnat_yitzur": 2026,
+        "degem_manoa": "SQRH4J15",
+        "mivchan_acharon_dt": "2026-08-02",
+        "tokef_dt": "2027-08-01",
+        "baalut": "ליסינג",
+        "misgeret": "LNNBBDEE3TC104974",
+        "tzeva_cd": 80,
+        "tzeva_rechev": "שנהב לבן",
+        "zmig_kidmi": "235/50R19",
+        "zmig_ahori": "235/50R19",
+        "sug_delek_nm": "חשמל/בנזין",
+        "horaat_rishum": 250195,
+        "moed_aliya_lakvish": "2026-8",
+        "kinuy_mishari": "JAECOO 7 PHEV"
+      }
+    ],
+    "fields": [
+      {
+        "id": "_id",
+        "type": "int"
+      },
+      {
+        "id": "mispar_rechev",
+        "type": "numeric"
+      },
+      {
+        "id": "tozeret_cd",
+        "type": "numeric"
+      },
+      {
+        "id": "sug_degem",
+        "type": "text"
+      },
+      {
+        "id": "tozeret_nm",
+        "type": "text"
+      },
+      {
+        "id": "degem_cd",
+        "type": "numeric"
+      },
+      {
+        "id": "degem_nm",
+        "type": "text"
+      },
+      {
+        "id": "ramat_gimur",
+        "type": "text"
+      },
+      {
+        "id": "ramat_eivzur_betihuty",
+        "type": "numeric"
+      },
+      {
+        "id": "kvutzat_zihum",
+        "type": "numeric"
+      },
+      {
+        "id": "shnat_yitzur",
+        "type": "numeric"
+      },
+      {
+        "id": "degem_manoa",
+        "type": "text"
+      },
+      {
+        "id": "mivchan_acharon_dt",
+        "type": "text"
+      },
+      {
+        "id": "tokef_dt",
+        "type": "text"
+      },
+      {
+        "id": "baalut",
+        "type": "text"
+      },
+      {
+        "id": "misgeret",
+        "type": "text"
+      },
+      {
+        "id": "tzeva_cd",
+        "type": "numeric"
+      },
+      {
+        "id": "tzeva_rechev",
+        "type": "text"
+      },
+      {
+        "id": "zmig_kidmi",
+        "type": "text"
+      },
+      {
+        "id": "zmig_ahori",
+        "type": "text"
+      },
+      {
+        "id": "sug_delek_nm",
+        "type": "text"
+      },
+      {
+        "id": "horaat_rishum",
+        "type": "numeric"
+      },
+      {
+        "id": "moed_aliya_lakvish",
+        "type": "text"
+      },
+      {
+        "id": "kinuy_mishari",
+        "type": "text"
+      }
+    ],
+    "_links": {
+      "start": "/api/3/action/datastore_search?resource_id=053cea08-09bc-40ec-8f7a-156f0677aff3&filters=%7B%22mispar_rechev%22%3A68708404%7D&limit=5",
+      "next": "/api/3/action/datastore_search?resource_id=053cea08-09bc-40ec-8f7a-156f0677aff3&filters=%7B%22mispar_rechev%22%3A68708404%7D&limit=5&offset=5"
+    },
+    "total": 1,
+    "total_was_estimated": false
+  }
+}

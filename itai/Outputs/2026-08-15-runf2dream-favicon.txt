@@ -1,0 +1,7 @@
+A bold, compact app icon and favicon, flat vector, square format. The entire square is filled edge to edge with a deep navy (hex 16283D) background.
+
+Centered on the navy, large and confident, filling most of the square with only a small even margin: a big solid half-disc rising sun in warm sunrise orange (hex E1622A), and standing in front of the sun a single simple flat pictogram silhouette of a running figure, the kind of solid filled figure used on a public wayfinding sign: a separate round circle for the head, thick simple limbs, arms bent at the elbows, one leg forward and one leg back in a clear running stride, no facial features, no fingers, no muscle definition, no clothing detail, no realism, no outline. The figure faces and moves toward the RIGHT side of the image, leaning very slightly forward, energetic but relaxed and friendly, not a violent sprint. The figure is rendered as a solid silhouette in warm cream (hex FDFAF5), thick and heavy so it stays readable when very small.
+
+Beneath it, a single thick horizontal horizon line in warm cream runs across, breaking into two short thick dashes at its LEFT end and solid across the right portion.
+
+All shapes are large, thick and heavily simplified for small sizes. Very high contrast. No text, no letters, no numbers, no gradients, no shadows, no 3D, no thin lines. Only one single figure. Style: bold minimal app icon, geometric, clean.

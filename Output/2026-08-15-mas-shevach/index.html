@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!--
+================================================================================
+  דף נחיתה — החזרי מס שבח (משה)   ·   Output/2026-08-15-mas-shevach/index.html
+  קופי: shira/Outputs/2026-08-15-mas-shevach-copy.md
+  עיצוב: itai/Outputs/mas-shevach-design.md
+  משפטי (מחייב): adi/Outputs/2026-08-15-mas-shevach-privacy-by-design.md
+--------------------------------------------------------------------------------
+  כללי ברזל שמקודדים כאן ואסור לשבור בעריכה עתידית:
+  1. S1 — נסגר: משה הוא **יועץ מס מייצג בלבד**. תואר מקצוע ראיית החשבון אינו
+     נכון עובדתית ואינו מופיע בדף — בטקסט, ב-alt, ב-meta, בשם קובץ או בהערה.
+     שורת ההסמכה הסופית: "יועץ מס מייצג". הוותק הוא ותק **כיועץ מס** ולא בתחום
+     מס שבח. אין נקיבה באחוז עמלה בשום מקום. שם המותג הישן אינו נכנס לדף.
+     🔴 מספר רישיון ייצוג — לבקשת משה אינו מוצג בדף בשום מקום.
+  2. S2 — נוסח בודק ההתאמה מגיע מעדי מילה במילה. שם הרכיב:
+     "בדיקת התאמה ראשונית". אין ניסוח "אינכם זכאים" בשום מצב.
+     רשימת המחרוזות האסורות נאכפת פעמיים: ע"י הבדיקה שבתחתית הקובץ,
+     וע"י `npm run check -- --html` של נועם. שתיהן חייבות לעבור.
+  3. חישוב הבודק client-side בלבד. התשובות אינן נשלחות ואינן נשמרות —
+     לא ב-localStorage, לא באירועי מעקב, לא בטופס. עובר רק screened: true.
+  4. אין ת.ז., אין סכומים, אין שדה טקסט חופשי בטופס.  (S3)
+  5. הפיקסל אינו בדף. יש רק נקודת הזרקה מגודרת-הסכמה בתוך loadMarketingPixel().
+  6. כל 🔴 (class="ph") הוא חוסם go-live. הם מסומנים ויזואלית בכוונה.
+================================================================================
+-->
+
+<!-- בלוק SEO — סעיף 11 של שירה (סבב ג'), עם תיקון אחד ומדווח:
+     ⚠️ שירה כתבה ב-title וב-og:title את הצירוף שמכיל את המילה "זכאות".
+     שער המחרוזות של נועם (רשימת עדי, S2.5) חוסם אותו במלל הנראה — כולל
+     title ו-og. לכן שובץ שם הרכיב המאושר: "בדיקת התאמה". מילת המפתח
+     הראשית ("החזר מס שבח") ואורך ה-title נשמרו. מדווח לדורית להכרעה.
+     שם המותג הישן אינו מופיע כאן ובשום מקום אחר בדף.
+
+     🔴 M1 (דורית, 2026-08-15) — תיקון הטעיית מחיר ב-title.
+     הנוסח הקודם היה: "החזר מס שבח — פריסת מס ובדיקת התאמה ללא עלות".
+     שם "ללא עלות" נצמד תחבירית גם ל"פריסת מס", כלומר משתמע שהשירות חינם.
+     השירות אינו חינם — **הבדיקה הראשונית** היא זו שללא עלות, וכך כתוב
+     בגוף הדף (סקשן התמחור). הנוסח הנוכחי מצמיד את "ללא עלות" לבדיקה
+     בלבד, שומר את מילת המפתח הראשית ראשונה ואת אותו אורך.
+     אין לכתוב שוב "פריסת מס ... ללא עלות" ברצף אחד — כאן או ב-og. -->
+<title>החזר מס שבח ופריסת מס — בדיקת התאמה ראשונית ללא עלות</title>
+<meta name="description" content="מכרתם נכס ושילמתם מס שבח? פריסה על פני עד ארבע שנות מס מחשבת את המס מחדש לפי המדרגות ונקודות הזיכוי שלכם. לשכירים ולעצמאיים. בדיקה ראשונית ללא עלות.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#08243D">
+<!-- TODO 🔴 דומיין: כתובת מוחלטת מופיעה **רק** בשלוש השורות המסומנות למטה
+     (og:url · og:image · twitter:image). אין canonical מוחלט ואין כתובת
+     מוחלטת בגוף הדף — כך שההחלפה היא סבב אחד של חיפוש-והחלפה על
+     REPLACE-DOMAIN. היעד הצפוי: moshebm.co.il (לאישור).
+     אחרי ההחלפה: להוסיף <link rel="canonical"> ולרענן ב-Facebook Sharing Debugger. -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="he_IL">
+<meta property="og:url" content="https://REPLACE-DOMAIN/">
+<meta property="og:title" content="החזר מס שבח — בדיקת התאמה ראשונית למי שמכר נכס">
+<meta property="og:description" content="פריסת מס שבח על פני עד ארבע שנות מס. בדיקה ראשונית ללא עלות, תשלום רק אם מתקבל החזר.">
+<meta property="og:image" content="https://REPLACE-DOMAIN/assets/og-share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="גרפיקה מופשטת: עמודה אחת גבוהה שפורצת מעל קו מקווקו, וארבע עמודות נמוכות לצידה — מוטיב פריסת מס השבח.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="החזר מס שבח — בדיקת התאמה ראשונית למי שמכר נכס">
+<meta name="twitter:description" content="פריסת מס שבח על פני עד ארבע שנות מס. בדיקה ראשונית ללא עלות, תשלום רק אם מתקבל החזר.">
+<meta name="twitter:image" content="https://REPLACE-DOMAIN/assets/og-share.png">
+
+<link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/mark-512.png">
+
+<link rel="preload" href="assets/fonts/assistant-hebrew.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/frankruhllibre-hebrew.woff2" as="font" type="font/woff2" crossorigin>
+
+<!--
+  ANALYTICS: נקודת ההזרקה של פיקסל/אנליטיקס **אינה כאן**, וזו החלטה משפטית ולא סגנונית.
+  לפי S11 של עדי הפיקסל נטען אך ורק בתוך loadMarketingPixel() שבתחתית הקובץ,
+  ורק אחרי הסכמת עוגיות מפורשת. אין להזריק סקריפט מדידה ל-<head> ואין להריצו בטעינה.
+  טל: חפש את הפונקציה loadMarketingPixel() — שם, ורק שם.
+-->
+
+<style>
+/* ============================================================================
+   1. טוקנים — itai/Outputs/mas-shevach-design.md §1-§3
+   בלי hex ישיר בשאר הקובץ. אם חסר טוקן — מוסיפים כאן, לא inline.
+   ========================================================================= */
+:root{
+  /* משטחים */
+  --paper:#FBFAF8; --surface:#FFFFFF; --sunken:#F0EDE8;
+  --navy-50:#F2F6FA; --navy-100:#DCE7F0;
+  --acc-50:#FCF4EA; --acc-100:#F8E7D4; --ok-100:#D7EDE8;
+  /* טקסט וקווים */
+  --ink-strong:#08243D; --ink:#1B2B3A; --ink-soft:#3D4F60; --ink-muted:#5A6B7C;
+  --line:#6B7A88; --line-soft:#E2DED7;
+  /* נייבי */
+  --navy-900:#08243D; --navy-800:#0E3355; --navy-700:#14456F; --navy-600:#1B5688;
+  /* מבטא — acc-600 רקע כפתור בלבד · acc-700 טקסט תמיד */
+  --acc-600:#B05F14; --acc-700:#96500F; --acc-800:#7A3F0E; --acc-300:#E8A85C;
+  /* מצבים */
+  --ok-700:#0E6152; --err-600:#B42318; --err-50:#FEF3F2; --track:#E2DED7;
+  /* רדיוס */
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-full:999px;
+  /* צללים */
+  --sh-sm:0 1px 2px rgba(8,36,61,.06);
+  --sh-md:0 4px 12px rgba(8,36,61,.08);
+  --sh-lg:0 12px 32px rgba(8,36,61,.10), 0 2px 8px rgba(8,36,61,.06);
+  /* ריווח */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px; --sp-8:32px;
+  --sp-10:40px; --sp-12:48px; --sp-16:64px; --sp-20:80px; --sp-24:96px;
+  /* פונטים */
+  --f-head:"Frank Ruhl Libre", "Times New Roman", serif;
+  --f-body:"Assistant", "Segoe UI", Arial, sans-serif;
+}
+
+/* ============================================================================
+   2. פונטים — self-hosted, OFL 1.1. אין קריאה ל-fonts.gstatic.com.
+   הרישיונות: assets/fonts/OFL-Assistant.txt · OFL-FrankRuhlLibre.txt
+   ========================================================================= */
+@font-face{font-family:"Assistant";font-style:normal;font-weight:200 800;font-display:swap;
+  src:url(assets/fonts/assistant-hebrew.woff2) format("woff2");
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:"Assistant";font-style:normal;font-weight:200 800;font-display:swap;
+  src:url(assets/fonts/assistant-latin.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:"Frank Ruhl Libre";font-style:normal;font-weight:300 900;font-display:swap;
+  src:url(assets/fonts/frankruhllibre-hebrew.woff2) format("woff2");
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:"Frank Ruhl Libre";font-style:normal;font-weight:300 900;font-display:swap;
+  src:url(assets/fonts/frankruhllibre-latin.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+
+/* ============================================================================
+   3. בסיס
+   ========================================================================= */
+*,*::before,*::after{box-sizing:border-box}
+/* 🔴 [hidden] הוא חוזה, לא רמז. סגנון ברירת המחדל של הדפדפן ל-[hidden]
+   הוא display:none בעדיפות הנמוכה ביותר, ולכן **כל** כלל עם display מפורש
+   גובר עליו. זה מה שקרה כאן: `.err{display:flex}` החזיר למסך את שלוש
+   הודעות השגיאה של הטופס — הן הוצגו בטעינה נקייה, לפני שהמבקר הקליד תו,
+   כלומר הטופס פתח בשלוש שגיאות. נתפס ב-QA ויזואלי ב-2026-08-15.
+   הכלל הזה הופך את המוסכמה לאכיפה, לכל הרכיבים שמשתמשים ב-hidden בדף
+   (הודעות שגיאה, שגיאת טופס כללית ומצב התודה) — עכשיו ובעתיד. */
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--f-body);font-size:17px;line-height:1.7;font-weight:400;
+  overflow-x:hidden;
+}
+img,svg{max-width:100%}
+h1,h2,h3{margin:0 0 var(--sp-4);color:var(--ink-strong);text-wrap:balance}
+h1{font-family:var(--f-head);font-weight:800;font-size:32px;line-height:1.15;letter-spacing:-.01em;max-inline-size:18ch}
+h2{font-family:var(--f-head);font-weight:700;font-size:26px;line-height:1.25;max-inline-size:20ch}
+h3{font-family:var(--f-body);font-weight:700;font-size:20px;line-height:1.35}
+p{margin:0 0 var(--sp-4);max-inline-size:62ch}
+p:last-child{margin-bottom:0}
+ul{margin:0 0 var(--sp-4);padding-inline-start:1.3em;max-inline-size:62ch}
+li{margin-block-end:var(--sp-2)}
+a{color:var(--navy-700)}
+a:hover{color:var(--navy-800)}
+strong,b{font-weight:700;color:var(--ink-strong)}
+.wrap{max-inline-size:1140px;margin-inline:auto;padding-inline:20px}
+.sec{padding-block:56px}
+.sec--surface{background:var(--surface)}
+.sec--navy{background:var(--navy-900)}
+.sec--navy50{background:var(--navy-50)}
+.eyebrow{font-size:16px;font-weight:600;letter-spacing:.08em;line-height:1.4;color:var(--ink-muted);margin:0 0 var(--sp-3)}
+.lead{font-size:19px;line-height:1.6}
+.small{font-size:16px;line-height:1.6}
+.muted{color:var(--ink-muted)}
+.soft{color:var(--ink-soft)}
+.sec-intro{margin-block-end:var(--sp-8)}
+.rule{block-size:1px;background:var(--line-soft);border:0;margin-block:var(--sp-6)}
+
+/* טבעת focus כפולה — §7.2. אף צבע יחיד לא עומד ב-3:1 מול כל הרקעים. */
+:focus{outline:none}
+:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 2px var(--paper), 0 0 0 5px var(--navy-900);
+  border-radius:var(--r-sm);
+}
+.on-dark :focus-visible{box-shadow:0 0 0 2px var(--navy-900), 0 0 0 5px var(--acc-300)}
+
+.skip{
+  position:absolute;inset-inline-start:-9999px;inset-block-start:0;z-index:200;
+  background:var(--navy-900);color:#fff;padding:12px 20px;border-radius:0 0 var(--r-md) 0;
+  font-weight:600;text-decoration:none;
+}
+.skip:focus{inset-inline-start:0}
+
+.visually-hidden{
+  position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+
+/* ============================================================================
+   4. כפתורים
+   ========================================================================= */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
+  min-block-size:48px;padding:12px 24px;border-radius:var(--r-md);
+  font-family:var(--f-body);font-size:17px;font-weight:600;line-height:1.4;
+  text-align:center;text-decoration:none;cursor:pointer;border:1px solid transparent;
+  transition:background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.btn--primary{background:var(--acc-600);color:#fff;box-shadow:var(--sh-md)}
+.btn--primary:hover{color:#fff}
+.btn--secondary{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn--secondary:hover{color:var(--ink)}
+.btn--ghost{
+  background:transparent;border-color:transparent;color:var(--ink-soft);
+  min-block-size:48px;padding:12px 8px;font-weight:600;
+}
+.btn[disabled]{background:var(--sunken);color:var(--ink-muted);border-color:var(--line-soft);box-shadow:none;cursor:not-allowed}
+@media (hover:hover){
+  .btn--primary:hover{background:var(--acc-700)}
+  .btn--secondary:hover{background:var(--navy-50);border-color:var(--navy-600)}
+  .btn--ghost:hover{color:var(--ink-strong);background:var(--sunken)}
+}
+.btn--primary:active{background:var(--acc-800)}
+.btn-note{font-size:16px;color:var(--ink-muted);margin-block-start:var(--sp-3)}
+
+/* ============================================================================
+   5. placeholders חוסמים (🔴) — גלויים לעין בכוונה. §12.6 של שירה.
+   כל אלמנט כזה הוא חסם go-live. בזמן go-live: אין אף .ph בדף.
+   ========================================================================= */
+.ph{
+  background-image:repeating-linear-gradient(135deg,var(--acc-100) 0 8px,#F2D6B4 8px 16px);
+  border:1px dashed var(--acc-700);border-radius:var(--r-sm);
+  padding:1px 7px;color:var(--ink-strong);font-weight:600;font-style:normal;
+  text-decoration:none;
+}
+.ph::before{content:"🔴 "}
+a.ph{color:var(--ink-strong);cursor:not-allowed}
+.ph--block{display:block;padding:10px 14px;margin-block:var(--sp-3);max-inline-size:62ch}
+.on-dark .ph{color:var(--ink-strong)}
+
+#dev-blockers{
+  background:var(--navy-900);color:#fff;font-size:16px;line-height:1.5;
+  padding:10px 20px;text-align:center;
+}
+#dev-blockers b{color:var(--acc-300)}
+#dev-blockers .fail{color:#FFC7C2;font-weight:700}
+
+/* ============================================================================
+   6. סרגל עליון — §4.2
+   ========================================================================= */
+.topbar{background:var(--paper);border-block-end:1px solid var(--line-soft)}
+.topbar .wrap{
+  min-block-size:56px;display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-4);padding-block:8px;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:var(--sp-3);text-decoration:none;color:var(--ink-strong)}
+.brand img{inline-size:34px;block-size:34px;border-radius:8px;display:block}
+.brand-name{font-family:var(--f-head);font-weight:700;font-size:19px;line-height:1.2}
+.brand-sub{display:block;font-family:var(--f-body);font-size:16px;font-weight:400;color:var(--ink-muted);line-height:1.3}
+.topbar-tel{display:inline-flex;align-items:center;gap:var(--sp-2);min-block-size:48px;font-weight:600;text-decoration:none}
+.topbar-tel svg{inline-size:20px;block-size:20px;flex:none}
+/* מספר טלפון לא נשבר באמצע — הוא נשבר בעברית בדיוק במקום הכי מבלבל */
+a[href^="tel:"] bdi{white-space:nowrap}
+
+/* ============================================================================
+   7. Hero + בודק ההתאמה
+   ========================================================================= */
+.hero{padding-block:32px 40px}
+.hero-points{list-style:none;padding:0;margin:var(--sp-6) 0 0;max-inline-size:62ch}
+.hero-points li{display:flex;gap:var(--sp-3);align-items:flex-start;font-size:17px;color:var(--ink-soft)}
+.hero-points svg{inline-size:22px;block-size:22px;flex:none;margin-block-start:3px;color:var(--ok-700)}
+.hero-bridge{margin-block-start:var(--sp-6)}
+
+.checker-col{margin-block-start:var(--sp-8)}
+.checker{
+  background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-lg);
+  box-shadow:var(--sh-lg);padding:24px;
+}
+.checker-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
+.checker-head .eyebrow{margin:0}
+.checker-step{font-size:17px;color:var(--ink-soft);font-weight:600}
+.progress{display:flex;gap:6px;margin-block:var(--sp-3) var(--sp-4)}
+.progress span{
+  flex:1;block-size:8px;border-radius:var(--r-full);
+  background:var(--track);border:1px solid var(--line);
+}
+.progress span.is-done{background:var(--acc-600);border-color:var(--acc-700)}
+.checker-note{
+  background:var(--sunken);border-radius:var(--r-md);padding:12px 14px;
+  display:flex;gap:var(--sp-3);align-items:flex-start;
+  font-size:16px;color:var(--ink-soft);margin-block-end:var(--sp-4);
+}
+.checker-note svg{inline-size:20px;block-size:20px;flex:none;margin-block-start:2px}
+/* min-block-size ולא height: נמדד בפועל מול השלב הגבוה ביותר (שאלה 3/4 עם
+   המיקרו-קופי) ב-390/768/1280 — הכרטיס לא מקפץ בין שאלה לשאלה.
+   למדוד מחדש אחרי שהקופי הסופי של שירה ייכנס. */
+.checker-stage{min-block-size:500px;display:flex;flex-direction:column}
+@media (min-width:380px){.checker-stage{min-block-size:456px}}
+fieldset.q{border:0;padding:0;margin:0}
+legend.q-title{
+  font-family:var(--f-body);font-weight:700;font-size:20px;line-height:1.35;
+  color:var(--ink-strong);padding:0;margin-block-end:var(--sp-4);min-block-size:2.7em;
+  display:block;
+}
+legend.q-title:focus{outline:none}
+.opts{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.opt{
+  position:relative;display:flex;align-items:center;gap:var(--sp-3);
+  min-block-size:56px;padding:14px 16px;border-radius:var(--r-md);
+  background:var(--surface);border:1px solid var(--line);color:var(--ink);
+  font-size:17px;line-height:1.4;cursor:pointer;text-align:start;
+  transition:background-color .15s ease, border-color .15s ease;
+}
+.opt input{position:absolute;opacity:0;inline-size:1px;block-size:1px;margin:0}
+.opt .check{
+  inline-size:24px;block-size:24px;flex:none;border-radius:var(--r-full);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  color:var(--surface);font-size:15px;font-weight:700;line-height:1;
+}
+.opt.is-selected{background:var(--acc-50);border:2px solid var(--acc-600);padding:13px 15px;color:var(--ink-strong);font-weight:600}
+.opt.is-selected .check{background:var(--acc-600);border-color:var(--acc-700);color:#fff}
+.opt.is-focus{box-shadow:0 0 0 2px var(--surface), 0 0 0 5px var(--navy-900)}
+@media (hover:hover){
+  .opt:hover{background:var(--navy-50);border-color:var(--navy-600);color:var(--ink-strong)}
+  .opt.is-selected:hover{background:var(--acc-50);border-color:var(--acc-600)}
+}
+.q-hint{font-size:16px;color:var(--ink-muted);margin:var(--sp-3) 0 0;max-inline-size:none}
+.checker-nav{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin-block-start:auto;padding-block-start:var(--sp-6)}
+.checker-nav .btn--primary{min-inline-size:132px}
+.back-arrow{display:inline-block;transform:scaleX(-1)}
+
+/* פלט הבודק — שלושה מצבים, אותו כרטיס, אותו גודל, אותו משקל */
+.result{border-radius:var(--r-md);padding:20px;border:2px solid var(--line)}
+.result h3{margin-block-end:var(--sp-3)}
+.result p{font-size:17px}
+.result--fit{background:var(--ok-100);border-color:var(--ok-700)}
+.result--unclear{background:var(--acc-50);border-color:var(--acc-700)}
+.result--nofit{background:var(--navy-50);border-color:var(--navy-700)}
+.result-actions{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-block-start:var(--sp-6)}
+.checker-caption{font-size:16px;color:var(--ink-soft);margin-block-start:var(--sp-4);max-inline-size:none}
+
+/* ============================================================================
+   8. איך זה עובד
+   ========================================================================= */
+.steps{list-style:none;display:grid;gap:16px;padding:0;margin:0;max-inline-size:none}
+.step{
+  background:var(--paper);border:1px solid var(--line-soft);border-radius:var(--r-lg);
+  box-shadow:var(--sh-sm);padding:24px;margin:0;
+}
+.step-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  inline-size:36px;block-size:36px;border-radius:var(--r-full);
+  background:var(--navy-900);color:#fff;font-weight:700;font-size:17px;
+  margin-block-end:var(--sp-3);
+}
+.step svg.icon{inline-size:28px;block-size:28px;color:var(--navy-700);display:block;margin-block-end:var(--sp-3)}
+.step h3{margin-block-end:var(--sp-2)}
+.step p{font-size:17px}
+
+/* ============================================================================
+   9. מנגנון + דיאגרמה
+   ========================================================================= */
+.mech h3{margin-block:var(--sp-8) var(--sp-3)}
+.pull{
+  border-inline-start:4px solid var(--acc-600);background:var(--surface);
+  padding:20px 24px;border-radius:0 var(--r-md) var(--r-md) 0;margin-block:var(--sp-8);
+  box-shadow:var(--sh-sm);
+}
+.pull p{font-size:19px;line-height:1.6;color:var(--ink-strong)}
+.diagram{
+  background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-lg);
+  box-shadow:var(--sh-sm);padding:20px;margin-block:var(--sp-8);
+}
+.diagram svg{display:block;inline-size:100%;block-size:auto}
+.diagram-desc{font-size:16px;color:var(--ink-soft);margin-block-start:var(--sp-4);max-inline-size:none}
+.notlist{list-style:none;padding:0;margin:0;display:grid;gap:12px;max-inline-size:none}
+.notlist li{
+  background:var(--sunken);border-radius:var(--r-md);padding:14px 16px;color:var(--ink-soft);
+  font-size:17px;margin:0;
+}
+.notlist b{display:block;color:var(--ink-strong)}
+
+/* ============================================================================
+   10. בלוק אמון (כהה)
+   ========================================================================= */
+.sec--navy{color:var(--navy-100)}
+.sec--navy h2,.sec--navy h3{color:#fff}
+.sec--navy a{color:var(--acc-300)}
+.trust{display:grid;gap:24px;margin-block-start:var(--sp-8)}
+.trust-item{border-inline-start:3px solid var(--acc-300);padding-inline-start:20px}
+.trust-item h3{font-size:20px;margin-block-end:var(--sp-2)}
+.trust-item p{color:var(--navy-100);font-size:17px}
+.license{
+  display:inline-block;margin-block-start:var(--sp-3);
+}
+
+/* ============================================================================
+   11. מקרי מבחן  (יחידה ניתנת להסרה שלמה)
+   ========================================================================= */
+.cases{display:grid;gap:16px;margin-block-start:var(--sp-8)}
+.case{
+  background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-lg);
+  box-shadow:var(--sh-sm);padding:24px;
+}
+.case-head{font-weight:700;color:var(--ink-strong);font-size:19px;margin-block-end:var(--sp-4)}
+.case h4{font-family:var(--f-body);font-size:17px;font-weight:700;color:var(--ink-strong);margin:0 0 var(--sp-2)}
+.case ul{margin-block-end:var(--sp-4)}
+.case-result{font-size:19px;font-weight:600;color:var(--ink-strong);margin-block:var(--sp-4)}
+.case-disclaimer{
+  border-block-start:1px solid var(--line-soft);margin-block-start:var(--sp-4);
+  padding-block-start:var(--sp-4);font-size:16px;color:var(--ink-soft);
+}
+
+/* ============================================================================
+   12. תמחור
+   ========================================================================= */
+.price-facts{list-style:none;padding:0;margin:var(--sp-6) 0 0;display:grid;gap:12px;max-inline-size:none}
+.price-facts li{
+  background:var(--paper);border:1px solid var(--line-soft);border-radius:var(--r-md);
+  padding:14px 16px;font-weight:600;color:var(--ink-strong);margin:0;
+}
+
+/* ============================================================================
+   13. FAQ
+   ========================================================================= */
+.faq{margin-block-start:var(--sp-8);max-inline-size:76ch}
+.faq details{
+  background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-md);
+  margin-block-end:12px;box-shadow:var(--sh-sm);
+}
+.faq summary{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  padding:16px;min-block-size:56px;cursor:pointer;font-weight:600;font-size:17px;
+  color:var(--ink-strong);list-style:none;border-radius:var(--r-md);
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .chev{
+  inline-size:22px;block-size:22px;flex:none;color:var(--navy-700);
+  transition:transform .18s ease;
+}
+.faq details[open] summary .chev{transform:rotate(-90deg)}
+.faq .answer{padding:0 16px 16px}
+.faq .answer p{font-size:17px}
+
+/* ============================================================================
+   14. טופס
+   ========================================================================= */
+.formcard{
+  background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-lg);
+  box-shadow:var(--sh-sm);padding:24px;margin-block-start:var(--sp-8);max-inline-size:640px;
+}
+.field{margin-block-end:var(--sp-6)}
+.field label{display:block;font-weight:600;font-size:17px;color:var(--ink-soft);margin-block-end:var(--sp-2)}
+.field .opt-mark{font-weight:400;color:var(--ink-muted)}
+.field input[type=text],.field input[type=tel],.field input[type=email]{
+  inline-size:100%;min-block-size:48px;padding:12px 14px;
+  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);
+  font-family:var(--f-body);font-size:17px;line-height:1.5;color:var(--ink);
+}
+.field input::placeholder{color:var(--ink-muted);opacity:1}
+.field input[aria-invalid="true"]{border-color:var(--err-600);border-width:2px;padding:11px 13px}
+.err{
+  display:flex;gap:var(--sp-2);align-items:flex-start;
+  background:var(--err-50);border-radius:var(--r-sm);padding:8px 10px;
+  color:var(--err-600);font-size:16px;font-weight:600;margin:var(--sp-2) 0 0;max-inline-size:none;
+}
+.err svg{inline-size:20px;block-size:20px;flex:none;margin-block-start:1px}
+/* ✂ M4 — כללי .optin הוסרו יחד עם תיבת הדיוור (2026-08-15). אין להחזיר
+   סגנון לתיבת הסכמה שיווקית בלי שהערוץ, שעון השמירה ומנגנון ההסרה קיימים. */
+.submit-row{display:flex;flex-direction:column;gap:var(--sp-3);margin-block-start:var(--sp-6)}
+.submit-row .btn--primary{inline-size:100%}
+.notice{
+  font-size:16px;color:var(--ink-soft);background:var(--sunken);
+  border-radius:var(--r-md);padding:14px 16px;margin-block-start:var(--sp-4);max-inline-size:none;
+}
+.form-success{
+  background:var(--ok-100);border:2px solid var(--ok-700);border-radius:var(--r-md);
+  padding:24px;
+}
+.form-success h3{margin-block-end:var(--sp-3)}
+.form-error{
+  background:var(--err-50);border:2px solid var(--err-600);border-radius:var(--r-md);
+  padding:14px 16px;color:var(--err-600);font-weight:600;margin-block-start:var(--sp-4);
+}
+
+/* ============================================================================
+   15. פוטר
+   ========================================================================= */
+.footer{padding-block:48px;color:var(--navy-100)}
+.footer h2{font-size:20px;font-family:var(--f-body);font-weight:700}
+.footer p,.footer li{color:var(--navy-100);font-size:16px}
+.footer-links{list-style:none;padding:0;margin:var(--sp-6) 0;display:flex;flex-wrap:wrap;gap:var(--sp-4) var(--sp-6)}
+.footer-links a{min-block-size:48px;display:inline-flex;align-items:center}
+.footer-disclaimer{border-block-start:1px solid var(--navy-800);padding-block-start:var(--sp-6);margin-block-start:var(--sp-6)}
+/* סעיפים משפטיים בפוטר — אותה תבנית accordion, על רקע כהה.
+   כרגע אין בדף .legal-acc: סעיף אימות הרישום הושעה לשורה אחת. הכללים
+   נשארים כי הגרסה המורחבת אמורה לחזור אם הרישום במועצה יעודכן. */
+.legal-acc{
+  background:var(--navy-800);border:1px solid var(--navy-700);border-radius:var(--r-md);
+  margin-block-start:var(--sp-6);max-inline-size:76ch;
+}
+.legal-acc summary{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  padding:16px;min-block-size:56px;cursor:pointer;font-weight:700;font-size:17px;
+  color:#fff;list-style:none;border-radius:var(--r-md);
+}
+.legal-acc summary::-webkit-details-marker{display:none}
+.legal-acc .chev{inline-size:22px;block-size:22px;flex:none;color:var(--acc-300);transition:transform .18s ease}
+.legal-acc[open] summary .chev{transform:rotate(-90deg)}
+.legal-acc .answer{padding:0 16px 16px}
+.legal-acc a{color:var(--acc-300);word-break:break-word;overflow-wrap:anywhere}
+.muted-dark{color:var(--navy-100)}
+
+/* ============================================================================
+   16. באנר עוגיות — שני כפתורים שווי-בולטות (תיקון 13 · §7.5)
+   ========================================================================= */
+.cookie{
+  position:fixed;inset-inline:0;inset-block-end:0;z-index:120;
+  background:var(--surface);border-block-start:2px solid var(--navy-900);
+  box-shadow:0 -8px 28px rgba(8,36,61,.16);padding:16px 20px;
+}
+.cookie .inner{max-inline-size:1140px;margin-inline:auto;display:grid;gap:var(--sp-4)}
+.cookie p{font-size:16px;color:var(--ink);margin:0}
+.cookie .actions{display:flex;gap:12px;flex-wrap:wrap}
+/* בסיס 120px ולא 160px: בבסיס הקודם שני הכפתורים לא נכנסו לשורה אחת מתחת
+   ל-380px, נשברו לשתי שורות והוסיפו ~62px לגובה הבאנר דווקא במסכים הקטנים
+   שבהם הוא כבר הכי כבד. זה תיקון לייאאוט בלבד — אף מילה בגילוי לא קוצרה,
+   הכפתורים נשארים באותו גובה (≥44px), באותו משקל ובאותה שורה, כלומר
+   שווי-בולטות כפי שתיקון 13 דורש. */
+.cookie .actions .btn{flex:1 1 120px}
+/* שני הכפתורים באותו גודל, משקל וניגודיות — "דחייה" אינו מעומעם */
+.cookie .btn--equal{background:var(--surface);color:var(--ink-strong);border:1px solid var(--line)}
+@media (hover:hover){.cookie .btn--equal:hover{background:var(--navy-50);border-color:var(--navy-600)}}
+.is-hidden{display:none!important}
+
+/* ============================================================================
+   17. Breakpoints — טאבלט ≥768 · דסקטופ ≥1024
+   ========================================================================= */
+@media (min-width:768px){
+  .wrap{padding-inline:32px}
+  .sec{padding-block:72px}
+  .checker-stage{min-block-size:404px}
+  .steps{grid-template-columns:repeat(3,1fr);gap:20px}
+  .cases{grid-template-columns:repeat(2,1fr);gap:20px}
+  .price-facts{grid-template-columns:repeat(3,1fr)}
+  .trust{gap:32px}
+  .submit-row{flex-direction:row;align-items:center}
+  .submit-row .btn--primary{inline-size:auto;min-inline-size:220px}
+  .cookie .inner{grid-template-columns:1fr auto;align-items:center;gap:var(--sp-8)}
+  .cookie .actions .btn{flex:0 0 auto;min-inline-size:170px}
+}
+@media (min-width:1024px){
+  .wrap{padding-inline:40px}
+  .sec{padding-block:96px}
+  body{font-size:18px}
+  h1{font-size:52px;max-inline-size:20ch}
+  h2{font-size:36px}
+  h3{font-size:22px}
+  .lead{font-size:21px}
+  .hero{padding-block:56px 72px}
+  .hero .wrap{display:grid;grid-template-columns:1fr 468px;gap:64px;align-items:start}
+  .checker-col{margin-block-start:0}
+  .checker{padding:32px;position:sticky;inset-block-start:24px}
+  /* בדסקטופ הכרטיס יושב בטור קבוע של 468px ולכן הטקסט נשבר כמו במובייל —
+     הגובה חוזר ל-456 ולא נשאר 404 של הטאבלט (שם הכרטיס ברוחב מלא). */
+  .checker-stage{min-block-size:456px}
+  .trust{grid-template-columns:repeat(3,1fr)}
+}
+
+/* ============================================================================
+   18. prefers-reduced-motion — עוטף כל transition בדף (§11.9)
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important;
+  }
+}
+@media (prefers-reduced-motion: no-preference){
+  html{scroll-behavior:smooth}
+  .fade-in{animation:fade .18s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+
+@media print{.cookie,#dev-blockers,.checker-nav{display:none!important}}
+</style>
+</head>
+
+<body>
+
+<a class="skip" href="#main">דילוג לתוכן הראשי</a>
+
+<!-- ┌─ DEV ONLY ─ נספר אוטומטית מכל .ph שבדף. להסיר את הרצועה (ואת כל ה-🔴) לפני go-live ─┐ -->
+<div id="dev-blockers" role="status" hidden></div>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#main">
+      <img src="assets/mark.svg" width="34" height="34" alt="">
+      <span>
+        <span class="brand-name">החזרי מס שבח</span>
+        <span class="brand-sub">משה בן מאיר · יועץ מס מייצג</span>
+      </span>
+    </a>
+    <!-- מספר הטלפון בתוך <bdi> — צמוד לטקסט עברי הוא מתהפך בלעדיו. -->
+    <a class="topbar-tel" href="tel:0508688425" data-event="phone-click" data-cta="phone-top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M6.5 3h3l1.5 4-2 1.5a12 12 0 0 0 6.5 6.5L17 13l4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4 5.2 2 2 0 0 1 6 3Z"/></svg>
+      <bdi>050-868-8425</bdi>
+    </a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ══════════════════ 1 · Hero + בודק ההתאמה ══════════════════ -->
+  <section class="hero">
+    <div class="wrap">
+
+      <div class="hero-text">
+        <p class="eyebrow">החזרי מס שבח · פריסה לפי סעיף 48א(ה)</p>
+
+        <!-- H1 — הווריאציה המומלצת של שירה (סבב ג', #1). מסננת לפי מכירה+תשלום
+             ולא לפי מעמד תעסוקה, ומתארת מה החוק מאפשר ולא מה הגולש יקבל.
+             חלופה ל-A/B (להחליף את תוכן ה-h1 בלבד — #3):
+               "אם באחת מארבע השנים שלפני מכירת הנכס ההכנסה שלכם הייתה נמוכה —
+                ייתכן ששילמתם מס שבח גבוה מהנדרש." -->
+        <h1>מכרתם נכס ושילמתם מס שבח? החוק מאפשר לפרוס אותו על פני עד ארבע שנות מס.</h1>
+
+        <!-- כותרת משנה #1 (סבב ג'): תנאי מדורג ולא חברוּת בקבוצה — כדי שלא
+             תיווצר תוחלת מאוחדת לשתי קבוצות שאין להן תוחלת שווה. -->
+        <p class="lead">הפריסה מחשבת את המס מחדש, שנה&#8209;שנה, לפי המדרגות ונקודות הזיכוי שהיו לכם בפועל. ככל שההכנסה שלכם באחת מאותן שנים הייתה נמוכה יותר, כך גדל הסיכוי שנשאר שם מקום שלא נוצל.</p>
+
+        <ul class="hero-points">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg><span>הבדיקה הראשונית ללא עלות. אם לא יתקבל החזר — אין תשלום.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg><span>יועץ מס מייצג, מורשה לייצג מול רשות המסים.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg><span>הבדיקה כאן מתבצעת בדפדפן שלכם, בלי להשאיר פרטים.</span></li>
+        </ul>
+
+        <div class="hero-bridge">
+          <p>כשמוכרים נכס, המס על השבח מחושב כמקשה אחת בשנת המכירה. אבל הרווח הזה נצבר לאורך שנים — והחוק מכיר בכך. מי שבאחת מאותן שנים לא ניצל את כל מדרגות המס ונקודות הזיכוי שעמדו לרשותו — בין אם היה שכיר ובין אם עצמאי — עשוי לגלות שהמס שחושב גבוה מזה שהיה אמור להיות. אפשר לבדוק את זה בארבע שאלות, בלי להשאיר פרטים בשלב הזה.</p>
+          <p>לא לכל מי שמכר נכס יש מקום לפריסה. ארבע השאלות הבאות מסננות את התנאים הבסיסיים, כדי שלא נבזבז את הזמן שלכם ולא את שלנו. התשובות מחושבות אצלכם בדפדפן ואינן נשלחות אלינו.</p>
+        </div>
+      </div>
+
+      <!-- ─────────── בודק ההתאמה ───────────
+           שם הרכיב, נוסח השאלות, נוסח שלושת מצבי הפלט והכיתוב הקבוע —
+           כולם מ-S2 של עדי, מילה במילה. אין לשנות מחרוזת כאן בלי סבב אצלה.
+           החישוב client-side בלבד; אין fetch, אין localStorage, אין שליחה.        -->
+      <div class="checker-col">
+        <section class="checker" id="checker" aria-labelledby="checker-h">
+          <h2 id="checker-h" class="visually-hidden">בדיקת התאמה ראשונית</h2>
+
+          <div class="checker-head">
+            <p class="eyebrow">בדיקת התאמה ראשונית · 4 שאלות · בלי להשאיר פרטים</p>
+            <p class="checker-step" id="checker-step" aria-hidden="true">שאלה 1 מתוך 4</p>
+          </div>
+
+          <div class="progress" id="progress" aria-hidden="true">
+            <span class="is-done"></span><span></span><span></span><span></span>
+          </div>
+
+          <p class="checker-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/></svg>
+            <span>התשובות מחושבות בדפדפן שלכם ואינן נשלחות אלינו ואינן נשמרות.</span>
+          </p>
+
+          <div class="checker-stage" id="checker-stage" aria-live="polite">
+            <!-- השאלות והתוצאה נבנות כאן ע"י buildQuestion()/showResult(). -->
+          </div>
+        </section>
+
+        <p class="checker-caption small">
+          בדיקת ההתאמה היא כלי התמצאות בלבד. היא אינה ייעוץ מס, אינה קובעת
+          זכאות ואינה מהווה התחייבות להחזר. החישוב מתבצע בדפדפן שלכם;
+          התשובות אינן נשלחות אלינו ואינן נשמרות.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════ 2 · איך זה עובד ══════════════════ -->
+  <section class="sec sec--surface" aria-labelledby="how-h">
+    <div class="wrap">
+      <div class="sec-intro">
+        <h2 id="how-h">שלושה שלבים, בלי התחייבות מצידכם עד השלב השני</h2>
+      </div>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-num" aria-hidden="true">1</span>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></svg>
+          <h3>בדיקה ראשונית ללא עלות</h3>
+          <p>אתם משאירים פרטים, אנחנו בודקים את נתוני המכירה ואת שנות ההכנסה הרלוונטיות ובודקים אם פריסה מניבה תוצאה. אם התשובה שלילית — אומרים לכם, וזה נגמר כאן.</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">2</span>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h4"/></svg>
+          <h3>ייצוג מול רשות המסים</h3>
+          <p>אם יש מקום לבקשה, אנחנו מגישים אותה בשמכם, מטפלים בהתכתבות ובדרישות שעולות בדרך, ומעדכנים אתכם לאורך הדרך. אתם לא מגישים ולא מתכתבים בעצמכם.</p>
+          <p class="ph ph--block">[[לאמת מול משה: האם הפריסה מחייבת הגשת דוחות שנתיים לשנות הפריסה. אם כן — לציין זאת כאן במפורש (שירה §3)]]</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">3</span>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 4v13"/><path d="m7 12 5 5 5-5"/><path d="M4 20h16"/></svg>
+          <h3>ההחזר מגיע אליכם</h3>
+          <p>אם הבקשה מתקבלת, ההחזר מועבר ישירות מרשות המסים לחשבון הבנק שלכם. התשלום לנו מגיע רק בשלב הזה.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══════════════════ 3 · הסבר המנגנון ══════════════════ -->
+  <section class="sec mech" id="mechanism" aria-labelledby="mech-h">
+    <div class="wrap">
+      <div class="sec-intro">
+        <h2 id="mech-h">למה בכלל נוצר הפרש — ומה זו פריסה</h2>
+      </div>
+
+      <h3>מה קורה בחישוב הרגיל</h3>
+      <p>נכס שנמכר אחרי שנים רבות צבר את השבח שלו לאורך כל אותן שנים. אבל בחישוב הרגיל, כל השבח נחשב כאילו נוצר במלואו בשנת המכירה האחת. התוצאה: הכנסה גדולה שנדחסת לשנת מס אחת, ומס שמחושב על בסיס הדחיסה הזו.</p>
+
+      <h3>מה החוק מאפשר</h3>
+      <p>החוק מכיר בכך שהרווח לא נוצר ביום אחד, ומאפשר לבקש פריסה: חלוקת השבח על פני עד ארבע שנות מס אחורה ממועד המכירה — או תקופת הבעלות בנכס, לפי הקצרה מביניהן. המס מחושב מחדש לכל שנה בנפרד, לפי הנתונים האמיתיים של אותה שנה.</p>
+
+      <!-- דיאגרמת המנגנון — SVG inline (§5.9). ציר הזמן זורם ימין→שמאל:
+           שנת המכירה בימין, ארבע שנות הפריסה משמאלה. בלי ₪, בלי סכומים. -->
+      <figure class="diagram">
+        <svg viewBox="0 0 640 320" direction="rtl" role="img" aria-labelledby="dg-t dg-d" focusable="false">
+          <title id="dg-t">השוואה בין החישוב הרגיל לבין חישוב בפריסה</title>
+          <desc id="dg-d">בצד ימין עמודה אחת גבוהה המייצגת את כל השבח בשנת המכירה; חלקה העליון חורג מעל קו מקווקו המסמן מדרגת מס. בצד שמאל ארבע עמודות נמוכות, המייצגות את אותו שבח מחולק על פני ארבע שנות מס, וכולן נמצאות מתחת לקו.</desc>
+
+          <text x="586" y="26" text-anchor="middle" font-family="Assistant, sans-serif" font-size="18" font-weight="700" fill="#08243D">חישוב רגיל</text>
+          <text x="200" y="26" text-anchor="middle" font-family="Assistant, sans-serif" font-size="18" font-weight="700" fill="#08243D">בפריסה</text>
+
+          <!-- מדרגת מס -->
+          <line x1="20" y1="140" x2="620" y2="140" stroke="#6B7A88" stroke-width="2" stroke-dasharray="7 6"/>
+          <text x="62" y="132" text-anchor="middle" font-family="Assistant, sans-serif" font-size="17" fill="#3D4F60">מדרגת מס</text>
+
+          <!-- עמודה אחת — שנת המכירה. החלק שמעל המדרגה במבטא -->
+          <rect x="556" y="140" width="60" height="120" fill="#1B5688"/>
+          <rect x="556" y="52" width="60" height="88" fill="#B05F14"/>
+          <text x="586" y="286" text-anchor="middle" font-family="Assistant, sans-serif" font-size="17" fill="#1B2B3A">שנת המכירה</text>
+
+          <!-- ארבע שנות הפריסה -->
+          <rect x="360" y="168" width="56" height="92" fill="#1B5688"/>
+          <rect x="284" y="182" width="56" height="78" fill="#1B5688"/>
+          <rect x="208" y="160" width="56" height="100" fill="#1B5688"/>
+          <rect x="132" y="190" width="56" height="70" fill="#1B5688"/>
+          <text x="274" y="286" text-anchor="middle" font-family="Assistant, sans-serif" font-size="17" fill="#1B2B3A">עד ארבע שנות המס שקדמו למכירה</text>
+
+          <line x1="20" y1="260" x2="620" y2="260" stroke="#08243D" stroke-width="2"/>
+        </svg>
+        <figcaption class="diagram-desc">
+          <strong>תיאור הדיאגרמה במילים:</strong> בחישוב הרגיל כל השבח נזקף לשנת המכירה — העמודה הימנית, שחלקה העליון חורג מעל קו מדרגת המס. בפריסה אותו שבח מחולק על פני עד ארבע שנות המס שקדמו למכירה — ארבע העמודות שמשמאל, שכל אחת מהן נשארת מתחת לאותו קו. הדיאגרמה מסבירה מבנה בלבד; היא אינה מציגה סכומים ואינה מלמדת על תוצאה במקרה מסוים.
+        </figcaption>
+      </figure>
+
+      <!-- ═══ 4.3 — הציר הוא רמת ההכנסה בשנות הפריסה, לא מעמד התעסוקה. ═══
+           אין לכתוב כאן ששכיר ועצמאי נמצאים "באותה נקודה" — תוחלת מאוחדת
+           לשתי קבוצות שאין להן תוחלת שווה היא בדיוק מה שס' 2 תופס.
+           הפסקה על מגיש הדוחות והפסקה המסיימת נראות כוויתור על לידים והן
+           ההגנה של הסקשן: הדף מגדיר בעצמו את גבולות ההבטחה שלו. לא להסיר.
+           🟡 אימות מקצועי של משה — הערה, לא חוסם: הניסוח מותנה ומתאר מנגנון. -->
+      <h3>מתי הפריסה משנה את התוצאה</h3>
+      <p>לכל אדם יש מדרגות מס ונקודות זיכוי אישיות, והן מתאפסות בסוף כל שנת מס. מי שלא ניצל אותן במלואן באותה שנה — פשוט מאבד אותן. כשהשבח נפרס על פני אותן שנים, הוא נכנס אל תוך המקום שנשאר פנוי, והמס מחושב מחדש לפי מה שהיה שם בפועל.</p>
+      <p>לכן השאלה הראשונה אינה אם הייתם שכירים או עצמאיים, אלא כמה הרווחתם באותן שנים. ככל שההכנסה באותה שנה הייתה נמוכה יותר, כך נשאר בה יותר מקום פנוי.</p>
+      <p>ויש כאן הבדל שנכון להגיד מראש: מי שמגיש דוח שנתי באופן סדיר עשוי לגלות שחלק ממה שעמד לרשותו באותן שנים כבר נוצל בדוחות עצמם — ואז לפריסה נשאר פחות מקום להוסיף. מי שלא הגיש דוח, לרוב לא בדק את זה מעולם. אף אחד מהמצבים לא פוסל את הבדיקה, אבל הם לא מתחילים מאותה נקודה, ואנחנו מעדיפים שתדעו את זה עכשיו ולא בסוף.</p>
+      <p>אלה השנים שמשאירות את המקום הפנוי הגדול ביותר:</p>
+      <ul>
+        <li>חופשת לידה, חל"ת או תקופת אבטלה</li>
+        <li>שנת הקמת עסק, או שנה שבה ההכנסות ירדו</li>
+        <li>מעבר בין מקומות עבודה, או שנה שלא הייתה מלאה</li>
+        <li>יציאה לגמלאות</li>
+        <li>בני זוג שרק אחד מהם עבד באותן שנים</li>
+      </ul>
+      <p>ומהצד השני, כדי שהתמונה תהיה שלמה: מי שההכנסה שלו הייתה גבוהה ויציבה בכל ארבע השנים — סביר שהפריסה לא תשנה אצלו הרבה. גם זו תשובה, ואנחנו אומרים אותה מראש.</p>
+
+      <!-- הנוסח שמחליף את טענת ה-85% — מ-S4 של עדי, מילה במילה.
+           טענה על החוק ועל המנגנון, לא על הסיכוי של הגולש. -->
+      <blockquote class="pull">
+        <p>פריסת מס שבח היא זכות שקבועה בחוק — סעיף 48א(ה) לחוק מיסוי מקרקעין. היא לא מתבצעת אוטומטית: מי שלא מבקש אותה, לא מקבל אותה.</p>
+      </blockquote>
+
+      <h3>כמה הבהרות, כדי שלא יהיה בלבול</h3>
+      <ul class="notlist">
+        <li><b>זו לא הטבה ולא מבצע.</b>פריסה היא מנגנון קיים בחוק, שנועד לחשב את המס לפי מה שקרה בפועל.</li>
+        <li><b>זו לא הלוואה ולא מקדמה.</b>מדובר בכסף שכבר שולם, ובבדיקה אם חלק ממנו חוזר.</li>
+        <li><b>זה לא תכנון מס עתידי.</b>הבדיקה מתייחסת למכירה שכבר בוצעה ולמס שכבר חושב.</li>
+        <li><b>ולא בכל מקרה יש החזר.</b>יש מצבים שבהם הפריסה לא משנה את התוצאה. במקרה כזה נגיד לכם את זה.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══════════════════ 4 · בלוק אמון (כהה) ══════════════════ -->
+  <section class="sec sec--navy on-dark" aria-labelledby="trust-h">
+    <div class="wrap">
+      <div class="sec-intro">
+        <h2 id="trust-h">מי מטפל בבקשה שלכם</h2>
+      </div>
+      <div class="trust">
+
+        <!-- ═══ שורת ההסמכה — נוסח סופי מעדי, מילה במילה. ═══
+             🔴 אסור בבלוק הזה: קישור · הוראת חיפוש · "רישיון בתוקף" ·
+                "מאושר ע"י" · תג/באדג' מכל סוג.
+             הפנקס מוכיח **רישום**, לא תוקף היום — אין בו עמודת סטטוס.
+             ⚠️ מועצת יועצי המס ≠ רשות המסים. שני גופים נפרדים; אין לכתוב
+                "רשות המסים" בהקשר הפנקס.
+             סעיף אימות הרישום (עם הקישור) יושב בפוטר בלבד.
+             הניסוח המותר היחיד: "מייצג אתכם מול רשות המסים". כל ניסוח הפוך,
+             או כזה שמרמז על אישור או זיקה מטעם הרשות, הוא הטעיה בזהות
+             הגורם (S7). -->
+        <div class="trust-item">
+          <h3>ההסמכה — מה היא אומרת בפועל</h3>
+          <p>משה בן מאיר — יועץ מס מייצג. טלפון ישיר: <a href="tel:0508688425" data-event="phone-click" data-cta="phone-trust"><bdi>050-868-8425</bdi></a>.</p>
+          <p>רשום בפנקס יועצי המס המייצגים שמנהלת מועצת יועצי המס. "יועץ מס מייצג" אינו תיאור שיווקי אלא מעמד מוסדר בחוק — מי שאינו רשום אינו רשאי להציג את עצמו כך. המשמעות המעשית עבורכם: ייפוי כוח להגיש בשמכם ולנהל את ההתנהלות מול רשות המסים ישירות. לא גורם מתווך שמעביר את הפנייה הלאה, ולא טופס מקוון שאתם ממלאים לבד.</p>
+          <p>מספר הרישיון מופיע בהסכם ההתקשרות, שנמסר לכם לפני תחילת הטיפול ולפני כל תשלום.</p>
+        </div>
+
+        <!-- 🔴 נוסח נעול, ותו לא. הוותק הוא ותק **כיועץ מס** ולא במיסוי
+             מקרקעין ספציפית. כל הרחבה — "מלווה תיקי מיסוי מקרקעין מאז",
+             "20 שנות ניסיון בתחום" וכדומה — היא הטעיה (ס' 2 להגנת הצרכן,
+             וס' 14(א) לחוק יועצי המס). אין להוסיף לשורה הזו סיומת. -->
+        <div class="trust-item">
+          <h3>הוותק</h3>
+          <p>יועץ מס מייצג מ&#8209;<bdi>2005</bdi>.</p>
+        </div>
+
+        <div class="trust-item">
+          <h3>מודל העבודה</h3>
+          <p>הבדיקה הראשונית ללא עלות, והתשלום מגיע רק אם מתקבל החזר בפועל. המשמעות פשוטה: אין לנו אינטרס לקחת תיק שאין בו מה לבדוק.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  מקרי מבחן — ✂ הוסר מהדף ב-2026-08-15 (הכרעת דורית, שער עדי)         ║
+       ╚══════════════════════════════════════════════════════════════════════╝
+       הסקשן נבנה מלכתחילה כיחידה נתיקה, והוסר כאן כיחידה שלמה. הוא הוריד
+       איתו 11 מתוך חוסמי ה-🔴 בדף. זרימת הדף אינה נשענת עליו:
+       אמון → תמחור → FAQ → טופס.
+
+       ארבעה תנאים מצטברים לפני שהוא חוזר לאוויר:
+       (1) נתיב א' של S1;  (2) אישור בכתב מכל אחד משני הלקוחות;
+       (3) הנתונים המלאים מאחורי כל מקרה;  (4) מבנה הכרטיס כפי שהוא כאן,
+       כולל ההסתייגות **בתוך** הכרטיס. אין להעלות אותו בגרסה חלקית.
+
+       ⚠️ M5 — שם החריג תוקן לפני ההסרה: `data-legal-exception="S6-case-study"`.
+       זה השם ש-`check.mjs` של נועם מחפש (S6_EXCEPTION), וגם הבודק שרץ בדף
+       (סעיף 4 למטה) עודכן אליו. אין להחזיר את `data-amounts-allowed` —
+       בלי השם הנכון, סכומי ההחזר שבכרטיסים ייפלו בשער הסכומים.
+
+       להחזרה: להסיר את שורת הפתיחה ואת שורת הסיום של ההערה שמסביב לסקשן.
+  -->
+  <!--
+  <section class="sec sec--surface" id="case-studies" data-removable="case-studies"
+           data-legal-exception="S6-case-study" aria-labelledby="cases-h">
+    <div class="wrap">
+      <div class="sec-intro">
+        <h2 id="cases-h">שני מקרים שטיפלנו בהם</h2>
+        <p>שני המקרים הבאים מובאים עם הנתונים שהובילו לתוצאה, כי בלעדיהם המספר לא אומר דבר. אצל אדם אחר, עם נתונים אחרים, התוצאה תהיה אחרת — או שלא תהיה כלל.</p>
+        <p class="ph ph--block">[[הסקשן כולו חסום לפרסום — S6. בלי אישורי הלקוחות והנתונים המלאים הוא יורד כיחידה שלמה, ולא עולה בגרסה חלקית]]</p>
+      </div>
+
+      <div class="cases">
+        <article class="case">
+          <p class="case-head"><span class="ph">[[סוג נכס · שנה · מעמד הפונים — ממשה]]</span></p>
+          <h4>הנתונים שהובילו לתוצאה:</h4>
+          <ul>
+            <li><span class="ph">[[שווי המכירה — ממשה]]</span></li>
+            <li><span class="ph">[[מס השבח ששולם — ממשה]]</span></li>
+            <li><span class="ph">[[מצב ההכנסה בשנות הפריסה ומה לא נוצל — ממשה]]</span></li>
+          </ul>
+          <p class="case-result">התוצאה: <span class="ph">[[סכום ההחזר — חסום עד אישור הלקוח בכתב]]</span></p>
+          <p class="case-disclaimer">תוצאה במקרה אמיתי אחד. ההחזר — אם יש — נגזר מנתוני המס האישיים של כל אדם ומהחלטת רשות המסים, ואינו ניתן להסקה ממקרה אחר. אין באמור התחייבות לתוצאה דומה.</p>
+        </article>
+
+        <article class="case">
+          <p class="case-head"><span class="ph">[[סוג נכס · שנה · מעמד הפונה — ממשה]]</span></p>
+          <h4>הנתונים שהובילו לתוצאה:</h4>
+          <ul>
+            <li><span class="ph">[[שווי המכירה — ממשה]]</span></li>
+            <li><span class="ph">[[מס השבח ששולם — ממשה]]</span></li>
+            <li><span class="ph">[[מצב ההכנסה בשנות הפריסה ומה לא נוצל — ממשה]]</span></li>
+          </ul>
+          <p class="case-result">התוצאה: <span class="ph">[[סכום ההחזר — חסום עד אישור הלקוח בכתב]]</span></p>
+          <p class="case-disclaimer">תוצאה במקרה אמיתי אחד. ההחזר — אם יש — נגזר מנתוני המס האישיים של כל אדם ומהחלטת רשות המסים, ואינו ניתן להסקה ממקרה אחר. אין באמור התחייבות לתוצאה דומה.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+  -->
+
+  <!-- ══════════════════ 5 · תמחור ══════════════════ -->
+  <section class="sec" aria-labelledby="price-h">
+    <div class="wrap">
+      <div class="sec-intro">
+        <h2 id="price-h">איך זה מתומחר</h2>
+      </div>
+      <p>הבדיקה הראשונית אינה כרוכה בתשלום ואינה מחייבת אתכם בדבר. אם מתברר שאין מקום לפריסה — אין תשלום, וזה סוף התהליך.</p>
+
+      <!-- ═══ נוסח סופי מעדי. אין נקיבה באחוז בדף — בשום תרחיש. ═══
+           זה לא placeholder ואין להמתין למספר: הקרס הוא "אין החזר, אין תשלום",
+           לא האחוז. האחוז נמסר לגולש בשיחה, לפני כל התחייבות. -->
+      <p>אם הוגשה בקשה והתקבל החזר בפועל, העמלה נגזרת מסכום ההחזר שיתקבל בפועל, והיא נמסרת לכם במלואה לפני כל התחייבות מצידכם.</p>
+
+      <ul class="price-facts">
+        <li>אין תשלום מראש.</li>
+        <li>אין תשלום אם לא התקבל החזר.</li>
+        <li>את תנאי שכר הטרחה תדעו במלואם לפני שתחליטו אם להתקדם.</li>
+      </ul>
+
+      <p class="ph ph--block">[[קיום עלויות נלוות — ממשה (S7.4): אגרות, פתיחת תיק, או דוח שנתי שנדרש להגשה. אם קיימות — הן מגולות כאן, ליד ה"ללא עלות", ולא בהסכם בלבד]]</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════ 6 · FAQ ══════════════════ -->
+  <section class="sec sec--surface" aria-labelledby="faq-h">
+    <div class="wrap">
+      <div class="sec-intro">
+        <h2 id="faq-h">שאלות שחוזרות</h2>
+      </div>
+      <div class="faq">
+
+        <details>
+          <summary>מה זו בעצם פריסת מס שבח?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></summary>
+          <div class="answer"><p>כשמוכרים נכס, המס מחושב כאילו כל השבח נוצר בשנת המכירה. פריסה היא בקשה לחלק את השבח על פני עד ארבע שנות מס אחורה — או תקופת הבעלות בנכס, לפי הקצרה — ולחשב את המס לכל שנה בנפרד, לפי המדרגות ונקודות הזיכוי שהיו לכם באותה שנה.</p></div>
+        </details>
+
+        <details>
+          <summary>למה שיהיה לי החזר אם המעסיק ניכה לי מס במקור?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></summary>
+          <div class="answer"><p>בדיוק בגלל זה. הניכוי במקור מחושב לפי המשכורת בלבד. אם באותן שנים נשארו לכם מדרגות מס נמוכות שלא נוצלו במלואן, או נקודות זיכוי שלא באו לידי ביטוי, השבח שנפרס לאותן שנים עשוי להיכנס לתוך המקום שנשאר. זה מה שיוצר את ההפרש.</p></div>
+        </details>
+
+        <details>
+          <summary>עד כמה שנים אחורה אפשר לבדוק?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></summary>
+          <!-- הניסוח מ-S13 של עדי: מוצג כמסגרת ולא כוודאות. -->
+          <div class="answer"><p>בדרך כלל ניתן לבחון מכירות משש שנות המס האחרונות. החלון המדויק תלוי בשנת המכירה ובמועד הדיווח.</p></div>
+        </details>
+
+        <details>
+          <summary>מה קורה אם מתברר שאין החזר?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></summary>
+          <div class="answer"><p>אומרים לכם, והתהליך נעצר. אין תשלום ואין המשך. הבדיקה הראשונית לא מחייבת אתכם בכלום.</p></div>
+        </details>
+
+        <!-- ✂ ארבע שאלות תלויות-נתון הוסרו כאן ב-2026-08-15 (הכרעת דורית).
+             הן נבנו מלכתחילה כיחידה נתיקה והורידו איתן 4 חוסמי 🔴.
+             מה שהוסר, ומה נדרש כדי להחזיר כל אחת — הנתון מגיע ממשה:
+               1. "כמה זמן התהליך לוקח?"           → טווח זמנים אמיתי.
+               2. "מה אני צריך להכין לבדיקה?"       → רשימת מסמכים. שלד לאימות:
+                  שומת מס השבח מהמכירה · טופסי 106 לשנות הפריסה · פרטי הנכס
+                  ומועד הרכישה.
+               3. "האם צריך להגיע למשרד?"          → האם התהליך מרחוק לחלוטין.
+               4. "מכרנו את הדירה יחד — האם שנינו צריכים לפנות?" → ההתייחסות
+                  לבני זוג. שאלה שתחזור הרבה בקהל הזה; כשהתשובה תגיע, היא
+                  הראשונה שצריכה לחזור.
+             🔴 כשהן חוזרות — עם תשובה עובדתית ממשה בלבד. אין למלא בהערכה
+             (שירה §8): טווח זמנים משוער בדף lead-gen הוא מצג שאי אפשר
+             לעמוד מאחוריו. -->
+
+        <details>
+          <summary>השאלון בתחילת הדף — התשובות שלי נשמרות?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></summary>
+          <div class="answer"><p>לא. ארבע השאלות מחושבות אצלכם בדפדפן והתשובות אינן נשלחות אלינו ואינן נשמרות. הפרטים היחידים שמגיעים אלינו הם אלה שתמלאו בטופס יצירת הקשר, אם תבחרו למלא אותו.</p></div>
+        </details>
+
+        <details>
+          <summary>מה עושים עם הפרטים שאני משאיר?<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></summary>
+          <div class="answer"><p>הפרטים משמשים ליצירת קשר ולבדיקה ראשונית בלבד. הפירוט המלא — שם בעל השליטה במאגר, למי נמסר המידע, וזכויות העיון, התיקון והמחיקה שלכם — מופיע ליד כפתור השליחה בטופס, וכן במדיניות הפרטיות.</p></div>
+        </details>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ 7 · טופס + CTA סופי ══════════════════ -->
+  <section class="sec sec--navy50" id="lead" aria-labelledby="lead-h">
+    <div class="wrap">
+      <div class="sec-intro">
+        <h2 id="lead-h">נבדוק ונחזור אליכם</h2>
+        <p>השאירו פרטים ונחזור אליכם לבדיקה ראשונית — ללא עלות וללא התחייבות. אם לא נמצא מקום לפריסה, נאמר לכם את זה, וזה נגמר שם.</p>
+      </div>
+
+      <div class="formcard">
+        <!-- אין ת.ז. ואין סכום ואין שדה טקסט חופשי. הוספת שדה = טריגר S14 אצל עדי. -->
+        <form id="lead-form" novalidate>
+
+          <div class="field">
+            <label for="lf-name">שם פרטי</label>
+            <input id="lf-name" name="firstName" type="text" maxlength="40"
+                   autocomplete="given-name" placeholder="השם שנפנה אליו"
+                   aria-describedby="lf-name-err" required>
+            <p class="err" id="lf-name-err" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.2v.6"/></svg>
+              <span>נשמח לדעת איך לפנות אליכם</span>
+            </p>
+          </div>
+
+          <div class="field">
+            <label for="lf-phone">טלפון נייד</label>
+            <input id="lf-phone" name="phone" type="tel" dir="ltr" inputmode="tel" maxlength="15"
+                   autocomplete="tel" placeholder="05X-XXXXXXX"
+                   aria-describedby="lf-phone-err" required>
+            <p class="err" id="lf-phone-err" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.2v.6"/></svg>
+              <span>מספר הטלפון לא נראה תקין</span>
+            </p>
+          </div>
+
+          <div class="field">
+            <!-- אימייל אופציונלי לפי S3: אם יש טלפון, הוא אינו הכרחי לבדיקה ראשונית. -->
+            <label for="lf-email">אימייל <span class="opt-mark">(לא חובה)</span></label>
+            <input id="lf-email" name="email" type="email" dir="ltr" inputmode="email" maxlength="100"
+                   autocomplete="email" placeholder="name@example.com"
+                   aria-describedby="lf-email-err">
+            <p class="err" id="lf-email-err" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.2v.6"/></svg>
+              <span>כתובת האימייל לא נראית תקינה</span>
+            </p>
+          </div>
+
+          <!-- ✂ M4 — תיבת ההסכמה השיווקית (ס' 30א) הוסרה כליל ב-2026-08-15,
+               לפי הכרעת דורית ונימוק עדי. השדה `marketingOptIn` אינו נשלח,
+               אינו קיים ב-DOM, ואין לו יותר סגנון ב-CSS.
+               למה זה ירד ולא תוקן: הנוסח הבטיח גם מסרונים, בעוד שהצד השרתי
+               שומר דוא"ל בלבד — אין ערוץ SMS ואין מנגנון הסרה בקוד. מה שאין
+               לו שימוש בפועל לא נאסף: נחסכים חשיפת ס' 30א, שעון שמירה שני,
+               אוסף שני ומנגנון הסרה שצריך היה להיבנות.
+               🔴 אין להחזיר את השדה בלי שלושת אלה **וללא** עדכון מקביל אצל
+               נועם — ה-hasOnly ב-firestore.rules ידחה ליד שנושא שדה עודף,
+               כלומר החזרה חד-צדדית כאן תשבור את כל השליחות.
+               מה שנשאר בטופס: שם פרטי · טלפון נייד · אימייל · הודעת היידוע
+               לפי ס' 11 ליד כפתור השליחה. -->
+
+          <div class="submit-row">
+            <button class="btn btn--primary" type="submit" data-cta="primary" data-event="lead-submit">שלחו פרטים לבדיקה</button>
+            <span class="btn-note">בדיקה ראשונית ללא עלות. תשלום רק אם מתקבל החזר בפועל.</span>
+          </div>
+
+          <!-- חובת היידוע (ס' 11 אחרי תיקון 13) — נוסח S3 של עדי, מילה במילה,
+               ויושב ליד כפתור השליחה ולא רק במדיניות הפרטיות.
+               🔴 המשפט על reCAPTCHA הועבר לכאן מהבאנר (2026-08-15). מקומו
+               כאן ולא שם משתי סיבות: הוא מתאר אירוע שקורה **בטופס הזה**,
+               והוא **אינו תלוי בהסכמה** — הוא רץ גם למי שבחר "רק הכרחיות".
+               הוא יושב לפני הקישור למדיניות בכוונה: הגילוי קודם, ההפניה
+               לפירוט אחריו. privacy.html §6 ו-§10.3 מחזיקים את הפירוט המלא.
+               אין להסיר אותו מכאן בלי להחזירו לבאנר באותו commit. -->
+          <p class="notice">
+            הפרטים שתשאירו ישמשו את משה בן מאיר, בעל השליטה במאגר,
+            לצורך יצירת קשר ובדיקה ראשונית של האפשרות להחזר מס שבח — ולמטרה
+            הזו בלבד. מסירת הפרטים היא בהתנדבות; בלעדיהם לא נוכל לחזור אליכם.
+            איננו מוסרים את הפרטים לצד שלישי למטרות שיווק.
+            בכל שלב תוכלו לפנות אלינו כדי לעיין בפרטים שלכם, לתקן אותם או לבקש
+            שנמחק אותם: <a href="mailto:moshe@moshebm.co.il"><bdi>moshe@moshebm.co.il</bdi></a> · <a href="tel:0508688425" data-event="phone-click" data-cta="phone-notice"><bdi>050-868-8425</bdi></a>.
+            בעת מילוי הטופס מופעל שירות reCAPTCHA של Google כהגנה מפני שליחה
+            אוטומטית; במסגרתו עובר מידע טכני לשרתי Google מחוץ לישראל, גם אם
+            לא אישרתם עוגיות שיווקיות.
+            <a href="privacy.html">מדיניות הפרטיות המלאה</a>
+          </p>
+
+          <p class="form-error" id="lf-form-error" hidden role="alert"></p>
+        </form>
+
+        <div id="lead-success" class="form-success" hidden tabindex="-1">
+          <h3>הפרטים התקבלו</h3>
+          <p>נחזור אליכם לבדיקה ראשונית — ללא עלות וללא התחייבות. אם לא יימצא מקום לפריסה, נאמר לכם את זה.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="sec sec--navy on-dark footer">
+  <div class="wrap">
+    <h2>פרטי העסק</h2>
+    <!-- ס' 11 מחייב לגלות את שם בעל השליטה במאגר ודרכי ההתקשרות איתו.
+         זו דרישה משפטית, לא נימוס. ח.פ. ומספר רישיון בתוך <bdi>. -->
+    <!-- 🔴 מספר עוסק אינו מוצג בדף: אצל עוסק יחיד מספר העוסק הוא מספר הזהות.
+         לא בפוטר, לא ב-schema.org, לא ב-meta, לא ב-alt ולא בהערת HTML.
+         עדי בוחנת חובת גילוי בדף lead-gen; עד תשובתה — לא בדף.
+         גם מספר רישיון הייצוג אינו מוצג, לבקשת משה (⚖️ L5). -->
+    <p>
+      משה בן מאיר · יועץ מס מייצג<br>
+      לוין אפשטיין <bdi>9</bdi>, רחובות<br>
+      טלפון: <a href="tel:0508688425" data-event="phone-click" data-cta="phone-footer"><bdi>050-868-8425</bdi></a><br>
+      דוא"ל: <a href="mailto:moshe@moshebm.co.il"><bdi>moshe@moshebm.co.il</bdi></a>
+    </p>
+    <!-- ═══ אימות הרישום — שורה אחת, בלי רכיב שביר. ═══
+         הגרסה המורחבת (קישור לפנקס + הסבר על מנוע החיפוש) **הושעתה**:
+         העיר שבפנקס אינה תואמת את כתובת המשרד שבדף, וסתירה גלויה בין השניים
+         גרועה מאפס תוצאות. הגרסה עם הקישור תחזור רק אם משה יעדכן את רישומו
+         במועצה לפני go-live — עד אז לא להחזיר קישור, לא שם עיר ולא פסקת הסבר.
+         🔴 ואין לכתוב בדף שהפנקס אינו מעודכן: זו טענה שהקורא אינו יכול לאמת,
+         בתוך הבלוק היחיד שכל תפקידו לא לבקש אמון על סמך הצהרה. -->
+    <p>לאימות הרישום אפשר לפנות למועצת יועצי המס.</p>
+
+    <ul class="footer-links">
+      <!-- ארבעת הקישורים חוברו ב-2026-08-15 למסמכים האמיתיים של עדי,
+           שיושבים באותה תיקייה: privacy.html ו-accessibility.html.
+           הם קישורים יחסיים — הדף נשאר פורטבילי ואינו תלוי בדומיין. -->
+      <li><a href="privacy.html">מדיניות פרטיות</a></li>
+      <!-- ✂ M8 — הפלייסהולדר של "תנאי שימוש" הוסר ב-2026-08-15: עדי בדקה
+           ואין חובה סטטוטורית לתנאי שימוש בדף lead-gen שאין בו עסקה.
+           ההסתייגות המהותית — שהאמור אינו ייעוץ מס ושהזכאות נקבעת לפי נתוני
+           הנישום ובכפוף לרשות המסים — כבר יושבת ב-.footer-disclaimer למטה,
+           והיא זו שנושאת את המשקל. אם ייווספו לדף עסקה, תשלום או אזור אישי —
+           השאלה נפתחת מחדש. -->
+      <li><a href="accessibility.html">הצהרת נגישות</a></li>
+      <li><a href="#" id="cookie-reset">ניהול עוגיות</a></li>
+    </ul>
+
+    <div class="footer-disclaimer">
+      <p>האמור בדף זה הוא מידע כללי בלבד ואינו מהווה ייעוץ מס או חוות דעת. הזכאות לפריסת מס שבח, וכן היקפה, נקבעות לפי נתוניו האישיים של כל נישום ובכפוף להחלטת רשות המסים.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- באנר עוגיות — שני כפתורים שווי-בולטות (תיקון 13). מסגרת הגיטינג
+     מועתקת מ-Output/_meta-pixel-template.html. הפיקסל עצמו אינו בדף.
+     B3 — הנוסח למטה הוא הנוסח שדורית הכריעה עליו, אחרי **העברת** גילוי
+     ה-reCAPTCHA (2026-08-15, סבב אחרון). לכל שורה תפקיד:
+       · השורה "בחירה ב'רק הכרחיות' אינה פוגעת..." היא **קריטית ואסור
+         שתיפול**: הסכמה שיש לה מחיר אינה הסכמה חופשית.
+       · שתי מילים שאסור להחזיר/להסיר: (1) אין לכתוב "עוגיות חיוניות
+         **בלבד**" — "בלבד" נסתר ע"י השורה שאומרת "בהסכמתכם נשתמש **גם**",
+         וזו הטעיה שהתווית לא מרפאת; (2) "מדיניות הפרטיות" בשורה האחרונה
+         חייבת להישאר **קישור אמיתי** ל-privacy.html: באנר שמפנה לפירוט
+         בלי לקשר אליו אינו מפנה.
+
+     🔴 ארבע שורות ה-reCAPTCHA **הועברו מכאן** אל פסקת היידוע שליד כפתור
+     השליחה (`.notice`). זו העברה, לא קיצור — הגילוי לא ירד באות אחת.
+     שני הנימוקים, ושניהם חוסמים אם מישהו ינסה להחזיר:
+       (1) **reCAPTCHA אינו נושא הסכמה.** הוא רץ בכל מקרה, גם למי שבחר
+           "רק הכרחיות". מידע שאינו תלוי בבחירה, שיושב בתיבה שכל תפקידה
+           לבקש בחירה, מלמד שהוא כן תלוי בה.
+       (2) **הבאנר עלה ל-46% ממסך נייד.** תיבת גילוי שחוסמת חצי מסך מייצרת
+           לחץ ללחוץ "אישור הכל" כדי להיפטר ממנה — וזו אינה בעיית UX אלא
+           בעיית **תוקף ההסכמה**: הסכמה שנקנתה בהטרדה אינה הסכמה חופשית.
+       ומעבר לשניהם: הגילוי עכשיו צמוד לנקודת האיסוף (הטופס) במקום לרחף
+       בטעינת הדף, וזה בדיוק מה שס' 11 מבקש.
+     אם יום אחד reCAPTCHA יעבור מאחורי ההסכמה — הוא חוזר לכאן, לא במקום
+     המשפט שבטופס אלא בנוסף אליו. -->
+<div class="cookie is-hidden" id="cookie-banner" role="region" aria-label="הודעת עוגיות">
+  <div class="inner">
+    <p id="cookie-text">
+      אנחנו משתמשים בעוגיות חיוניות להפעלת הדף. הן אינן דורשות הסכמה.
+      בהסכמתכם נשתמש גם בעוגיות מדידה ופרסום של Google ו&#8209;Meta, ומידע במסגרת
+      זו עשוי לעבור אל מחוץ לישראל.
+      בחירה ב"רק הכרחיות" אינה פוגעת בשימוש בדף, בבדיקה או בטופס.
+      אפשר לשנות את הבחירה בכל עת דרך "ניהול עוגיות" שבתחתית הדף.
+      פירוט מלא: <a href="privacy.html">מדיניות הפרטיות</a>.
+    </p>
+    <div class="actions">
+      <button class="btn btn--primary" id="cookie-accept" type="button">אישור הכל</button>
+      <button class="btn btn--equal" id="cookie-decline" type="button">רק הכרחיות</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ שכבת הלידים של נועם ══════════════
+     assets/lead-intake.min.js הוא **עותק** של
+     Output/mas-shevach-leads/dist-intake/lead-intake.min.js —
+     כשנועם בונה מחדש, יש להעתיק שוב (הדף חייב להישאר עצמאי).
+     החוזה: intake/example.html אצלו.
+
+     🔴 TODO קבוע — **הכשל הזה אינו עושה רעש.** עותק ישן ממשיך לשלוח לפי
+     הסכימה הקודמת (למשל בלי policyVersion), ה-hasOnly ב-firestore.rules
+     דוחה, ומתקבל 403 על כל ליד: הטופס נראה תקין, מצב ה"תודה" עולה,
+     ואף ליד לא נקלט. לכן בכל build של נועם, ולפני כל deploy:
+         cd Output/mas-shevach-leads
+         npm run build:intake
+         cp dist-intake/lead-intake.min.js ../2026-08-15-mas-shevach/assets/
+         diff dist-intake/lead-intake.min.js \
+              ../2026-08-15-mas-shevach/assets/lead-intake.min.js
+     סונכרן לאחרונה: 2026-08-15 · הגרסה שנבדקה נושאת policyVersion="1.0".
+     · הקובץ אינו מבצע שום בקשת רשת בטעינת הדף.
+     · reCAPTCHA נטען רק כשנוגעים בטופס — קריאה לצד שלישי (Google)
+       שחייבת להיות מגולה במדיניות הפרטיות. סומן לעדי.
+     · שמות השדות בטופס (firstName / phone / email) הם החוזה מולו —
+       אין לשנות אותם. ✂ M4: השדה הרביעי (ההסכמה השיווקית) הוסר מהדף
+       ב-2026-08-15, ונועם מסיר אותו במקביל מהסכימה, מה-rules ומה-Function.
+     מפתחות: הוזנו 2026-08-16 מתוך Output/mas-shevach-leads/.env (פרויקט moshemas).
+     מפתחות ה-Web של Firebase ציבוריים מעצם טבעם — הם נשלחים לכל דפדפן.
+     ההגנה היא firestore.rules + App Check, לא סודיות המפתח.
+     🔴 recaptchaSiteKey עדיין REPLACE_ME — חוסם go-live (App Check, עדי R-5).
+        בלעדיו נקודת ה-create הציבורית היא endpoint פתוח לכתיבה. -->
+<script>
+  window.MAS_SHEVACH_CONFIG = {
+    projectId: "moshemas",
+    apiKey: "AIzaSyBOyQlVnOqP4EXHnZxnuLmAbNMrNZ9aUAs",
+    appId: "1:820045286643:web:506cd22b866787e8a13b86",
+    recaptchaSiteKey: "REPLACE_ME"
+  };
+</script>
+<!-- TODO 🔴 קובץ זה הוא **עותק** של dist-intake/lead-intake.min.js של נועם.
+     כל build אצלו מחייב cp + diff לכאן. עותק ישן = 403 שקט על כל ליד. -->
+<script defer src="assets/lead-intake.min.js"></script>
+
+<script>
+/* ============================================================================
+   כל הלוגיקה של הדף. אין תלות חיצונית, אין fetch, אין CDN.
+   ========================================================================= */
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------------------------
+   0. מעקב — עוגני האירועים של טל.
+   האירוע נושא דגל בלבד. לעולם לא תשובות, לא PII, לא ערכי טופס. (S11.4)
+
+   🔴 חוק התור (טל + עדי, 2026-08-15) — **window.dataLayer אינו נוצר בטעינה.**
+   קודם הוא נוצר תמיד, וטל מצא את הכשל: GTM שנטען אחרי ההסכמה **צורך את התור
+   הקיים** ומשדר גם את מה שקרה לפניה. גם גיטינג בתוך loadMarketingPixel() לא
+   מציל — הוא מגיע מאוחר מדי, כשהתור כבר מלא.
+   לכן:
+     · track() דוחף למאגר פנימי פרטי (queue) שאינו חשוף ל-window.
+     · window.dataLayer נוצר **רק ברגע ההסכמה**, וברגע הזה התור הקודם
+       **נזרק — לא מושמע מחדש.** הסכמה אינה רטרואקטיבית.
+     · בסירוב (או בלי בחירה) window.dataLayer לא נוצר לעולם.
+   ה-CustomEvent הפנימי ("page-event") נשאר תמיד — הוא לא עוזב את הדף.
+------------------------------------------------------------------------------ */
+var analyticsConsent = false;   /* נדלק אך ורק דרך grantAnalyticsConsent() */
+var queue = [];                 /* מאגר פנימי פרטי. לא global, לא נשמר, לא נשלח. */
+
+function track(name, detail){
+  var payload = { event: name };
+  if (detail) for (var k in detail) if (Object.prototype.hasOwnProperty.call(detail,k)) payload[k] = detail[k];
+  if (analyticsConsent && window.dataLayer) window.dataLayer.push(payload);
+  else { queue.push(payload); if (queue.length > 50) queue.shift(); }
+  document.dispatchEvent(new CustomEvent("page-event", { detail: payload }));
+}
+
+/* נקראת מנקודה אחת בלבד: loadMarketingPixel(), כלומר אחרי הסכמה מפורשת. */
+function grantAnalyticsConsent(){
+  queue.length = 0;                                   /* זריקה, לא השמעה */
+  window.dataLayer = window.dataLayer || [];
+  analyticsConsent = true;
+}
+
+/* לינקים חסומים (placeholders) — לא מנווטים לשום מקום עד שיוחלפו. */
+document.addEventListener("click", function(e){
+  var a = e.target.closest && e.target.closest("[data-blocked-link]");
+  if (a){ e.preventDefault(); }
+  var ev = e.target.closest && e.target.closest("[data-event='phone-click']");
+  if (ev){ track("phone-click", { placement: ev.getAttribute("data-cta") || "topbar" }); }
+});
+
+/* ---------------------------------------------------------------------------
+   1. בודק ההתאמה הראשונית
+   נוסח השאלות, האפשרויות, שלושת מצבי הפלט ושורות ההסבר — S2 של עדי,
+   מילה במילה. שינוי מחרוזת כאן = סבב חדש אצל עדי.
+   החישוב כולו כאן, בדפדפן. אין שליחה, אין שמירה, אין localStorage.
+------------------------------------------------------------------------------ */
+var QUESTIONS = [
+  { id:"sold", title:"מכרתם נכס מקרקעין — דירה, משרד, חנות או קרקע?",
+    options:[ {v:"yes",l:"כן"}, {v:"no",l:"לא"} ] },
+  { id:"when", title:"מתי בוצעה המכירה?",
+    options:[ {v:"within6",l:"בשש השנים האחרונות"},
+              {v:"over6",  l:"לפני יותר משש שנים"},
+              {v:"unsure", l:"לא זוכר/ת בדיוק"} ],
+    /* M2 — ההערה מוצגת **לפני** הבחירה, ולכן אסור שתרמוז מה התשובה
+       ה"טובה". הנוסח הקודם ("חלון הבדיקה מוגבל בדרך כלל לשש שנות המס
+       האחרונות") אמר לגולש איזו אפשרות מובילה הלאה, ובכך הטה אליה.
+       הנוסח כאן מתאר את המנגנון בלי לתמרץ בחירה. */
+    hint:"החלון המדויק תלוי בשנת המכירה ובמועד הדיווח." },
+  { id:"status", title:"באותה תקופה — מה תיאר אתכם בצורה הטובה ביותר?",
+    options:[ {v:"employee",l:"שכיר/ה"},
+              {v:"self",    l:"עצמאי/ת"},
+              {v:"none",    l:"לא עבדתי / חל\"ת / גמלאי/ת"} ],
+    /* M2 — שאלה 3 אינה מכריעה אף מצב פלט ב-decide(). הנוסח הקודם
+       ("שנים שבהן לא עבדתם ... מגדילות את הרלוונטיות") הבטיח השפעה שאינה
+       קיימת, וגרוע מכך — תמרץ מי שעבד חלקית ללחוץ "לא עבדתי" כדי לקבל
+       תוצאה טובה יותר, שלא תגיע. אם יום אחד השאלה כן תשפיע על הפלט,
+       זו השורה שצריכה להשתנות ראשונה. */
+    hint:"השאלה עוזרת לנו להסביר את המנגנון כשנדבר; היא אינה משפיעה על תוצאת הבדיקה כאן." },
+  { id:"paid", title:"שולם מס שבח על המכירה?",
+    options:[ {v:"yes",   l:"כן"},
+              {v:"no",    l:"לא"},
+              {v:"unsure",l:"לא בטוח/ה"} ],
+    hint:"“לא בטוח” זו תשובה לגיטימית — ברוב המקרים המס נוכה במסגרת עסקת המכירה ולא בהעברה נפרדת." }
+];
+
+/* שורות ההסבר הדינמיות של מצב ב' — לפי השאלה שהכריעה. */
+var NOFIT_REASON = {
+  sold:  "השירות מיועד למי שמכר נכס מקרקעין ושילם עליו מס שבח.",
+  when:  "בקשה להחזר מס מוגשת בדרך כלל עבור שש שנות המס האחרונות; מכירה מוקדמת יותר חורגת מהחלון הזה.",
+  paid:  "אם לא שולם מס שבח על המכירה, אין תשלום ביתר שניתן לבקש בחזרה."
+};
+
+/* הכרעת המצב.
+   מצב ב' (כנראה לא מתאים) — רק על שלושת התנאים המפורשים של עדי.
+   "עצמאי" אינו פוסל: אין קביעה שלילית מארבע שאלות (S2.3).
+   "לא בטוח" בשאלה 4 ו-"לא זוכר" בשאלה 2 → מצב ג', שהוא מסלול נושא-טופס.
+   להעביר "לא בטוח" למצב א' במקום ג': להחזיר את התנאי המסומן להלן. */
+function decide(a){
+  if (a.sold === "no")    return { state:"nofit",   reason:NOFIT_REASON.sold };
+  if (a.when === "over6") return { state:"nofit",   reason:NOFIT_REASON.when };
+  if (a.paid === "no")    return { state:"nofit",   reason:NOFIT_REASON.paid };
+  if (a.paid === "unsure" || a.when === "unsure") return { state:"unclear" };  /* ← כאן */
+  return { state:"fit" };
+}
+
+var RESULT = {
+  fit: {
+    cls:"result--fit",
+    html:'<p>לפי מה שסימנתם, יש מקום לבדוק אם ניתן לבקש פריסה של מס השבח על פני שנות המס שקדמו למכירה.</p>' +
+         '<p>זו אינה קביעת זכאות ואינה חוות דעת מס. הזכאות, ואם יש החזר — גובהו, נקבעים על ידי רשות המסים בלבד, על סמך הנתונים המלאים שלכם. בדיקה אמיתית מחייבת את נתוני השומה והדוחות שלכם.</p>' +
+         '<p>השאירו פרטים ונחזור אליכם לבדיקה ראשונית — ללא עלות וללא התחייבות.</p>'
+  },
+  unclear: {
+    cls:"result--unclear",
+    html:'<p>מארבע שאלות אי אפשר לדעת אם המסלול רלוונטי עבורכם — וזה בסדר גמור. רוב האנשים לא זוכרים בדיוק מה שולם ומתי; הנתון שמכריע מופיע בשומת מס השבח או באישור התשלום מרשות המסים.</p>' +
+         '<p>אם תרצו, השאירו פרטים ונעזור לכם לברר — ללא עלות וללא התחייבות.</p>'
+  },
+  nofit: {
+    cls:"result--nofit",
+    html:'<p>לפי מה שסימנתם, מסלול פריסת מס השבח כנראה אינו רלוונטי עבורכם.<br>{reason}</p>' +
+         '<p>זו אינה קביעה לגבי זכאותכם — היא מבוססת על ארבע שאלות בלבד, ויש נסיבות שאינן נכללות בהן. אם המצב שלכם שונה ממה שסימנתם, אתם מוזמנים לפנות אלינו ונשמח לבדוק.</p>' +
+         '<p>התשובות שסימנתם לא נשמרו.</p>'
+  }
+};
+
+var stage    = document.getElementById("checker-stage");
+var stepText = document.getElementById("checker-step");
+var progress = document.getElementById("progress");
+var idx = 0, answers = {}, started = false, screened = false;
+
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
+  return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+
+function setProgress(){
+  stepText.textContent = "שאלה " + (idx+1) + " מתוך " + QUESTIONS.length;
+  var segs = progress.children;
+  for (var i=0;i<segs.length;i++) segs[i].classList.toggle("is-done", i <= idx);
+}
+
+function buildQuestion(){
+  var q = QUESTIONS[idx];
+  setProgress();
+  var html = '<fieldset class="q">' +
+    '<legend class="q-title" id="q-title" tabindex="-1">' + esc(q.title) + '</legend>' +
+    '<div class="opts" role="none">';
+  q.options.forEach(function(o,i){
+    var sel = answers[q.id] === o.v;
+    var id = "opt-" + q.id + "-" + i;
+    html += '<label class="opt' + (sel ? " is-selected" : "") + '" for="' + id + '">' +
+              '<input type="radio" id="' + id + '" name="' + q.id + '" value="' + o.v + '"' +
+              (sel ? " checked" : "") + '>' +
+              '<span class="check" aria-hidden="true">' + (sel ? "✓" : "") + '</span>' +
+              '<span class="opt-label">' + esc(o.l) + '</span>' +
+            '</label>';
+  });
+  html += '</div>';
+  if (q.hint) html += '<p class="q-hint">' + esc(q.hint) + '</p>';
+  html += '</fieldset><div class="checker-nav">' +
+    (idx > 0 ? '<button type="button" class="btn btn--ghost" id="q-back"><span class="back-arrow" aria-hidden="true">←</span> חזרה לשאלה הקודמת</button>' : '<span></span>') +
+    '<button type="button" class="btn btn--primary" id="q-next"' + (answers[q.id] ? "" : " disabled") + '>' +
+    (idx === QUESTIONS.length-1 ? "הצגת הסיכום" : "הבא") + '</button></div>';
+
+  stage.className = "checker-stage fade-in";
+  stage.innerHTML = html;
+
+  var next = document.getElementById("q-next");
+  var inputs = stage.querySelectorAll("input[type=radio]");
+  Array.prototype.forEach.call(inputs, function(inp){
+    inp.addEventListener("change", function(){
+      answers[q.id] = inp.value;
+      Array.prototype.forEach.call(stage.querySelectorAll(".opt"), function(lab){
+        var on = lab.contains(inp);
+        lab.classList.toggle("is-selected", on);
+        lab.querySelector(".check").textContent = on ? "✓" : "";
+      });
+      next.disabled = false;
+      if (!started){ started = true; track("checker-start"); }
+      /* אין קידום אוטומטי — S10(3): מעבר אוטומטי בבחירה שובר קוראי מסך ומקלדת. */
+    });
+    inp.addEventListener("focus", function(){ inp.closest(".opt").classList.add("is-focus"); });
+    inp.addEventListener("blur",  function(){ inp.closest(".opt").classList.remove("is-focus"); });
+  });
+
+  next.addEventListener("click", function(){
+    if (!answers[q.id]) return;
+    if (idx === QUESTIONS.length-1) showResult();
+    else { idx++; buildQuestion(); focusTitle(); }
+  });
+  var back = document.getElementById("q-back");
+  if (back) back.addEventListener("click", function(){ idx--; buildQuestion(); focusTitle(); });
+}
+
+function focusTitle(){
+  var t = document.getElementById("q-title") || document.getElementById("result-h");
+  if (t) t.focus();
+}
+
+function showResult(){
+  var d = decide(answers);
+  var tpl = RESULT[d.state];
+  var body = tpl.html.replace("{reason}", esc(d.reason || ""));
+
+  var actions;
+  if (d.state === "nofit"){
+    actions = '<div class="result-actions">' +
+      '<a class="btn btn--secondary" href="#mechanism">כך עובדת הפריסה</a>' +
+      '<button type="button" class="btn btn--ghost" id="r-restart">לחזור ולתקן את התשובות</button>' +
+      '</div>';
+  } else {
+    actions = '<div class="result-actions">' +
+      '<a class="btn btn--primary" href="#lead" data-cta="checker-result">השאירו פרטים לבדיקה</a>' +
+      '<button type="button" class="btn btn--ghost" id="r-restart">לחזור ולתקן את התשובות</button>' +
+      '</div>';
+  }
+
+  /* מצב שלילי באותו כרטיס, אותו גודל, אותו משקל — בלי אדום ובלי "מצטערים". */
+  stage.className = "checker-stage fade-in";
+  stage.innerHTML = '<div class="result ' + tpl.cls + '" data-state="' + d.state + '">' +
+      '<h3 id="result-h" tabindex="-1">סיכום הסינון</h3>' + body + actions + '</div>';
+
+  var segs = progress.children;
+  for (var i=0;i<segs.length;i++) segs[i].classList.add("is-done");
+  stepText.textContent = "סיכום";
+
+  screened = (d.state !== "nofit");
+
+  /* 🔴 M3b — **אירוע אחד, בלי מטען, בלי טרנרי.** אין להחזיר כאן שום
+     הסתעפות לפי d.state, וגם לא ארגומנט שני.
+     שני הסבבים שקדמו לשורה הזו:
+       (1) היה כאן { state: d.state } — כלומר "fit" נדחף כשדה. זו לא נגזרת
+           של המידע הרגיש אלא המסקנה עצמה: מכר נכס מקרקעין ושילם מס שבח.
+       (2) הוסר המטען ונשארו שני שמות אירוע — וזה עדיין לא הספיק: שמות
+           האירועים **עצמם** מקודדים את אותה מסקנה. checker-complete מול
+           checker-negative = בדיוק אותו פילוח, בלי אף פרמטר.
+     לכן: אירוע יחיד שנדלק בכל שלושת מצבי הסיכום. הוא אומר "מישהו סיים את
+     הבדיקה" — ולא מי הוא ומה נמצא. זה כל מה שטל צריך למדידת מסע, וזה כל
+     מה שמותר לצאת מהדף הזה. */
+  track("checker-complete");
+
+  document.getElementById("result-h").focus();
+  var rs = document.getElementById("r-restart");
+  if (rs) rs.addEventListener("click", function(){
+    idx = 0; answers = {}; screened = false; buildQuestion(); focusTitle();
+  });
+}
+
+if (stage) buildQuestion();
+
+/* ---------------------------------------------------------------------------
+   2. טופס הליד
+------------------------------------------------------------------------------ */
+var form = document.getElementById("lead-form");
+var success = document.getElementById("lead-success");
+var formErr = document.getElementById("lf-form-error");
+
+var PHONE_RE = /^0[2-9]\d{7,8}$/;
+var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function setError(input, errId, on){
+  var box = document.getElementById(errId);
+  input.setAttribute("aria-invalid", on ? "true" : "false");
+  box.hidden = !on;
+  return !on;
+}
+
+/* פרמטרי ה-utm נקראים ע"י lead-intake.js של נועם, שקורא **ארבעה בלבד**
+   (source/medium/campaign/content). utm_term אינו נקרא בכוונה — הוא נושא את
+   מילת החיפוש שהמשתמש הקליד, וזה שדה טקסט חופשי בדלת האחורית. אין בדף הזה
+   שום קוד שאוסף utm בעצמו. */
+
+/* 🟠 M3c — המופע השלישי של אותו דפוס, ואותה הכרעה: **אירוע בלי מטען.**
+   היה כאן { screened: ... }, ו-screened:true פירושו בפועל "מכר נכס ושילם
+   מס שבח" — הפעם צמוד לרגע ההמרה, כלומר לרגע שבו פלטפורמת פרסום קושרת
+   את האירוע לפרופיל אמיתי. גם כשהחשיפה השולית קטנה יותר, אין ל-screened
+   שימוש מותר בפלטפורמה (קהלים מותאמים חסומים, ואין אופטימיזציה מבוססת-ערך
+   על התכונה הזו), ומשה רואה את הפילוח ממילא בקונסולה — הוא נשמר על כל ליד.
+   כלומר: אין מה להרוויח, ויש מה להפסיד.
+   הפרמטר screenedFlag נשאר בחתימה כי הוא עדיין נמסר לשכבת הלידים של נועם
+   (שם הוא **כן** נשמר, בהסכמה ובמאגר) — הוא פשוט לא עוזב את הדף כאירוע.
+
+   📌 הכלל שנצרב כאן, לכל אירוע מעקב עתידי בדף הזה:
+   מסקנה רגישה דולפת בשלושה ערוצים — **מטען · שם האירוע · תזמון**.
+   תיקון של אחד מהם אינו תיקון. בפרויקט הזה היו כל השלושה:
+   {state} היה המטען · checker-negative היה השם · תור ה-dataLayer היה התזמון. */
+function showSuccess(screenedFlag){
+  track("lead-submit");
+  form.hidden = true;
+  success.hidden = false;
+  success.focus();
+}
+
+/* ההודעות הן של שירה (נעולות בקופי). מ-onError של נועם נלקח רק **אילו**
+   שדות נכשלו, לא נוסח ההודעה — כדי שלא ייווצר נוסח מתחרה. */
+var FIELD_MAP = { firstName:["lf-name","lf-name-err"], phone:["lf-phone","lf-phone-err"], email:["lf-email","lf-email-err"] };
+function paintErrors(errors){
+  var first = null;
+  Object.keys(FIELD_MAP).forEach(function(k){
+    var el = document.getElementById(FIELD_MAP[k][0]);
+    var on = !!errors[k];
+    setError(el, FIELD_MAP[k][1], on);
+    if (on && !first) first = el;
+  });
+  if (errors._){
+    formErr.textContent = "השליחה לא הושלמה. אפשר לנסות שוב בעוד רגע.";
+    formErr.hidden = false;
+    console.error("[lead] שגיאה:", errors._);
+  }
+  if (first) first.focus();
+}
+
+/* חיווט מול נועם. אם הקובץ נטען — הוא הבעלים של השליחה והוולידציה,
+   והדף מספק לו רק את הטופס, את דגל ה-screened ואת ה-UI. */
+var wired = false;
+window.addEventListener("load", function(){
+  if (!form || wired) return;
+  if (window.MasShevachLeads && typeof window.MasShevachLeads.attach === "function"){
+    wired = true;
+    try{ window.MasShevachLeads.init(); }catch(e){ console.error("[lead-intake] init נכשל:", e); }
+    window.MasShevachLeads.attach({
+      form: form,
+      /* דגל בלבד. ארבע התשובות אינן עוזבות את הדפדפן. */
+      screened: function(){ return screened === true; },
+      onSuccess: function(){ showSuccess(screened); },
+      onError: function(errors){ formErr.hidden = true; paintErrors(errors || {}); }
+    });
+  } else {
+    console.warn("[lead-intake] הקובץ אינו מחובר — הליד לא נשלח לשום מקום. חוסם go-live.");
+  }
+});
+
+/* מסלול גיבוי: רץ רק אם lead-intake.min.js לא נטען (למשל בפיתוח מקומי בלי
+   מפתחות). מוודא שהטופס עדיין מתנהג נכון — ולא שולח לשום מקום. */
+if (form) form.addEventListener("submit", function(e){
+  if (wired) return;
+  e.preventDefault();
+  formErr.hidden = true;
+
+  var nameEl  = document.getElementById("lf-name");
+  var phoneEl = document.getElementById("lf-phone");
+  var mailEl  = document.getElementById("lf-email");
+
+  var name  = nameEl.value.trim().slice(0,40);
+  var phone = phoneEl.value.replace(/[\s\-()]/g,"");
+  var mail  = mailEl.value.trim();
+
+  var ok = true;
+  ok = setError(nameEl,  "lf-name-err",  !(name.length >= 2)) && ok;
+  ok = setError(phoneEl, "lf-phone-err", !PHONE_RE.test(phone)) && ok;
+  ok = setError(mailEl,  "lf-email-err", !(mail === "" || (mail.length <= 100 && EMAIL_RE.test(mail)))) && ok;
+
+  if (!ok){
+    var bad = form.querySelector('[aria-invalid="true"]');
+    if (bad) bad.focus();
+    return;
+  }
+
+  /* אין כאן שליחה לשום מקום, ובכוונה: כשהשכבה של נועם לא נטענה, ליד לא נכתב.
+     המצב הזה חוסם go-live — הוא קיים רק כדי שאפשר לבדוק את זרימת ה-UI. */
+  console.warn("[lead-intake] הקובץ אינו מחובר — הליד לא נשלח לשום מקום. חוסם go-live.");
+  showSuccess(screened);
+});
+
+/* ---------------------------------------------------------------------------
+   3. באנר עוגיות + נקודת ההזרקה המגודרת של הפיקסל
+   מסגרת הגיטינג מ-Output/_meta-pixel-template.html. הפיקסל עצמו אינו כאן.
+------------------------------------------------------------------------------ */
+var CONSENT_KEY = "mas-shevach-cookie-consent-v1";
+var banner  = document.getElementById("cookie-banner");
+var pixelLoaded = false;
+
+function loadMarketingPixel(){
+  if (pixelLoaded) return;
+  pixelLoaded = true;
+
+  /* 🔴 הנקודה היחידה בדף שבה window.dataLayer בא לעולם. היא נמצאת כאן ולא
+     בטעינה, כדי ש-GTM/פיקסל שייטען אחריה לא ימצא תור מלא לצרוך. התור
+     שנצבר לפני ההסכמה נזרק כאן, ואינו מושמע מחדש. */
+  grantAnalyticsConsent();
+
+  /* ────────────────────────────────────────────────────────────────────
+     ANALYTICS · נקודת ההזרקה היחידה של פיקסל/אנליטיקס בדף.
+     נקראת אך ורק אחרי הסכמה מפורשת ("אישור הכל").
+     טל: להדביק כאן את ה-snippet. לפני ההסכמה fbq חייב להישאר undefined —
+     זו בדיקת QA, לא הנחה. הפיקסל אינו נכנס לפני תת-שער הפיקסל של עדי (S11).
+     אירועים: לשלוח דגלים בלבד. אסור להעביר תשובות בודק, טלפון, מייל או שם.
+     ──────────────────────────────────────────────────────────────────── */
+  console.info("[pixel] הסכמה התקבלה — אין כרגע פיקסל להזריק (S11: תת-שער נפרד).");
+}
+
+function setConsent(v){
+  try{ localStorage.setItem(CONSENT_KEY, v); }catch(e){}
+  if (banner) banner.classList.add("is-hidden");
+  if (v === "all") loadMarketingPixel();
+}
+
+var stored = null;
+try{ stored = localStorage.getItem(CONSENT_KEY); }catch(e){}
+if (stored){ if (stored === "all") loadMarketingPixel(); }
+else if (banner){ banner.classList.remove("is-hidden"); }
+
+var acc = document.getElementById("cookie-accept");
+var dec = document.getElementById("cookie-decline");
+if (acc) acc.addEventListener("click", function(){ setConsent("all"); });
+if (dec) dec.addEventListener("click", function(){ setConsent("essential"); });
+
+/* Esc סוגר את הבאנר בלי לשמור הסכמה — סגירה אינה הסכמה. */
+document.addEventListener("keydown", function(e){
+  if (e.key === "Escape" && banner && !banner.classList.contains("is-hidden")){
+    banner.classList.add("is-hidden");
+  }
+});
+
+var resetLink = document.getElementById("cookie-reset");
+if (resetLink) resetLink.addEventListener("click", function(e){
+  e.preventDefault();
+  try{ localStorage.removeItem(CONSENT_KEY); }catch(err){}
+  location.reload();
+});
+
+/* ---------------------------------------------------------------------------
+   4. אסרשן מחרוזות אסורות (S2.5) — אסרשן, לא כוונה טובה.
+   רץ תמיד; מדווח ב-console.error. בסביבת פיתוח גם מוצג ברצועה העליונה.
+   חריג יחיד ומתועד: בלוק מקרי המבחן לגבי סכומים.
+   M5 — שם החריג הוא `data-legal-exception="S6-case-study"`, זהה לשם
+   ש-check.mjs של נועם מחפש (S6_EXCEPTION). קודם היה כאן שם אחר
+   (`data-amounts-allowed`), כך ששני הבודקים חיפשו שני דברים שונים
+   ורק אחד מהם היה מוצא את החריג. הסקשן עצמו הוסר מהדף — הסלקטור נשאר
+   כדי שביום שהוא יחזור, שני הבודקים יסכימו עליו.
+------------------------------------------------------------------------------ */
+/* ⚠️ המחרוזות שבסוף הרשימה כתובות ב-escapes של יוניקוד **בכוונה**: אם הן
+   יופיעו כאן כטקסט גלוי, סורק המלל של נועם (npm run check --html) יסמן את
+   הקובץ הזה עצמו ככשל — הוא סורק תארי מקצוע גם בקובץ הגולמי, כולל בתוך
+   <script>. הבדיקה נשארת אפקטיבית — ההשוואה היא מול אותן מחרוזות בדיוק.
+   מה שהן מייצגות: תארי מקצוע ראיית החשבון ביחיד וברבים (לא נכונים עובדתית —
+   משה הוא יועץ מס), ניסוח שהופך את כיוון הייצוג מול הרשות, ושני שמות רכיב
+   שמכילים את המילה "זכאות".
+
+   🔴 M6 — הרשימה הזו חייבת להכיל את FORBIDDEN_STRINGS שב-
+   Output/mas-shevach-leads/src/constants.js (סעיף S2.5). שם רץ שער סטטי על
+   הקובץ; כאן רצה אותה בדיקה על ה-DOM אחרי שנבנה — ולכן היא תופסת גם מלל
+   שנוצר ב-JS, שהשער הסטטי לעולם לא יראה. כל תוספת שם — גם כאן, ולהפך.
+   מי שמסיר פריט מכאן בלי להסיר אותו שם, מכבה חצי מהאכיפה בשקט. */
+var FORBIDDEN = [
+  /* הבטחת החזר / זכאות */
+  "מגיע לכם","מגיע לך","זכאים ל","אתם זכאים","זכאותכם אושרה",
+  "החזר מובטח","מובטח","בטוח תקבלו",
+  /* סכומים מרומזים */
+  "אלפי שקלים","עשרות אלפים","כסף שמחכה","הכסף שלכם מחכה","בממוצע ₪",
+  /* S7 — טענות עליונות בלתי-נמדדות. "המומחים" רחבה בכוונה מהמקבילה
+     שב-constants.js ("המומחים להחזרי מס") ולכן מכילה אותה. */
+  "המומחים","הטובים ביותר","מספר 1",
+  /* S7 — זיקה מדומה לרשות המסים. ההטעיה החמורה בדף לפי עדי, כי היא מחקה
+     בדיוק את דפוס עוקץ החזרי המס. שני סימני הגרשיים, כי שניהם מוקלדים. */
+  'מאושר ע"י רשות המסים',
+  "מאושר ע״י רשות המסים",
+  "\u05e8\u05d5\u0022\u05d7",
+  "\u05e8\u05d5\u05f4\u05d7",
+  "\u05e8\u05d5\u05d0\u05d4\u0020\u05d7\u05e9\u05d1\u05d5\u05df",
+  "\u05e8\u05d5\u05d0\u05d9\u0020\u05d7\u05e9\u05d1\u05d5\u05df",
+  "\u05de\u05d9\u05d9\u05e6\u05d2\u0020\u05d0\u05ea\u0020\u05e8\u05e9\u05d5\u05ea\u0020\u05d4\u05de\u05e1\u05d9\u05dd",
+  "\u05d1\u05d3\u05d9\u05e7\u05ea\u0020\u05d6\u05db\u05d0\u05d5\u05ea",
+  "\u05d1\u05d5\u05d3\u05e7\u0020\u05d6\u05db\u05d0\u05d5\u05ea"
+];
+var AMOUNT_RE = /\d[\d,]{3,}\s*(₪|ש"ח)/;
+
+function pageText(){
+  var clone = document.body.cloneNode(true);
+  var strip = clone.querySelectorAll("#dev-blockers, script, style");
+  Array.prototype.forEach.call(strip, function(n){ n.remove(); });
+  return { all: clone.innerText || clone.textContent || "", node: clone };
+}
+function runContentAssertions(){
+  var t = pageText();
+  var hits = [];
+  FORBIDDEN.forEach(function(s){ if (t.all.indexOf(s) !== -1) hits.push('מחרוזת אסורה: "' + s + '"'); });
+  var amountScope = t.node.cloneNode(true);
+  Array.prototype.forEach.call(amountScope.querySelectorAll('[data-legal-exception="S6-case-study"]'), function(n){ n.remove(); });
+  var amountText = amountScope.innerText || amountScope.textContent || "";
+  if (AMOUNT_RE.test(amountText)) hits.push("סכום בן 4 ספרות ומעלה מחוץ לבלוק מקרי המבחן");
+  if (hits.length) console.error("[S2.5] נמצאו מחרוזות שאסורות בדף:", hits);
+  return hits;
+}
+
+/* ---------------------------------------------------------------------------
+   5. רצועת חוסמי go-live — DEV ONLY. נמחקת יחד עם כל ה-🔴.
+------------------------------------------------------------------------------ */
+function devStrip(){
+  var strip = document.getElementById("dev-blockers");
+  if (!strip) return;
+  var isDev = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === "file:";
+  var count = document.querySelectorAll("main .ph, footer .ph, .cookie .ph, header .ph").length;
+  var extra = [];
+  if (document.querySelector('meta[property="og:url"][content*="REPLACE-DOMAIN"]')) extra.push("דומיין (REPLACE-DOMAIN ב-og)");
+  if (!(window.MasShevachLeads && window.MasShevachLeads.attach)) extra.push("lead-intake אינו מחובר");
+  else {
+    /* כל ארבעת המפתחות נבדקים, לא רק projectId. אחרת מילוי חלקי משתיק את
+       הרצועה בדיוק כשהמפתח שנותר הוא recaptchaSiteKey — כלומר App Check.
+       גם `indexOf(...)===0` לא היה תופס את appId, שבו REPLACE_ME באמצע. */
+    var cfg = window.MAS_SHEVACH_CONFIG || {};
+    var missing = ["projectId","apiKey","appId","recaptchaSiteKey"].filter(function(k){
+      return String(cfg[k] || "").indexOf("REPLACE_ME") !== -1;
+    });
+    if (missing.length) extra.push("מפתחות חסרים: " + missing.join(", "));
+  }
+  var bad = runContentAssertions();
+  if (!isDev) return;                       /* בפרודקשן הרצועה לא מוצגת בשום מצב */
+  strip.hidden = false;
+  strip.innerHTML = "DEV · <b>" + (count + extra.length) + "</b> חוסמי go-live בדף" +
+    (extra.length ? " · " + extra.join(" · ") : "") +
+    (bad.length ? ' · <span class="fail">בדיקת מחרוזות נכשלה: ' + bad.length + '</span>' : ' · בדיקת מחרוזות עברה');
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", devStrip);
+else devStrip();
+
+})();
+</script>
+
+</body>
+</html>

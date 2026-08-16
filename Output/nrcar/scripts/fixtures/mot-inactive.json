@@ -1,0 +1,156 @@
+{
+  "help": "https://data.gov.il/api/3/action/help_show?name=datastore_search",
+  "success": true,
+  "result": {
+    "filters": {
+      "mispar_rechev": 9318684
+    },
+    "include_total": true,
+    "limit": 5,
+    "records_format": "objects",
+    "resource_id": "851ecab1-0622-4dbe-a6c7-f950cf82abf9",
+    "total_estimation_threshold": null,
+    "records": [
+      {
+        "_id": 1,
+        "mispar_rechev": 9318684,
+        "tozeret_cd": 299,
+        "tozeret_nm": "סוזוקי הונגריה",
+        "degem_cd": 61,
+        "degem_nm": "JYA22",
+        "sug_rechev_cd": 112,
+        "sug_rechev_nm": "פרטי נוסעים",
+        "moed_aliya_lakvish": 2017,
+        "bitul_dt": "2026-07-17 00:00:00",
+        "misgeret": "TSMJYA22S00420780",
+        "tozar_manoa": "סוזוקי",
+        "degem_manoa": "M16A",
+        "mispar_manoa": "2058138",
+        "mishkal_kolel": 1730,
+        "ramat_gimur": "GLX",
+        "ramat_eivzur_betihuty": 0,
+        "kvutzat_zihum": 14,
+        "shnat_yitzur": 2017,
+        "baalut": "פרטי",
+        "tzeva_rechev": "כסף מטלי",
+        "zmig_kidmi": "205/50R17",
+        "zmig_ahori": "205/50R17",
+        "sug_delek_nm": "בנזין",
+        "horaat_rishum": 160255,
+        "kinuy_mishari": "SX4 CROSSOVER"
+      }
+    ],
+    "fields": [
+      {
+        "id": "_id",
+        "type": "int"
+      },
+      {
+        "id": "mispar_rechev",
+        "type": "numeric"
+      },
+      {
+        "id": "tozeret_cd",
+        "type": "numeric"
+      },
+      {
+        "id": "tozeret_nm",
+        "type": "text"
+      },
+      {
+        "id": "degem_cd",
+        "type": "numeric"
+      },
+      {
+        "id": "degem_nm",
+        "type": "text"
+      },
+      {
+        "id": "sug_rechev_cd",
+        "type": "numeric"
+      },
+      {
+        "id": "sug_rechev_nm",
+        "type": "text"
+      },
+      {
+        "id": "moed_aliya_lakvish",
+        "type": "numeric"
+      },
+      {
+        "id": "bitul_dt",
+        "type": "text"
+      },
+      {
+        "id": "misgeret",
+        "type": "text"
+      },
+      {
+        "id": "tozar_manoa",
+        "type": "text"
+      },
+      {
+        "id": "degem_manoa",
+        "type": "text"
+      },
+      {
+        "id": "mispar_manoa",
+        "type": "text"
+      },
+      {
+        "id": "mishkal_kolel",
+        "type": "numeric"
+      },
+      {
+        "id": "ramat_gimur",
+        "type": "text"
+      },
+      {
+        "id": "ramat_eivzur_betihuty",
+        "type": "numeric"
+      },
+      {
+        "id": "kvutzat_zihum",
+        "type": "numeric"
+      },
+      {
+        "id": "shnat_yitzur",
+        "type": "numeric"
+      },
+      {
+        "id": "baalut",
+        "type": "text"
+      },
+      {
+        "id": "tzeva_rechev",
+        "type": "text"
+      },
+      {
+        "id": "zmig_kidmi",
+        "type": "text"
+      },
+      {
+        "id": "zmig_ahori",
+        "type": "text"
+      },
+      {
+        "id": "sug_delek_nm",
+        "type": "text"
+      },
+      {
+        "id": "horaat_rishum",
+        "type": "numeric"
+      },
+      {
+        "id": "kinuy_mishari",
+        "type": "text"
+      }
+    ],
+    "_links": {
+      "start": "/api/3/action/datastore_search?resource_id=851ecab1-0622-4dbe-a6c7-f950cf82abf9&filters=%7B%22mispar_rechev%22%3A9318684%7D&limit=5",
+      "next": "/api/3/action/datastore_search?resource_id=851ecab1-0622-4dbe-a6c7-f950cf82abf9&filters=%7B%22mispar_rechev%22%3A9318684%7D&limit=5&offset=5"
+    },
+    "total": 1,
+    "total_was_estimated": false
+  }
+}

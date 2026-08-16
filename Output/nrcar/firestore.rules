@@ -1,0 +1,290 @@
+rules_version = '2';
+
+// ============================================================================
+// 🔴🔴 לקרוא לפני שנוגעים בקובץ הזה — ובקובץ storage.rules.
+//
+// **כללי Firebase הם אדיטיביים. אין `deny`.**
+// התוצאה היא ה-OR של **כל** כלל שמתאים לנתיב. כלל ספציפי מחמיר **אינו**
+// גובר על כלל רחב מתיר — הוא פשוט חסר משמעות לידו.
+//
+// לכן: **אסור `{allPaths=**}` או `{document=**}` מתיר בשום מקום שיש בו
+// הגבלה ספציפית.** "ליתר ביטחון" ב-rules הוא תמיד ההפך מביטחון.
+//
+// זו לא אזהרה תיאורטית: כלל רחב כזה ב-storage.rules ביטל בשקט את כל בידוד
+// המסמכים האישיים, ואיפשר לבעלים **להנפיק טוקן הורדה קבוע ובלתי-מאומת על
+// מסמך הזהות של אדם אחר**. הוא לא נתפס בשום סריקה סטטית ובשום code review —
+// רק בהרצה מול אמולטור. נאכף מעכשיו גם ב-smoke.
+// ============================================================================
+
+// ============================================================================
+// Firestore — deny-by-default.
+// פרוסה 1 = **בעלים בלבד על הכול**, חוץ משני נתיבים שבהם הכלל המחמיר חינם
+// היום ויקר מאוד אחר כך:
+//   · vehiclesPrivate — בעלים בלבד **לתמיד**, גם בפרוסה 2.
+//   · personalDocs    — read רק לנושא המידע. **גם הבעלים לא קורא.**
+//
+// מבנה:
+//   households/{hid}                          ← מסמך שורש: household+settings
+//   households/{hid}/vehicles/{id}
+//   households/{hid}/vehiclesPrivate/{id}
+//   households/{hid}/drivers/{id}
+//   households/{hid}/vehicleAccess/{driverUid}__{vehicleId}
+//   households/{hid}/tasks/{id}
+//   households/{hid}/documents/{id}
+//   households/{hid}/personalDocs/{id}
+//   households/{hid}/serviceRecords/{id}
+//   households/{hid}/odometerReadings/{id}
+//   households/{hid}/reminderLog/{id}         ← שרת בלבד (פרוסה 2)
+//   memberships/{uid}                         ← uid → { householdId, role }
+//   users/{uid}                               ← נכתב ע"י הנושא בלבד
+//
+// ============================================================================
+// 🔴 N4 — התפקיד נקרא מ-`members`, **לעולם לא מ-`hid == request.auth.uid`.**
+//
+// ה-hid נזרע מה-uid של הבעלים, והפיתוי לכתוב `if hid == request.auth.uid`
+// עצום — זה מה ש-fleet עשה עם orgId. אבל שני תרחישים ודאיים שוברים את זה:
+// **בעלים שני (בן/בת זוג)** ו**העברת בעלות** (בקהל מבוגר: בעלים שנפטר או
+// מוסר את הניהול לילד). ברגע שהתפקיד נגזר משוויון מחרוזות, הוספת בעלים שני
+// היא הגירה של כל מסמך במשק הבית. הפער בין הכתיבה הנכונה לשגויה היום:
+// כמה שורות. **hid מטופל כאן כמזהה אטום בלבד**, ואין בקובץ הזה — ולא
+// ב-storage.rules — שום השוואה בינו לבין request.auth.uid.
+// (נאכף בסריקה סטטית ב-`npm run smoke`.)
+//
+// ⚠️ תוצאת לוואי ידועה של הכלל: כלל היצירה אינו יכול לקשור hid ל-uid, ולכן
+// משתמש יכול תיאורטית "לתפוס" מזהה משק בית של אחר. הוא לא מקבל בכך שום
+// גישה לנתונים (אין שם נתונים), רק מטרד. הפתרון האמיתי — יצירת משק בית
+// דרך Cloud Function — נוחת בפרוסה 2 יחד עם ההזמנות.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function householdDoc(hid) {
+      return get(/databases/$(database)/documents/households/$(hid)).data;
+    }
+
+    // N4 — מקור האמת היחיד לתפקיד.
+    // ⚠️ `.get(uid, '')` ולא `members[uid]`: גישה למפתח שאינו קיים במפה
+    // זורקת שגיאת הערכה. היא אמנם נחשבת דחייה, אבל היא מציפה את הלוגים
+    // ומסתמכת על התנהגות-שגיאה במקום על ביטוי מפורש.
+    function roleIn(hid) {
+      return householdDoc(hid).household.members.get(request.auth.uid, '');
+    }
+
+    function isOwner(hid) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/households/$(hid))
+        && roleIn(hid) == 'owner';
+    }
+
+    function isMember(hid) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/households/$(hid))
+        && householdDoc(hid).household.members.keys().hasAny([request.auth.uid]);
+    }
+
+    // פרוסה 2: הנהג רשאי לקרוא רכב שהוקצה לו. המזהה המורכב הוא מה שמאפשר
+    // לבטא את זה בכלל — rules לא יכולים להריץ שאילתה, אבל exists() על נתיב
+    // שנבנה מהבקשה כן עובד.
+    function hasVehicle(hid, vid) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/households/$(hid)/vehicleAccess/$(request.auth.uid + '__' + vid));
+    }
+
+    // N7(א+ג) — שדות ההסכמה: append-only. אורך המערך לא קטן, ולכן רשומה
+    // קיימת לא נמחקת ולא נדרסת. הכתיבה עצמה מותרת לבעלים בלבד (הכלל למטה).
+    function guardianFieldsAppendOnly() {
+      return !('guardianConsent' in request.resource.data)
+        || !('guardianConsent' in resource.data)
+        || request.resource.data.guardianConsent.size() >= resource.data.guardianConsent.size();
+    }
+
+    // N7(ב) — הזמנה של קטין לא עוברת ל-'accepted' בלי הסכמת אפוטרופוס.
+    function minorInviteBlocked() {
+      return request.resource.data.inviteStatus != 'accepted'
+        || request.resource.data.isMinor != true
+        || request.resource.data.guardianConsent.size() > 0;
+    }
+
+    // -- מסמך משק הבית ------------------------------------------------------
+    match /households/{hid} {
+      // יצירה: היוצר חייב לרשום את עצמו — ורק את עצמו — כבעלים.
+      allow create: if isSignedIn()
+        && request.resource.data.household.members.keys().hasOnly([request.auth.uid])
+        && request.resource.data.household.members[request.auth.uid] == 'owner';
+
+      allow read: if isMember(hid);
+      allow update, delete: if isOwner(hid);
+
+      // -- רכבים ------------------------------------------------------------
+      // פרוסה 2 תוסיף כאן:  || hasVehicle(hid, docId)
+      match /vehicles/{docId} {
+        allow read: if isOwner(hid);
+        allow write: if isOwner(hid);
+      }
+
+      // 🔴 בעלים בלבד **לתמיד** — מחיר רכישה, פרמיה והערות הבעלים.
+      // קיים כאוסף נפרד כי rules לא יודעים להסתיר שדה בודד.
+      // **אין כאן סעיף read לנהג — לא עכשיו ולא בפרוסה 2.**
+      match /vehiclesPrivate/{docId} {
+        allow read, write: if isOwner(hid);
+      }
+
+      // -- נהגים (המסך בפרוסה 2; הכללים היום) -------------------------------
+      // 🔴 N7 — `guardianConsent` ו-`isMinor` ניתנים לכתיבה **רק ע"י הבעלים**.
+      // אם הלקוח של הקטין יכול לכתוב אותם, הרשומה חסרת ערך ראייתי וכל המבנה
+      // שנשמר בסכימה היה לשווא. שתי שורות היום; backfill ואי-ודאות אחר כך.
+      match /drivers/{docId} {
+        allow read: if isOwner(hid) || (isSignedIn() && resource.data.userUid == request.auth.uid);
+        allow create, delete: if isOwner(hid);
+
+        // פרוסה 2: הנהג עצמו יוכל לעדכן טלפון ותאריך תוקף רישיון — אבל
+        // **לעולם לא** isMinor/guardianConsent/inviteStatus/role.
+        allow update: if isOwner(hid)
+          && guardianFieldsAppendOnly()
+          && minorInviteBlocked();
+      }
+
+      // -- הרשאת נהג↔רכב — מזהה מורכב `${driverUid}__${vehicleId}` ---------
+      // הנהג קורא את הרשומה שלו (כדי לדעת מה מותר לו); רק הבעלים כותב.
+      match /vehicleAccess/{docId} {
+        allow read: if isOwner(hid) || (isSignedIn() && resource.data.driverUid == request.auth.uid);
+        allow write: if isOwner(hid);
+      }
+
+      // -- משימות — ניהול המשימות בלעדי לבעלים (PRD פרק 6) -----------------
+      // פרוסה 2 תוסיף read בלבד:  || hasVehicle(hid, resource.data.vehicleId)
+      match /tasks/{docId} {
+        allow read: if isOwner(hid);
+        allow write: if isOwner(hid);
+      }
+
+      // -- מסמכי רכב -------------------------------------------------------
+      // N3 — רישיון רכב וביטוח חובה הם visibility:'shared' **במודע**: נהג
+      // שנעצר צריך אותם, ובמחיר הזה הוא רואה גם את ת.ז. שמופיעה עליהם.
+      // הפוליסה והקבלות נשארות 'owner', ולכן ת.ז. של הבעלים לא זולגת פעמיים.
+      // פרוסה 2:  || (resource.data.visibility == 'shared'
+      //               && hasVehicle(hid, resource.data.vehicleId))
+      match /documents/{docId} {
+        allow read: if isOwner(hid);
+        allow write: if isOwner(hid);
+      }
+
+      // 🔴 -- מסמכים אישיים (רישיון נהיגה) ---------------------------------
+      // read = נושא המידע בלבד. **גם הבעלים לא קורא.**
+      // ההנמקה (עדי 1.3, פריט 6), כדי שלא "יתקנו" את זה:
+      //   (א) אין לבעלים צורך — תאריך התפוגה יושב ב-
+      //       drivers/{id}.drivingLicenceValidUntil שהוא כן רואה, ולכן
+      //       התזכורת עובדת;
+      //   (ב) קריאה של הורה בסריקת מסמך הזהות של בן 17 לא מוסיפה ערך
+      //       ומוסיפה יכולת מעקב;
+      //   (ג) כלל אחיד הוא כלל שלא נשבר.
+      // הבעלים מקבל **delete** (לצורך cascade) — בלי read.
+      match /personalDocs/{docId} {
+        allow read: if isSignedIn() && resource.data.driverUid == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.driverUid == request.auth.uid;
+        allow update: if isSignedIn() && resource.data.driverUid == request.auth.uid
+          && request.resource.data.driverUid == request.auth.uid;
+        allow delete: if isOwner(hid) || (isSignedIn() && resource.data.driverUid == request.auth.uid);
+      }
+
+      match /serviceRecords/{docId} {
+        allow read: if isOwner(hid);
+        allow write: if isOwner(hid);
+      }
+
+      match /odometerReadings/{docId} {
+        allow read: if isOwner(hid);
+        allow write: if isOwner(hid);
+      }
+
+      // ============================================================================
+      // -- יומן התזכורות — **הנמען בלבד קורא. גם לא הבעלים.** ------------------
+      //
+      // הכלל הזה נראה מחמיר מדי, והוא לא. `read: if isOwner(hid)` נשבר בפרוסה 2
+      // ברגע שיש נהגים: בעלים שקורא את לוג התזכורות של בן משפחה רואה **מתי
+      // הודעה נמסרה למכשירו ומתי הוא אישר אותה** — כלומר נוכחות והתנהגות.
+      // זה בדיוק המעקב שנפסל ב-fleet, נכנס מהדלת האחורית, ובגרסה הרגישה
+      // ביותר: הורה שמנטר בן 17.
+      //
+      // ומה שהבעלים לכאורה מפסיד כבר פתור במקום אחר ובעיצוב טוב יותר:
+      // **`schedule.escalateToOwner`** נותן לו התראה משלו כשמשימה קריטית לא
+      // טופלה. הוא לומד "זה לא טופל" בלי ללמוד "הוא פתח את הטלפון ב-23:40".
+      //
+      // ⚠️ **`allow write: if false` אינו מגן על התוכן.** ה-Cloud Function
+      // כותבת ב-Admin SDK ו**עוקפת rules לחלוטין**. משמעת השדות נאכפת
+      // ב-`createReminderLogEntry` וב-smoke — לא כאן. אל תיקחו נחמה מהכלל.
+      // ============================================================================
+      match /reminderLog/{docId} {
+        allow read: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+        allow write: if false;
+      }
+
+      // ============================================================================
+      // 🔴 T3 — המצב הפר-נמען של המשימה. **שרת בלבד, קריאה וכתיבה.**
+      //
+      // כאן יושבים `acknowledgedAt`, `lastFiredAt` ו-`channelsTried[]` — כל מה
+      // שהוא תכונה של **אדם** ולא של המשימה. הם ירדו ממסמך המשימה כי הבעלים
+      // קורא אותו במלואו, ו-rules לא יודעים להסתיר שדה (D1, פעם שלישית).
+      //
+      // עם נהג יחיד על משימה, `acknowledgedAt` הוא בדיוק "מתי הוא נגע
+      // בטלפון" — הדגימה ההתנהגותית שהוצאה מ-reminderLog. לא מחזירים אותה
+      // מהחלון.
+      // ============================================================================
+      match /tasks/{taskId}/private/{docId} {
+        allow read, write: if false;
+      }
+
+      // O18 — לוג הגישה למסמכים. נכתב ע"י ה-Function בנקודת הנפקת ה-signed URL.
+      // **הנושא קורא את הרשומות שבהן הוא היה הפועל**; אחרים לא.
+      match /accessLog/{docId} {
+        allow read: if isSignedIn() && resource.data.actorUid == request.auth.uid;
+        allow write: if false;
+      }
+
+      // כל תת-אוסף שלא נמנה במפורש — חסום.
+      match /{other=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // -- מיפוי משתמש→משק בית ------------------------------------------------
+    // המשתמש קורא רק את הרשומה שלו. הכתיבה נשענת על **מפת ה-members**
+    // (N4) ולא על שוויון מזהים: אפשר לכתוב memberships/{uid} רק אם משק
+    // הבית כבר קיים והמשתמש רשום בו כבעלים.
+    // פרוסה 2: הזמנת נהג תיכתב ע"י Cloud Function, כדי שלא ניתן יהיה לזייף
+    // שיוך למשק בית מהקליינט.
+    match /memberships/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == uid
+        && isOwner(request.resource.data.householdId);
+      allow delete: if false;
+    }
+
+    // -- פרופיל המשתמש — **נכתב ע"י הנושא בלבד** ---------------------------
+    // 🔴 N5 — `notices` הוא היסטוריה append-only, לא שדה שנדרס. השאלה שתישאל
+    // בעוד שנתיים היא "איזו גרסה המשתמש הזה ראה בפועל, ומתי"; שדה שנדרס
+    // מוחק את התשובה. מדיניות של מוצר צרכני **תשתנה**, כמה פעמים.
+    //
+    // ⚠️ נקודת חוזק שאסור "לתקן": כשקטין הופך לבגיר, המסלול הנכון הוא שהוא
+    // מאשר את היידוע בעצמו — וזה נתמך כאן, כי רק הנושא כותב.
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && (!('notices' in resource.data)
+            || request.resource.data.notices.size() >= resource.data.notices.size());
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // -- כל השאר: חסום מפורשות --------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

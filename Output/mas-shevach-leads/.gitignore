@@ -1,0 +1,22 @@
+node_modules/
+dist/
+dist-intake/
+functions/lib/
+functions/node_modules/
+
+# 🔴 לעולם לא ב-git. גם לא ".env.local רק לרגע".
+.env
+.env.*
+!.env.example
+
+# פלט אמולטור
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# 🔴 אין ייצוא של המאגר לגיליון (עדי R-9). אם קובץ כזה נוצר בטעות —
+# הוא לא ייכנס ל-git, אבל זה לא פותר את הבעיה: מחיקה שאינה כוללת ייצוא
+# אינה מחיקה (S8(5)).
+*.csv
+*.xlsx

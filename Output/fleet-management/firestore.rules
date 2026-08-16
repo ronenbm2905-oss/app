@@ -1,0 +1,107 @@
+rules_version = '2';
+
+// ============================================================================
+// Firestore — deny-by-default. פרוסה 1: **admin בלבד**.
+//
+// מבנה: orgs/{orgId}/<collection>/{id} — תת-אוספים מהיום הראשון, כדי שהבידוד
+// ברמת-מסמך לפורטל הנהג (פרוסה 2) לא ידרוש רסטרקטורינג של מודל הנתונים.
+// הלקח מ-property-management: על מסמך-יחיד גדול אי אפשר לבטא "הנהג רואה רק
+// את הרכב שלו ואת הקנסות שלו".
+//
+// חברות בארגון:
+//   orgs/{orgId}.org.members  → מפה uid→role ('admin' | 'driver')
+//   memberships/{uid}         → { orgId, role, driverId } — כדי שמשתמש יגלה
+//                               לאיזה ארגון הוא שייך בלי לסרוק אוספים.
+//
+// ⚠️ שער עדי (משפטי) חוסם deploy עם נתונים אמיתיים: קנס בשם עובד מלא = מידע
+//    אישי; סריקות קנסות = מסמכים עם PII; דיווח ק"מ = פוטנציאל מעקב אחר עובדים.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function orgDoc(orgId) {
+      return get(/databases/$(database)/documents/orgs/$(orgId)).data;
+    }
+
+    // אדמין = רשום כ-'admin' במפת החברים של הארגון.
+    function isOrgAdmin(orgId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/orgs/$(orgId))
+        && orgDoc(orgId).org.members[request.auth.uid] == 'admin';
+    }
+
+    // -- מסמך הארגון --------------------------------------------------------
+    match /orgs/{orgId} {
+      // יצירה: רק המשתמש עצמו, ורק כשהוא רושם את עצמו כאדמין ו-orgId הוא ה-uid.
+      allow create: if isSignedIn()
+        && orgId == request.auth.uid
+        && request.resource.data.org.members[request.auth.uid] == 'admin';
+
+      allow read: if isOrgAdmin(orgId);
+      allow update, delete: if isOrgAdmin(orgId);
+
+      // -- תת-האוספים: פרוסה 1 = אדמין בלבד, על כל הישויות ------------------
+      // פרוסה 2 תוסיף כאן סעיפי read פרטניים לנהג, למשל:
+      //   allow read: if isDriverOfVehicle(orgId, resource.data.vehicleId);
+      // המבנה כבר תומך בזה — אין צורך לשנות סכימה.
+
+      match /vehicles/{docId}          { allow read, write: if isOrgAdmin(orgId); }
+      match /drivers/{docId}           { allow read, write: if isOrgAdmin(orgId); }
+      match /assignments/{docId}       { allow read, write: if isOrgAdmin(orgId); }
+      match /fines/{docId}             { allow read, write: if isOrgAdmin(orgId); }
+      match /odometerReadings/{docId}  { allow read, write: if isOrgAdmin(orgId); }
+      match /serviceRecords/{docId}    { allow read, write: if isOrgAdmin(orgId); }
+      match /documents/{docId}         { allow read, write: if isOrgAdmin(orgId); }
+      match /leaseCompanies/{docId}    { allow read, write: if isOrgAdmin(orgId); }
+      match /incidents/{docId}         { allow read, write: if isOrgAdmin(orgId); }
+
+      // -- D2: סריקות קנס — אוסף נפרד, מורשה לפי **הקנס** ולא לפי הרכב ------
+      // בפרוסה 2 ייפתח כאן read לנהג לפי `driverUid == request.auth.uid`
+      // (המפתח המדונרמל של D3) — ולא לפי הנהג הנוכחי של הרכב. זו בדיוק
+      // הדליפה שעדי תפסה: רכב עובר בין נהגים, סריקת קנס לא עוברת איתו.
+      match /fineScans/{docId}         { allow read, write: if isOrgAdmin(orgId); }
+
+      // -- D1: מסמכים אדמין-בלבד. **לעולם לא נפתחים לנהג** ------------------
+      // firestore.rules לא יודעים להסתיר שדה בודד, ולכן העלות החודשית,
+      // הערות האדמין על העובד והערכת האדמין לתקלה יושבות במסמכים נפרדים.
+      // אין כאן סעיף read לנהג — לא עכשיו ולא בפרוסה 2.
+      match /vehiclesPrivate/{docId}   { allow read, write: if isOrgAdmin(orgId); }
+      match /finesPrivate/{docId}      { allow read, write: if isOrgAdmin(orgId); }
+      match /incidentsPrivate/{docId}  { allow read, write: if isOrgAdmin(orgId); }
+
+      // תת-מסמכי private תחת ישות (אם ייווצרו בעתיד) — אדמין בלבד, מפורשות.
+      match /vehicles/{docId}/private/{p}  { allow read, write: if isOrgAdmin(orgId); }
+      match /fines/{docId}/private/{p}     { allow read, write: if isOrgAdmin(orgId); }
+      match /incidents/{docId}/private/{p} { allow read, write: if isOrgAdmin(orgId); }
+      match /drivers/{docId}/private/{p}   { allow read, write: if isOrgAdmin(orgId); }
+
+      // כל תת-אוסף שלא נמנה במפורש — חסום.
+      match /{other=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // -- מיפוי משתמש→ארגון --------------------------------------------------
+    // המשתמש קורא רק את הרשומה שלו. כתיבה: רק רשומה עצמית של אדמין-ארגון-עצמי
+    // (בפרוסה 1). בפרוסה 2 ההזמנה של נהג תיכתב ע"י אדמין דרך Cloud Function,
+    // כדי שלא ניתן יהיה לזייף שיוך לארגון מהקליינט.
+    match /memberships/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.orgId == request.auth.uid
+        && request.resource.data.role == 'admin';
+      allow delete: if false;
+    }
+
+    // -- כל השאר: חסום מפורשות --------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

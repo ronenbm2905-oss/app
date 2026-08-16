@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#A9DCE6"/>
+        <stop offset="1" stop-color="#8ECFDD"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="512" height="512" rx="112.64" ry="112.64" fill="url(#g)"/>
+    
+    <g>
+      <!-- זנב הבועה -->
+      <path d="M 245.76 414.71999999999997
+               L 217.6 506.88
+               L 302.08 424.96 Z"
+            fill="#FAF7EF"/>
+      <!-- גוף הבועה -->
+      <rect x="0" y="46.08" width="512" height="389.12"
+            rx="71.68" ry="71.68" fill="#FAF7EF"/>
+      <!-- שלוש נקודות = הדרך למילים -->
+      <circle cx="174.07999999999998" cy="240.64" r="23.04" fill="#3E7C8C"/>
+      <circle cx="256"       cy="240.64" r="23.04" fill="#8ECFDD"/>
+      <circle cx="337.92" cy="240.64" r="23.04" fill="#3E7C8C"/>
+    </g>
+  </svg>

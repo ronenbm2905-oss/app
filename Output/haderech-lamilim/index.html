@@ -2,13 +2,22 @@
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="./cards/card-01.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#8ECFDD" />
     <meta name="description" content="הדרך למילים — משחקים חינוכיים לילדים 2–8 לפיתוח שיח רגשי, מבוסס ערכת הקלפים מאת דורית בן מאיר." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet" />
+
+    <!-- PWA / iOS: התקנה למסך הבית, מסך מלא, שם ושורת סטטוס -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="הדרך למילים" />
+
+    <!-- הפונט Varela Round מוגש עצמאית (self-host) לתמיכה מלאה באופליין ובפרטיות (בלי CDN חיצוני).
+         ה-@font-face עצמו מוגדר ב-src/index.css. -->
+    <link rel="preload" href="./fonts/varela-round-hebrew.woff2" as="font" type="font/woff2" crossorigin />
+
     <title>הדרך למילים</title>
   </head>
   <body>

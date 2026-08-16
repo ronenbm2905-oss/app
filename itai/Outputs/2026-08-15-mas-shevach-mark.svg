@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="t">
+  <title id="t">סימן מותג — פריסת מס שבח</title>
+  <!-- Brand mark: the "spread" motif. Three even years + one year that breaks
+       above the bracket line (accent). No text, no currency, no figures. -->
+  <rect width="64" height="64" rx="13" fill="#08243D"/>
+  <g>
+    <!-- three even bars (navy-100 on navy-900 = 12.58:1) -->
+    <rect x="8.5"  y="34" width="8" height="16" rx="1.6" fill="#DCE7F0"/>
+    <rect x="21.5" y="28" width="8" height="22" rx="1.6" fill="#DCE7F0"/>
+    <rect x="34.5" y="32" width="8" height="18" rx="1.6" fill="#DCE7F0"/>
+    <!-- the one that breaks through (accent on navy-900 = 7.66:1) -->
+    <rect x="47.5" y="16" width="8" height="34" rx="1.6" fill="#E8A85C"/>
+  </g>
+</svg>
