@@ -23,7 +23,8 @@
 //
 // ✅ 16.8.2026 — הורצו מול האמולטור: 66/66 עברו (JDK 21 הותקן).
 //    JAVA_HOME אינו מוגדר גלובלית — להריץ עם:
-//    $env:JAVA_HOME = "$env:ProgramFilesclipse Adoptiumjdk-21.0.12.8-hotspot"
+//    $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"
+//    $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 // ============================================================================
 
 import { readFileSync } from "node:fs";
