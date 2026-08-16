@@ -2,7 +2,7 @@ import { Car } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import Button from "./ui/Button.jsx";
 
-export function LoginPage({ onSignIn, error }) {
+export function LoginPage({ onSignIn, onSignInFresh, isEmulator = false, error }) {
   const { t, toggleLang } = useI18n();
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
@@ -26,6 +26,16 @@ export function LoginPage({ onSignIn, error }) {
         <Button className="mt-4 w-full" size="lg" onClick={onSignIn}>
           {t("auth.signInGoogle")}
         </Button>
+        {/* פיתוח מול אמולטור בלבד — לא קיים בבנייה לפרודקשן (ראה firebase.js). */}
+        {isEmulator && (
+          <button
+            type="button"
+            onClick={onSignInFresh}
+            className="mt-2 w-full rounded border border-dashed border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+          >
+            אמולטור: כניסה כמשתמש חדש (אנונימי)
+          </button>
+        )}
         <button
           type="button"
           onClick={toggleLang}

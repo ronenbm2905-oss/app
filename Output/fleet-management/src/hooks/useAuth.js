@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { isFirebaseConfigured, auth, googleProvider } from "../firebase.js";
+import { isFirebaseConfigured, isEmulator, auth, googleProvider } from "../firebase.js";
 
 // LOCAL_USER — במצב מקומי אין התחברות: משתמש בודד שהוא admin.
 const LOCAL_USER = {
@@ -56,11 +56,36 @@ export function useAuth() {
     }
   }, []);
 
+  // signInFresh — **פיתוח מול אמולטור בלבד** (ראה firebase.js: הבלוק מת
+  // בבנייה לפרודקשן). כניסה אנונימית נותנת uid חדש בכל פעם, וזה בדיוק
+  // "משתמש חדש שאין לו עדיין ארגון" — התרחיש שהתפוצץ ב-16.8 ושאי אפשר
+  // היה לשחזר בדפדפן בלי לגעת בפרויקט אמיתי.
+  const signInFresh = useCallback(async () => {
+    if (!isEmulator || !auth) return;
+    setAuthError(null);
+    try {
+      const { signInAnonymously } = await import("firebase/auth");
+      await signInAnonymously(auth);
+    } catch (err) {
+      console.error("anonymous signIn failed", err);
+      setAuthError("auth.signInFailed");
+    }
+  }, []);
+
   const signOutUser = useCallback(async () => {
     if (!isFirebaseConfigured || !auth) return;
     const { signOut } = await import("firebase/auth");
     await signOut(auth);
   }, []);
 
-  return { user, authLoading, authError, signIn, signOut: signOutUser, isLocal: !isFirebaseConfigured };
+  return {
+    user,
+    authLoading,
+    authError,
+    signIn,
+    signInFresh,
+    signOut: signOutUser,
+    isLocal: !isFirebaseConfigured,
+    isEmulator,
+  };
 }

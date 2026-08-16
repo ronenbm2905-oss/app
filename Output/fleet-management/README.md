@@ -234,6 +234,31 @@ memberships/{uid} → { orgId, role }
 
 `.env` **לא** נכנס ל-git. מפתחות ה-Web ציבוריים ממילא — ההגנה האמיתית היא ה-rules.
 
+### בדיקת מסלול הענן מקומית (אמולטור) — בלי לגעת בפרויקט אמיתי
+
+מסלול הענן המלא (התחברות → *אין עדיין ארגון* → הקמה → נתונים חיים) הוא בדיוק
+המקום שבו התחבא באג הפרודקשן של 16.8, והוא לא היה ניתן לבדיקה בדפדפן. עכשיו כן:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"
+$env:PATH      = "$env:JAVA_HOME\bin;$env:PATH"
+firebase emulators:start --only firestore,storage,auth --project fleet-rules-test
+
+# בטרמינל שני:
+$env:VITE_FB_USE_EMULATOR = "1"
+npm run dev
+```
+
+במצב הזה האפליקציה מדברת עם האמולטור בלבד (Firestore 8080 · Auth 9099 ·
+Storage 9199), ובמסך הכניסה מופיע כפתור **"אמולטור: כניסה כמשתמש חדש
+(אנונימי)"** — כל לחיצה נותנת uid חדש, כלומר משתמש שאין לו עדיין ארגון.
+
+- הדגל נקרא בזמן build (`__FLEET_DEV_EMULATOR__` ב-`vite.config.js`) ורק ב-
+  `vite serve`. בכל `npm run build` הוא `false` מילולי — הכפתור והחיבור
+  לאמולטור לא קיימים בפרודקשן. אומת בהרצת `npm run preview` על ה-build.
+- **אין צורך ב-`.env.local`** — משתנה סביבה מספיק. `.env.local` עם קונפיג
+  ריק ששוכחים למחוק = build בלי ענן שנראה כמו אובדן נתונים.
+
 ### Deploy — אתה מריץ, לא Claude
 
 `firebase deploy` חסום ל-Claude. הפקודות להרצה ידנית:

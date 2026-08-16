@@ -27,7 +27,8 @@ import { todayIso } from "./utils/dates.js";
 
 export default function App() {
   const { t } = useI18n();
-  const { user, authLoading, authError, signIn, signOut, isLocal } = useAuth();
+  const { user, authLoading, authError, signIn, signInFresh, signOut, isLocal, isEmulator } =
+    useAuth();
   const { data, orgId, update, loading, error, resetLocal } = useData(user);
   // actor — מי ביצע את הפעולה, נרשם בשרשרת הראיות של שיוך קנס (D5).
   const actions = useActions(update, orgId, user?.uid || null);
@@ -46,7 +47,15 @@ export default function App() {
   const reviewCount = useMemo(() => pendingReviewCount(data), [data?.assignments]);
 
   if (authLoading) return <Splash text={t("common.loading")} />;
-  if (isFirebaseConfigured && !user) return <LoginPage onSignIn={signIn} error={authError} />;
+  if (isFirebaseConfigured && !user)
+    return (
+      <LoginPage
+        onSignIn={signIn}
+        onSignInFresh={signInFresh}
+        isEmulator={isEmulator}
+        error={authError}
+      />
+    );
   if (loading) return <Splash text={t("common.loading")} />;
 
   // מסך 0 — Onboarding עד שיש ארגון מוגדר.
@@ -54,9 +63,12 @@ export default function App() {
     return (
       <Onboarding
         orgId={orgId}
-        onComplete={(payload) => {
-          actions.completeOnboarding(payload);
-          setView("vehicles");
+        onComplete={async (payload) => {
+          // ההקמה היא הכתיבה הראשונה בענן, והיא זו שיוצרת את מסמך הארגון.
+          // אם היא נדחית — נשארים במסך ההקמה עם הסבר, ולא נזרקים ללובי ריק.
+          const res = await actions.completeOnboarding(payload);
+          if (res?.ok !== false) setView("vehicles");
+          return res;
         }}
       />
     );

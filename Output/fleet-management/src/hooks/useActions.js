@@ -66,7 +66,18 @@ export function useActions(update, orgId, actor) {
 
       completeOnboarding: ({ orgName, company, vehicle, monthlyCost }) =>
         update((d) => {
-          d.org = { ...d.org, id: orgId || d.org.id, name: orgName, createdAt: nowIso() };
+          // members — **תנאי היצירה ב-firestore.rules**: מסמך ארגון בלי
+          // members[uid]=='admin' נדחה, ולכן ההקמה כולה נכשלת. עד 16.8 אף
+          // אחד לא כתב את המפה הזו, וההקמה בענן לא יכלה להצליח בכלל.
+          const members = { ...(d.org?.members || {}) };
+          if (actor) members[actor] = "admin";
+          d.org = {
+            ...d.org,
+            id: orgId || d.org.id,
+            name: orgName,
+            createdAt: nowIso(),
+            members,
+          };
           d.settings = { ...d.settings, onboarded: true };
           d.leaseCompanies = [...(d.leaseCompanies || []), { ...company, orgId: orgId || null }];
           d.vehicles = [...(d.vehicles || []), { ...vehicle, orgId: orgId || null }];

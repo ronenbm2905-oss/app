@@ -26,13 +26,15 @@ export function Onboarding({ orgId, onComplete }) {
     status: "active",
   });
   const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const canNext =
     (step === 0 && orgName.trim().length > 0) ||
     (step === 1 && lease.name.trim().length > 0) ||
     (step === 2 && vehicle.plate.trim().length > 0);
 
-  const finish = () => {
+  const finish = async () => {
     const company = createLeaseCompany({ orgId, ...lease });
     // D1 — monthlyCost לא נכנס למסמך הרכב; הוא נשמר בנפרד (vehiclesPrivate).
     const { monthlyCost, ...vehicleFields } = vehicle;
@@ -43,12 +45,21 @@ export function Onboarding({ orgId, onComplete }) {
       contractStart: vehicle.contractStart || null,
       contractEnd: vehicle.contractEnd || null,
     });
-    onComplete({
+    setSaving(true);
+    setFailed(false);
+    // ההקמה יוצרת את מסמך הארגון בענן. "הצלחה" נקבעת לפי תוצאת הכתיבה
+    // ולא לפי זה שהמשתמש לחץ — אחרת דחייה נראית כמו הקמה שהצליחה.
+    const res = await onComplete({
       orgName: orgName.trim(),
       company,
       vehicle: veh,
       monthlyCost: Number(monthlyCost) || 0,
     });
+    setSaving(false);
+    if (res && res.ok === false) {
+      setFailed(true);
+      return;
+    }
     setDone(true);
   };
 
@@ -168,6 +179,15 @@ export function Onboarding({ orgId, onComplete }) {
         </>
       )}
 
+      {failed && (
+        <p
+          role="alert"
+          className="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {t("auth.orgCreateFailed")}
+        </p>
+      )}
+
       <div className="mt-6 flex items-center justify-between gap-2">
         <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
           {t("common.prev")}
@@ -177,8 +197,8 @@ export function Onboarding({ orgId, onComplete }) {
             {t("common.next")}
           </Button>
         ) : (
-          <Button onClick={finish} disabled={!canNext}>
-            {t("common.finish")}
+          <Button onClick={finish} disabled={!canNext || saving}>
+            {saving ? t("common.saving") : failed ? t("common.retry") : t("common.finish")}
           </Button>
         )}
       </div>

@@ -21,6 +21,14 @@
 //   (ג) כתיבה ל-vehiclesPrivate **מצליחה** לאדמין — הבאג של 12.8 היה נופל כאן.
 //   (ד) העלאה ל-Storage מחוץ לארבעת התחומים **נדחית** — הבדיקה של G3.
 //
+// (ה) נוסף ב-16.8 אחרי באג פרודקשן: **משתמש חדש שאין לו עדיין ארגון.**
+//   כל (א)-(ד) זורעות את הארגון מראש עם withSecurityRulesDisabled, ולכן אף
+//   אחת מהן לא ראתה את הרגע שבו הכללים תקינים אבל סדר הפעולות בקליינט לא.
+//   המקטע מריץ את **קוד הקליינט האמיתי** (startOrgSync/writeOrgDiff) ולא
+//   שכפול שלו, ונופל אם מחזירים את אחד משני הבאגים:
+//     • הרשמה למאזינים לפני שהארגון קיים → 14 דחיות → באנר "טעינה נכשלה";
+//     • מסמך ארגון בלי org.members[uid]='admin' → ההקמה בענן נדחית.
+//
 // ✅ 16.8.2026 — הורצו מול האמולטור: 66/66 עברו (JDK 21 הותקן).
 //    JAVA_HOME אינו מוגדר גלובלית — להריץ עם:
 //    $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"
@@ -74,6 +82,14 @@ const { initializeTestEnvironment, assertFails, assertSucceeds } = await import(
 const { doc, getDoc, setDoc, deleteDoc, collection, getDocs } = await import("firebase/firestore");
 const { ref, uploadBytes, getBytes, deleteObject } = await import("firebase/storage");
 
+// שכבת הנתונים **האמיתית** של הקליינט — נבדקת מול הכללים האמיתיים, ולא
+// משוכפלת כאן. מקטע (ה) הוא הבדיקה שהייתה תופסת את באג הפרודקשן של 16.8.
+const { probeOrg, subscribeOrg, startOrgSync, writeOrgDiff } = await import(
+  "../src/utils/firestoreSync.js"
+);
+const { EMPTY } = await import("../src/constants.js");
+const emptyData = () => JSON.parse(JSON.stringify(EMPTY));
+
 const testEnv = await initializeTestEnvironment({
   projectId: PROJECT_ID,
   firestore: {
@@ -112,7 +128,30 @@ async function expectAllowed(name, promise) {
     console.error("  FAIL (היה אמור לעבור):", name, "·", err?.code || err?.message || err);
   }
 }
+function expectEq(name, actual, expected) {
+  if (actual === expected) {
+    pass++;
+    return;
+  }
+  failed++;
+  failures.push(`${name} — קיבלנו ${JSON.stringify(actual)} במקום ${JSON.stringify(expected)}`);
+  console.error("  FAIL:", name, "· קיבלנו", JSON.stringify(actual), "· ציפינו", JSON.stringify(expected));
+}
+function expectTrue(name, cond) {
+  expectEq(name, !!cond, true);
+}
 const section = (title) => console.log(`\n— ${title}`);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// waitFor — ממתין לתנאי עד deadline. מחזיר true/false, בלי לזרוק.
+async function waitFor(fn, { timeoutMs = 5000, stepMs = 60 } = {}) {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    if (fn()) return true;
+    await sleep(stepMs);
+  }
+  return fn();
+}
 
 // ---------------------------------------------------------------------------
 // זריעה: שני ארגונים, כל אחד עם אדמין משלו. נכתב עם כללים מנוטרלים — זו
@@ -281,6 +320,143 @@ section("(ד) Storage — ארבעת התחומים בלבד (G3)");
       contentType: "text/plain",
     })
   );
+}
+
+// ============================================================================
+section("(ה) משתמש חדש בלי ארגון — זרימת ההקמה מקצה לקצה (באג פרודקשן 16.8)");
+// ============================================================================
+// למה המקטע הזה קיים: כל הבדיקות שמעליו זורעות את הארגון מראש דרך
+// withSecurityRulesDisabled, ולכן אף אחת מהן לא ראתה את המצב שבו משתמש
+// מחובר **קיים** אבל מסמך הארגון **עוד לא**. זה בדיוק המצב של כל משתמש
+// חדש, והוא זה שהתפוצץ בפרודקשן:
+//   • isOrgAdmin דורש exists(orgs/{orgId}) ⇒ כל 14 המאזינים נדחים,
+//   • מאזין onSnapshot שנדחה מסתיים ואינו מנסה שוב ⇒ הבאנר האדום נשאר
+//     גם אחרי שה-onboarding יצר את הארגון.
+// המקטע רץ מול הכללים האמיתיים ומול קוד הקליינט האמיתי (firestoreSync).
+{
+  const NEW_UID = "freshAdmin";
+  const dbNew = testEnv.authenticatedContext(NEW_UID).firestore();
+
+  // מרכז אירועים — בדיוק מה שה-hook מקבל מ-startOrgSync.
+  const sink = () => {
+    const ev = { missing: 0, data: [], errors: [] };
+    return {
+      ev,
+      handlers: {
+        onMissing: () => ev.missing++,
+        onData: (d) => ev.data.push(d),
+        onError: (err, phase) => ev.errors.push({ code: err?.code || String(err), phase }),
+      },
+    };
+  };
+
+  // -- 1. לפני ההקמה: "אין ארגון" הוא מצב תקין, לא שגיאה ------------------
+  const probeBefore = await probeOrg(dbNew, NEW_UID);
+  expectEq("probeOrg לפני ההקמה מחזיר missing", probeBefore.state, "missing");
+  expectEq("probeOrg לפני ההקמה לא מדווח שגיאה", probeBefore.error, null);
+
+  // הרצף שהאפליקציה מריצה בפועל (startOrgSync — אותו קוד, לא שכפול):
+  // משתמש חדש ⇒ onMissing, **אפס שגיאות**, ואף מאזין לא נפתח.
+  const before = sink();
+  const stopBefore = await startOrgSync(dbNew, NEW_UID, before.handlers);
+  await sleep(1200); // שהות שבה מאזין שנפתח בטעות היה מספיק להידחות
+  expectEq("משתמש חדש: onMissing נקרא פעם אחת", before.ev.missing, 1);
+  expectEq("משתמש חדש: אפס שגיאות למשתמש (הבאג של 16.8)", before.ev.errors.length, 0);
+  expectEq("משתמש חדש: אין נתונים ואין מאזינים", before.ev.data.length, 0);
+  stopBefore();
+
+  // -- 2. הרגרסיה עצמה: מאזין שנפתח מוקדם מדי נדחה — ולא מתאושש ----------
+  let earlyError = null;
+  let earlyData = null;
+  const unsubEarly = await subscribeOrg(
+    dbNew,
+    NEW_UID,
+    (d) => {
+      earlyData = d;
+    },
+    (err) => {
+      earlyError = err;
+    }
+  );
+  await waitFor(() => earlyError !== null, { timeoutMs: 8000 });
+  expectEq(
+    "מאזין שנפתח לפני שהארגון קיים נדחה",
+    earlyError?.code || null,
+    "permission-denied"
+  );
+
+  // -- 3. ההקמה: יצירת הארגון + הישויות הראשונות, בדיוק כמו completeOnboarding
+  const created = emptyData();
+  created.org = { id: NEW_UID, name: "צי בדיקה", createdAt: "2026-08-16T00:00:00.000Z", members: {} };
+  created.settings = { ...created.settings, onboarded: true };
+  created.leaseCompanies = [{ id: "lc1", orgId: NEW_UID, name: "ליסינג בדיקה" }];
+  created.vehicles = [{ id: "v1", orgId: NEW_UID, plate: "12-345-67", leaseCompanyId: "lc1" }];
+  created.vehiclesPrivate = [{ id: "v1", orgId: NEW_UID, vehicleId: "v1", monthlyCost: 2500 }];
+
+  // 3א. בלי selfUid אין members[uid]='admin' — וכלל ה-create דוחה. זה הבאג
+  //     השני שנתפס ב-16.8: אף אחד לא כתב את מפת החברים, ולכן **הקמה בענן
+  //     לא יכלה להצליח בכלל**.
+  const OTHER_UID = "freshNoMembers";
+  const dbOther = testEnv.authenticatedContext(OTHER_UID).firestore();
+  const withoutMembers = emptyData();
+  withoutMembers.org = { ...withoutMembers.org, id: OTHER_UID, name: "בלי חברים" };
+  withoutMembers.settings = { ...withoutMembers.settings, onboarded: true };
+  await expectDenied(
+    "יצירת ארגון בלי members[uid]='admin' נדחית",
+    writeOrgDiff(dbOther, OTHER_UID, emptyData(), withoutMembers, { ensureRoot: true })
+  );
+
+  // 3ב. עם selfUid — ההקמה עוברת, כולל תת-האוספים שנכתבים אחרי מסמך השורש.
+  await expectAllowed(
+    "יצירת הארגון + הישויות הראשונות (selfUid)",
+    writeOrgDiff(dbNew, NEW_UID, emptyData(), created, { selfUid: NEW_UID, ensureRoot: true })
+  );
+
+  // -- 4. המאזין הישן **לא** מתאושש — ההצדקה ל-re-subscribe ---------------
+  await sleep(1500);
+  expectEq("מאזין שנדחה אינו מתאושש אחרי שהארגון נוצר", earlyData, null);
+  unsubEarly();
+
+  // -- 5. אחרי ההקמה: אותו רצף מחבר מאזינים ומחזיר נתונים מלאים -----------
+  const probeAfter = await probeOrg(dbNew, NEW_UID);
+  expectEq("probeOrg אחרי ההקמה מחזיר exists", probeAfter.state, "exists");
+
+  const after = sink();
+  const stopAfter = await startOrgSync(dbNew, NEW_UID, after.handlers);
+  const gotFirst = await waitFor(() => after.ev.data.length > 0, { timeoutMs: 8000 });
+  expectTrue("re-subscribe אחרי ההקמה מקבל נתונים", gotFirst);
+  expectEq("אין שגיאות אחרי ההקמה", after.ev.errors.length, 0);
+  expectEq("לא נקרא onMissing אחרי ההקמה", after.ev.missing, 0);
+
+  const live = () => after.ev.data[after.ev.data.length - 1];
+  expectEq("הצילום הראשון שלם — שם הארגון", live()?.org?.name || null, "צי בדיקה");
+  expectEq("הצילום הראשון שלם — onboarded", live()?.settings?.onboarded, true);
+  expectEq("הצילום הראשון שלם — רכב אחד", live()?.vehicles?.length, 1);
+  expectEq("הצילום הראשון שלם — חברת ליסינג אחת", live()?.leaseCompanies?.length, 1);
+  expectEq("הצילום הראשון שלם — מסמך פרטי (D1)", live()?.vehiclesPrivate?.length, 1);
+  expectEq("עדכון אחד מלא ולא 14 עדכונים חלקיים", after.ev.data.length, 1);
+  expectEq("מפת החברים נכתבה", live()?.org?.members?.[NEW_UID] || null, "admin");
+  // רשומת השיוך נכתבת ע"י startOrgSync רק כשהארגון קיים (לא בכל login)
+  const membership = await getDoc(doc(dbNew, "memberships", NEW_UID));
+  expectTrue("רשומת השיוך נכתבה אחרי שהארגון קיים", membership.exists());
+  expectEq("השיוך מצביע על הארגון הנכון", membership.data()?.orgId || null, NEW_UID);
+
+  // -- 6. הנתונים חיים: כתיבה נוספת מגיעה למאזין בלי רענון ----------------
+  const prevLive = live();
+  if (!prevLive) {
+    // בלי צילום ראשון אין מה לבדוק — נרשם ככישלון ולא כקריסה של הסוויטה.
+    expectTrue("המאזין מקבל את הרכב השני בלי re-subscribe (לא הגיע צילום ראשון)", false);
+  } else {
+    const next = JSON.parse(JSON.stringify(prevLive));
+    next.vehicles.push({ id: "v2", orgId: NEW_UID, plate: "76-543-21", leaseCompanyId: "lc1" });
+    await expectAllowed(
+      "כתיבת רכב שני אחרי ההקמה",
+      writeOrgDiff(dbNew, NEW_UID, prevLive, next, { selfUid: NEW_UID })
+    );
+    const gotLive = await waitFor(() => (live()?.vehicles?.length || 0) === 2, { timeoutMs: 8000 });
+    expectTrue("המאזין מקבל את הרכב השני בלי re-subscribe", gotLive);
+  }
+  stopAfter();
 }
 
 await testEnv.cleanup();

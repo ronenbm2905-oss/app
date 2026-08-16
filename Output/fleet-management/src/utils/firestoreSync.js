@@ -31,14 +31,49 @@ function clone(o) {
   return JSON.parse(JSON.stringify(o));
 }
 
+// ============================================================================
+// probeOrg — בדיקה חד-פעמית: האם מסמך הארגון קיים ונגיש לנו.
+//
+// למה זה קיים בכלל: `isOrgAdmin` ב-rules דורש `exists(orgs/{orgId})`, ולכן
+// למשתמש חדש **כל** קריאה תחת הארגון נדחית ב-permission-denied — כולל
+// מסמך השורש עצמו. מאזין onSnapshot שנדחה **מסתיים ואינו מנסה שוב**, ולכן
+// אסור לפתוח מאזינים לפני שידוע שהארגון קיים; אחרת מקבלים באנר שגיאה קבוע
+// שנשאר גם אחרי שה-onboarding יוצר את הארגון (הבאג של 16.8 בפרודקשן).
+//
+// permission-denied כאן מתורגם ל-"missing" ולא ל-"error": בפרוסה 1
+// orgId === uid, ולכן הדחייה פירושה בפועל "עוד אין לי ארגון" — מצב תקין
+// וצפוי שהמסך שלו הוא ה-onboarding. אם בכל זאת מדובר במסמך קיים שאיננו
+// חברים בו, ניסיון היצירה שאחריו ייכשל ו**זו** תוצג כשגיאה אמיתית.
+// שגיאת רשת (unavailable וכו') נשארת שגיאה — לא בולעים הכל.
+// ============================================================================
+export async function probeOrg(db, orgId) {
+  const { doc, getDoc } = await import("firebase/firestore");
+  try {
+    const snap = await getDoc(doc(db, "orgs", orgId));
+    return { state: snap.exists() ? "exists" : "missing", error: null };
+  } catch (err) {
+    if (err?.code === "permission-denied") return { state: "missing", error: null };
+    return { state: "error", error: err };
+  }
+}
+
 // subscribeOrg — מאזין למסמך השורש + לכל תת-אוסף, ומרכיב אובייקט data אחיד.
 // מחזיר Promise ל-unsubscribe (בגלל הייבוא הדינמי של firebase/firestore).
+// ⚠️ להפעיל **רק** אחרי ש-probeOrg החזיר "exists" — ראה ההסבר למעלה.
 export async function subscribeOrg(db, orgId, cb, onError) {
   const { doc, collection, onSnapshot } = await import("firebase/firestore");
 
   const state = clone(EMPTY);
   const unsubs = [];
-  const emit = () => cb(clone(state));
+  // מחכים לצילום הראשון של **כל** 14 המאזינים לפני ה-cb הראשון. אחרת
+  // ה-UI מקבל 14 עדכונים חלקיים ומהבהב "אין נתונים" בדרך. אחרי הצילום
+  // הראשון כל שינוי משדר מיד.
+  const pending = new Set(["__root__", ...ENTITY_COLLECTIONS]);
+  const emit = (key) => {
+    pending.delete(key);
+    if (pending.size) return;
+    cb(clone(state));
+  };
 
   unsubs.push(
     onSnapshot(
@@ -48,7 +83,7 @@ export async function subscribeOrg(db, orgId, cb, onError) {
         state.org = { ...EMPTY.org, ...(d.org || {}), id: orgId };
         state.settings = { ...EMPTY.settings, ...(d.settings || {}) };
         state.schemaVersion = d.schemaVersion || EMPTY.schemaVersion;
-        emit();
+        emit("__root__");
       },
       onError
     )
@@ -60,7 +95,7 @@ export async function subscribeOrg(db, orgId, cb, onError) {
         collection(db, "orgs", orgId, c),
         (qs) => {
           state[c] = qs.docs.map((d) => d.data());
-          emit();
+          emit(c);
         },
         onError
       )
@@ -70,19 +105,71 @@ export async function subscribeOrg(db, orgId, cb, onError) {
   return () => unsubs.forEach((u) => u());
 }
 
+// ============================================================================
+// startOrgSync — **הרצף** שקובע מתי מותר להירשם למאזינים:
+//   probeOrg → אין ארגון?  onMissing() ואף מאזין לא נפתח (מצב תקין).
+//            → יש ארגון?   רשומת השיוך + subscribeOrg.
+//            → שגיאה?      onError().
+//
+// הרצף יושב כאן ולא בתוך ה-hook בכוונה: ככה בדיקת האמולטור מריצה את **אותו
+// קוד** שהאפליקציה מריצה, ולא שכפול שלו. הבאג של 16.8 היה בדיוק ברצף הזה,
+// ובדיקה ששכפלה אותו לא הייתה תופסת רגרסיה עתידית.
+//
+// מחזיר תמיד פונקציית ניקוי (no-op כשלא נפתחו מאזינים).
+// ============================================================================
+export async function startOrgSync(db, orgId, { onMissing, onData, onError } = {}) {
+  const noop = () => {};
+  const probe = await probeOrg(db, orgId);
+
+  if (probe.state === "error") {
+    onError?.(probe.error, "probe");
+    return noop;
+  }
+  if (probe.state === "missing") {
+    onMissing?.();
+    return noop;
+  }
+
+  // הארגון קיים והקריאה עברה ⇒ אנחנו האדמין שלו. רק כאן כותבים את רשומת
+  // השיוך; קודם היא נכתבה בכל login — גם למי שאינו אדמין של ארגון, מה
+  // שבפרוסה 2 היה דורס את השיוך של נהג.
+  ensureMembership(db, orgId, orgId, "admin").catch((err) =>
+    console.warn("membership write skipped", err)
+  );
+
+  try {
+    return await subscribeOrg(db, orgId, (data) => onData?.(data), (err) => onError?.(err, "snapshot"));
+  } catch (err) {
+    onError?.(err, "subscribe");
+    return noop;
+  }
+}
+
 // writeOrgDiff — כותב רק את מה שהשתנה בין prev ל-next, מסמך-מסמך.
 // כך אין דריסה של רשומות שלא נגענו בהן, וכל ישות היא יחידת-הרשאה עצמאית.
-export async function writeOrgDiff(db, orgId, prev, next) {
+//
+// options:
+//   selfUid   — ה-uid של הכותב. מובטח שהוא יופיע כ-'admin' ב-org.members.
+//               בלי זה **יצירת הארגון נדחית**: כלל ה-create דורש
+//               `request.resource.data.org.members[request.auth.uid] == 'admin'`,
+//               ומפתח חסר במפה מפיל את הערכת הכלל (permission-denied).
+//   ensureRoot — לכפות כתיבת מסמך השורש גם אם ה-diff לא זיהה שינוי. נדרש
+//               ביצירה: מסמך השורש חייב להיווצר **לפני** תת-האוספים, כי
+//               ה-rules שלהם עושים get() עליו.
+export async function writeOrgDiff(db, orgId, prev, next, { selfUid = null, ensureRoot = false } = {}) {
   const { doc, setDoc, deleteDoc } = await import("firebase/firestore");
 
   const rootChanged =
+    ensureRoot ||
     JSON.stringify(prev?.settings) !== JSON.stringify(next.settings) ||
     JSON.stringify(prev?.org) !== JSON.stringify(next.org);
   if (rootChanged) {
+    const members = { ...(next.org?.members || {}) };
+    if (selfUid && members[selfUid] !== "admin") members[selfUid] = "admin";
     await setDoc(
       doc(db, "orgs", orgId),
       {
-        org: { ...next.org, id: orgId },
+        org: { ...next.org, id: orgId, members },
         settings: next.settings,
         schemaVersion: next.schemaVersion || 1,
       },

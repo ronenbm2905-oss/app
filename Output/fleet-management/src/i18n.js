@@ -34,6 +34,8 @@ const dict = {
     "common.next": "הבא",
     "common.prev": "הקודם",
     "common.finish": "סיום",
+    "common.saving": "שומר…",
+    "common.retry": "נסה שוב",
     "common.optional": "רשות",
     "common.required": "חובה",
     "common.none": "—",
@@ -70,6 +72,7 @@ const dict = {
     "auth.localModeNote":
       "אין קונפיג Firebase — הנתונים נשמרים בדפדפן הזה בלבד (localStorage) ואין התחברות. להפעלת ענן: מלא .env לפי .env.example.",
     "auth.loadError": "טעינת הנתונים נכשלה. בדוק חיבור והרשאות.",
+    "auth.orgCreateFailed": "יצירת הארגון נכשלה. בדוק חיבור והרשאות ונסה שוב.",
     "auth.signInFailed": "ההתחברות נכשלה. נסה שוב.",
     "auth.error": "שגיאת הזדהות.",
     "data.localFull": "אחסון הדפדפן מלא — קובץ גדול מדי נשמר מקומית? מחק סריקות ישנות.",
@@ -717,6 +720,8 @@ const dict = {
     "common.next": "Next",
     "common.prev": "Back",
     "common.finish": "Finish",
+    "common.saving": "Saving…",
+    "common.retry": "Try again",
     "common.optional": "optional",
     "common.required": "required",
     "common.none": "—",
@@ -752,6 +757,7 @@ const dict = {
     "auth.localModeNote":
       "No Firebase config — data is stored in this browser only (localStorage) and there is no sign-in. To enable the cloud, fill .env from .env.example.",
     "auth.loadError": "Failed to load data. Check connection and permissions.",
+    "auth.orgCreateFailed": "Could not create the organisation. Check connection and permissions, then try again.",
     "auth.signInFailed": "Sign-in failed. Please try again.",
     "auth.error": "Authentication error.",
     "data.localFull": "Browser storage is full — a file may be too large. Delete old scans.",
