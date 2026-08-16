@@ -1,9 +1,15 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { flushSync } from "react-dom";
 import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
-import { findHallClashes, findConstraintViolations } from "../utils/conflicts";
+import {
+  findHallClashes,
+  findCoachClashes,
+  findConstraintViolations,
+  parallelCoachIdSet,
+} from "../utils/conflicts";
 import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
@@ -14,10 +20,18 @@ import { clubLogoSrc } from "../utils/clubLogo";
 export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, setWeekStart }) {
   const clubLogo = clubLogoSrc(data);
   const [filterDays, setFilterDays] = useState([...DAYS]);
+  const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
   const [printTotals, setPrintTotals] = useState(false); // editors only; keep the totals column out of print by default
+  // Warning marks — constraint violations AND hall/coach clashes — are a scheduling aid for
+  // whoever builds the board, and they stay fully visible here. The printed copy goes to
+  // coaches who do not use the app: they cannot act on a warning, so it reads to them as a
+  // schedule nobody finished checking. The manager resolves or accepts each one on screen;
+  // what leaves the building is the decision, not the working notes.
+  const [hideWarningMarks, setHideWarningMarks] = useState(true);
+  const [suppressWarnings, setSuppressWarnings] = useState(false); // on only while exporting/printing
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
   const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
@@ -36,19 +50,46 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
     return () => { cancelled = true; };
   }, [clubLogo]);
 
+  // Ctrl+P goes through the browser rather than our export buttons, so it needs the same
+  // treatment. beforeprint fires before the page is snapshotted, and flushSync makes the
+  // re-render land inside that window — a queued update would not.
+  useEffect(() => {
+    if (!hideWarningMarks) return;
+    const before = () => flushSync(() => setSuppressWarnings(true));
+    const after = () => flushSync(() => setSuppressWarnings(false));
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+    };
+  }, [hideWarningMarks]);
+
   // Capture the whole board to a canvas with the logo + title composited on top. We flip the
   // table into its print-style read-only view during capture via the `capturing` class, so the
   // exported image is clean (no dropdowns/＋ buttons/totals; playing+secretary values shown).
   async function captureBoardCanvas() {
     const node = boardRef.current;
     node.classList.add("capturing");
+    // flushSync, not a plain setState: html2canvas reads the DOM on the very next line, and
+    // a normal React update would still be queued at that point — the markers would land in
+    // the image anyway, intermittently, which is the worst kind of bug to chase.
+    if (hideWarningMarks) flushSync(() => setSuppressWarnings(true));
     try {
       return await renderNodeCanvas(node, {
         logoSrc: logoDataUrl || clubLogo,
-        title: `${title} · ${formatWeekRange(weekStart)}`,
+        // Say so in the exported title when the board is filtered. The banner that warns
+        // about it on screen sits outside the captured node, so without this a one-coach
+        // board sent to the group would read as the whole week's schedule.
+        title:
+          `${title} · ${formatWeekRange(weekStart)}` +
+          (filterCoachIds.length
+            ? ` · ${data.coaches.filter((c) => filterCoachIds.includes(c.id)).map((c) => c.name).join(" · ")} בלבד`
+            : ""),
       });
     } finally {
       node.classList.remove("capturing"); // restore the interactive view immediately
+      if (hideWarningMarks) flushSync(() => setSuppressWarnings(false));
     }
   }
 
@@ -130,9 +171,18 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
 
   const typeColor = (type) => sessionTypeColor(type);
 
+  // With a coach selected the board narrows to that coach's own sessions, so the row for
+  // a team they share with someone else shows only the slots they are actually in — which
+  // is what makes a double booking visible at a glance.
   const cellSessions = (teamId, day) =>
     data.sessions
-      .filter((s) => s.teamId === teamId && s.day === day && (s.weekOf || "") === weekStart)
+      .filter(
+        (s) =>
+          s.teamId === teamId &&
+          s.day === day &&
+          (s.weekOf || "") === weekStart &&
+          (!filterCoachIds.length || filterCoachIds.includes(s.coachId))
+      )
       .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
   const teamWeekCount = (teamId) =>
@@ -157,6 +207,44 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
   );
   // Hard double-bookings: sessions sharing a hall at an overlapping time this week → bold red.
   const hallClashes = useMemo(() => findHallClashes(weekSessions), [weekSessions]);
+  // The same coach booked in two places at once. Computed over the WHOLE week, never over
+  // the filtered view — a clash must not disappear because the board is showing one coach.
+  // Coaches marked as running groups in parallel are excluded — otherwise their board is
+  // permanently red and the colour stops meaning anything.
+  const parallelCoaches = useMemo(() => parallelCoachIdSet(data.coaches), [data.coaches]);
+  const coachClashes = useMemo(
+    () => findCoachClashes(weekSessions, parallelCoaches),
+    [weekSessions, parallelCoaches]
+  );
+
+  // Rows to show. Filtering by coach keeps a team if the coach is its assigned coach OR
+  // runs any of its sessions this week — a coach often covers a team that is not formally
+  // theirs, and those are exactly the sessions that cause the overlap.
+  const visibleTeams = useMemo(() => {
+    if (!filterCoachIds.length) return data.teams;
+    const ids = new Set([
+      ...data.teams.filter((t) => filterCoachIds.includes(t.coachId)).map((t) => t.id),
+      ...weekSessions.filter((s) => filterCoachIds.includes(s.coachId)).map((s) => s.teamId),
+    ]);
+    return data.teams.filter((t) => ids.has(t.id));
+  }, [filterCoachIds, data.teams, weekSessions]);
+
+  // How many of this coach's sessions collide, so the toolbar can say so out loud rather
+  // than relying on the manager spotting red cells across a wide board.
+  const filteredCoachClashCount = useMemo(() => {
+    if (!filterCoachIds.length) return 0;
+    return weekSessions.filter((s) => filterCoachIds.includes(s.coachId) && coachClashes.has(s.id))
+      .length;
+  }, [filterCoachIds, weekSessions, coachClashes]);
+
+  const toggleCoach = (id) =>
+    setFilterCoachIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+
+  // Selected coaches in the order they appear in the club's list, not the order they were
+  // clicked — so the same selection always reads the same way in the banner and the export.
+  const selectedCoachNames = data.coaches
+    .filter((c) => filterCoachIds.includes(c.id))
+    .map((c) => c.name);
   // Sessions colliding with a coach/hall constraint → bold amber. { sessionId: [constraint,...] }
   const violations = useMemo(
     () => findConstraintViolations(weekSessions, data.constraints || []),
@@ -248,16 +336,88 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
             ))}
           </div>
         )}
-        {mode === "team" && canEdit && (
-          <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
-            <input
-              type="checkbox"
-              checked={printTotals}
-              onChange={(e) => setPrintTotals(e.target.checked)}
-              className="accent-brand-600"
-            />
-            כלול את עמודת "סה״כ שבוע" גם בהדפסה
-          </label>
+
+        {/* Same chip idiom as the day filter above, which is what makes it obvious that
+            several can be on at once — a dropdown would have implied "pick one". */}
+        {mode === "team" && data.coaches.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-xs text-stone-500 self-center">מאמנים:</span>
+            <button
+              onClick={() => setFilterCoachIds([])}
+              className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                filterCoachIds.length === 0
+                  ? "bg-brand-600 text-white border-brand-600"
+                  : "bg-white text-stone-500 border-stone-300 hover:bg-stone-50"
+              }`}
+            >
+              כולם
+            </button>
+            {data.coaches.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => toggleCoach(c.id)}
+                className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${
+                  filterCoachIds.includes(c.id)
+                    ? "bg-brand-600 text-white border-brand-600"
+                    : "bg-white text-stone-500 border-stone-300 hover:bg-stone-50"
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {canEdit && (
+          <div className="flex flex-col gap-1.5">
+            {mode === "team" && (
+              <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={printTotals}
+                  onChange={(e) => setPrintTotals(e.target.checked)}
+                  className="accent-brand-600"
+                />
+                כלול את עמודת "סה״כ שבוע" גם בהדפסה
+              </label>
+            )}
+            {/* Offered in both modes: the hall report is printed and handed out too. */}
+            <label className="flex items-center gap-1.5 text-xs text-stone-600 w-fit cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hideWarningMarks}
+                onChange={(e) => setHideWarningMarks(e.target.checked)}
+                className="accent-brand-600"
+              />
+              דוח נקי בהדפסה ובתמונה
+              <span className="text-stone-400">— בלי סימוני אילוץ וחפיפה</span>
+            </label>
+          </div>
+        )}
+        {/* Say plainly that the board is showing a slice. The export captures whatever is on
+            screen, and a filtered board sent to the coaches would look like the full week. */}
+        {mode === "team" && filterCoachIds.length > 0 && (
+          <div
+            className={`text-xs rounded-lg border p-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 ${
+              filteredCoachClashCount
+                ? "bg-red-50 border-red-200 text-red-800"
+                : "bg-blue-50 border-blue-200 text-blue-800"
+            }`}
+          >
+            {/* Phrased without a pronoun on purpose — the app has no way to know a coach's
+                gender, and Hebrew would force a guess. */}
+            <span>
+              מוצגים רק האימונים ששובצו ל<strong>{selectedCoachNames.join(" · ")}</strong>
+              {visibleTeams.length ? ` — ${visibleTeams.length} קבוצות` : ""}.
+            </span>
+            <span className="font-semibold">
+              {filteredCoachClashCount
+                ? `⚠ ${filteredCoachClashCount} אימונים בחפיפה.`
+                : "✓ אין חפיפות השבוע."}
+            </span>
+            <button onClick={() => setFilterCoachIds([])} className="underline underline-offset-2">
+              הצג את כולם
+            </button>
+          </div>
         )}
         <p className="text-xs text-stone-600">לשליחה בווטאפ: "שיתוף / שמירת תמונה" (תמונה אחת לרוחב) או "שמירת PDF" (עמוד אחד לרוחב עם הכותרת למעלה). שניהם עובדים גם בנייד — בלי בעיות כיוון או כותרות שנעלמות בין עמודים.</p>
       </div>
@@ -295,7 +455,17 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                   </tr>
                 </thead>
                 <tbody>
-                  {data.teams.map((team) => {
+                  {visibleTeams.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={1 + activeDays.length + 2 + (canEdit ? 1 : 0)}
+                        className="border border-stone-200 px-3 py-6 text-center text-sm text-stone-500"
+                      >
+                        אין קבוצות ל{selectedCoachNames.join(" · ")} בשבוע הזה.
+                      </td>
+                    </tr>
+                  )}
+                  {visibleTeams.map((team) => {
                     const assignKey = `${weekStart}__${team.id}`;
                     const assignment = (data.weeklyAssignments || {})[assignKey] || { playing: "", secretary: "" };
                     const rowColor = colorForTeamByCoach(team, data.teams);
@@ -332,17 +502,29 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                                   {sessions.map((s) => {
                                     const color = typeColor(s.type || "אימון");
                                     const editable = canEdit && !s.fromGame;
-                                    const clash = hallClashes.has(s.id); // same hall + overlapping time
-                                    const violates = !!violations[s.id]; // collides with a coach/hall constraint
+                                    // All three are suppressed together during export/print when
+                                    // the manager has asked for it — one flag clears every tint,
+                                    // ring, ⚠ line and coloured word, in the place they are decided.
+                                    const hallClash = hallClashes.has(s.id) && !suppressWarnings; // two teams in one gym
+                                    const coachClash = coachClashes.has(s.id) && !suppressWarnings; // one coach, two places
+                                    const clash = hallClash || coachClash;
+                                    const violates = !!violations[s.id] && !suppressWarnings;
                                     const cellStyle = {
                                       backgroundColor: clash ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
                                       borderRight: `3px solid ${clash ? "#DC2626" : violates ? "#D97706" : color}`,
                                     };
                                     const inner = (
                                       <>
-                                        {clash && <div className="font-bold text-red-700 flex items-center gap-0.5">⚠ חפיפת אולם</div>}
+                                        {hallClash && <div className="font-bold text-red-700 flex items-center gap-0.5">⚠ חפיפת אולם</div>}
+                                        {/* Name the coach: without the filter on, the row's own coach
+                                            may not be the one taking this session. */}
+                                        {coachClash && (
+                                          <div className="font-bold text-red-700 flex items-center gap-0.5">
+                                            ⚠ חפיפת מאמן{s.coachId ? ` — ${nameOf(data.coaches, s.coachId)}` : ""}
+                                          </div>
+                                        )}
                                         {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
-                                        <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}>{s.start}–{s.end}</div>
+                                        <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}><span dir="ltr">{s.start}–{s.end}</span></div>
                                         <div className={`mt-0.5 ${clash ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
                                         {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
                                         {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
@@ -352,7 +534,19 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                                       <button
                                         key={s.id}
                                         onClick={() => setEditingSession(s)}
-                                        title={clash ? "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן — לחץ לעריכה" : violates ? `אילוץ פעיל (${violationLabel(s.id)}) בזמן הזה — לחץ לעריכה` : "לחץ לעריכה / הזזת האימון"}
+                                        title={
+                                          clash
+                                            ? [
+                                                hallClash && "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן",
+                                                coachClash &&
+                                                  `חפיפת מאמן! ${nameOf(data.coaches, s.coachId)} משובץ ליותר מקבוצה אחת באותו זמן`,
+                                              ]
+                                                .filter(Boolean)
+                                                .join(" · ") + " — לחץ לעריכה"
+                                            : violates
+                                            ? `אילוץ פעיל (${violationLabel(s.id)}) בזמן הזה — לחץ לעריכה`
+                                            : "לחץ לעריכה / הזזת האימון"
+                                        }
                                         className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
                                         style={cellStyle}
                                       >
@@ -487,13 +681,30 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                 <tbody>
                   {hallSessions.map((s, i) => {
                     const dayIdx = DAYS.indexOf(s.day);
-                    const clash = hallClashes.has(s.id); // two teams in this hall at overlapping times
-                    const violates = !!violations[s.id]; // collides with a coach/hall constraint
-                    const bg = clash ? "#FEE2E2" : violates ? "#FEF3C7" : DAY_BG_COLORS[dayIdx] || "#ffffff";
+                    // Same suppression as the team board: the hall report is printed and handed
+                    // out too, and a stripe means nothing to someone who cannot act on it.
+                    const clash = hallClashes.has(s.id) && !suppressWarnings; // two teams here at once
+                    const violates = !!violations[s.id] && !suppressWarnings; // collides with a constraint
+                    // The day colour always wins the row background — it is what makes this
+                    // report readable as bands of days. Warnings used to REPLACE it, which
+                    // both broke a day into two colours and, worse, disguised the day: the
+                    // constraint amber is a near-match for Sunday's yellow and the clash red
+                    // for Friday's. A warning now shows as a stripe down the row's edge, so
+                    // both signals are readable at once instead of competing.
+                    const bg = DAY_BG_COLORS[dayIdx] || "#ffffff";
+                    const stripe = clash ? "#DC2626" : violates ? "#D97706" : "";
                     const date = weekDates[s.day];
                     return (
                       <tr key={s.id || i} style={{ backgroundColor: bg }}>
-                        <td className="border border-stone-200 px-3 py-2 text-sm tabular-nums font-medium text-stone-700">{date ? formatDate(date) : "—"}</td>
+                        {/* The stripe lives on the first and last cells rather than the row:
+                            with border-collapse a <tr> cannot reliably paint its own border
+                            or shadow, so a row-level rule would silently render nothing. */}
+                        <td
+                          className="border border-stone-200 px-3 py-2 text-sm tabular-nums font-medium text-stone-700"
+                          style={stripe ? { borderInlineStartWidth: "4px", borderInlineStartColor: stripe } : undefined}
+                        >
+                          {date ? formatDate(date) : "—"}
+                        </td>
                         <td className="border border-stone-200 px-3 py-2 text-sm text-stone-600">{s.day}</td>
                         <td className="border border-stone-200 px-3 py-2">
                           <div className="flex items-center gap-1.5">
@@ -505,9 +716,12 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                         <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${clash ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
                           {clash && <span title="חפיפת אולם — שתי קבוצות באותו זמן">⚠ </span>}
                           {!clash && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
-                          {s.start}–{s.end}
+                          <span dir="ltr">{s.start}–{s.end}</span>
                         </td>
-                        <td className="border border-stone-200 px-3 py-2 text-xs text-stone-500">
+                        <td
+                          className="border border-stone-200 px-3 py-2 text-xs text-stone-500"
+                          style={stripe ? { borderInlineEndWidth: "4px", borderInlineEndColor: stripe } : undefined}
+                        >
                           {s.type && s.type !== "אימון" && <span className="font-medium" style={{ color: typeColor(s.type) }}>{s.type} </span>}
                           {s.notes || ""}
                         </td>

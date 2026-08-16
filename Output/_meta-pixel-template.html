@@ -1,0 +1,99 @@
+<!--
+============================================================================
+תבנית בסיס קבועה — Meta Pixel מגודר-הסכמה לדפי נחיתה (הדרך למילים / דורית בן מאיר)
+============================================================================
+פיקסל עסקי קבוע: 1655326862290518  (פיקסל אחד לכל הנכסים)
+
+כללי הזהב:
+  • פיקסל אחד בלבד. אין להוסיף פיקסל שני לצד זה.
+  • הפיקסל נטען אך ורק בתוך loadMarketingPixel(), רק אחרי הסכמה "all".
+  • "רק הכרחיות" → הפיקסל לא נטען כלל, אבל כל קישורי הרכישה ממשיכים לעבוד.
+  • PageView נשלח פעם אחת אחרי ההסכמה. InitiateCheckout פעם אחת בכל לחיצת הזמנה.
+  • אין Purchase (Tranzila אינה מחזירה כרגע אישור רכישה).
+  • אין להזריק את קוד הפיקסל ל-<head> ואין להריצו בטעינת העמוד.
+
+להוספת מוצר חדש: רק להוסיף שורה ל-PRODUCTS עם content_name / content_id / value,
+ולסמן את כפתור ההזמנה ב- data-cta="<key>" data-value="<₪>" data-event="order-click".
+דוגמאות content_id: madbekot_1 / madbekot_2 / madbekot_4 / cards_kit / cards_stickers_bundle.
+============================================================================
+-->
+
+<!-- 1) באנר עוגיות (שני כפתורים שווי-בולטות — תיקון 13) -->
+<div class="cookie-banner" id="cookie-banner" role="region" aria-label="הודעת עוגיות">
+  <p>
+    אנחנו משתמשים בעוגיות חיוניות, ובהסכמתכם גם בעוגיות מדידה ופרסום של <strong>Meta</strong>.
+    מידע עשוי לעבור מחוץ לישראל. ניתן לחזור בכם בכל עת.
+    פרטים ב<a href="#privacy">מדיניות הפרטיות</a>.
+  </p>
+  <div class="actions">
+    <button class="btn btn-primary" id="cookie-accept" type="button">אישור הכל</button>
+    <button class="btn btn-neutral" id="cookie-decline" type="button">רק הכרחיות</button>
+  </div>
+</div>
+
+<!-- 2) קישור "ניהול עוגיות" בפוטר (חזרה מהסכמה) -->
+<!--   <a href="#" id="cookie-reset">ניהול עוגיות</a>   -->
+
+<!-- 3) הלוגיקה -->
+<script>
+(function(){
+  "use strict";
+  var KEY = "madbekot-cookie-consent-v3";   // מפתח הסכמה (גרסֵף אם משנים משמעות ההסכמה)
+  var PIXEL_ID = "1655326862290518";         // פיקסל עסקי קבוע — אחד לכל הנכסים
+  var pixelLoaded = false;
+
+  // מפת מוצרים ל-InitiateCheckout — להוסיף/לערוך שורה לכל מוצר:
+  var PRODUCTS = {
+    single: { value: 24, content_id: "madbekot_1", content_name: "מדבקות לדרך – מארז אחד" },
+    double: { value: 68, content_id: "madbekot_2", content_name: "מדבקות לדרך – מארז כפול" },
+    quad:   { value: 99, content_id: "madbekot_4", content_name: "מדבקות לדרך – ארבעה מארזים" }
+    // דף הקלפים:  cards: { value: <מחיר מהקישור>, content_id: "cards_kit",            content_name: "ערכת הקלפים – הדרך למילים" }
+    // הצעה משולבת: bundle:{ value: <מחיר ההצעה>,   content_id: "cards_stickers_bundle", content_name: "השילוב המנצח – קלפים ומדבקות" }
+  };
+
+  // טעינת הפיקסל — הנקודה היחידה. נקראת רק כשההסכמה "all".
+  function loadMarketingPixel(){
+    if (pixelLoaded) return;
+    pixelLoaded = true;
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
+    (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', PIXEL_ID);
+    fbq('track','PageView');          // פעם אחת, אחרי הסכמה
+  }
+
+  var banner = document.getElementById("cookie-banner");
+  var stored = null; try { stored = localStorage.getItem(KEY); } catch(e){}
+  if (stored){ banner && banner.classList.add("hidden"); if (stored === "all") loadMarketingPixel(); }
+
+  function setConsent(val){
+    try { localStorage.setItem(KEY, val); } catch(e){}
+    banner && banner.classList.add("hidden");
+    if (val === "all") loadMarketingPixel();   // "essential" → לא נטען פיקסל
+  }
+  var a = document.getElementById("cookie-accept");  if (a) a.addEventListener("click", function(){ setConsent("all"); });
+  var d = document.getElementById("cookie-decline"); if (d) d.addEventListener("click", function(){ setConsent("essential"); });
+
+  // InitiateCheckout — פעם אחת בכל לחיצת הזמנה, רק אם הפיקסל נטען (יש הסכמה).
+  document.addEventListener("click", function(e){
+    var el = e.target.closest('[data-event="order-click"]');
+    if (!el) return;
+    if (window.fbq && pixelLoaded){
+      var p = PRODUCTS[el.getAttribute("data-cta")];
+      if (p) fbq('track','InitiateCheckout', {
+        value: p.value, currency: "ILS",
+        content_name: p.content_name, content_ids: [p.content_id], content_type: "product"
+      });
+    }
+  });
+
+  // חזרה מהסכמה
+  var reset = document.getElementById("cookie-reset");
+  if (reset) reset.addEventListener("click", function(ev){ ev.preventDefault();
+    try { localStorage.removeItem(KEY); } catch(e){} location.reload(); });
+
+  // אין Purchase — Tranzila אינה מחזירה כרגע אישור רכישה.
+})();
+</script>

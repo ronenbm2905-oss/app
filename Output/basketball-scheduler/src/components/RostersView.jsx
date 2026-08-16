@@ -17,10 +17,11 @@ function birthLabel(iso) {
 
 // `withPhone` adds a phone field (used for coaches — feeds the transport export's contact column).
 // `withBirthDate` adds a birthday field (used for coaches — feeds the birthday reminder on the notice board).
-function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }) {
+function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [phone, setPhone] = useState(initial?.phone || "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate || "");
+  const [parallelGroups, setParallelGroups] = useState(!!initial?.parallelGroups);
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -61,6 +62,22 @@ function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }
           />
         </div>
       )}
+      {withParallelGroups && (
+        <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={parallelGroups}
+            onChange={(e) => setParallelGroups(e.target.checked)}
+            className="accent-brand-600 mt-0.5"
+          />
+          <span>
+            מאמן/ת כמה קבוצות במקביל
+            <span className="block text-xs text-stone-500">
+              לא יסומן כ״חפיפת מאמן״ כששתי קבוצות שלו רשומות באותה שעה. חפיפת אולם ואילוצים ימשיכו להופיע כרגיל.
+            </span>
+          </span>
+        </label>
+      )}
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
@@ -73,6 +90,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }
               name: name.trim(),
               ...(withPhone ? { phone: phone.trim() } : {}),
               ...(withBirthDate ? { birthDate } : {}),
+              ...(withParallelGroups ? { parallelGroups } : {}),
             })
           }
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
@@ -84,7 +102,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, onSave, onCancel }
   );
 }
 
-function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone, withBirthDate }) {
+function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone, withBirthDate, withParallelGroups }) {
   const [editingId, setEditingId] = useState(null);
 
   const handleSave = (item) => {
@@ -111,7 +129,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
 
       {canEdit && editingId === "new" && (
         <div className="p-3 border-b border-stone-100">
-          <NameForm label={label} withPhone={withPhone} withBirthDate={withBirthDate} onSave={handleSave} onCancel={() => setEditingId(null)} />
+          <NameForm label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
         </div>
       )}
 
@@ -128,7 +146,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
               <div key={item.id}>
                 {canEdit && isEditing ? (
                   <div className="p-3">
-                    <NameForm initial={item} label={label} withPhone={withPhone} withBirthDate={withBirthDate} onSave={handleSave} onCancel={() => setEditingId(null)} />
+                    <NameForm initial={item} label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 px-4 py-2.5">
@@ -139,6 +157,16 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
                       )}
                       {withBirthDate && item.birthDate && (
                         <span className="text-xs text-stone-500 mr-2">🎂 {birthLabel(item.birthDate)}</span>
+                      )}
+                      {/* Visible in the list, not just inside the editor: it changes which
+                          warnings the board shows, and that should not be a hidden setting. */}
+                      {withParallelGroups && item.parallelGroups && (
+                        <span
+                          className="text-[11px] text-stone-600 bg-stone-100 border border-stone-200 rounded-full px-2 py-0.5 mr-2"
+                          title="לא מסומן כחפיפת מאמן כששתי קבוצות שלו באותה שעה"
+                        >
+                          קבוצות במקביל
+                        </span>
                       )}
                     </span>
                     {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
@@ -388,7 +416,7 @@ export function RostersView({ data, save, canEdit }) {
       )}
       <div className="grid sm:grid-cols-3 gap-4">
         <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
-        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withBirthDate />
+        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withBirthDate withParallelGroups />
         <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} />
       </div>
     </div>

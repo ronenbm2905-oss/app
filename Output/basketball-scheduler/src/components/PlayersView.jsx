@@ -8,6 +8,7 @@ import {
   downloadPlayersTemplate,
 } from "../utils/players";
 import { Select } from "./ui/Select";
+import { teamsWithCoach } from "../utils/teams";
 import {
   IconPlus, IconTrash, IconPencil, IconCheck, IconX,
   IconUsers, IconUpload, IconDownload, IconAlert,
@@ -161,7 +162,7 @@ export function PlayersView({ data, save, canEdit }) {
   if (data.teams.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm" dir="rtl">
-        הוסף קבוצות קודם בטאב "קבוצות, מאמנים ואולמות", ואז אפשר יהיה לנהל את רשימת השחקנים.
+        הוסף קבוצות קודם במסך "קבוצות ואולמות", ואז אפשר יהיה לנהל את רשימת השחקנים.
       </div>
     );
   }
@@ -172,7 +173,15 @@ export function PlayersView({ data, save, canEdit }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="text-sm text-stone-600">קבוצה:</span>
-          <Select value={teamId} onChange={(v) => { setTeamId(v); setEditing(null); }} options={data.teams} placeholder="בחר קבוצה" className="w-48" />
+          {/* Coach named alongside, same as the games form: this picker decides whose
+              roster you are editing, and the team names alone look alike in a list. */}
+          <Select
+            value={teamId}
+            onChange={(v) => { setTeamId(v); setEditing(null); }}
+            options={teamsWithCoach(data.teams, data.coaches)}
+            placeholder="בחר קבוצה"
+            className="w-64"
+          />
         </div>
         {canEdit && teamId && (
           <div className="flex items-center gap-2 flex-wrap">

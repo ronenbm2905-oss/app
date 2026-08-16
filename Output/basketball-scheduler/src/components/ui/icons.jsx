@@ -31,4 +31,10 @@ export {
   LogOut as IconLogOut,
   Eye as IconEye,
   Bus as IconBus,
+  // Tab icons — one per screen, so the row reads as places rather than as nine words.
+  Megaphone as IconMegaphone,
+  ClipboardList as IconClipboard,
+  CalendarDays as IconCalendarDays,
+  User as IconUser,
+  Clock as IconClock,
 } from "lucide-react";

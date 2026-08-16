@@ -7,8 +7,8 @@
   <!-- ANALYTICS: הזרקת snippet של פיקסל/אנליטיקס כאן -->
 
   <!-- ===== SEO (מבלוק ה-SEO של שירה) ===== -->
-  <title>מדבקות לדרך — מארז 54 מדבקות מחזקות ב-24 ₪ | הדרך למילים</title>
-  <meta name="description" content="מארז 54 מדבקות מחזקות לילדים ב-24 ₪ — לכריך ולקלמר. איסוף עצמי חינם או משלוח בדואר רשום ב-20 ₪. פותחים את השנה עם מילים טובות. הזמינו עכשיו.">
+  <title>מדבקות לדרך — 54 מדבקות מחזקות במארז | הדרך למילים</title>
+  <meta name="description" content="מדבקות מחזקות לילדים: מארז אחד ב-24 ₪, מארז כפול ב-68 ₪ כולל משלוח או 4 מארזים ב-99 ₪ כולל משלוח לנקודת איסוף.">
   <meta name="keywords" content="מדבקות מחזקות לילדים, מדבקות לדרך, משפטים מעצימים לילדים, מתנה לתחילת שנה, חזרה לבית הספר, מדבקות לכריך, מדבקות לקלמר, הדרך למילים, דורית בן מאיר">
   <meta name="author" content="דורית בן מאיר — הדרך למילים">
   <meta name="theme-color" content="#17497F">
@@ -17,14 +17,16 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="he_IL">
   <meta property="og:site_name" content="הדרך למילים">
-  <meta property="og:title" content="מדבקות לדרך — מארז 54 מדבקות מחזקות ב-24 ₪">
-  <meta property="og:description" content="פותחים את השנה עם מילים טובות. מארז 54 מדבקות מחזקות ב-24 ₪ — איסוף עצמי חינם או משלוח בדואר רשום ב-20 ₪.">
-  <meta property="og:image" content="assets/2026-07-27-madbekot-real-hero.jpg">
-  <meta property="og:image:alt" content="מדבקת 'אני יכול הכל!' מודבקת על עטיפת האוכל בקופסת האוכל של הילד">
+  <meta property="og:title" content="מדבקות לדרך — 54 מדבקות מחזקות במארז">
+  <meta property="og:description" content="מדבקות מחזקות לילדים: מארז אחד ב-24 ₪, מארז כפול ב-68 ₪ כולל משלוח או 4 מארזים ב-99 ₪ כולל משלוח לנקודת איסוף.">
+  <meta property="og:image" content="https://doritplus-madbekot.netlify.app/assets/2026-08-madbekot-og-share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="מדבקות לדרך — 54 מדבקות מחזקות לילדים, החל מ-24 ₪">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="מדבקות לדרך — מארז 54 מדבקות מחזקות ב-24 ₪">
-  <meta name="twitter:description" content="פותחים את השנה עם מילים טובות. מארז 54 מדבקות מחזקות ב-24 ₪ — איסוף עצמי חינם או משלוח ב-20 ₪.">
-  <meta name="twitter:image" content="assets/2026-07-27-madbekot-real-hero.jpg">
+  <meta name="twitter:title" content="מדבקות לדרך — 54 מדבקות מחזקות במארז">
+  <meta name="twitter:description" content="מדבקות מחזקות לילדים: מארז אחד ב-24 ₪, מארז כפול ב-68 ₪ כולל משלוח או 4 מארזים ב-99 ₪ כולל משלוח לנקודת איסוף.">
+  <meta name="twitter:image" content="https://doritplus-madbekot.netlify.app/assets/2026-08-madbekot-og-share.jpg">
 
   <!-- favicon (אייקון המתנה — גרסת הפלטה הכחולה) -->
   <link rel="icon" type="image/png" href="assets/2026-07-28-madbekot-icon-gift-blue.png">
@@ -325,6 +327,9 @@
     .price-ship{font-size:13px;color:var(--color-text-muted);line-height:1.5;margin-block:0 var(--sp-4);}
     .price-card .btn{width:100%;}
     .price-card.featured{box-shadow:0 10px 30px rgba(224,110,16,.18);}
+    /* גריד שלושת הכרטיסים — 3 בשורה בדסקטופ, אחד-מתחת-לשני במובייל */
+    .price-grid.price-grid-3{max-width:1040px;}
+    @media (min-width:768px){ .price-grid.price-grid-3{grid-template-columns:repeat(3,1fr);} }
 
     /* ===== FAQ ===== */
     .faq{background:var(--color-surface);}
@@ -481,27 +486,24 @@
 
         <!-- שורת מבצע בולטת + קו דינמי תכלת -->
         <div class="offer-line">
-          מבצע חזרה ללימודים <span aria-hidden="true">🎒</span> מארז 54 מדבקות ב-<span class="num">24 ₪</span>
+          מבצע חזרה ללימודים <span aria-hidden="true">🎒</span>
           <span class="teal-underline" aria-hidden="true"></span>
         </div>
 
-        <!-- גילוי מחיר + משלוח לפני המעבר ל-Tranzila -->
-        <p class="ship-note">מארז 54 מדבקות – <span class="num">24 ₪</span> | איסוף עצמי חינם או משלוח בדואר רשום ב-<span class="num">20 ₪</span></p>
-
         <div class="hero-cta">
-          <!-- כפתור ראשי (מלא כתום) → מארז בודד 24 ₪ (data-cta="single" → InitiateCheckout 24) -->
+          <!-- כפתור ראשי (מלא כתום) → מארז כפול 68 ₪ כולל משלוח (data-value=68) -->
           <a class="btn btn-primary"
-             href="https://pay.tranzila.com/doritplus/bU9tM0JLMEJRS2xtSklWVDhsQW4rUT09"
+             href="https://pay.tranzila.com/doritplus/U0VtYlpqamZhMDFPN1I2TU8wUStSdz09"
              target="_blank" rel="noopener"
-             data-cta="single" data-event="order-click">
-            להזמנת מארז ב-<span class="num">24 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+             data-cta="double" data-value="68" data-event="order-click">
+            2 מארזים ב-<span class="num">68 ₪</span> כולל משלוח<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
           </a>
-          <!-- כפתור משני (חלול כתום) → 4 מארזים (data-cta="primary" → InitiateCheckout 80) -->
+          <!-- כפתור משני (חלול כתום) → 4 מארזים 99 ₪ כולל משלוח (data-value=99) -->
           <a class="btn btn-single"
-             href="https://pay.tranzila.com/doritplus/Zmp3YXV0bU1GQllodVVEMUNlaUxHZz09"
+             href="https://pay.tranzila.com/doritplus/aHRVVXJrMkdPMmxQUk9ISFJlUkgvUT09"
              target="_blank" rel="noopener"
-             data-cta="primary" data-event="order-click">
-            4 מארזים ב-<span class="num">80 ₪</span> – הכי משתלם<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+             data-cta="quad" data-value="99" data-event="order-click">
+            4 מארזים ב-<span class="num">99 ₪</span> – הכי משתלם<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
           </a>
           <p class="trust-note">🔒 תשלום מאובטח באמצעות Tranzila</p>
         </div>
@@ -701,34 +703,50 @@
         <p class="offer-sub">זו התקופה לפתוח את השנה עם מילים טובות ומחזקות.</p>
       </div>
 
-      <div class="price-grid">
-        <!-- הצעה ראשית: מארז בודד -->
-        <div class="price-card featured">
-          <span class="price-tag">⭐ הכי מתאים להתחלה</span>
-          <div class="price-name">מארז בודד</div>
+      <div class="price-grid price-grid-3">
+        <!-- כרטיס 1: מארז אחד -->
+        <div class="price-card">
+          <span class="price-tag">רוצים להתנסות?</span>
+          <div class="price-name">מארז אחד</div>
           <div class="price-amount"><span class="num">24 ₪</span></div>
           <p class="price-desc">54 מדבקות מחזקות</p>
-          <p class="price-ship">איסוף עצמי חינם מאור יהודה, ראשון לציון, רחובות או רמלה | משלוח בדואר רשום: <span class="num">20 ₪</span></p>
-          <a class="btn btn-primary"
+          <p class="price-ship">איסוף עצמי ללא עלות, או משלוח לנקודת איסוף באזורכם בתוספת <span class="num">20 ₪</span></p>
+          <a class="btn btn-single"
              href="https://pay.tranzila.com/doritplus/bU9tM0JLMEJRS2xtSklWVDhsQW4rUT09"
              target="_blank" rel="noopener"
-             data-cta="single" data-event="order-click">
-            להזמנת מארז ב-<span class="num">24 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+             data-cta="single" data-value="24" data-event="order-click">
+            להזמנת מארז אחד ב-<span class="num">24 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
           </a>
         </div>
 
-        <!-- אפשרות משנית: 4 מארזים -->
-        <div class="price-card">
-          <div class="price-name">4 מארזים</div>
-          <div class="price-amount"><span class="num">80 ₪</span></div>
-          <p class="price-was">חוסכים <strong><span class="num">16 ₪</span></strong> לעומת רכישת 4 מארזים בנפרד (<span class="num">24 ₪</span> כל אחד)</p>
-          <p class="price-desc">4 מארזים, בכל מארז 54 מדבקות – מתאים לכמה ילדים, למתנה, לאנשי חינוך או להזמנה משותפת</p>
-          <p class="price-ship">איסוף עצמי חינם מאור יהודה, ראשון לציון, רחובות או רמלה | משלוח בדואר רשום: <span class="num">20 ₪</span></p>
-          <a class="btn btn-single"
-             href="https://pay.tranzila.com/doritplus/Zmp3YXV0bU1GQllodVVEMUNlaUxHZz09"
+        <!-- כרטיס 2: מארז כפול — ההצעה הראשית (ההדגשה הועברה לכאן, זו ההצעה במודעה) -->
+        <div class="price-card featured">
+          <span class="price-tag">מארז כפול של חיזוק</span>
+          <div class="price-name">2 מארזים</div>
+          <div class="price-amount"><span class="num">68 ₪</span></div>
+          <p class="price-desc">108 מדבקות מחזקות</p>
+          <p class="price-ship">כולל משלוח לנקודת איסוף באזורכם</p>
+          <a class="btn btn-primary"
+             href="https://pay.tranzila.com/doritplus/U0VtYlpqamZhMDFPN1I2TU8wUStSdz09"
              target="_blank" rel="noopener"
-             data-cta="primary" data-event="order-click">
-            4 מארזים ב-<span class="num">80 ₪</span> – הכי משתלם<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+             data-cta="double" data-value="68" data-event="order-click">
+            להזמנת 2 מארזים ב-<span class="num">68 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+          </a>
+        </div>
+
+        <!-- כרטיס 3: 4 מארזים — הכי משתלם -->
+        <div class="price-card">
+          <span class="price-tag">הכי משתלם</span>
+          <div class="price-name">4 מארזים</div>
+          <div class="price-amount"><span class="num">99 ₪</span></div>
+          <p class="price-desc">216 מדבקות מחזקות</p>
+          <p class="price-ship">כולל משלוח לנקודת איסוף באזורכם</p>
+          <p class="price-was">חיסכון של <strong><span class="num">17 ₪</span></strong> לעומת המחיר הרגיל כולל משלוח</p>
+          <a class="btn btn-single"
+             href="https://pay.tranzila.com/doritplus/aHRVVXJrMkdPMmxQUk9ISFJlUkgvUT09"
+             target="_blank" rel="noopener"
+             data-cta="quad" data-value="99" data-event="order-click">
+            להזמנת 4 מארזים ב-<span class="num">99 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
           </a>
         </div>
       </div>
@@ -753,8 +771,8 @@
         <details class="faq-item">
           <summary aria-controls="faq2"><span>מה יש במארז?</span></summary>
           <div class="faq-answer" id="faq2">
-            בכל מארז 54 מדבקות עם משפטים מחזקים ומעצימים לילדים — כמו "אני עושה את הכי טוב שלי",
-            "יש בי כוח להצליח" ו"מחכה לי יום נפלא". במבצע 4 המארזים תקבלו 216 משפטים בסך הכל.
+            בכל מארז 54 מדבקות עם משפטים מחזקים ומעצימים לילדים. במארז הכפול תקבלו 108 מדבקות,
+            ובארבעה מארזים תקבלו 216 מדבקות.
           </div>
         </details>
 
@@ -777,9 +795,9 @@
         <details class="faq-item">
           <summary aria-controls="faq5"><span>מאיפה ניתן לאסוף את המארז?</span></summary>
           <div class="faq-answer" id="faq5">
-            לאחר ביצוע ההזמנה ניצור איתכם קשר לתיאום מועד האיסוף.
-            ניתן לאסוף את המארז באיסוף עצמי מאור יהודה, ראשון לציון, רחובות או רמלה.
-            ניתן גם לקבל את המארז במשלוח בדואר רשום בתוספת <span class="num">20 ₪</span> בלבד.
+            בהזמנת מארז אחד ניתן לבחור איסוף עצמי ללא עלות מאור יהודה, ראשון לציון, רחובות או רמלה,
+            או משלוח לנקודת איסוף בתוספת <span class="num">20 ₪</span>.
+            במחירי שני המארזים וארבעת המארזים המשלוח לנקודת איסוף כבר כלול.
           </div>
         </details>
 
@@ -803,23 +821,22 @@
         מדבקה אחת קטנה על הכריך, ומסר גדול שמלווה את הילד שלכם לאורך כל היום.
         הזמינו עכשיו כדי שהמארז יגיע בזמן לתחילת השנה.
       </p>
-      <!-- תיבת הזמנה כתומה בולטת → מארז בודד (data-cta="single" → InitiateCheckout 24) -->
+      <!-- תיבת הזמנה כתומה בולטת → מארז כפול (data-value=68) -->
       <div class="final-order">
-        <span class="order-note">מזמינים מארז 54 מדבקות ב-<span class="num">24 ₪</span></span>
+        <span class="order-note">מארז כפול של 108 מדבקות ב-<span class="num">68 ₪</span> כולל משלוח</span>
         <a class="btn btn-primary"
-           href="https://pay.tranzila.com/doritplus/bU9tM0JLMEJRS2xtSklWVDhsQW4rUT09"
+           href="https://pay.tranzila.com/doritplus/U0VtYlpqamZhMDFPN1I2TU8wUStSdz09"
            target="_blank" rel="noopener"
-           data-cta="single" data-event="order-click">
-          להזמנת מארז ב-<span class="num">24 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+           data-cta="double" data-value="68" data-event="order-click">
+          להזמנת 2 מארזים ב-<span class="num">68 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
         </a>
       </div>
-      <p class="ship-note">איסוף עצמי חינם או משלוח בדואר רשום ב-<span class="num">20 ₪</span></p>
-      <!-- אפשרות משנית → 4 מארזים (data-cta="primary" → InitiateCheckout 80) -->
+      <!-- אפשרות משנית → 4 מארזים (data-value=99) -->
       <a class="link-single"
-         href="https://pay.tranzila.com/doritplus/Zmp3YXV0bU1GQllodVVEMUNlaUxHZz09"
+         href="https://pay.tranzila.com/doritplus/aHRVVXJrMkdPMmxQUk9ISFJlUkgvUT09"
          target="_blank" rel="noopener"
-         data-cta="primary" data-event="order-click">
-        או 4 מארזים ב-<span class="num">80 ₪</span> – הכי משתלם »<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+         data-cta="quad" data-value="99" data-event="order-click">
+        או 4 מארזים ב-<span class="num">99 ₪</span> – הכי משתלם »<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
       </a>
       <p class="trust-note">🔒 תשלום מאובטח באמצעות Tranzila</p>
     </div>
@@ -868,11 +885,13 @@
           המפורשת דרך באנר העוגיות. עד למתן ההסכמה הן אינן נטענות כלל, ותוכלו לחזור בכם בכל עת. פירוט מלא בסעיף 4.</p>
 
         <h4 style="color:#fff;">4. פיקסלים ופרסום מותאם (רימרקטינג)</h4>
-        <!-- ⚖️ טיוטת עדי (סבב #6) — ניסוח ההסכמה + סעיף העברת המידע לחו"ל מצריכים אישור עו"ד רשומה לפני go-live -->
+        <!-- ⚖️ טיוטת עדי (סבב #6+#9) — ניסוח ההסכמה, העברת המידע לחו"ל, וההפעלה-העצמית מצריכים אישור עו"ד רשומה לפני go-live -->
         <p>אנו עושים שימוש ב-<strong>Meta Pixel</strong> (פייסבוק/אינסטגרם) לצורך מדידת ביצועי קמפיינים
-          והצגת מודעות מותאמות (רימרקטינג). הפיקסל מופעל באמצעות סוכנות הפרסום מטעמנו, "תנועה פלוס".
+          והצגת מודעות מותאמות (רימרקטינג). הפיקסל מופעל <strong>על ידינו</strong> — דורית בן מאיר
+          (הדרך למילים / תנועה פלוס, עוסק פטור 033625328), בעלת השליטה היחידה במידע; איננו מעבירים את ניהול המדידה לגורם חיצוני.
+          אותו פיקסל משמש למדידה חוצת-נכסים בין הדפים והאתרים שלנו (מדבקות לדרך, ערכת הקלפים ו-doritplus.co.il).
           הכלי אוסף מזהים טכניים — כתובת IP, מזהי עוגיות ומזהה מכשיר — ומידע על פעולות שביצעתם בדף
-          (צפייה בעמוד, לחיצה על כפתור הזמנה, השלמת רכישה); לפי חוק הגנת הפרטיות אלה מהווים מידע אישי.</p>
+          (צפייה בעמוד, לחיצה על כפתור הזמנה); לפי חוק הגנת הפרטיות אלה מהווים מידע אישי.</p>
         <p><strong>הפעלת הפיקסל מותנית בהסכמתכם המפורשת מראש</strong> דרך באנר העוגיות. כל עוד לא נתתם
           הסכמה — הפיקסל אינו נטען כלל.</p>
         <p><strong>העברת מידע ל-Meta ולחו"ל:</strong> בעת הפעלת הפיקסל, המידע הנאסף מועבר ומעובד על ידי
@@ -887,7 +906,7 @@
           <strong>Google Fonts</strong> — הגופנים בדף זה נטענים משרתי Google Fonts (CDN), מה שעשוי להעביר את כתובת ה-IP שלכם ל-Google בעת הטעינה.
           קיים גם מנגנון גופנים מקומי (fallback) אם השירות אינו זמין.<br>
           <strong>Meta Platforms (Facebook/Instagram)</strong> — פיקסל רימרקטינג ומדידת קמפיינים,
-          בהסכמתכם בלבד, לרבות העברת מידע לחו"ל. מופעל דרך סוכנות "תנועה פלוס".</p>
+          בהסכמתכם בלבד, לרבות העברת מידע לחו"ל. מופעל ישירות על ידינו (ללא גורם חיצוני).</p>
 
         <h4 style="color:#fff;">6. הזכויות שלכם</h4>
         <p>בהתאם לחוק הגנת הפרטיות, התשמ"א-1981 (כולל תיקון 13): זכות עיון, זכות תיקון, וזכות מחיקה של מידע אישי, בכפוף לדין. לפנייה: <a href="mailto:doritplus@gmail.com">doritplus@gmail.com</a>.</p>
@@ -930,12 +949,12 @@
 
   <!-- ============ Sticky CTA מובייל ============ -->
   <div class="sticky-cta" id="sticky-cta" aria-hidden="true">
-    <!-- כפתור קבוע במובייל → מארז בודד (data-cta="single" → InitiateCheckout 24) -->
+    <!-- כפתור קבוע במובייל → מארז כפול (data-value=68) -->
     <a class="btn btn-primary"
-       href="https://pay.tranzila.com/doritplus/bU9tM0JLMEJRS2xtSklWVDhsQW4rUT09"
+       href="https://pay.tranzila.com/doritplus/U0VtYlpqamZhMDFPN1I2TU8wUStSdz09"
        target="_blank" rel="noopener"
-       data-cta="single" data-event="order-click">
-      להזמנת מארז ב-<span class="num">24 ₪</span><span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
+       data-cta="double" data-value="68" data-event="order-click">
+      2 מארזים ב-<span class="num">68 ₪</span> כולל משלוח<span class="visually-hidden"> (נפתח בכרטיסייה חדשה)</span>
     </a>
   </div>
 
@@ -1000,14 +1019,14 @@
       function loadMarketingPixel(){
         if (pixelLoaded) return;              // מניעת טעינה כפולה (G-3)
         pixelLoaded = true;
-        // Meta Pixel (תנועה פלוס · 1155607796337708) — נטען אך ורק כאן, אחרי opt-in אקטיבי.
+        // Meta Pixel (פיקסל עסקי קבוע · 1655326862290518) — נטען אך ורק כאן, אחרי opt-in אקטיבי.
         // לעולם לא ב-<head> ולעולם לא בטעינת העמוד. init + PageView יורים רק פוסט-הסכמה.
         !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
         n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
         n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
         t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
         (window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init','1155607796337708');
+        fbq('init','1655326862290518');
         fbq('track','PageView');
       }
 
@@ -1032,13 +1051,21 @@
 
       // ----- G-4: InitiateCheckout על כפתורי ההזמנה -----
       // יורה אך ורק אם הפיקסל כבר נטען (כלומר יש הסכמה "all"). ללא הסכמה — לא נורה כלום.
-      // הקישורים/החוזה לא משתנים: data-cta="primary" → 80 ₪, data-cta="single" → 24 ₪.
+      // כל מוצר מזוהה לפי data-cta. להוספת מוצר עתידי — רק להוסיף שורה למפה (content_name/content_id/value).
+      var PRODUCTS = {
+        single: { value: 24, content_id: "madbekot_1", content_name: "מדבקות לדרך – מארז אחד" },
+        double: { value: 68, content_id: "madbekot_2", content_name: "מדבקות לדרך – מארז כפול" },
+        quad:   { value: 99, content_id: "madbekot_4", content_name: "מדבקות לדרך – ארבעה מארזים" }
+      };
       document.addEventListener("click", function(e){
         var el = e.target.closest('[data-event="order-click"]');
         if (!el) return;
         if (window.fbq && pixelLoaded){
-          var val = el.getAttribute("data-cta") === "primary" ? 80 : 24;
-          fbq('track','InitiateCheckout', {value: val, currency: 'ILS'});
+          var p = PRODUCTS[el.getAttribute("data-cta")];
+          if (p) fbq('track','InitiateCheckout', {
+            value: p.value, currency: "ILS",
+            content_name: p.content_name, content_ids: [p.content_id], content_type: "product"
+          });
         }
       });
 

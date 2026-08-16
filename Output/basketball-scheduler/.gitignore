@@ -7,6 +7,9 @@ dist/
 # local env — never commit real Firebase keys
 .env
 .env.local
+# Belongs to the multi-club project on the `saas` branch, but the file sits in this
+# working directory on every branch. Ignored here too so a sweep-everything commit
+# cannot drop another project's Firebase config into Kiryat Ono's history.
 .env.saas
 
 # firebase
