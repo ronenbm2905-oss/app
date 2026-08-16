@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, ShieldCheck } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import Button from "./ui/Button.jsx";
 import Pill from "./ui/Pill.jsx";
 import Modal from "./ui/Modal.jsx";
 import { EmptyState } from "./ui/Card.jsx";
 import Field, { TextInput, Select, TextArea } from "./ui/Field.jsx";
+import NoticeDeliveryModal from "./NoticeDeliveryModal.jsx";
 import { createDriver } from "../schema.js";
 import { driverStatusOptions, vehicleLabel, driverName, DRIVER_STATUS_TONE } from "../utils/options.js";
 import { currentVehicleIdForDriver } from "../utils/assignments.js";
 import { finesForDriver, isFineOpen } from "../utils/fines.js";
+import { noticeCandidates } from "../utils/notice.js";
 import { todayIso } from "../utils/dates.js";
 
 // מסך 4 — רשימת נהגים.
@@ -17,7 +19,11 @@ export function DriversScreen({ data, orgId, actions, onOpenDriver }) {
   const { t } = useI18n();
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState(null);
+  // 4.3א — רישום מסירה קבוצתי. הכפתור מופיע רק כשיש למי לרשום.
+  const [recordingNotice, setRecordingNotice] = useState(false);
   const today = todayIso();
+
+  const noticePending = useMemo(() => noticeCandidates(data), [data.drivers]);
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -65,7 +71,12 @@ export function DriversScreen({ data, orgId, actions, onOpenDriver }) {
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-lg font-semibold text-slate-900">{t("driver.title")}</h1>
         <span className="num text-xs text-slate-500">{t("common.results", { n: rows.length })}</span>
-        <Button className="ms-auto" onClick={() => setEditing("new")}>
+        {noticePending.length > 0 && (
+          <Button className="ms-auto" variant="secondary" onClick={() => setRecordingNotice(true)}>
+            <ShieldCheck size={15} /> {t("notice.bulkActionCount", { n: noticePending.length })}
+          </Button>
+        )}
+        <Button className={noticePending.length ? "" : "ms-auto"} onClick={() => setEditing("new")}>
           <Plus size={15} /> {t("driver.add")}
         </Button>
       </div>
@@ -134,6 +145,15 @@ export function DriversScreen({ data, orgId, actions, onOpenDriver }) {
           driver={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
           onSave={(d) => actions.upsert("drivers", d)}
+        />
+      )}
+
+      {recordingNotice && (
+        <NoticeDeliveryModal
+          data={data}
+          candidates={noticePending}
+          actions={actions}
+          onClose={() => setRecordingNotice(false)}
         />
       )}
     </div>

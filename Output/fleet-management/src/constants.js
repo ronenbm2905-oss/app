@@ -55,6 +55,24 @@ export const FINE_CLOSED_STATUS = ["paid", "cancelled"];
 // סטטוסים שבהם הקנס עוד לא הוסב לנהג — ההתראה המרכזית בדשבורד.
 export const FINE_PRE_TRANSFER_STATUS = ["received", "notified_driver", "disputed"];
 
+// ============================================================================
+// D8 — שיטות מסירת היידוע. **enum, לא מחרוזת חופשית** (שער עדי 16.8, 4.3ג).
+//
+// הסדר כאן אינו אלפביתי ואינו שרירותי: הוא **דירוג הראיות** של עדי (4.2),
+// מהחזק לחלש. `admin_recorded` אחרון בכוונה — הוא מתעד ש**מישהו לחץ**, לא
+// **איך נמסר**, ולכן הוא גם ברירת המחדל: אסור שהמערכת תטען ראיה חזקה יותר
+// ממה שקרה בפועל. הוא אינו חוסם — הוא מקבל חיווי שקט בכרטיס הנהג.
+// ============================================================================
+export const NOTICE_METHODS = [
+  "signed_form", // אישור קבלה חתום
+  "email_individual", // מייל אישי עם המסמך
+  "email_bulk", // מייל לרשימה
+  "meeting_minuted", // מסירה בישיבה מתועדת
+  "admin_recorded", // רישום ידני בלי ראיה חיצונית — החלש ביותר
+];
+export const NOTICE_METHOD_WEAK = "admin_recorded";
+export const NOTICE_METHOD_DEFAULT = "admin_recorded";
+
 export const ODOMETER_SOURCE = ["admin", "driver"];
 export const SERVICE_TYPE = ["periodic", "repair", "tires", "accident", "test"];
 // D2 — 'fineScan' **הוסר** מכאן בכוונה: סריקת קנס אינה מסמך רכב.

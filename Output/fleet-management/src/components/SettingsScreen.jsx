@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Pencil, FileCheck2 } from "lucide-react";
+import { Plus, Trash2, Pencil, FileCheck2, ShieldCheck } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import Card from "./ui/Card.jsx";
 import Button from "./ui/Button.jsx";
@@ -14,6 +14,7 @@ export function SettingsScreen({ data, orgId, actions, onResetLocal }) {
   const [editing, setEditing] = useState(null);
   const s = data.settings || {};
   const ack = s.importAck || null;
+  const delivery = s.noticeDelivery || null;
 
   return (
     <div className="space-y-3">
@@ -69,6 +70,43 @@ export function SettingsScreen({ data, orgId, actions, onResetLocal }) {
               <p className="text-slate-600">{t("settings.importAck.none")}</p>
             )}
             <p className="mt-1.5 text-[11px] text-slate-500">{t("settings.importAck.hint")}</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* 4.3א — רשומת **אירוע** המסירה, באותה תבנית: מי הצהיר, מתי, באיזו
+          שיטה, לאיזו גרסה, ולכמה עובדים. תיעוד שמתאר את המציאות. */}
+      <Card title={t("settings.noticeDelivery.title")}>
+        <div className="flex items-start gap-2">
+          <ShieldCheck
+            size={16}
+            className={delivery ? "mt-0.5 text-emerald-600" : "mt-0.5 text-slate-400"}
+          />
+          <div className="text-xs">
+            {delivery ? (
+              <>
+                <p className="num text-slate-700">
+                  {t("settings.noticeDelivery.value", {
+                    deliveredAt: formatDate(delivery.deliveredAt, lang),
+                    method: t(`notice.method.${delivery.method}`),
+                    n: delivery.drivers ?? 0,
+                    version: delivery.policyVersion || "—",
+                  })}
+                </p>
+                <p className="num mt-0.5 text-slate-500">
+                  {t("settings.noticeDelivery.recorded", {
+                    at: formatDate(delivery.at, lang),
+                    by: delivery.by || t("settings.importAck.localUser"),
+                  })}
+                </p>
+                {delivery.evidenceRef && (
+                  <p className="mt-0.5 text-slate-500">{delivery.evidenceRef}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-slate-600">{t("settings.noticeDelivery.none")}</p>
+            )}
+            <p className="mt-1.5 text-[11px] text-slate-500">{t("settings.noticeDelivery.hint")}</p>
           </div>
         </div>
       </Card>

@@ -18,6 +18,7 @@
 // ============================================================================
 
 import { newId, nowIso } from "./utils/id.js";
+import { emptyNotice } from "./utils/notice.js";
 import { SCHEMA_VERSION, POLICY_VERSION } from "./constants.js";
 
 const base = (prefix, orgId) => ({
@@ -77,8 +78,9 @@ export function createDriver(p = {}) {
     portalStatus: p.portalStatus || "none", // none|invited|active|disabled|revoked
     invitedAt: p.invitedAt || null,
     status: p.status || "active", // active | inactive | archived
-    // D8 — תיעוד יידוע (לא הסכמה).
-    notice: p.notice || { policyVersion: null, acknowledgedAt: null, method: null },
+    // D8 — תיעוד יידוע (לא הסכמה). `deliveredAt` = מתי נמסר בפועל;
+    // `recordedAt` = מתי נלחץ. שני דברים שונים, ולכן שני שדות (utils/notice.js).
+    notice: p.notice || emptyNotice(),
     // D6 — אנונימיזציה
     retentionClass: "driver",
     anonymizedAt: p.anonymizedAt || null,

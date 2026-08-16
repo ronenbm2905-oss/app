@@ -7,6 +7,7 @@ import { FINE_CLOSED_STATUS, FINE_PRE_TRANSFER_STATUS } from "../constants.js";
 import { resolveDriverForFine } from "./assignments.js";
 import { daysUntil, isDay, todayIso } from "./dates.js";
 import { emptyAttribution } from "../schema.js";
+import { hasNoticeRecord } from "./notice.js";
 import { nowIso } from "./id.js";
 
 export function isFineOpen(fine) {
@@ -108,13 +109,16 @@ export function applyDerivedDriver(data, draft, { actor } = {}) {
 // נגדו (תיקון 13, חובת יידוע מורחבת).
 //
 // כלל: אין מעבר ל-notified_driver / transferred כשלנהג המשויך
-// `notice.acknowledgedAt === null`. קנס בלי נהג משויך אינו נחסם — אין אדם
+// `notice.deliveredAt === null`. קנס בלי נהג משויך אינו נחסם — אין אדם
 // שנפגע, ואין את מי ליידע; החסימה תיכנס לתוקף ברגע שישויך נהג.
 // ============================================================================
 export const NOTICE_REQUIRED_STATUS = ["notified_driver", "transferred"];
 
+// השער נשען על **תאריך המסירה**. מאז 16.8 השדה הוא `notice.deliveredAt`;
+// `hasNoticeRecord` קורא גם רשומות ישנות עם `acknowledgedAt`, כדי ששינוי
+// השם לא יאפס יידוע שכבר נרשם ולא יפתח שער שהיה סגור.
 export function hasNotice(driver) {
-  return Boolean(driver?.notice?.acknowledgedAt);
+  return hasNoticeRecord(driver);
 }
 
 // כל הנהגים שטרם קיבלו יידוע מתועד (מזין את התראת הדשבורד ואת השער).

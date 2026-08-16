@@ -36,7 +36,22 @@ import {
   FORBIDDEN_FIELDS,
   RETENTION_CLASSES,
   STORAGE_DOMAINS,
+  NOTICE_METHODS,
+  NOTICE_METHOD_WEAK,
+  NOTICE_METHOD_DEFAULT,
+  POLICY_VERSION,
 } from "../src/constants.js";
+
+import {
+  buildNoticeDelivery,
+  buildNoticeRecord,
+  isWeakNoticeEvidence,
+  noticeCandidates,
+  noticeDeliveredAt,
+  normalizeNoticeMethod,
+  partitionNoticeTargets,
+  validateNoticeDelivery,
+} from "../src/utils/notice.js";
 
 import {
   driverAtDate,
@@ -1781,6 +1796,181 @@ ok("M4 — גם שמירת קנס עוברת דרכו", actionsSrc.includes("not
 const reviewItemSrc = readFileSync(join(SRC, "components", "review", "ReviewItem.jsx"), "utf8");
 ok("M2 — מסך האימות מתאים מול כל הנהגים", reviewItemSrc.includes("allDrivers"));
 ok("M6 — ומציג חיווי מיזוג", reviewItemSrc.includes("nameMatchInfo"));
+
+// ============================================================================
+section("28. שער עדי 16.8 — G1: אירוע מסירה, תאריך מסירה, enum שיטות, קישור גרסה");
+// ============================================================================
+
+// -- (א) פעולה קבוצתית: אותו אובייקט לכולם + רשומת אירוע אחת ---------------
+const nDrivers = [
+  createDriver({ orgId: ORG, fullName: "נהג א", status: "active" }),
+  createDriver({ orgId: ORG, fullName: "נהג ב", status: "active" }),
+  createDriver({ orgId: ORG, fullName: "נהג ג", status: "archived" }),
+  createDriver({ orgId: ORG, fullName: "נהג ד", status: "active", notice: {
+    policyVersion: "0.1-draft", deliveredAt: "2026-07-01", method: "signed_form",
+  } }),
+];
+const nData = { ...EMPTY, settings: { ...EMPTY.settings, policyVersion: "0.1-draft" }, drivers: nDrivers };
+
+eq("(א) מועמדים למסירה = פעילים בלי רישום",
+  noticeCandidates(nData).map((d) => d.fullName), ["נהג א", "נהג ב"]);
+
+const part = partitionNoticeTargets(nData, [nDrivers[0].id, nDrivers[1].id, nDrivers[2].id, "drv_nope", nDrivers[0].id]);
+eq("(א) נהג בארכיון מדולג (4.5)", part.targets.map((d) => d.fullName), ["נהג א", "נהג ב"]);
+eq("(א) והדילוג מדווח ולא נבלע", part.skipped.map((s) => s.reason).sort(),
+  ["notice.skip.archived", "notice.skip.unknown"]);
+
+const evt = buildNoticeDelivery({
+  driverIds: [nDrivers[0].id, nDrivers[1].id],
+  policyVersion: "0.1-draft",
+  method: "email_bulk",
+  deliveredAt: "2026-08-10",
+  evidenceRef: "מייל 10.8",
+  actor: "admin-uid",
+  deliveryId: "ndl_x",
+  at: "2026-08-14T09:00:00.000Z",
+});
+// בדיוק בתבנית settings.importAck: מי הצהיר, מתי, לפי איזו גרסה.
+for (const k of ["at", "by", "policyVersion"]) {
+  ok(`(א) רשומת האירוע נושאת את שדה ה-importAck: ${k}`, evt[k] !== undefined);
+}
+eq("(א) מי הצהיר", evt.by, "admin-uid");
+eq("(א) מתי נרשם", evt.at, "2026-08-14T09:00:00.000Z");
+eq("(א) מתי נמסר בפועל — ולא רגע הרישום", evt.deliveredAt, "2026-08-10");
+eq("(א) באיזו שיטה", evt.method, "email_bulk");
+eq("(א) לאיזו גרסה", evt.policyVersion, "0.1-draft");
+eq("(א) ולכמה עובדים", evt.drivers, 2);
+eq("(א) וגם למי בדיוק — בחירה, לא 'הכל'", evt.driverIds.length, 2);
+
+const rec = buildNoticeRecord({
+  policyVersion: "0.1-draft", deliveredAt: "2026-08-10", method: "email_bulk",
+  evidenceRef: "מייל 10.8", deliveryId: "ndl_x", recordedBy: "admin-uid",
+  recordedAt: "2026-08-14T09:00:00.000Z",
+});
+eq("(א) רשומת הנהג מקושרת לאירוע", rec.deliveryId, "ndl_x");
+ok("(א) האובייקט זהה לכל הנהגים — אין 29 חותמות שונות",
+  JSON.stringify(rec) === JSON.stringify(buildNoticeRecord({
+    policyVersion: "0.1-draft", deliveredAt: "2026-08-10", method: "email_bulk",
+    evidenceRef: "מייל 10.8", deliveryId: "ndl_x", recordedBy: "admin-uid",
+    recordedAt: "2026-08-14T09:00:00.000Z",
+  })));
+
+// -- (ב) deliveredAt מפורש, ותאריך עתידי חסום ------------------------------
+eq("(ב) תאריך המסירה נשמר כיום, לא כחותמת לחיצה", rec.deliveredAt, "2026-08-10");
+ok("(ב) רגע הלחיצה נשמר בנפרד ולא מתחזה לתאריך המסירה",
+  rec.recordedAt === "2026-08-14T09:00:00.000Z" && rec.recordedAt !== rec.deliveredAt);
+const vBase = { driverIds: ["drv_1"], policyVersion: "0.1-draft", method: "signed_form" };
+eq("(ב) תאריך תקין עובר",
+  validateNoticeDelivery({ ...vBase, deliveredAt: "2026-08-10" }, { today: "2026-08-16" }), []);
+eq("(ב) תאריך היום עובר",
+  validateNoticeDelivery({ ...vBase, deliveredAt: "2026-08-16" }, { today: "2026-08-16" }), []);
+eq("(ב) תאריך עתידי נדחה",
+  validateNoticeDelivery({ ...vBase, deliveredAt: "2026-08-17" }, { today: "2026-08-16" }),
+  ["notice.err.futureDate"]);
+eq("(ב) תאריך לא תקין נדחה",
+  validateNoticeDelivery({ ...vBase, deliveredAt: "אתמול" }, { today: "2026-08-16" }),
+  ["notice.err.badDate"]);
+eq("(ב) בלי נהגים אין רישום",
+  validateNoticeDelivery({ ...vBase, driverIds: [], deliveredAt: "2026-08-10" }, { today: "2026-08-16" }),
+  ["notice.err.noDrivers"]);
+eq("(ב) בלי גרסת מדיניות אין רישום",
+  validateNoticeDelivery({ ...vBase, policyVersion: null, deliveredAt: "2026-08-10" }, { today: "2026-08-16" }),
+  ["notice.err.noPolicyVersion"]);
+// השער נשען על תאריך המסירה, ורשומות ישנות (acknowledgedAt) נשארות תקפות.
+const legacyDrv = { ...createDriver({ orgId: ORG, fullName: "מורשת" }),
+  notice: { policyVersion: "0.1-draft", acknowledgedAt: "2026-08-01T10:00:00.000Z", method: "admin_recorded" } };
+ok("(ב) רשומה ישנה עם acknowledgedAt עדיין נחשבת יידוע", hasNotice(legacyDrv));
+eq("(ב) והתאריך שלה נקרא כיום", noticeDeliveredAt(legacyDrv), "2026-08-01");
+eq("(ב) רשומה חדשה נקראת מ-deliveredAt",
+  noticeDeliveredAt({ notice: { deliveredAt: "2026-08-10" } }), "2026-08-10");
+ok("(ב) נהג בלי רישום אינו עובר את השער", !hasNotice(createDriver({ orgId: ORG })));
+eq("(ב) והשער בקנס עדיין חוסם אותו",
+  noticeGateError({ drivers: [nDrivers[0]] },
+    { driverId: nDrivers[0].id, status: "transferred" }), "fine.err.driverNoNotice");
+eq("(ב) ונפתח לנהג עם מסירה רשומה",
+  noticeGateError({ drivers: [nDrivers[3]] },
+    { driverId: nDrivers[3].id, status: "transferred" }), null);
+
+// -- (ג) method כ-enum, מדורג לפי חוזק הראיה -------------------------------
+eq("(ג) חמש השיטות, לפי דירוג הראיות של 4.2", NOTICE_METHODS,
+  ["signed_form", "email_individual", "email_bulk", "meeting_minuted", "admin_recorded"]);
+eq("(ג) החלשה ביותר אחרונה", NOTICE_METHODS[NOTICE_METHODS.length - 1], NOTICE_METHOD_WEAK);
+eq("(ג) והיא גם ברירת המחדל — לא מצהירים ראיה חזקה מהמציאות",
+  NOTICE_METHOD_DEFAULT, NOTICE_METHOD_WEAK);
+eq("(ג) מחרוזת חופשית אינה מתקבלת", normalizeNoticeMethod("נמסר ביד"), NOTICE_METHOD_WEAK);
+eq("(ג) ונופלת לחלשה, לא לחזקה", buildNoticeRecord({ method: "whatever" }).method, "admin_recorded");
+eq("(ג) שיטה לא מוכרת נדחית בוולידציה",
+  validateNoticeDelivery({ ...vBase, method: "carrier_pigeon", deliveredAt: "2026-08-10" },
+    { today: "2026-08-16" }), ["notice.err.badMethod"]);
+const weakDrv = { ...createDriver({ orgId: ORG }), notice: buildNoticeRecord({
+  policyVersion: "0.1-draft", deliveredAt: "2026-08-10", method: "admin_recorded" }) };
+const strongDrv = { ...createDriver({ orgId: ORG }), notice: buildNoticeRecord({
+  policyVersion: "0.1-draft", deliveredAt: "2026-08-10", method: "signed_form" }) };
+ok("(ג) רישום ידני מסומן כתיעוד חלש", isWeakNoticeEvidence(weakDrv));
+ok("(ג) טופס חתום אינו", !isWeakNoticeEvidence(strongDrv));
+ok("(ג) חיווי, לא חסימה — שניהם עוברים את השער", hasNotice(weakDrv) && hasNotice(strongDrv));
+ok("(ג) נהג בלי רישום כלל אינו 'תיעוד חלש' אלא חסר",
+  !isWeakNoticeEvidence(createDriver({ orgId: ORG })));
+
+// -- (ד) odo.purposeLink — מפתח **נוסף**, הקיים לא נגע ---------------------
+for (const lang of LANGS) {
+  ok(`(ד) odo.purposeLink קיים (${lang})`, Boolean(dict[lang]["odo.purposeLink"]));
+  ok(`(ד) והוא מצביע לגרסה דינמית (${lang})`, dict[lang]["odo.purposeLink"].includes("{version}"));
+  ok(`(ד) odo.purposeNote נשאר קיים (${lang})`, Boolean(dict[lang]["odo.purposeNote"]));
+}
+// עדי אימתה את הנוסח הקיים ופסקה שאין לשנותו — הבדיקה נועלת אותו מילה במילה.
+eq("(ד) הנוסח העברי הקיים לא שונה", dict.he["odo.purposeNote"],
+  "הקריאה משמשת למעקב מכסת הק\"מ מול חברת הליסינג ולתזמון טיפולים בלבד. המערכת אינה אוספת מיקום ואינה עוקבת אחר נסיעות, והמידע אינו משמש לפיקוח על שעות עבודה או להערכת ביצועים.");
+eq("(ד) הגרסה מוזרקת לטקסט",
+  translate("he", "odo.purposeLink", { version: "0.1-draft" }).includes("0.1-draft"), true);
+
+// -- i18n parity לכל המפתחות שהשער הזה הוסיף ------------------------------
+const g1Keys = [
+  "odo.purposeLink",
+  "driver.noticeMethodLine", "driver.noticeRecordedLine", "driver.noticeWeakEvidence",
+  "notice.recordTitle", "notice.bulkAction", "notice.bulkActionCount", "notice.intro",
+  "notice.backdateWarning", "notice.deliveredAt", "notice.deliveredAtHint",
+  "notice.method", "notice.methodHint", "notice.evidenceRef", "notice.evidenceRefHint",
+  "notice.selectTitle", "notice.selectedCount", "notice.selectAll", "notice.clearAll",
+  "notice.none", "notice.summary", "notice.summaryEmpty", "notice.confirm",
+  "notice.done", "notice.skipped",
+  "notice.err.noDrivers", "notice.err.noPolicyVersion", "notice.err.badDate",
+  "notice.err.futureDate", "notice.err.badMethod",
+  "settings.noticeDelivery.title", "settings.noticeDelivery.value",
+  "settings.noticeDelivery.recorded", "settings.noticeDelivery.none",
+  "settings.noticeDelivery.hint",
+  ...NOTICE_METHODS.map((m) => `notice.method.${m}`),
+];
+for (const k of g1Keys) {
+  ok(`מפתח G1 קיים (he): ${k}`, Boolean(dict.he[k]));
+  ok(`מפתח G1 קיים (en): ${k}`, Boolean(dict.en[k]));
+}
+
+// -- חיווט: השדרוגים אינם נשארים בשכבת ה-utils -----------------------------
+const actionsSrcG1 = readFileSync(join(SRC, "hooks", "useActions.js"), "utf8");
+ok("(א) הפעולה הקבוצתית קיימת ב-useActions", actionsSrcG1.includes("recordNoticeDelivery"));
+ok("(א) והיא כותבת רשומת אירוע ל-settings", actionsSrcG1.includes("noticeDelivery: buildNoticeDelivery"));
+ok("(ב) המסלול הפר-נהג עובר על אותו קוד",
+  /acknowledgeNotice[\s\S]{0,200}api\.recordNoticeDelivery/.test(actionsSrcG1));
+ok("(ב) nowIso כבר אינו מייצג את תאריך המסירה",
+  !/acknowledgedAt:\s*nowIso\(\)/.test(actionsSrcG1));
+const noticeModalSrc = readFileSync(join(SRC, "components", "NoticeDeliveryModal.jsx"), "utf8");
+ok("(א) מסך הבחירה מציג את הנהגים לפני האישור", noticeModalSrc.includes("notice.selectTitle"));
+ok("(ב) שדה תאריך המסירה חסום לעתיד", noticeModalSrc.includes("max={today}"));
+ok("(ג) השיטות נבחרות מה-enum", noticeModalSrc.includes("NOTICE_METHODS.map"));
+const driverPageSrc = readFileSync(join(SRC, "components", "DriverPage.jsx"), "utf8");
+ok("(ג) כרטיס הנהג מציג את חיווי התיעוד החלש", driverPageSrc.includes("driver.noticeWeakEvidence"));
+ok("(ב) והתאריך המוצג הוא תאריך המסירה", driverPageSrc.includes("noticeDeliveredAt"));
+const odoSrc = readFileSync(join(SRC, "components", "tabs", "OdometerTab.jsx"), "utf8");
+ok("(ד) הקישור מוצג בנקודת האיסוף", odoSrc.includes("odo.purposeLink"));
+ok("(ד) עם הגרסה מתוך settings", odoSrc.includes("data.settings?.policyVersion"));
+
+// -- מה שאסור שיחזור: POLICY_VERSION ומנגנון ניכוי -------------------------
+eq("POLICY_VERSION נשאר 0.1-draft — אין מסמך מוקפא, אין עו\"ד, אין רישום גרסאות",
+  POLICY_VERSION, "0.1-draft");
+const noticeSrc = readFileSync(join(SRC, "utils", "notice.js"), "utf8");
+ok("אין מנגנון ניכוי משכר בשום מקום בקוד המסירה",
+  !/deduct|salary|ניכוי|קיזוז/i.test(noticeSrc + noticeModalSrc));
 
 // ============================================================================
 console.log("\n" + "=".repeat(60));

@@ -47,7 +47,7 @@ export function computeAlerts(data, today = todayIso(), settings = {}) {
   }
 
   // 0b. M4/D8 — עובדים שאין להם יידוע מתועד. זו לא "התראה תפעולית" אלא
-  // **מד עמידה בחובה**: כל עוד ל-`Driver.notice.acknowledgedAt` יש null,
+  // **מד עמידה בחובה**: כל עוד ל-`Driver.notice.deliveredAt` יש null,
   // המערכת חוסמת מסירת הודעת קנס והסבה לאותו עובד (`noticeGateError`).
   // ולכן: עובד שכבר יש עליו קנס במערכת מסומן ב-danger — שם החסימה כבר
   // עולה בפועל; עובד בלי קנסות הוא warning, פער פתוח שאינו חוסם.

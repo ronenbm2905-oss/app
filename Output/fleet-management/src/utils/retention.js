@@ -24,6 +24,7 @@
 // ============================================================================
 
 import { nowIso } from "./id.js";
+import { emptyNotice } from "./notice.js";
 import { normText, compareKey, words } from "./importExcel.js";
 
 // מפתח i18n שמסמן שם מאונן. נשמר בתוך fullName כ-"<prefix>|<token>".
@@ -227,7 +228,7 @@ export function anonymizeDriver(data, driverId) {
           portalStatus: "revoked",
           status: "archived",
           notes: "",
-          notice: { policyVersion: null, acknowledgedAt: null, method: null },
+          notice: emptyNotice(),
           anonymizedAt: at,
           updatedAt: at,
         }

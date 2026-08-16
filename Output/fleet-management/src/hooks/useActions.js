@@ -11,10 +11,16 @@ import { closeOpenAssignments } from "../utils/assignments.js";
 import { buildReviewWrite } from "../utils/reviewBuild.js";
 import { buildImportAck } from "../utils/importBuild.js";
 import { applyDerivedDriver, fineStatusChange, noticeGateError } from "../utils/fines.js";
+import {
+  buildNoticeDelivery,
+  buildNoticeRecord,
+  partitionNoticeTargets,
+  validateNoticeDelivery,
+} from "../utils/notice.js";
 import { createVehiclePrivate, createFinePrivate } from "../schema.js";
 import { deleteStorageObjects } from "../utils/files.js";
 import { storage, isFirebaseConfigured } from "../firebase.js";
-import { nowIso } from "../utils/id.js";
+import { newId, nowIso } from "../utils/id.js";
 import { todayIso } from "../utils/dates.js";
 
 // ============================================================================
@@ -44,7 +50,7 @@ export function useActions(update, orgId, actor) {
         d[collection] = (d[collection] || []).filter((x) => x.id !== id);
       });
 
-    return {
+    const api = {
       upsert,
       remove,
 
@@ -171,14 +177,83 @@ export function useActions(update, orgId, actor) {
         await deleteStorageObjects(paths, activeStorage);
       },
 
-      acknowledgeNotice: (driverId, policyVersion, method = "admin_recorded") =>
-        update((d) => {
-          d.drivers = (d.drivers || []).map((x) =>
-            x.id === driverId
-              ? { ...x, notice: { policyVersion, acknowledgedAt: nowIso(), method }, updatedAt: nowIso() }
-              : x
+      // ====================================================================
+      // recordNoticeDelivery — שער עדי 2026-08-16, 4.3א. **פעולת אירוע-מסירה.**
+      //
+      // כותבת את **אותו** אובייקט `notice` לכל הנהגים שנבחרו, כי המסירה
+      // הייתה אירוע אחד: מייל אחד לרשימה, או ישיבה אחת מתועדת. 29 לחיצות
+      // נפרדות היו מייצרות 29 חותמות זמן שאף אחת מהן אינה תאריך המסירה
+      // האמיתי — כלומר תיעוד גרוע יותר, לא רק מייגע יותר.
+      //
+      // ובנוסף נשמרת רשומת אירוע ב-`settings.noticeDelivery`, בדיוק בתבנית
+      // `settings.importAck` של M3: מי הצהיר, מתי, באיזו שיטה, לאיזו גרסה,
+      // ולכמה עובדים (וגם למי בדיוק).
+      //
+      // `deliveredAt` מפורש (4.3ב) — ברירת מחדל היום, תאריך עתידי נדחה.
+      // מחזיר { ok, errors, count, skipped } — ה-UI לא מנחש אם הצליח.
+      // ====================================================================
+      recordNoticeDelivery: async ({
+        driverIds = [],
+        policyVersion = null,
+        method = null,
+        deliveredAt = null,
+        evidenceRef = null,
+      } = {}) => {
+        let outcome = { ok: false, errors: ["notice.err.noDrivers"], count: 0, skipped: [] };
+        await update((d) => {
+          const version = policyVersion || d.settings?.policyVersion || null;
+          const day = deliveredAt || todayIso();
+          const errors = validateNoticeDelivery(
+            { driverIds, policyVersion: version, method, deliveredAt: day },
+            { today: todayIso() }
           );
-        }),
+          if (errors.length) {
+            outcome = { ok: false, errors, count: 0, skipped: [] };
+            return;
+          }
+          const { targets, skipped } = partitionNoticeTargets(d, driverIds);
+          if (!targets.length) {
+            outcome = { ok: false, errors: ["notice.err.noDrivers"], count: 0, skipped };
+            return;
+          }
+
+          const deliveryId = newId("ndl");
+          const at = nowIso();
+          const record = buildNoticeRecord({
+            policyVersion: version,
+            deliveredAt: day,
+            method,
+            evidenceRef,
+            deliveryId,
+            recordedBy: actor,
+            recordedAt: at,
+          });
+          const ids = new Set(targets.map((x) => x.id));
+          d.drivers = (d.drivers || []).map((x) =>
+            ids.has(x.id) ? { ...x, notice: { ...record }, updatedAt: at } : x
+          );
+          d.settings = {
+            ...d.settings,
+            noticeDelivery: buildNoticeDelivery({
+              driverIds: targets.map((x) => x.id),
+              policyVersion: version,
+              method,
+              deliveredAt: day,
+              evidenceRef,
+              actor,
+              deliveryId,
+              at,
+            }),
+          };
+          outcome = { ok: true, errors: [], count: targets.length, skipped, deliveryId };
+        });
+        return outcome;
+      },
+
+      // המסלול הפר-נהג עובר על **אותו** קוד — כדי שלא ייווצרו שתי דרכים
+      // לכתוב את אותה ראיה, ושגם רישום בודד יקבל `deliveredAt` אמיתי.
+      acknowledgeNotice: (driverId, policyVersion, options = {}) =>
+        api.recordNoticeDelivery({ driverIds: [driverId], policyVersion, ...options }),
 
       deleteLeaseCompany: (companyId) => update((d) => removeLeaseCompanyDetach(d, companyId)),
 
@@ -278,5 +353,7 @@ export function useActions(update, orgId, actor) {
           );
         }),
     };
+
+    return api;
   }, [update, orgId, actor]);
 }

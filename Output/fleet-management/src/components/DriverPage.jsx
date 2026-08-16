@@ -1,13 +1,20 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, ArrowLeft, Pencil, Trash2, Archive, ShieldCheck } from "lucide-react";
+import { ArrowRight, ArrowLeft, Pencil, Trash2, Archive, ShieldCheck, Info } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import Button from "./ui/Button.jsx";
 import Pill from "./ui/Pill.jsx";
 import Card from "./ui/Card.jsx";
 import FinesTable from "./FinesTable.jsx";
 import { DriverForm } from "./DriversScreen.jsx";
+import NoticeDeliveryModal from "./NoticeDeliveryModal.jsx";
 import { assignmentsForDriver, currentVehicleIdForDriver } from "../utils/assignments.js";
 import { finesForDriver } from "../utils/fines.js";
+import {
+  hasNoticeRecord,
+  isWeakNoticeEvidence,
+  noticeDeliveredAt,
+  noticeMethodOf,
+} from "../utils/notice.js";
 import { vehicleLabel, driverName, DRIVER_STATUS_TONE } from "../utils/options.js";
 import { formatDate, formatNumber } from "../utils/format.js";
 import { cmpDay, todayIso } from "../utils/dates.js";
@@ -16,6 +23,7 @@ import { cmpDay, todayIso } from "../utils/dates.js";
 export function DriverPage({ driverId, data, orgId, actions, onBack, onOpenVehicle }) {
   const { t, lang, dir } = useI18n();
   const [editing, setEditing] = useState(false);
+  const [recordingNotice, setRecordingNotice] = useState(false);
   const today = todayIso();
 
   const driver = useMemo(
@@ -52,6 +60,11 @@ export function DriverPage({ driverId, data, orgId, actions, onBack, onOpenVehic
 
   const currentVehicleId = currentVehicleIdForDriver(data.assignments, driverId, today);
   const BackIcon = dir === "rtl" ? ArrowRight : ArrowLeft;
+
+  const noticeGiven = hasNoticeRecord(driver);
+  const deliveredAt = noticeDeliveredAt(driver);
+  const noticeMethod = noticeMethodOf(driver);
+  const weakEvidence = isWeakNoticeEvidence(driver);
 
   return (
     <div className="space-y-3">
@@ -128,36 +141,51 @@ export function DriverPage({ driverId, data, orgId, actions, onBack, onOpenVehic
         </div>
       </div>
 
-      {/* D8 — תיעוד **יידוע**, לא הסכמה. ביחסי עבודה אי אפשר להישען על הסכמה. */}
+      {/* D8 — תיעוד **יידוע**, לא הסכמה. ביחסי עבודה אי אפשר להישען על הסכמה.
+          16.8 — התאריך המוצג הוא תאריך ה**מסירה** (`notice.deliveredAt`), לא
+          רגע הלחיצה; רגע הלחיצה מוצג בנפרד כדי שההבדל יהיה גלוי. */}
       <Card title={t("driver.noticeTitle")}>
         <div className="flex flex-wrap items-center gap-3">
-          <ShieldCheck
-            size={16}
-            className={driver.notice?.acknowledgedAt ? "text-emerald-600" : "text-slate-400"}
-          />
+          <ShieldCheck size={16} className={noticeGiven ? "text-emerald-600" : "text-slate-400"} />
           <div className="text-xs">
-            {driver.notice?.acknowledgedAt ? (
-              <span className="num text-slate-700">
-                {t("driver.noticeGiven", {
-                  version: driver.notice.policyVersion || "—",
-                  date: formatDate(driver.notice.acknowledgedAt, lang),
-                })}
-              </span>
+            {noticeGiven ? (
+              <>
+                <span className="num text-slate-700">
+                  {t("driver.noticeGiven", {
+                    version: driver.notice?.policyVersion || "—",
+                    date: formatDate(deliveredAt, lang),
+                  })}
+                </span>
+                {noticeMethod && (
+                  <span className="block text-slate-500">
+                    {t("driver.noticeMethodLine", { method: t(`notice.method.${noticeMethod}`) })}
+                  </span>
+                )}
+                {driver.notice?.recordedAt && (
+                  <span className="num block text-slate-500">
+                    {t("driver.noticeRecordedLine", { date: formatDate(driver.notice.recordedAt, lang) })}
+                  </span>
+                )}
+              </>
             ) : (
               <span className="text-amber-800">{t("driver.noticeMissing")}</span>
             )}
           </div>
-          {!driver.notice?.acknowledgedAt && driver.status !== "archived" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="ms-auto"
-              onClick={() => actions.acknowledgeNotice(driver.id, data.settings?.policyVersion)}
-            >
+          {!noticeGiven && driver.status !== "archived" && (
+            <Button size="sm" variant="secondary" className="ms-auto" onClick={() => setRecordingNotice(true)}>
               {t("driver.recordNotice")}
             </Button>
           )}
         </div>
+
+        {/* 4.3ג — חיווי, לא חסימה: יש רישום, אבל אין מאחוריו ראיה חיצונית. */}
+        {weakEvidence && (
+          <p className="mt-2 flex items-start gap-2 rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600">
+            <Info size={13} className="mt-0.5 shrink-0 text-amber-600" />
+            <span>{t("driver.noticeWeakEvidence")}</span>
+          </p>
+        )}
+
         <p className="mt-2 text-[11px] text-slate-500">{t("driver.noticeHint")}</p>
       </Card>
 
@@ -227,6 +255,17 @@ export function DriverPage({ driverId, data, orgId, actions, onBack, onOpenVehic
           driver={driver}
           onClose={() => setEditing(false)}
           onSave={(d) => actions.upsert("drivers", d)}
+        />
+      )}
+
+      {/* המסלול הפר-נהג משתמש באותו מסך, עם רשימה בת נהג אחד — כדי שגם
+          רישום בודד יקבל תאריך מסירה ושיטה, ולא ייווצר מסלול שני. */}
+      {recordingNotice && (
+        <NoticeDeliveryModal
+          data={data}
+          candidates={[driver]}
+          actions={actions}
+          onClose={() => setRecordingNotice(false)}
         />
       )}
     </div>

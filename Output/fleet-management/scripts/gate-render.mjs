@@ -33,8 +33,18 @@ import SettingsScreen from ${p("src/components/SettingsScreen.jsx")};
 import { FineForm } from ${p("src/components/FineForm.jsx")};
 import { Preview } from ${p("src/components/ImportScreen.jsx")};
 import ReviewScreen from ${p("src/components/review/ReviewScreen.jsx")};
+import DriversScreen from ${p("src/components/DriversScreen.jsx")};
+import DriverPage from ${p("src/components/DriverPage.jsx")};
+import NoticeDeliveryModal from ${p("src/components/NoticeDeliveryModal.jsx")};
+import { ReadingForm } from ${p("src/components/tabs/OdometerTab.jsx")};
 import { I18nProvider } from ${p("src/hooks/useI18n.jsx")};
 import { translate } from ${p("src/i18n.js")};
+
+const noopActions = {
+  upsert: () => {}, archiveDriver: () => {}, anonymizeDriver: () => {},
+  recordNoticeDelivery: async () => ({ ok: true, count: 0, errors: [], skipped: [] }),
+  acknowledgeNotice: async () => ({ ok: true }),
+};
 
 const wrap = (lang, node) =>
   renderToStaticMarkup(<I18nProvider initialLang={lang}>{node}</I18nProvider>);
@@ -53,6 +63,18 @@ export const renderImportPreview = (plan, lang) =>
 
 export const renderReview = (data, lang) =>
   wrap(lang, <ReviewScreen data={data} actions={{ resolveReview: () => {} }} onDone={() => {}} />);
+
+export const renderDrivers = (data, lang) =>
+  wrap(lang, <DriversScreen data={data} orgId="org1" actions={noopActions} onOpenDriver={() => {}} />);
+
+export const renderDriverPage = (data, driverId, lang) =>
+  wrap(lang, <DriverPage driverId={driverId} data={data} orgId="org1" actions={noopActions} onBack={() => {}} onOpenVehicle={() => {}} />);
+
+export const renderNoticeModal = (data, candidates, lang) =>
+  wrap(lang, <NoticeDeliveryModal data={data} candidates={candidates} actions={noopActions} onClose={() => {}} />);
+
+export const renderOdometerForm = (data, vehicle, lang) =>
+  wrap(lang, <ReadingForm vehicle={vehicle} data={data} orgId="org1" onClose={() => {}} onSave={() => {}} />);
 `
 );
 
@@ -269,6 +291,153 @@ for (const lang of ["he", "en"]) {
   ok(`${lang}: אין מפתחות תרגום שדלפו`,
     [...html.matchAll(/>[^<]*\b(reviewx|importx|dash|fine|settings|driver)\.[a-zA-Z.]+[^<]*</g)]
       .filter((m) => !m[0].includes("importRaw")).length === 0);
+}
+
+// ============================================================================
+section("G1 (א) — רשימת הנבחרים מוצגת לפני האישור, ולא \"סמן הכל\" עיוור");
+// ============================================================================
+const { NOTICE_METHODS } = await load("src/constants.js");
+const { noticeCandidates, buildNoticeRecord } = await load("src/utils/notice.js");
+const { todayIso } = await load("src/utils/dates.js");
+const TODAY = todayIso();
+
+const candidates = noticeCandidates(data);
+for (const lang of ["he", "en"]) {
+  const t = (k, v) => translate(lang, k, v);
+  const drivers = R.renderDrivers(data, lang);
+  ok(`${lang}: כפתור הרישום הקבוצתי מוצג עם מונה`,
+    has(drivers, t("notice.bulkActionCount", { n: candidates.length })));
+  const allNoticed = R.renderDrivers(dataNoticed, lang);
+  ok(`${lang}: וכשאין למי לרשום — הכפתור נעלם`,
+    !has(allNoticed, t("notice.bulkActionCount", { n: 1 })) &&
+    !has(allNoticed, t("notice.bulkAction")));
+
+  const modal = R.renderNoticeModal(data, candidates, lang);
+  ok(`${lang}: המסך רונדר`, modal.length > 1500);
+  ok(`${lang}: כותרת רשימת הנבחרים`, has(modal, t("notice.selectTitle")));
+  ok(`${lang}: שם העובד הנבחר מוצג בפועל`, has(modal, "אלמוני בדיקה"));
+  ok(`${lang}: עם מונה נבחרים מתוך סך הכל`,
+    has(modal, t("notice.selectedCount", { n: candidates.length, total: candidates.length })));
+  const shownToday =
+    lang === "he"
+      ? `${Number(TODAY.slice(8))}.${Number(TODAY.slice(5, 7))}.${TODAY.slice(0, 4)}`
+      : `${TODAY.slice(8)}/${TODAY.slice(5, 7)}/${TODAY.slice(0, 4)}`;
+  ok(`${lang}: וסיכום מפורש של מה בדיוק ייכתב`,
+    has(modal, t("notice.summary", {
+      n: candidates.length,
+      version: "0.1-draft",
+      date: shownToday,
+      method: t("notice.method.admin_recorded"),
+    })));
+  ok(`${lang}: תיבת סימון לכל עובד — בחירה, לא סימון גורף`,
+    (modal.match(/type="checkbox"/g) || []).length === candidates.length);
+  ok(`${lang}: אזהרת התיארוך-לאחור מוצגת`, has(modal, t("notice.backdateWarning")));
+}
+
+// ============================================================================
+section("G1 (ב) — תאריך מסירה מפורש, עתיד חסום, ורגע הלחיצה בנפרד");
+// ============================================================================
+const deliveredDrv = {
+  ...noticedDrv,
+  notice: buildNoticeRecord({
+    policyVersion: "0.1-draft", deliveredAt: "2026-08-10", method: "signed_form",
+    deliveryId: "ndl_test", recordedBy: "admin-uid", recordedAt: "2026-08-14T09:00:00.000Z",
+  }),
+};
+const dataDelivered = { ...data, drivers: [noNoticeDrv, deliveredDrv] };
+for (const lang of ["he", "en"]) {
+  const t = (k, v) => translate(lang, k, v);
+  const modal = R.renderNoticeModal(data, candidates, lang);
+  ok(`${lang}: שדה תאריך המסירה קיים`, has(modal, t("notice.deliveredAt")));
+  ok(`${lang}: ברירת המחדל היא היום`, modal.includes(`value="${TODAY}"`));
+  ok(`${lang}: ותאריך עתידי חסום בשדה עצמו`, modal.includes(`max="${TODAY}"`));
+  ok(`${lang}: מוסבר שזה לא רגע הלחיצה`, has(modal, t("notice.deliveredAtHint")));
+
+  const card = R.renderDriverPage(dataDelivered, deliveredDrv.id, lang);
+  const shownDate = lang === "he" ? "10.8.2026" : "10/08/2026";
+  const clickDate = lang === "he" ? "14.8.2026" : "14/08/2026";
+  ok(`${lang}: כרטיס הנהג מציג את תאריך ה**מסירה**`,
+    has(card, t("driver.noticeGiven", { version: "0.1-draft", date: shownDate })));
+  ok(`${lang}: ורגע הרישום מוצג בנפרד, לא במקומו`,
+    has(card, t("driver.noticeRecordedLine", { date: clickDate })));
+  ok(`${lang}: וגם שיטת המסירה`,
+    has(card, t("driver.noticeMethodLine", { method: t("notice.method.signed_form") })));
+}
+
+// ============================================================================
+section("G1 (ג) — enum שיטות, וחיווי שקט על תיעוד חלש");
+// ============================================================================
+for (const lang of ["he", "en"]) {
+  const t = (k, v) => translate(lang, k, v);
+  const modal = R.renderNoticeModal(data, candidates, lang);
+  for (const m of NOTICE_METHODS) {
+    ok(`${lang}: השיטה ${m} מופיעה כאופציה`, modal.includes(`value="${m}"`));
+  }
+  ok(`${lang}: ברירת המחדל היא החלשה ביותר — לא מצהירים ראיה שלא הייתה`,
+    modal.includes('value="admin_recorded" selected=""'));
+
+  // חיווי — לא חסימה.
+  const weakData = { ...data, drivers: [{ ...noticedDrv, notice: buildNoticeRecord({
+    policyVersion: "0.1-draft", deliveredAt: "2026-08-10", method: "admin_recorded" }) }] };
+  const weak = R.renderDriverPage(weakData, noticedDrv.id, lang);
+  ok(`${lang}: רישום ידני מקבל חיווי שהתיעוד חלש`, has(weak, t("driver.noticeWeakEvidence")));
+  ok(`${lang}: אבל הרישום עצמו מוצג כתקף — חיווי, לא חסימה`,
+    has(weak, t("driver.noticeGiven", { version: "0.1-draft", date: lang === "he" ? "10.8.2026" : "10/08/2026" })));
+  ok(`${lang}: וכפתור הרישום כבר לא מוצג`, !has(weak, t("driver.recordNotice")));
+
+  const strong = R.renderDriverPage(dataDelivered, deliveredDrv.id, lang);
+  ok(`${lang}: טופס חתום — בלי חיווי חולשה`, !has(strong, t("driver.noticeWeakEvidence")));
+}
+
+// ============================================================================
+section("G1 (ד) — odo.purposeLink בנקודת האיסוף, עם הגרסה מ-settings");
+// ============================================================================
+for (const lang of ["he", "en"]) {
+  const t = (k, v) => translate(lang, k, v);
+  const form = R.renderOdometerForm(data, vehicle, lang);
+  ok(`${lang}: הצהרת המטרה הקיימת נשארה כלשונה`, has(form, t("odo.purposeNote")));
+  ok(`${lang}: והקישור לגרסת ההודעה נוסף מתחתיה`,
+    has(form, t("odo.purposeLink", { version: "0.1-draft" })));
+
+  // הגרסה נלקחת מה-settings ולכן מתעדכנת מעצמה — לא מחרוזת קשיחה.
+  const v2 = { ...data, settings: { ...data.settings, policyVersion: "1.0" } };
+  const form2 = R.renderOdometerForm(v2, vehicle, lang);
+  ok(`${lang}: בעליית גרסה הטקסט מתעדכן מעצמו`,
+    has(form2, t("odo.purposeLink", { version: "1.0" })) &&
+    !has(form2, t("odo.purposeLink", { version: "0.1-draft" })));
+}
+
+// ============================================================================
+section("G1 — הגדרות: רשומת אירוע המסירה, בתבנית importAck");
+// ============================================================================
+for (const lang of ["he", "en"]) {
+  const t = (k, v) => translate(lang, k, v);
+  const none = R.renderSettings(data, lang);
+  ok(`${lang}: הכרטיס קיים`, has(none, t("settings.noticeDelivery.title")));
+  ok(`${lang}: ובלי אירוע — נאמר שאין`, has(none, t("settings.noticeDelivery.none")));
+
+  const withDelivery = {
+    ...data,
+    settings: {
+      ...data.settings,
+      noticeDelivery: {
+        id: "ndl_1", at: "2026-08-14T09:00:00.000Z", by: "admin-uid",
+        deliveredAt: "2026-08-10", method: "email_bulk", policyVersion: "0.1-draft",
+        drivers: 26, driverIds: [], evidenceRef: "מייל 10.8.2026",
+      },
+    },
+  };
+  const shown = R.renderSettings(withDelivery, lang);
+  ok(`${lang}: מוצגים מתי נמסר, באיזו שיטה, לכמה עובדים ולאיזו גרסה`,
+    has(shown, t("settings.noticeDelivery.value", {
+      deliveredAt: lang === "he" ? "10.8.2026" : "10/08/2026",
+      method: t("notice.method.email_bulk"), n: 26, version: "0.1-draft",
+    })));
+  ok(`${lang}: ומי הצהיר ומתי נרשם — בנפרד מתאריך המסירה`,
+    has(shown, t("settings.noticeDelivery.recorded", {
+      at: lang === "he" ? "14.8.2026" : "14/08/2026", by: "admin-uid",
+    })));
+  ok(`${lang}: והאסמכתה החיצונית`, has(shown, "מייל 10.8.2026"));
 }
 
 rmSync(tmp, { recursive: true, force: true });

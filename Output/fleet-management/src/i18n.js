@@ -188,6 +188,46 @@ const dict = {
     "driver.recordNotice": "רישום מסירת יידוע",
     "driver.noticeHint":
       "מתעדים **מסירת יידוע**, לא הסכמה — ביחסי עבודה אי אפשר להישען על הסכמה חופשית. הבסיס הוא חובה חוקית (ס' 27ב לפקודת התעבורה) ואינטרס לגיטימי.",
+    "driver.noticeMethodLine": "שיטת המסירה: {method}",
+    "driver.noticeRecordedLine": "נרשם במערכת: {date}",
+    "driver.noticeWeakEvidence":
+      "רמת התיעוד חלשה: הרישום נעשה ידנית, בלי ראיה חיצונית למסירה. אין בכך חסימה — אבל אם תישאל מתי נמסר, זו התשובה היחידה שתהיה.",
+
+    // -- מסירת יידוע (שער עדי 16.8, 4.3) --
+    "notice.recordTitle": "רישום מסירת יידוע",
+    "notice.bulkAction": "רישום מסירה קבוצתי",
+    "notice.bulkActionCount": "רישום מסירה קבוצתי ({n})",
+    "notice.intro":
+      "המסירה עצמה היא אירוע בעולם — מייל לרשימה, ישיבה מתועדת, או טופס חתום. כאן רושמים את מה שכבר קרה: תאריך המסירה בפועל, השיטה, והעובדים שקיבלו.",
+    "notice.backdateWarning":
+      "אין לרשום תאריך מסירה מוקדם מיום המסירה בפועל — גם לא כדי לכסות תקופה שבה המערכת כבר פעלה. תיעוד מוקדם מדי הוא ראיה כוזבת. תאריך עתידי נחסם אוטומטית; תאריך מוקדם מדי אפשר רק לא לרשום.",
+    "notice.deliveredAt": "תאריך המסירה בפועל",
+    "notice.deliveredAtHint": "לא רגע הלחיצה — היום שבו ההודעה נמסרה לעובדים.",
+    "notice.method": "שיטת המסירה",
+    "notice.methodHint": "מסודר לפי חוזק הראיה, מהחזק לחלש.",
+    "notice.evidenceRef": "אסמכתה לראיה",
+    "notice.evidenceRefHint":
+      "היכן שמורה הראיה מחוץ למערכת — נושא המייל, מספר פרוטוקול, מיקום התיק. רשות.",
+    "notice.selectTitle": "העובדים שנרשמת להם מסירה",
+    "notice.selectedCount": "{n} מתוך {total} נבחרו",
+    "notice.selectAll": "בחירת הכל",
+    "notice.clearAll": "ניקוי הבחירה",
+    "notice.none": "אין עובדים פעילים שטרם נרשמה להם מסירה.",
+    "notice.summary": "ייכתב רישום ל-{n} עובדים · גרסה {version} · נמסר ב-{date} · {method}",
+    "notice.summaryEmpty": "לא נבחר אף עובד — אין מה לרשום.",
+    "notice.confirm": "רישום המסירה",
+    "notice.done": "נרשמה מסירה ל-{n} עובדים.",
+    "notice.skipped": "{n} נהגים דולגו (בארכיון או לא קיימים).",
+    "notice.err.noDrivers": "יש לבחור לפחות עובד אחד.",
+    "notice.err.noPolicyVersion": "אין גרסת מדיניות בהגדרות — אי אפשר לרשום מסירה בלי גרסה.",
+    "notice.err.badDate": "תאריך מסירה לא תקין.",
+    "notice.err.futureDate": "תאריך המסירה לא יכול להיות עתידי.",
+    "notice.err.badMethod": "שיטת מסירה לא מוכרת.",
+    "notice.method.signed_form": "אישור קבלה חתום",
+    "notice.method.email_individual": "מייל אישי עם המסמך",
+    "notice.method.email_bulk": "מייל לרשימת תפוצה",
+    "notice.method.meeting_minuted": "מסירה בישיבה מתועדת",
+    "notice.method.admin_recorded": "רישום ידני של אדמין (בלי ראיה חיצונית)",
 
     // -- החזקות (Assignments) --
     "assign.title": "מחזיקים",
@@ -291,6 +331,9 @@ const dict = {
     "odo.chart": "מגמת ק\"מ",
     "odo.purposeNote":
       "הקריאה משמשת למעקב מכסת הק\"מ מול חברת הליסינג ולתזמון טיפולים בלבד. המערכת אינה אוספת מיקום ואינה עוקבת אחר נסיעות, והמידע אינו משמש לפיקוח על שעות עבודה או להערכת ביצועים.",
+    // הגרסה נלקחת מ-settings.policyVersion ולכן מתעדכנת מעצמה (עדי 16.8, ס' 3).
+    "odo.purposeLink":
+      "פירוט מלא של המידע שנשמר עליך ושל זכויותיך — בהודעה לעובד, גרסה {version}.",
     "assign.needsReview": "דורש בדיקה ידנית",
     "km.title": "מכסת ק\"מ",
     "km.allowance": "מכסה שנתית",
@@ -424,6 +467,13 @@ const dict = {
     "settings.importAck.localUser": "מקומי (בלי התחברות)",
     "settings.importAck.hint":
       "זו הצהרת מנהל שהייבוא בוצע בהתאם לחובת היידוע — לא הסכמת עובד, ולא ראיה לכך שהיידוע אכן נמסר. המסירה עצמה נרשמת פר-עובד במסך הנהג.",
+    "settings.noticeDelivery.title": "אירוע מסירת היידוע האחרון",
+    "settings.noticeDelivery.value":
+      "נמסר ב-{deliveredAt} · {method} · {n} עובדים · גרסה {version}",
+    "settings.noticeDelivery.recorded": "נרשם ב-{at} · משתמש {by}",
+    "settings.noticeDelivery.none": "לא נרשם עדיין אירוע מסירה.",
+    "settings.noticeDelivery.hint":
+      "רשומת האירוע מתארת מסירה **אחת** למספר עובדים, ולכן היא מדויקת יותר מרישום נפרד לכל עובד. מוצג כאן האירוע האחרון; הרישום המחייב הוא זה שבכרטיס כל עובד, ולכל רשומה שם יש מזהה האירוע שממנו הגיעה.",
     "settings.dangerZone": "אזור מסוכן",
     "settings.resetLocal": "איפוס הנתונים המקומיים",
     "settings.resetLocalConfirm": "למחוק את כל הנתונים בדפדפן הזה? הפעולה בלתי הפיכה.",
@@ -816,6 +866,46 @@ const dict = {
     "driver.recordNotice": "Record notice delivery",
     "driver.noticeHint":
       "We record **delivery of notice**, not consent — in an employment relationship you cannot rely on freely given consent. The basis is legal obligation (Traffic Ordinance s. 27B) and legitimate interest.",
+    "driver.noticeMethodLine": "Delivery method: {method}",
+    "driver.noticeRecordedLine": "Recorded in the system: {date}",
+    "driver.noticeWeakEvidence":
+      "Weak documentation: this was recorded manually, with no external evidence of delivery. It is not a blocker — but if you are ever asked when it was delivered, this is the only answer you will have.",
+
+    // -- Notice delivery (Adi's gate 16.8, 4.3) --
+    "notice.recordTitle": "Record notice delivery",
+    "notice.bulkAction": "Record delivery for several employees",
+    "notice.bulkActionCount": "Record delivery for several employees ({n})",
+    "notice.intro":
+      "The delivery itself happens in the world — a bulk email, a minuted meeting, or a signed form. Here you record what already happened: the actual delivery date, the method, and who received it.",
+    "notice.backdateWarning":
+      "Do not record a delivery date earlier than the actual delivery — not even to cover a period in which the system was already running. Documentation that is too early is false evidence. A future date is blocked automatically; a date that is too early can only be avoided by not recording it.",
+    "notice.deliveredAt": "Actual delivery date",
+    "notice.deliveredAtHint": "Not the moment you clicked — the day the notice reached the employees.",
+    "notice.method": "Delivery method",
+    "notice.methodHint": "Ordered by strength of evidence, strongest first.",
+    "notice.evidenceRef": "Evidence reference",
+    "notice.evidenceRefHint":
+      "Where the evidence is kept outside the system — email subject, minutes number, file location. Optional.",
+    "notice.selectTitle": "Employees you are recording delivery for",
+    "notice.selectedCount": "{n} of {total} selected",
+    "notice.selectAll": "Select all",
+    "notice.clearAll": "Clear selection",
+    "notice.none": "No active employees are missing a delivery record.",
+    "notice.summary": "Will record for {n} employees · version {version} · delivered {date} · {method}",
+    "notice.summaryEmpty": "No employee selected — nothing to record.",
+    "notice.confirm": "Record the delivery",
+    "notice.done": "Delivery recorded for {n} employees.",
+    "notice.skipped": "{n} drivers skipped (archived or not found).",
+    "notice.err.noDrivers": "Select at least one employee.",
+    "notice.err.noPolicyVersion": "No policy version in settings — delivery cannot be recorded without one.",
+    "notice.err.badDate": "Invalid delivery date.",
+    "notice.err.futureDate": "The delivery date cannot be in the future.",
+    "notice.err.badMethod": "Unknown delivery method.",
+    "notice.method.signed_form": "Signed acknowledgement of receipt",
+    "notice.method.email_individual": "Individual email with the document",
+    "notice.method.email_bulk": "Email to a distribution list",
+    "notice.method.meeting_minuted": "Delivered in a minuted meeting",
+    "notice.method.admin_recorded": "Recorded manually by an admin (no external evidence)",
 
     "assign.title": "Assignments",
     "assign.one": "Assignment",
@@ -917,6 +1007,8 @@ const dict = {
     "odo.chart": "Mileage trend",
     "odo.purposeNote":
       "This reading is used only to track the lease km allowance and to schedule servicing. The system does not collect location, does not track journeys, and this data is not used to monitor working hours or evaluate performance.",
+    "odo.purposeLink":
+      "Full details of the information kept about you and your rights are in the employee notice, version {version}.",
     "assign.needsReview": "Needs manual review",
     "km.title": "Km allowance",
     "km.allowance": "Annual allowance",
@@ -1044,6 +1136,13 @@ const dict = {
     "settings.importAck.localUser": "local (not signed in)",
     "settings.importAck.hint":
       "This is a manager's declaration that the import complied with the notification duty — not employee consent, and not evidence that the notice was actually delivered. Delivery itself is recorded per employee on the driver screen.",
+    "settings.noticeDelivery.title": "Last notice delivery event",
+    "settings.noticeDelivery.value":
+      "Delivered on {deliveredAt} · {method} · {n} employees · version {version}",
+    "settings.noticeDelivery.recorded": "Recorded on {at} · user {by}",
+    "settings.noticeDelivery.none": "No delivery event has been recorded yet.",
+    "settings.noticeDelivery.hint":
+      "The event record describes **one** delivery to several employees, which is why it is more accurate than a separate record per employee. This shows the latest event; the binding record is the one on each employee's card, and every such record carries the id of the event it came from.",
     "settings.dangerZone": "Danger zone",
     "settings.resetLocal": "Reset local data",
     "settings.resetLocalConfirm": "Delete all data in this browser? This cannot be undone.",

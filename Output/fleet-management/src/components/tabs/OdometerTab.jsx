@@ -178,7 +178,9 @@ function Sparkline({ readings, lang }) {
   );
 }
 
-function ReadingForm({ vehicle, data, orgId, onClose, onSave }) {
+// מיוצא כדי שבדיקת הרינדור (gate:check) תוכל לרנדר את **נקודת האיסוף**
+// עצמה — שם יושבת הצהרת השקיפות, ולא במסך שמעליה.
+export function ReadingForm({ vehicle, data, orgId, onClose, onSave }) {
   const { t } = useI18n();
   const today = todayIso();
   const [draft, setDraft] = useState(() =>
@@ -268,10 +270,16 @@ function ReadingForm({ vehicle, data, orgId, onClose, onSave }) {
             onChange={setPhoto}
           />
         </div>
-        {/* שקיפות בנקודת האיסוף (עדי 6.3) — הצהרה שהנתון אינו כלי מעקב. */}
-        <p className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600 sm:col-span-2">
-          {t("odo.purposeNote")}
-        </p>
+        {/* שקיפות בנקודת האיסוף (עדי 6.3) — הצהרה שהנתון אינו כלי מעקב.
+            השורה השנייה (עדי 16.8, ס' 3) מצביעה לגרסת ההודעה מתוך
+            `settings.policyVersion`, ולכן היא מתעדכנת מעצמה בעליית גרסה
+            ולא הופכת לשקר שקט. הטקסט הראשון נשאר כלשונו — עדי אימתה אותו. */}
+        <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600 sm:col-span-2">
+          <p>{t("odo.purposeNote")}</p>
+          <p className="mt-1">
+            {t("odo.purposeLink", { version: data.settings?.policyVersion || "—" })}
+          </p>
+        </div>
       </div>
     </Modal>
   );
