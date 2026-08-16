@@ -17,10 +17,17 @@
     "rewrites": [{ "source": "**", "destination": "/index.html" }],
     "headers": [
       {
-        "source": "/index.html",
+        "//": "no-cache על הכל תחילה. `/index.html` לבדו לא מספיק: ה-SPA מוגש דרך rewrite, והבקשה בפועל היא ל-`/` או לנתיב אחר — שאינם תואמים ל-`/index.html`, ולכן חוזר max-age=3600 של ברירת המחדל והמשתמש רואה גרסה ישנה אחרי deploy.",
+        "source": "**",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
       },
       {
+        "//": "השורש `/` אינו מכוסה ע\"י `**` — לגלוב אין סגמנט להתאים אליו, וזה בדיוק הנתיב שכולם פותחים. אומת ב-curl: בלי הכלל הזה חוזר max-age=3600.",
+        "source": "/",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
+        "//": "הנכסים חתומים ב-hash בשם הקובץ, ולכן בטוח לשמור אותם לנצח. הכלל הזה בא **אחרי** הכללי כדי לדרוס אותו.",
         "source": "**/assets/**",
         "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
       }
