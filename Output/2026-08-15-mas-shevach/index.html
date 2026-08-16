@@ -47,24 +47,27 @@
 <meta name="description" content="מכרתם נכס ושילמתם מס שבח? פריסה על פני עד ארבע שנות מס מחשבת את המס מחדש לפי המדרגות ונקודות הזיכוי שלכם. לשכירים ולעצמאיים. בדיקה ראשונית ללא עלות.">
 <meta name="robots" content="index, follow">
 <meta name="theme-color" content="#08243D">
-<!-- TODO 🔴 דומיין: כתובת מוחלטת מופיעה **רק** בשלוש השורות המסומנות למטה
-     (og:url · og:image · twitter:image). אין canonical מוחלט ואין כתובת
-     מוחלטת בגוף הדף — כך שההחלפה היא סבב אחד של חיפוש-והחלפה על
-     REPLACE-DOMAIN. היעד הצפוי: moshebm.co.il (לאישור).
-     אחרי ההחלפה: להוסיף <link rel="canonical"> ולרענן ב-Facebook Sharing Debugger. -->
+<!-- דומיין נסגר 2026-08-16: moshebm.co.il, אחסון Firebase Hosting (פרויקט moshemas).
+     canonical נוסף כאן בהתאם להוראה שהייתה בהערה הקודמת.
+     🔴 תלוי-משה לפני go-live: נכון ל-2026-08-16 הדומיין מפנה ל-
+        /cgi-sys/suspendedpage.cgi — חשבון האחסון הקיים מושעה. נדרשת גישה
+        לרשומות ה-DNS כדי להחליף את רשומת ה-A. הדואר (MX → Microsoft 365)
+        אינו מושפע משינוי רשומת A.
+     אחרי העלייה: לרענן ב-Facebook Sharing Debugger. -->
+<link rel="canonical" href="https://moshebm.co.il/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="he_IL">
-<meta property="og:url" content="https://REPLACE-DOMAIN/">
+<meta property="og:url" content="https://moshebm.co.il/">
 <meta property="og:title" content="החזר מס שבח — בדיקת התאמה ראשונית למי שמכר נכס">
 <meta property="og:description" content="פריסת מס שבח על פני עד ארבע שנות מס. בדיקה ראשונית ללא עלות, תשלום רק אם מתקבל החזר.">
-<meta property="og:image" content="https://REPLACE-DOMAIN/assets/og-share.png">
+<meta property="og:image" content="https://moshebm.co.il/assets/og-share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="גרפיקה מופשטת: עמודה אחת גבוהה שפורצת מעל קו מקווקו, וארבע עמודות נמוכות לצידה — מוטיב פריסת מס השבח.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="החזר מס שבח — בדיקת התאמה ראשונית למי שמכר נכס">
 <meta name="twitter:description" content="פריסת מס שבח על פני עד ארבע שנות מס. בדיקה ראשונית ללא עלות, תשלום רק אם מתקבל החזר.">
-<meta name="twitter:image" content="https://REPLACE-DOMAIN/assets/og-share.png">
+<meta name="twitter:image" content="https://moshebm.co.il/assets/og-share.png">
 
 <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/mark-512.png">
@@ -694,7 +697,10 @@ legend.q-title:focus{outline:none}
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h4"/></svg>
           <h3>ייצוג מול רשות המסים</h3>
           <p>אם יש מקום לבקשה, אנחנו מגישים אותה בשמכם, מטפלים בהתכתבות ובדרישות שעולות בדרך, ומעדכנים אתכם לאורך הדרך. אתם לא מגישים ולא מתכתבים בעצמכם.</p>
-          <p class="ph ph--block">[[לאמת מול משה: האם הפריסה מחייבת הגשת דוחות שנתיים לשנות הפריסה. אם כן — לציין זאת כאן במפורש (שירה §3)]]</p>
+          <!-- אומת מול משה 2026-08-16: "פריסה מחייבת לעיתים הגשת דוחות נוספים
+               או תיקון דוחות שכבר הוגשו." נמסר כאן במפורש ולא בהסכם בלבד,
+               כי זו תוצאה של התהליך שהגולש נושא בה. -->
+          <p>לעיתים הפריסה מחייבת גם הגשת דוחות שנתיים לשנות הפריסה, או תיקון דוחות שכבר הוגשו. אם זה המצב בתיק שלכם — תדעו את זה מהבדיקה הראשונית, לפני שתחליטו אם להתקדם.</p>
         </li>
         <li class="step">
           <span class="step-num" aria-hidden="true">3</span>
@@ -908,7 +914,10 @@ legend.q-title:focus{outline:none}
         <li>את תנאי שכר הטרחה תדעו במלואם לפני שתחליטו אם להתקדם.</li>
       </ul>
 
-      <p class="ph ph--block">[[קיום עלויות נלוות — ממשה (S7.4): אגרות, פתיחת תיק, או דוח שנתי שנדרש להגשה. אם קיימות — הן מגולות כאן, ליד ה"ללא עלות", ולא בהסכם בלבד]]</p>
+      <!-- S7.4 נסגר. משה 2026-08-16: "אין עלויות נלוות" + "שכר הטרחה משולם רק
+           לאחר קבלת ההחזר לחשבון". הנוסח נצמד למילים שלו ואינו מסיק מעבר להן:
+           לא נטען כאן שהדוחות הנוספים כלולים — רק שאין תשלום מעבר לשכר הטרחה. -->
+      <p>אין עלויות נלוות: לא אגרות, לא דמי פתיחת תיק, ואין תשלום נוסף מעבר לשכר הטרחה שסוכם. שכר הטרחה משולם רק לאחר שההחזר התקבל בפועל בחשבון הבנק שלכם.</p>
     </div>
   </section>
 
@@ -1180,14 +1189,17 @@ legend.q-title:focus{outline:none}
      מפתחות: הוזנו 2026-08-16 מתוך Output/mas-shevach-leads/.env (פרויקט moshemas).
      מפתחות ה-Web של Firebase ציבוריים מעצם טבעם — הם נשלחים לכל דפדפן.
      ההגנה היא firestore.rules + App Check, לא סודיות המפתח.
-     🔴 recaptchaSiteKey עדיין REPLACE_ME — חוסם go-live (App Check, עדי R-5).
-        בלעדיו נקודת ה-create הציבורית היא endpoint פתוח לכתיבה. -->
+     recaptchaSiteKey הוזן 2026-08-16 (reCAPTCHA v3, פרויקט moshemas).
+     🔴 **המפתח אינו האכיפה.** נותר לאמת שבוצע Console → App Check → APIs →
+        Cloud Firestore → Enforce. בלי הצעד הזה Firestore ממשיך לקבל בקשות
+        גם בלי טוקן, ונקודת ה-create הציבורית נשארת פתוחה לכתיבה — עדי R-5,
+        פריט שמאומת בצילום מסך ולא בקוד. -->
 <script>
   window.MAS_SHEVACH_CONFIG = {
     projectId: "moshemas",
     apiKey: "AIzaSyBOyQlVnOqP4EXHnZxnuLmAbNMrNZ9aUAs",
     appId: "1:820045286643:web:506cd22b866787e8a13b86",
-    recaptchaSiteKey: "REPLACE_ME"
+    recaptchaSiteKey: "6LfAlYgtAAAAAMr5V0Beef0jrXIT1Jfn-P6fhIbX"
   };
 </script>
 <!-- TODO 🔴 קובץ זה הוא **עותק** של dist-intake/lead-intake.min.js של נועם.
