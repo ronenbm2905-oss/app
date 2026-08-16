@@ -1,0 +1,95 @@
+rules_version = '2';
+
+// ============================================================================
+// Storage — deny-by-default. פרוסה 1: **admin בלבד**.
+//
+// D2 — ארבעה תחומים, ורק הם. הסכימה כאן חייבת להיות זהה מילה במילה למה
+// ש-`src/utils/files.js:storagePath()` מייצר:
+//
+//   orgs/{orgId}/fines/{fineId}/{fileName}                 — סריקות קנס
+//   orgs/{orgId}/drivers/{driverId}/odometer/{fileName}    — צילומי מד-אוץ'
+//   orgs/{orgId}/drivers/{driverId}/incidents/{fileName}   — צילומי תקלה/תאונה
+//   orgs/{orgId}/vehicles/{vehicleId}/docs/{fileName}      — מסמכי רכב
+//
+// כאן יושבים **מסמכים עם PII**. הבידוד נשען על מפת members במסמך
+// orgs/{orgId} ב-Firestore.
+//
+// ⚠️ G3 (שער עדי, 2026-08-13): **אין כאן catch-all.** הכלל הקודם
+// `match /orgs/{orgId}/{allPaths=**}` נתן לאדמין read/write על כל נתיב תחת
+// הארגון — כלומר ארבעת התחומים נאכפו ע"י הלקוח (`files.js`) בלבד, וכל באג
+// או קליינט אחר היה יכול לכתוב לנתיב שטוח. נתיב שאינו אחד מארבעת אלה
+// **נדחה**, גם לאדמין. כל תחום חדש = כלל חדש כאן, במפורש.
+//
+// כל כלל משתמש ב-`{fileName}` (סגמנט אחד) ולא ב-`{allPaths=**}`: `storagePath`
+// מייצר עלה יחיד ומנקה תווים, ולכן עומק נוסף הוא תמיד חריגה.
+//
+// פרוסה 2 תוסיף כאן קריאה לנהג על הקבצים המשויכים אליו בלבד (join דרך
+// firestore.get). המבנה כבר מוכן לכך; אין צורך לשנות נתיבים.
+//
+// ⚠️ העלאת סריקות אמיתיות חסומה עד שער עדי (PII, תיקון 13, דיני עבודה).
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOrgAdmin(orgId) {
+      return isSignedIn()
+        && firestore.get(/databases/(default)/documents/orgs/$(orgId)).data.org.members[request.auth.uid] == 'admin';
+    }
+
+    // מגבלות העלאה: סוגי קבצים מותרים בלבד, עד 10MB.
+    function isAllowedUpload() {
+      return request.resource.size < 10 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/(png|jpeg|webp)')
+          || request.resource.contentType == 'application/pdf'
+        );
+    }
+
+    // -- D2: ארבעת התחומים המתוחמים ---------------------------------------
+    // כל תחום מקבל כלל נפרד כבר עכשיו, גם כשכולם admin-only, כדי שפרוסה 2
+    // תוסיף סעיף read לנהג **בלי להזיז אף קובץ**. הזזת קבצים בדיעבד היא
+    // ההגירה הכי כואבת שיש.
+
+    // 1. סריקות קנס — מורשות לפי **הקנס**. פרוסה 2: הנהג המשויך לקנס בלבד
+    // (firestore.get על orgs/{orgId}/fineScans → driverUid == request.auth.uid).
+    // **לא** הנהג הנוכחי של הרכב — רכב עובר בין נהגים, הסריקה לא עוברת איתו.
+    match /orgs/{orgId}/fines/{fineId}/{fileName} {
+      allow read: if isOrgAdmin(orgId);
+      allow create, update: if isOrgAdmin(orgId) && isAllowedUpload();
+      allow delete: if isOrgAdmin(orgId);
+    }
+
+    // 2. צילומי מד-אוץ' — קובץ אישי של העובד.
+    // פרוסה 2: אותו נהג בלבד (drivers/{driverId}.userId == uid && portalStatus=='active').
+    match /orgs/{orgId}/drivers/{driverId}/odometer/{fileName} {
+      allow read: if isOrgAdmin(orgId);
+      allow create, update: if isOrgAdmin(orgId) && isAllowedUpload();
+      allow delete: if isOrgAdmin(orgId);
+    }
+
+    // 3. צילומי תקלה/תאונה — קובץ אישי של העובד. אותו כלל, תחום נפרד:
+    // בפרוסה 2 ייתכן שדיווח תקלה ייפתח לנהג ומד-אוץ' לא, או להפך.
+    match /orgs/{orgId}/drivers/{driverId}/incidents/{fileName} {
+      allow read: if isOrgAdmin(orgId);
+      allow create, update: if isOrgAdmin(orgId) && isAllowedUpload();
+      allow delete: if isOrgAdmin(orgId);
+    }
+
+    // 4. מסמכי רכב (ביטוח/רישיון/טסט/חוזה) — פרוסה 2: הנהג **הפעיל** של הרכב.
+    match /orgs/{orgId}/vehicles/{vehicleId}/docs/{fileName} {
+      allow read: if isOrgAdmin(orgId);
+      allow create, update: if isOrgAdmin(orgId) && isAllowedUpload();
+      allow delete: if isOrgAdmin(orgId);
+    }
+
+    // כל שאר הנתיבים — כולל כל נתיב אחר תחת orgs/{orgId} — חסום מפורשות.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

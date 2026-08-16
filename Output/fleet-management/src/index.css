@@ -1,0 +1,35 @@
+@import url("https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: Assistant, "Segoe UI", system-ui, sans-serif;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-1;
+  }
+  /* מספרים ותאריכים תמיד LTR, גם בעמוד RTL */
+  .num {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .table-head {
+    @apply bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-600;
+  }
+  .table-cell {
+    @apply whitespace-nowrap px-3 py-2 text-sm text-slate-700;
+  }
+  .row-link {
+    @apply cursor-pointer hover:bg-brand-50/60;
+  }
+}
