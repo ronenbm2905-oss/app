@@ -21,9 +21,9 @@
 //   (ג) כתיבה ל-vehiclesPrivate **מצליחה** לאדמין — הבאג של 12.8 היה נופל כאן.
 //   (ד) העלאה ל-Storage מחוץ לארבעת התחומים **נדחית** — הבדיקה של G3.
 //
-// ⚠️ נכון ל-13.8.2026 הבדיקות האלה **טרם הורצו**: Java אינה מותקנת על מכונת
-// הפיתוח ולכן האמולטור לא עולה. הקוד כתוב, מחווט ומוכן-להרצה; ברגע ש-Java
-// מותקנת זו פקודה אחת. אין לפרש "נכתבו" כ"עברו".
+// ✅ 16.8.2026 — הורצו מול האמולטור: 66/66 עברו (JDK 21 הותקן).
+//    JAVA_HOME אינו מוגדר גלובלית — להריץ עם:
+//    $env:JAVA_HOME = "$env:ProgramFilesclipse Adoptiumjdk-21.0.12.8-hotspot"
 // ============================================================================
 
 import { readFileSync } from "node:fs";
@@ -139,6 +139,16 @@ const adminA = testEnv.authenticatedContext("adminA");
 const adminB = testEnv.authenticatedContext("adminB");
 const stranger = testEnv.authenticatedContext("nobody"); // מחובר, לא חבר באף ארגון
 
+// `ctx.firestore()` מחיל settings על המופע, ולכן קריאה שנייה לאותו context
+// זורקת "Firestore has already been started". מייצרים מופע אחד לכל זהות
+// וממחזרים אותו בכל המקטעים.
+const dbAnon = anon.firestore();
+const dbAdminA = adminA.firestore();
+const dbAdminB = adminB.firestore();
+const dbStranger = stranger.firestore();
+const stAnon = anon.storage();
+const stAdminA = adminA.storage();
+
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const png = (storage, path) =>
   uploadBytes(ref(storage, path), PNG, { contentType: "image/png" });
@@ -147,8 +157,8 @@ const png = (storage, path) =>
 section("(א) משתמש לא-מחובר — נדחה מכל נתיב");
 // ============================================================================
 {
-  const db = anon.firestore();
-  const st = anon.storage();
+  const db = dbAnon;
+  const st = stAnon;
   await expectDenied("קריאת מסמך הארגון", getDoc(doc(db, "orgs/orgA")));
   await expectDenied("כתיבת מסמך הארגון", setDoc(doc(db, "orgs/orgA"), { hacked: true }));
   await expectDenied("קריאת רכבים", getDocs(collection(db, "orgs/orgA/vehicles")));
@@ -170,8 +180,8 @@ section("(א) משתמש לא-מחובר — נדחה מכל נתיב");
 section("(ב) אדמין של ארגון א' — נדחה מכל נתיב תחת ארגון ב'");
 // ============================================================================
 {
-  const db = adminA.firestore();
-  const st = adminA.storage();
+  const db = dbAdminA;
+  const st = stAdminA;
   await expectDenied("קריאת מסמך הארגון האחר", getDoc(doc(db, "orgs/orgB")));
   await expectDenied("עדכון מסמך הארגון האחר", setDoc(doc(db, "orgs/orgB"), { org: { members: { adminA: "admin" } } }));
   await expectDenied("קריאת רכב של הארגון האחר", getDoc(doc(db, "orgs/orgB/vehicles/vB1")));
@@ -186,12 +196,12 @@ section("(ב) אדמין של ארגון א' — נדחה מכל נתיב תחת
   await expectDenied("Storage — העלאה למסמכי רכב של הארגון האחר", png(st, "orgs/orgB/vehicles/vB1/docs/a.png"));
 
   // ומהצד השני, לשם סימטריה
-  const dbB = adminB.firestore();
+  const dbB = dbAdminB;
   await expectDenied("אדמין ב' נדחה ממסמך הארגון של א'", getDoc(doc(dbB, "orgs/orgA")));
   await expectDenied("אדמין ב' נדחה מהמסמכים הפרטיים של א'", getDoc(doc(dbB, "orgs/orgA/vehiclesPrivate/v1")));
 
   // משתמש מחובר שאינו חבר באף ארגון
-  const dbS = stranger.firestore();
+  const dbS = dbStranger;
   await expectDenied("משתמש מחובר שאינו חבר — נדחה", getDoc(doc(dbS, "orgs/orgA")));
   await expectDenied("משתמש מחובר שאינו חבר — לא כותב", setDoc(doc(dbS, "orgs/orgA/vehicles/v9"), { plate: "9" }));
   await expectDenied(
@@ -204,7 +214,7 @@ section("(ב) אדמין של ארגון א' — נדחה מכל נתיב תחת
 section("(ג) אדמין בארגון שלו — הכתיבות שחייבות לעבוד (הבאג של 12.8)");
 // ============================================================================
 {
-  const db = adminA.firestore();
+  const db = dbAdminA;
   await expectAllowed("קריאת מסמך הארגון", getDoc(doc(db, "orgs/orgA")));
   await expectAllowed("כתיבת רכב", setDoc(doc(db, "orgs/orgA/vehicles/v1"), { plate: "1", orgId: "orgA" }));
   // ⬇ זו הבדיקה שהבאג של 12.8 היה נופל בה: חסר match ל-vehiclesPrivate.
@@ -243,7 +253,7 @@ section("(ג) אדמין בארגון שלו — הכתיבות שחייבות �
 section("(ד) Storage — ארבעת התחומים בלבד (G3)");
 // ============================================================================
 {
-  const st = adminA.storage();
+  const st = stAdminA;
   // מותר — ארבעת התחומים של D2, בדיוק כפי ש-files.js:storagePath מייצר.
   await expectAllowed("סריקת קנס", png(st, "orgs/orgA/fines/f1/scn1_scan.png"));
   await expectAllowed("צילום מד-אוץ'", png(st, "orgs/orgA/drivers/d1/odometer/odo1_photo.png"));
