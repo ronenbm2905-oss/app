@@ -29,7 +29,19 @@
 //     • הרשמה למאזינים לפני שהארגון קיים → 14 דחיות → באנר "טעינה נכשלה";
 //     • מסמך ארגון בלי org.members[uid]='admin' → ההקמה בענן נדחית.
 //
+// (ו) נוסף ב-17.8 אחרי באג פרודקשן: **אדמין שני.** מנהלת הכספים קיבלה את
+//   הקישור, התחברה, וראתה **מסך הקמה ראשונית** במקום את הצי — ואילו הייתה
+//   משלימה אותו היה נוצר ארגון שני נפרד עם אפס רכבים. השורש היה בקליינט,
+//   לא בכללים: `useData.js:63` קבע `orgId = user.uid`.
+//   המקטע בודק את שני הצדדים של המודל החדש (allowlist של מיילים):
+//     • הכללים — מייל ברשימה קורא/כותב הכול כולל vehiclesPrivate; מייל שאינו
+//       ברשימה נדחה מכל נתיב; **מייל ברשימה שאינו מאומת נדחה**; הסרה שוללת
+//       גישה מיד; האדמין האחרון אינו ניתן להסרה; ומסלול ה-legacy שמונע נעילה.
+//     • קוד הגישה האמיתי (resolveOrgAccess/addAdminEmail/removeAdminEmail) —
+//       'none' לפני ההוספה, 'member' אחריה, ו-orgId שהוא הארגון ולא ה-uid.
+//
 // ✅ 16.8.2026 — הורצו מול האמולטור: 66/66 עברו (JDK 21 הותקן).
+// ✅ 17.8.2026 — 179/179 עברו, כולל מקטע (ו).
 //    JAVA_HOME אינו מוגדר גלובלית — להריץ עם:
 //    $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot"
 //    $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
@@ -90,10 +102,9 @@ const { probeOrg, subscribeOrg, startOrgSync, writeOrgDiff } = await import(
 );
 // מקטע (ו) — קוד הגישה האמיתי, לא שכפול. הבאג של 17.8 היה **בקליינט**
 // (orgId = user.uid קשיח), ולכן בדיקה שרק מפעילה כללים לא הייתה תופסת אותו.
-const { resolveOrgAccess, claimInvite, sendInvite, revokeInvite, removeMember } = await import(
+const { resolveOrgAccess, addAdminEmail, removeAdminEmail } = await import(
   "../src/utils/orgMembers.js"
 );
-const { buildInvite, inviteExpiresAt, listInvites } = await import("../src/utils/invites.js");
 const { EMPTY } = await import("../src/constants.js");
 const emptyData = () => JSON.parse(JSON.stringify(EMPTY));
 
@@ -465,444 +476,348 @@ section("(ה) משתמש חדש בלי ארגון — זרימת ההקמה מק
   }
   stopAfter();
 }
-
 // ============================================================================
-section("(ו) אדמין שני — תביעת הזמנה לפי מייל מאומת (באג פרודקשן 17.8)");
+section("(ו) אדמין שני — allowlist של מיילים (באג פרודקשן 17.8)");
 // ============================================================================
 // למה המקטע הזה קיים: המשתמש שלח את הקישור למנהלת הכספים כדי שתהיה אדמין
 // שנייה. היא התחברה וקיבלה **מסך הקמה ראשונית** — ואילו השלימה אותו, היה
-// נוצר ארגון שני נפרד עם אפס רכבים. שני שורשים נפרדים:
-//   • בקליינט: `useData.js:63` — `orgId = user.uid` **קשיח**. `memberships/{uid}`
-//     נכתב ולא נקרא מעולם, ולכן גם הוספה ידנית ל-`org.members` לא הייתה עוזרת.
-//   • בכללים: לא היה שום מסלול להוסיף אדמין. הכלל שחוסם רישום-עצמי היה נכון,
-//     וגם חסם את הפתרון.
+// נוצר ארגון שני נפרד עם אפס רכבים. השורש לא היה בכללים אלא בקליינט:
 //
-// המקטע בודק את **שני** הצדדים: את הכלל isInviteClaim מול כל מצבי הקצה, ואת
-// קוד הגישה האמיתי (resolveOrgAccess/claimInvite/sendInvite) מקצה לקצה.
+//   useData.js:63   const orgId = isFirebaseConfigured ? user?.uid || null : "local";
+//
+// מזהה הארגון היה **ה-uid של המשתמש המחובר, קשיח**, ולכן גם הוספה ידנית שלה
+// למסמך הארגון לא הייתה עוזרת — הקליינט בכלל לא ביקש את הארגון הנכון.
+//
+// המודל החדש (הדפוס מ-Output/basketball-scheduler, שחי בפרודקשן):
+//   • מזהה הארגון קבוע בזמן build (VITE_FLEET_ORG_ID) ולא נגזר מהמשתמש;
+//   • הגישה נקבעת ע"י `org.adminEmails` — allowlist של כתובות מייל **מלאות**;
+//   • `email_verified == true` נדרש. זו ההגנה שנשארת.
+//
+// ⚠️ **אין הנחת דומיין.** מנהלת הכספים נכנסה מ-Gmail פרטי ולא מהמייל הארגוני,
+//    ולכן אין כאן `endsWith('@company')` — הגבלת הדומיין שעדי המליצה עליה
+//    (R-b) אינה ישימה, וזו סטייה מתועדת. הבדיקות למטה כוללות שני ספקים.
+// ⚠️ **הגבול:** ה-allowlist הוא לאדמינים בלבד. בידוד נהגים בפרוסה 2 יישאר
+//    לפי uid (F1), ו-vehiclesPrivate אינו נפתח לאף אחד שאינו ברשימה.
 {
+  const ORG = "orgP"; // מזהה הארגון — **אינו** ה-uid של אף אחד מהאדמינים
+  const RONEN = "ronenUid";
+  const RONEN_EMAIL = "ronen@promall.example";
   const HILDA = "hildaUid";
-  const HILDA_EMAIL = "hildav@promall.example";
+  const HILDA_EMAIL = "hildavazana@gmail.example"; // Gmail פרטי — המצב בפועל
   const OUTSIDER = "outsiderUid";
   const OUTSIDER_EMAIL = "outsider@elsewhere.example";
-  const DRIVER = "driverInviteeUid";
-  const DRIVER_EMAIL = "driver@promall.example";
-  const SECOND = "secondHolderUid"; // מי שקיבל את תיבת הדואר אחרי שהעובדת עזבה
-  const SOLO = "soloAdminUid"; // ארגון שבו orgId === uid ואין רשומת חברות
+  const LEGACY = "legacyUid"; // גישה דרך org.members בלבד (גשר ההגירה)
+  const SOLO = "soloAdminUid"; // orgId === uid, בלי דגל build
 
-  const future = () => inviteExpiresAt(Date.now());
-  const past = () => Date.now() - 60 * 1000;
-  const inviteRec = (role, expiresAt) => ({
-    role,
-    invitedBy: "adminP",
-    invitedAt: new Date().toISOString(),
-    expiresAt,
-  });
-
-  // seedOrgP — מצב פתיחה נקי לכל תרחיש. נכתב עם כללים מנוטרלים; זו הדרך
-  // היחידה להגיע למצב פתיחה בלי להסתמך על הכללים שאותם בודקים.
-  // ⚠️ orgId ('orgP') **אינו** ה-uid של האדמין ('adminP') בכוונה: זה בדיוק
-  // המצב של אדמין שני, ובדיקה שבה orgId === uid לא הייתה תופסת את הבאג.
-  const seedOrgP = (invites = {}, members = { adminP: "admin" }) =>
+  // seedOrg — מצב פתיחה נקי לכל תרחיש, עם כללים מנוטרלים.
+  // ⚠️ שני ארגונים במסד בכוונה: בפרודקשן ייתכן שנוצר ארגון שני (מנהלת הכספים
+  // קיבלה מסך הקמה), ואסור שהקוד יניח שיש ארגון אחד בלבד.
+  const seedOrg = (adminEmails, members = { [LEGACY]: "admin" }) =>
     testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore();
-      await setDoc(doc(db, "orgs/orgP"), {
-        org: { id: "orgP", name: "צי בדיקה P", createdAt: "2026-01-01T00:00:00.000Z", members, invites },
+      const org = { id: ORG, name: "צי בדיקה P", createdAt: "2026-01-01T00:00:00.000Z", members };
+      if (adminEmails !== undefined) org.adminEmails = adminEmails;
+      await setDoc(doc(db, `orgs/${ORG}`), {
+        org,
         settings: { onboarded: true, contractAlertDays: 90, policyVersion: "0.1-draft" },
         schemaVersion: 2,
       });
-      await setDoc(doc(db, "orgs/orgP/vehicles/vP1"), { plate: "998", orgId: "orgP" });
-      await setDoc(doc(db, "orgs/orgP/vehiclesPrivate/vP1"), { vehicleId: "vP1", monthlyCost: 4100, orgId: "orgP" });
-      await setDoc(doc(db, "orgs/orgP/drivers/dP1"), { fullName: "בדיקה", orgId: "orgP" });
-      await setDoc(doc(db, "memberships/adminP"), { uid: "adminP", orgId: "orgP", role: "admin" });
-      // ארגון נפרד שבו orgId === uid ואין רשומת חברות — תאימות לאחור.
-      await setDoc(doc(db, `orgs/${SOLO}`), {
-        org: { id: SOLO, name: "יחיד", members: { [SOLO]: "admin" }, invites: {} },
+      await setDoc(doc(db, `orgs/${ORG}/vehicles/vP1`), { plate: "998", orgId: ORG });
+      await setDoc(doc(db, `orgs/${ORG}/vehiclesPrivate/vP1`), { vehicleId: "vP1", monthlyCost: 4100, orgId: ORG });
+      await setDoc(doc(db, `orgs/${ORG}/drivers/dP1`), { fullName: "בדיקה", orgId: ORG });
+      await setDoc(doc(db, `orgs/${ORG}/fines/fP1`), { vehicleId: "vP1", amount: 250, orgId: ORG });
+      // ניקוי מה שבדיקות קודמות במקטע כתבו — כדי שספירות יהיו דטרמיניסטיות
+      // ולא יזלגו בין תרחישים.
+      await deleteDoc(doc(db, `orgs/${ORG}/vehicles/vP2`)).catch(() => {});
+      await deleteDoc(doc(db, `orgs/${ORG}/vehiclesPrivate/vP2`)).catch(() => {});
+      // ארגון שני, של מישהו אחר — כדי שגזירת ה-orgId לא תתבלבל.
+      await setDoc(doc(db, "orgs/orgOther"), {
+        org: { id: "orgOther", name: "ארגון אחר", adminEmails: ["stranger@x.example"], members: {} },
         settings: { onboarded: true },
       });
-      await deleteDoc(doc(db, `memberships/${SOLO}`)).catch(() => {});
+      // ארגון שבו orgId === uid (התקנה בלי דגל build) — תאימות לאחור.
+      await setDoc(doc(db, `orgs/${SOLO}`), {
+        org: { id: SOLO, name: "יחיד", adminEmails: ["solo@x.example"], members: {} },
+        settings: { onboarded: true },
+      });
       await deleteDoc(doc(db, `memberships/${HILDA}`)).catch(() => {});
-      await deleteDoc(doc(db, `invites/${HILDA_EMAIL}`)).catch(() => {});
-      await deleteDoc(doc(db, `invites/${DRIVER_EMAIL}`)).catch(() => {});
+      await deleteDoc(doc(db, `memberships/${OUTSIDER}`)).catch(() => {});
     });
 
-  // זהויות. `email_verified` הוא **התנאי שהופך מייל למפתח**, ולכן יש כאן
-  // גם את אותו מייל בדיוק עם דגל כבוי — ואת אותו מייל עם uid אחר.
-  const ctxAdminP = testEnv.authenticatedContext("adminP", { email: "ronen@promall.example", email_verified: true });
-  const ctxHilda = testEnv.authenticatedContext(HILDA, { email: HILDA_EMAIL, email_verified: true });
-  const ctxHildaUnv = testEnv.authenticatedContext("hildaUnverifiedUid", { email: HILDA_EMAIL, email_verified: false });
-  const ctxHildaUpper = testEnv.authenticatedContext("hildaUpperUid", { email: HILDA_EMAIL.toUpperCase(), email_verified: true });
-  const ctxOutsider = testEnv.authenticatedContext(OUTSIDER, { email: OUTSIDER_EMAIL, email_verified: true });
-  const ctxNoEmail = testEnv.authenticatedContext("noEmailUid");
-  const ctxDriver = testEnv.authenticatedContext(DRIVER, { email: DRIVER_EMAIL, email_verified: true });
-  const ctxSecond = testEnv.authenticatedContext(SECOND, { email: HILDA_EMAIL, email_verified: true });
-  const ctxSolo = testEnv.authenticatedContext(SOLO, { email: "solo@x.example", email_verified: true });
+  // הזהויות. שימו לב לשלוש הווריאציות של **אותה כתובת**: מאומתת, לא מאומתת,
+  // ובאותיות גדולות. ההבדל ביניהן הוא כל המנגנון.
+  const dbRonen = testEnv.authenticatedContext(RONEN, { email: RONEN_EMAIL, email_verified: true }).firestore();
+  const dbHilda = testEnv.authenticatedContext(HILDA, { email: HILDA_EMAIL, email_verified: true }).firestore();
+  const dbHildaUnv = testEnv
+    .authenticatedContext("hildaUnverifiedUid", { email: HILDA_EMAIL, email_verified: false })
+    .firestore();
+  const dbHildaUpper = testEnv
+    .authenticatedContext("hildaUpperUid", { email: HILDA_EMAIL.toUpperCase(), email_verified: true })
+    .firestore();
+  const dbOutsider = testEnv
+    .authenticatedContext(OUTSIDER, { email: OUTSIDER_EMAIL, email_verified: true })
+    .firestore();
+  const dbNoEmail = testEnv.authenticatedContext("noEmailUid").firestore();
+  const dbLegacy = testEnv.authenticatedContext(LEGACY, { email: "legacy@x.example", email_verified: true }).firestore();
+  const dbSolo = testEnv.authenticatedContext(SOLO, { email: "solo@x.example", email_verified: true }).firestore();
+  const stRonen = testEnv.authenticatedContext(RONEN, { email: RONEN_EMAIL, email_verified: true }).storage();
+  const stOutsider = testEnv
+    .authenticatedContext(OUTSIDER, { email: OUTSIDER_EMAIL, email_verified: true })
+    .storage();
 
-  const dbAdminP = ctxAdminP.firestore();
-  const dbHilda = ctxHilda.firestore();
-  const dbHildaUnv = ctxHildaUnv.firestore();
-  const dbHildaUpper = ctxHildaUpper.firestore();
-  const dbOutsider = ctxOutsider.firestore();
-  const dbNoEmail = ctxNoEmail.firestore();
-  const dbDriver = ctxDriver.firestore();
-  const dbSecond = ctxSecond.firestore();
-  const dbSolo = ctxSolo.firestore();
+  const setList = (db, list) => updateDoc(doc(db, "orgs", ORG), { "org.adminEmails": list });
+  const readOrg = async (db) => (await getDoc(doc(db, "orgs", ORG))).data();
 
-  // claim — **בדיוק** מה ש-claimInvite שולח: שני עלים, בלי לקרוא את המסמך.
-  // התובעת אינה רשאית לקרוא את מסמך הארגון, ולכן היא לא יכולה לכתוב את
-  // מפת החברים חזרה — updateDoc+FieldPath הוא לא נוחות, הוא הכרח.
-  const claim = (db, uid, email, role, extra = []) =>
-    updateDoc(
-      doc(db, "orgs/orgP"),
-      new FieldPath("org", "members", uid),
-      role,
-      new FieldPath("org", "invites", email),
-      deleteField(),
-      ...extra
+  // -- 1. מייל ב-allowlist — קורא וכותב הכול ------------------------------
+  await seedOrg([RONEN_EMAIL, HILDA_EMAIL]);
+  await expectAllowed("מייל ב-allowlist קורא את מסמך הארגון", getDoc(doc(dbHilda, "orgs", ORG)));
+  await expectAllowed("קורא רכבים", getDocs(collection(dbHilda, `orgs/${ORG}/vehicles`)));
+  await expectAllowed("קורא נהגים", getDocs(collection(dbHilda, `orgs/${ORG}/drivers`)));
+  await expectAllowed("קורא קנסות", getDocs(collection(dbHilda, `orgs/${ORG}/fines`)));
+  // ⬅ הבדיקה שנדרשה במפורש: אדמין מלא, כולל D1.
+  await expectAllowed(
+    "קורא vehiclesPrivate (D1) — אדמין מלא",
+    getDoc(doc(dbHilda, `orgs/${ORG}/vehiclesPrivate/vP1`))
+  );
+  await expectAllowed(
+    "כותב רכב",
+    setDoc(doc(dbHilda, `orgs/${ORG}/vehicles/vP2`), { plate: "997", orgId: ORG })
+  );
+  await expectAllowed(
+    "כותב vehiclesPrivate",
+    setDoc(doc(dbHilda, `orgs/${ORG}/vehiclesPrivate/vP2`), { vehicleId: "vP2", monthlyCost: 3000, orgId: ORG })
+  );
+  await expectAllowed(
+    "שומר הגדרות",
+    setDoc(doc(dbHilda, "orgs", ORG), { settings: { contractAlertDays: 85 } }, { merge: true })
+  );
+  // ⬅ **אין הנחת דומיין**: Gmail פרטי ומייל ארגוני עובדים באותה מידה.
+  await expectAllowed("והמייל הארגוני של האדמין המקורי עובד גם כן", getDoc(doc(dbRonen, "orgs", ORG)));
+  await expectAllowed("Storage — אדמין ב-allowlist מעלה סריקה", png(stRonen, `orgs/${ORG}/fines/fP1/s.png`));
+
+  // -- 2. מייל שאינו ב-allowlist — נדחה מכל נתיב --------------------------
+  await expectDenied("מייל שאינו ברשימה — מסמך הארגון", getDoc(doc(dbOutsider, "orgs", ORG)));
+  await expectDenied("מייל שאינו ברשימה — רכבים", getDocs(collection(dbOutsider, `orgs/${ORG}/vehicles`)));
+  await expectDenied("מייל שאינו ברשימה — נהגים", getDocs(collection(dbOutsider, `orgs/${ORG}/drivers`)));
+  await expectDenied("מייל שאינו ברשימה — קנסות", getDocs(collection(dbOutsider, `orgs/${ORG}/fines`)));
+  await expectDenied(
+    "מייל שאינו ברשימה — vehiclesPrivate (D1)",
+    getDoc(doc(dbOutsider, `orgs/${ORG}/vehiclesPrivate/vP1`))
+  );
+  await expectDenied(
+    "מייל שאינו ברשימה — כתיבת רכב",
+    setDoc(doc(dbOutsider, `orgs/${ORG}/vehicles/vX`), { plate: "1" })
+  );
+  await expectDenied(
+    "מייל שאינו ברשימה — כתיבת הגדרות",
+    setDoc(doc(dbOutsider, "orgs", ORG), { settings: { contractAlertDays: 1 } }, { merge: true })
+  );
+  // ⬅ החור המובהק: מי שאינו ברשימה מוסיף את **עצמו** לרשימה.
+  await expectDenied(
+    "מייל שאינו ברשימה לא מוסיף את עצמו ל-allowlist",
+    setList(dbOutsider, [RONEN_EMAIL, OUTSIDER_EMAIL])
+  );
+  await expectDenied(
+    "וגם לא דורס את הרשימה כולה",
+    setList(dbOutsider, [OUTSIDER_EMAIL])
+  );
+  await expectDenied("Storage — מי שאינו ברשימה לא מעלה", png(stOutsider, `orgs/${ORG}/fines/fP1/x.png`));
+  await expectDenied("Storage — ולא קורא", getBytes(ref(stOutsider, `orgs/${ORG}/fines/fP1/s.png`)));
+
+  // -- 3. מייל ברשימה אך **לא מאומת** — נדחה ------------------------------
+  // הכתובת נכונה לחלוטין; רק הדגל כבוי. בלי התנאי הזה כל אחד היה נרשם
+  // ב-Firebase Auth עם הכתובת של מנהלת הכספים ונכנס לצי.
+  await expectDenied("מייל ברשימה אך לא מאומת — מסמך הארגון", getDoc(doc(dbHildaUnv, "orgs", ORG)));
+  await expectDenied(
+    "מייל ברשימה אך לא מאומת — vehiclesPrivate",
+    getDoc(doc(dbHildaUnv, `orgs/${ORG}/vehiclesPrivate/vP1`))
+  );
+  await expectDenied(
+    "מייל ברשימה אך לא מאומת — כתיבה",
+    setDoc(doc(dbHildaUnv, `orgs/${ORG}/vehicles/vY`), { plate: "2" })
+  );
+  await expectDenied("משתמש בלי מייל בטוקן — נדחה", getDoc(doc(dbNoEmail, "orgs", ORG)));
+  await expectDenied(
+    "משתמש בלי מייל בטוקן לא כותב",
+    setDoc(doc(dbNoEmail, `orgs/${ORG}/vehicles/vZ`), { plate: "3" })
+  );
+
+  // -- 4. נרמול lowercase --------------------------------------------------
+  // הרשימה מוחזקת lowercase; הטוקן עשוי להגיע באותיות גדולות. בלי `.lower()`
+  // בשני הצדדים, `Hildav@…` לא מתאים ל-`hildav@…` ואף אחד לא מבין למה.
+  await expectAllowed("אותה כתובת באותיות גדולות בטוקן — עוברת", getDoc(doc(dbHildaUpper, "orgs", ORG)));
+  await seedOrg([RONEN_EMAIL, HILDA_EMAIL.toUpperCase()]);
+  await expectDenied(
+    "כתובת שנשמרה ברשימה באותיות גדולות — לא מזוהה (ולכן הקליינט מנרמל בכתיבה)",
+    getDoc(doc(dbHilda, "orgs", ORG))
+  );
+
+  // -- 5. הסרת מייל שוללת גישה **מיד** ------------------------------------
+  await seedOrg([RONEN_EMAIL, HILDA_EMAIL]);
+  await expectAllowed("לפני ההסרה — יש גישה", getDoc(doc(dbHilda, "orgs", ORG)));
+  await expectAllowed("האדמין מסיר את המייל השני", setList(dbRonen, [RONEN_EMAIL]));
+  await expectDenied("אחרי ההסרה — אין גישה למסמך הארגון", getDoc(doc(dbHilda, "orgs", ORG)));
+  await expectDenied("ואין גישה לרכבים", getDocs(collection(dbHilda, `orgs/${ORG}/vehicles`)));
+  await expectDenied(
+    "ואין גישה ל-vehiclesPrivate",
+    getDoc(doc(dbHilda, `orgs/${ORG}/vehiclesPrivate/vP1`))
+  );
+  await expectDenied("ומי שהוסר לא מחזיר את עצמו", setList(dbHilda, [RONEN_EMAIL, HILDA_EMAIL]));
+
+  // -- 6. **האדמין האחרון אינו ניתן להסרה** -------------------------------
+  // ארגון בלי אף אדמין אינו ניתן לשחזור מתוך האפליקציה — צריך גישת קונסולה
+  // ל-Firestore. מערך (בשונה ממפה) כן ניתן לספירה ב-rules, ולכן זה נאכף כאן.
+  await seedOrg([RONEN_EMAIL], {});
+  await expectDenied("אדמין אחרון לא מרוקן את הרשימה", setList(dbRonen, []));
+  await expectDenied(
+    "וגם לא מוחק את השדה כולו",
+    updateDoc(doc(dbRonen, "orgs", ORG), { "org.adminEmails": deleteField() })
+  );
+  await expectDenied(
+    "ולא דרך setDoc(merge) עם מערך ריק",
+    setDoc(doc(dbRonen, "orgs", ORG), { org: { adminEmails: [] } }, { merge: true })
+  );
+  await expectDenied("והרשימה חייבת להיות מערך", setList(dbRonen, "notalist"));
+  await expectAllowed(
+    "אבל להוסיף אדמין נוסף — מותר",
+    setList(dbRonen, [RONEN_EMAIL, HILDA_EMAIL])
+  );
+  await expectAllowed(
+    "ואז כן מותר להסיר את עצמו (נשאר אדמין אחד)",
+    setList(dbRonen, [HILDA_EMAIL])
+  );
+  await expectDenied("ומי שהסיר את עצמו מאבד גישה מיד", getDoc(doc(dbRonen, "orgs", ORG)));
+  {
+    const org = await readOrg(dbHilda);
+    expectEq("נשאר בדיוק אדמין אחד", (org?.org?.adminEmails || []).join(","), HILDA_EMAIL);
+  }
+
+  // -- 7. legacy: גשר ההגירה ----------------------------------------------
+  // ⚠️ מסמך הארגון שכבר בענן (36 רכבים) **אינו מכיל adminEmails**. לו הכללים
+  // דרשו מייל בלבד, ה-deploy היה נועל את המשתמש מחוץ לצי שלו — ואף אחד לא
+  // היה יכול להוסיף את המייל הראשון, כי בשביל זה בדיוק צריך גישה.
+  await seedOrg(undefined, { [LEGACY]: "admin" }); // בלי adminEmails בכלל
+  await expectAllowed("legacy: org.members מעניק גישה כשאין adminEmails", getDoc(doc(dbLegacy, "orgs", ORG)));
+  await expectAllowed(
+    "legacy: וגם ל-vehiclesPrivate",
+    getDoc(doc(dbLegacy, `orgs/${ORG}/vehiclesPrivate/vP1`))
+  );
+  // ⬅ הבדיקה שמונעת "האפליקציה הפסיקה לשמור": שמירה רגילה כשהרשימה **ריקה**
+  //   חייבת לעבור, אחרת `size() >= 1` היה חוסם כל כתיבה בזמן ההגירה.
+  await expectAllowed(
+    "legacy: שמירת הגדרות עוברת גם כשהרשימה עוד לא קיימת",
+    setDoc(doc(dbLegacy, "orgs", ORG), { settings: { contractAlertDays: 70 } }, { merge: true })
+  );
+  await expectAllowed("legacy: והאדמין מאכלס את הרשימה הראשונה", setList(dbLegacy, ["legacy@x.example"]));
+  await expectDenied("legacy לא מעניק גישה למי שאינו במפה", getDoc(doc(dbOutsider, "orgs", ORG)));
+
+  // ⬅ אכלוס ראשוני דרך **קוד הקליינט האמיתי**: writeOrgDiff עם selfEmail.
+  await seedOrg(undefined, { [LEGACY]: "admin" });
+  {
+    const prev = emptyData();
+    const next = emptyData();
+    next.org = { id: ORG, name: "צי בדיקה P", members: { [LEGACY]: "admin" }, adminEmails: [] };
+    next.settings = { ...next.settings, onboarded: true, contractAlertDays: 65 };
+    await expectAllowed(
+      "writeOrgDiff עם selfEmail מאכלס את הרשימה בשמירה הראשונה",
+      writeOrgDiff(dbLegacy, ORG, prev, next, { selfUid: LEGACY, selfEmail: "Legacy@X.Example" })
     );
-
-  // -- 1. המסלול שצריך לעבוד ------------------------------------------------
-  await seedOrgP({ [HILDA_EMAIL]: inviteRec("admin", future()) });
-  await expectAllowed(
-    "מייל מוזמן ומאומת — התביעה עוברת",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin")
-  );
-  // ⬅ זו גם הבדיקה שההזמנה ה**אחרונה** במפה ניתנת לתביעה: אחרי המחיקה
-  //    org.invites מתרוקן, וגישה ישירה (בלי .get) הייתה מפילה את הכלל.
-  await expectAllowed("האדמין החדש קורא את מסמך הארגון", getDoc(doc(dbHilda, "orgs/orgP")));
-  await expectAllowed("האדמין החדש קורא רכבים", getDocs(collection(dbHilda, "orgs/orgP/vehicles")));
-  await expectAllowed("האדמין החדש קורא נהגים", getDocs(collection(dbHilda, "orgs/orgP/drivers")));
-  // ⬅ הבדיקה שהמשימה דרשה במפורש: **כולל vehiclesPrivate.**
-  await expectAllowed(
-    "האדמין החדש קורא vehiclesPrivate (D1)",
-    getDoc(doc(dbHilda, "orgs/orgP/vehiclesPrivate/vP1"))
-  );
-  await expectAllowed(
-    "האדמין החדש כותב רכב",
-    setDoc(doc(dbHilda, "orgs/orgP/vehicles/vP2"), { plate: "997", orgId: "orgP" })
-  );
-  await expectAllowed(
-    "האדמין החדש כותב את רשומת החברות שלו",
-    setDoc(doc(dbHilda, `memberships/${HILDA}`), { uid: HILDA, orgId: "orgP", role: "admin" })
-  );
-  // -- האדמין המקורי לא נפגע ----------------------------------------------
-  await expectAllowed("האדמין המקורי עדיין קורא את הארגון", getDoc(doc(dbAdminP, "orgs/orgP")));
-  await expectAllowed(
-    "האדמין המקורי עדיין קורא vehiclesPrivate",
-    getDoc(doc(dbAdminP, "orgs/orgP/vehiclesPrivate/vP1"))
-  );
-  await expectAllowed(
-    "האדמין המקורי עדיין כותב הגדרות",
-    setDoc(doc(dbAdminP, "orgs/orgP"), { settings: { contractAlertDays: 80 } }, { merge: true })
-  );
-  {
-    const after = await getDoc(doc(dbAdminP, "orgs/orgP"));
-    expectEq("שני האדמינים במפה", Object.keys(after.data()?.org?.members || {}).sort().join(","), "adminP,hildaUid");
-    expectEq("תפקיד האדמין המקורי לא נגע", after.data()?.org?.members?.adminP, "admin");
-    expectEq("ההזמנה נצרכה", Object.keys(after.data()?.org?.invites || {}).length, 0);
+    const org = await readOrg(dbLegacy);
+    expectEq("והכתובת נשמרה מנורמלת", (org?.org?.adminEmails || []).join(","), "legacy@x.example");
   }
-  // -- הזמנה שכבר נתבעה ----------------------------------------------------
-  // ⚠️ נקודה עדינה שנתפסה בהרצה הראשונה: תביעה **חוזרת של אותה משתמשת**
-  // עוברת — אבל לא במסלול התביעה. אחרי שהיא כבר אדמין, אותה כתיבה בדיוק
-  // היא no-op של אדמין (התפקיד זהה, ההזמנה כבר לא קיימת), והיא מאושרת
-  // במסלול `isOrgAdmin && adminStaysAdmin`. זה לא חור: אדמין ממילא רשאי
-  // לכתוב למסמך, והכתיבה אינה משנה דבר. מה ש**כן** חייב להיחסם הוא uid
-  // אחר שינסה לתבוע הזמנה שנצרכה — וזו הבדיקה שמתחתיה.
-  await expectAllowed(
-    "תביעה חוזרת של מי שכבר אדמין — no-op, לא מסלול תביעה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin")
-  );
+  // ואחרי שהרשימה מאוכלסת — writeOrgDiff **לא** נוגע בה יותר, כדי שלא ידרוס
+  // אדמין שנוסף במקביל ע"י מישהו אחר (מערך נדרס כשלמותו, לא ממוזג).
   {
-    const after = await getDoc(doc(dbAdminP, "orgs/orgP"));
-    expectEq("והיא לא שינתה כלום במפה", Object.keys(after.data()?.org?.members || {}).sort().join(","), "adminP,hildaUid");
-  }
-  await expectDenied(
-    "uid אחר עם אותו מייל אחרי שההזמנה נצרכה — נדחה",
-    claim(dbSecond, SECOND, HILDA_EMAIL, "admin")
-  );
-  await expectDenied(
-    "וגם לא בתפקיד driver, אחרי שההזמנה נצרכה",
-    claim(dbSecond, SECOND, HILDA_EMAIL, "driver")
-  );
-
-  // -- 2. מייל לא מוזמן -----------------------------------------------------
-  await seedOrgP({ [HILDA_EMAIL]: inviteRec("admin", future()) });
-  await expectDenied(
-    "מייל שלא הוזמן — נדחה",
-    claim(dbOutsider, OUTSIDER, OUTSIDER_EMAIL, "admin")
-  );
-  await expectDenied(
-    "מי שלא הוזמן לא יכול לתבוע הזמנה של אחר",
-    claim(dbOutsider, OUTSIDER, HILDA_EMAIL, "admin")
-  );
-  await expectDenied("מי שלא הוזמן לא קורא את הארגון", getDoc(doc(dbOutsider, "orgs/orgP")));
-
-  // -- 3. מייל לא מאומת ----------------------------------------------------
-  // **הכתובת נכונה** — רק הדגל כבוי. בלי התנאי הזה כל אחד היה נרשם ב-Auth
-  // עם כתובת שאינה שלו ותובע את ההזמנה.
-  await expectDenied(
-    "מייל מוזמן אך לא מאומת — נדחה",
-    claim(dbHildaUnv, "hildaUnverifiedUid", HILDA_EMAIL, "admin")
-  );
-  await expectDenied(
-    "משתמש בלי מייל בטוקן — נדחה",
-    claim(dbNoEmail, "noEmailUid", HILDA_EMAIL, "admin")
-  );
-  // אותיות גדולות: המפתח במפה מנורמל, ו-request.auth.token.email.lower()
-  // משווה אליו — ולכן חייב לעבוד גם כשהמשתמש הקליד אחרת.
-  await expectAllowed(
-    "אותו מייל באותיות גדולות — עובר (נרמול lower)",
-    claim(dbHildaUpper, "hildaUpperUid", HILDA_EMAIL, "admin")
-  );
-
-  // -- 4. הזמנה שפג תוקפה: מייל עבודה שעבר לעובד אחר -----------------------
-  // התופעה האמיתית: `hildav@…` היא תיבת **תפקיד**. אם העובדת עוזבת ומישהו
-  // אחר יקבל את התיבה, הזמנה שנשארה פתוחה הייתה מעניקה לו אדמין על כל הצי.
-  // **מה שמגביל את זה בזמן** הוא expiresAt, ונאכף כאן ולא בקליינט.
-  await seedOrgP({ [HILDA_EMAIL]: inviteRec("admin", past()) });
-  await expectDenied("הזמנה שפג תוקפה — נדחית", claim(dbHilda, HILDA, HILDA_EMAIL, "admin"));
-  await expectDenied(
-    "ומי שקיבל את התיבה אחריה — גם כן",
-    claim(dbSecond, SECOND, HILDA_EMAIL, "admin")
-  );
-  await seedOrgP({ [HILDA_EMAIL]: { role: "admin", invitedBy: "adminP" } }); // בלי expiresAt
-  await expectDenied("הזמנה בלי expiresAt — נדחית", claim(dbHilda, HILDA, HILDA_EMAIL, "admin"));
-
-  // -- 5. תפקיד: מה שבהזמנה, לא מה שהתובע ביקש -----------------------------
-  await seedOrgP({ [DRIVER_EMAIL]: inviteRec("driver", future()) });
-  await expectDenied(
-    "הזמנה ל-driver, ניסיון להעניק לעצמו admin — נדחה",
-    claim(dbDriver, DRIVER, DRIVER_EMAIL, "admin")
-  );
-  await expectAllowed(
-    "הזמנה ל-driver, תפקיד תואם — עוברת",
-    claim(dbDriver, DRIVER, DRIVER_EMAIL, "driver")
-  );
-  // ⚠️ וחבר בתפקיד driver **אינו** אדמין: אין לו גישה לשום דבר, ובפרט לא
-  //    ל-vehiclesPrivate. isOrgAdmin דורש members[uid] == 'admin' בדיוק.
-  await expectDenied("חבר בתפקיד driver לא קורא vehiclesPrivate (D1)", getDoc(doc(dbDriver, "orgs/orgP/vehiclesPrivate/vP1")));
-  await expectDenied("חבר בתפקיד driver לא קורא את מסמך הארגון", getDoc(doc(dbDriver, "orgs/orgP")));
-  await expectDenied("חבר בתפקיד driver לא קורא רכבים", getDocs(collection(dbDriver, "orgs/orgP/vehicles")));
-  await expectDenied("חבר בתפקיד driver לא כותב רכב", setDoc(doc(dbDriver, "orgs/orgP/vehicles/vX"), { plate: "1" }));
-  await expectDenied(
-    "חבר בתפקיד driver לא מקדם את עצמו ל-admin",
-    updateDoc(doc(dbDriver, "orgs/orgP"), new FieldPath("org", "members", DRIVER), "admin")
-  );
-  await seedOrgP({ [HILDA_EMAIL]: inviteRec("owner", future()) });
-  await expectDenied("הזמנה לתפקיד שאינו מוכר — נדחית", claim(dbHilda, HILDA, HILDA_EMAIL, "owner"));
-
-  // -- 6. התובע לא נוגע בשום דבר אחר באותה כתיבה ---------------------------
-  await seedOrgP({ [HILDA_EMAIL]: inviteRec("admin", future()), [OUTSIDER_EMAIL]: inviteRec("admin", future()) });
-  await expectDenied(
-    "תובע שמוסיף חבר נוסף מלבד עצמו — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [new FieldPath("org", "members", OUTSIDER), "admin"])
-  );
-  await expectDenied(
-    "תובע שזורק את האדמין הקיים — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [new FieldPath("org", "members", "adminP"), deleteField()])
-  );
-  await expectDenied(
-    "תובע שמוריד את האדמין הקיים לתפקיד driver — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [new FieldPath("org", "members", "adminP"), "driver"])
-  );
-  await expectDenied(
-    "תובע שנוגע ב-settings — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [new FieldPath("settings", "contractAlertDays"), 5])
-  );
-  await expectDenied(
-    "תובע שנוגע בשם הארגון — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [new FieldPath("org", "name"), "השתלטות"])
-  );
-  await expectDenied(
-    "תובע שנוגע ב-schemaVersion — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [new FieldPath("schemaVersion"), 99])
-  );
-  await expectDenied(
-    "תובע שמוחק את ההזמנה של מישהו אחר — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [new FieldPath("org", "invites", OUTSIDER_EMAIL), deleteField()])
-  );
-  await expectDenied(
-    "תובע שמוסיף הזמנה חדשה — נדחה",
-    claim(dbHilda, HILDA, HILDA_EMAIL, "admin", [
-      new FieldPath("org", "invites", "friend@x.example"),
-      inviteRec("admin", future()),
-    ])
-  );
-  await expectDenied(
-    "תובע שמוסיף את עצמו בלי לצרוך את ההזמנה — נדחה",
-    updateDoc(doc(dbHilda, "orgs/orgP"), new FieldPath("org", "members", HILDA), "admin")
-  );
-  await expectDenied(
-    "תובע שמוחק את ההזמנה בלי להוסיף את עצמו — נדחה",
-    updateDoc(doc(dbHilda, "orgs/orgP"), new FieldPath("org", "invites", HILDA_EMAIL), deleteField())
-  );
-  // ואחרי כל הניסיונות האלה — המסלול הנקי עדיין עובד, וההזמנה השנייה שרדה.
-  await expectAllowed("אחרי כל הניסיונות — התביעה הנקייה עוברת", claim(dbHilda, HILDA, HILDA_EMAIL, "admin"));
-  {
-    const after = await getDoc(doc(dbAdminP, "orgs/orgP"));
-    expectEq("ההזמנה של האחר שרדה", Object.keys(after.data()?.org?.invites || {}).join(","), OUTSIDER_EMAIL);
-    expectEq("settings לא נגע", after.data()?.settings?.contractAlertDays, 90);
-    expectEq("שם הארגון לא נגע", after.data()?.org?.name, "צי בדיקה P");
+    await expectAllowed("אדמין נוסף מתווסף במקביל", setList(dbLegacy, ["legacy@x.example", HILDA_EMAIL]));
+    const prev = emptyData();
+    const next = emptyData();
+    next.org = { id: ORG, name: "צי בדיקה P", members: { [LEGACY]: "admin" }, adminEmails: ["legacy@x.example"] };
+    next.settings = { ...next.settings, onboarded: true, contractAlertDays: 55 };
+    await expectAllowed(
+      "שמירה עם snapshot מיושן עוברת",
+      writeOrgDiff(dbLegacy, ORG, prev, next, { selfUid: LEGACY, selfEmail: "legacy@x.example" })
+    );
+    const org = await readOrg(dbLegacy);
+    expectEq(
+      "ו**אינה** מוחקת את האדמין שנוסף במקביל",
+      (org?.org?.adminEmails || []).slice().sort().join(","),
+      [HILDA_EMAIL, "legacy@x.example"].sort().join(",")
+    );
+    expectEq("וההגדרה כן נשמרה", org?.settings?.contractAlertDays, 55);
   }
 
-  // -- 7. memberships — החור שהכי חשוב לסגור --------------------------------
-  // ⚠️ הרשומה הזו היא מה שקובע לאיזה ארגון הקליינט מקשיב. אם היה אפשר
-  // להצהיר עליה חופשית, כל משתמש היה מפנה את עצמו לארגון של כל אחד — וכל
-  // מנגנון ההזמנות היה מיותר. ההכרעה: הרשומה מותרת **רק אם היא משקפת את
-  // מפת החברים במסמך הארגון**, כלומר היא מצביע נגזר ולא הצהרת חברות.
-  await seedOrgP({ [HILDA_EMAIL]: inviteRec("admin", future()) });
+  // -- 8. memberships — מסמך תיעוד, ולא מקור סמכות ------------------------
+  // הכלל הקודם היה `orgId == request.auth.uid`, כלומר אפשר היה להצהיר על
+  // חברות **רק בארגון של עצמך**; זה גם חסם אדמין שני. עכשיו התנאי הוא
+  // isOrgAdmin — כלומר אותה בדיקת allowlist. אף החלטת הרשאה אינה נשענת על
+  // הרשומה, אבל היא עדיין לא ניתנת לזיוף.
+  await seedOrg([RONEN_EMAIL, HILDA_EMAIL]);
   await expectDenied(
-    "משתמש לא מוזמן לא מצביע על ארגון של אחר",
-    setDoc(doc(dbOutsider, `memberships/${OUTSIDER}`), { uid: OUTSIDER, orgId: "orgP", role: "admin" })
+    "מי שאינו ברשימה לא מצהיר על חברות בארגון של אחר",
+    setDoc(doc(dbOutsider, `memberships/${OUTSIDER}`), { uid: OUTSIDER, orgId: ORG, role: "admin" })
   );
   await expectDenied(
-    "וגם לא בתפקיד driver",
-    setDoc(doc(dbOutsider, `memberships/${OUTSIDER}`), { uid: OUTSIDER, orgId: "orgP", role: "driver" })
+    "וגם לא על הארגון השני שבמסד",
+    setDoc(doc(dbOutsider, `memberships/${OUTSIDER}`), { uid: OUTSIDER, orgId: "orgOther", role: "admin" })
   );
   await expectDenied(
-    "**הזמנה לבדה אינה חברות** — לפני התביעה הרשומה נדחית",
-    setDoc(doc(dbHilda, `memberships/${HILDA}`), { uid: HILDA, orgId: "orgP", role: "admin" })
+    "מייל לא מאומת לא כותב רשומת חברות",
+    setDoc(doc(dbHildaUnv, "memberships/hildaUnverifiedUid"), { orgId: ORG, role: "admin" })
   );
   await expectDenied(
     "אין כתיבה לרשומה של משתמש אחר",
-    setDoc(doc(dbHilda, "memberships/adminP"), { uid: "adminP", orgId: "orgP", role: "admin" })
+    setDoc(doc(dbHilda, `memberships/${RONEN}`), { uid: RONEN, orgId: ORG, role: "admin" })
   );
   await expectDenied(
     "אין הצהרה על ארגון שאינו קיים",
     setDoc(doc(dbHilda, `memberships/${HILDA}`), { uid: HILDA, orgId: "noSuchOrg", role: "admin" })
   );
-  await expectDenied(
-    "אדמין לא מצהיר על תפקיד שאינו שלו",
-    setDoc(doc(dbAdminP, "memberships/adminP"), { uid: "adminP", orgId: "orgP", role: "driver" })
-  );
   await expectAllowed(
-    "אדמין קיים כותב רשומה שמשקפת את המפה",
-    setDoc(doc(dbAdminP, "memberships/adminP"), { uid: "adminP", orgId: "orgP", role: "admin" })
+    "אדמין ב-allowlist כן כותב את הרשומה שלו",
+    setDoc(doc(dbHilda, `memberships/${HILDA}`), { uid: HILDA, orgId: ORG, role: "admin" })
   );
-  await expectAllowed("תביעה", claim(dbHilda, HILDA, HILDA_EMAIL, "admin"));
-  await expectAllowed(
-    "אחרי התביעה — הרשומה כן נכתבת",
-    setDoc(doc(dbHilda, `memberships/${HILDA}`), { uid: HILDA, orgId: "orgP", role: "admin" })
-  );
-  await expectAllowed("וקוראת רק לעצמו", getDoc(doc(dbHilda, `memberships/${HILDA}`)));
-  await expectDenied("ולא לאחרים", getDoc(doc(dbHilda, "memberships/adminP")));
+  await expectAllowed("וקורא רק את שלו", getDoc(doc(dbHilda, `memberships/${HILDA}`)));
+  await expectDenied("ולא של אחרים", getDoc(doc(dbHilda, `memberships/${RONEN}`)));
 
-  // -- 8. הסרת אדמין, והאיסור על הסרה עצמית --------------------------------
-  // ארגון בלי אף אדמין הוא מצב שאין ממנו דרך חזרה. ספירת אדמינים במפה אינה
-  // ניתנת לביטוי ב-rules; "הכותב נשאר admin אחרי הכתיבה" **כן** — ולכן
-  // המצב הזה בלתי-אפשרי מבנית ולא רק חסום ב-UI.
-  await seedOrgP({}, { adminP: "admin", [HILDA]: "admin" });
-  await expectDenied(
-    "אדמין לא מסיר את עצמו",
-    updateDoc(doc(dbAdminP, "orgs/orgP"), new FieldPath("org", "members", "adminP"), deleteField())
-  );
-  await expectDenied(
-    "אדמין לא מוריד את עצמו לתפקיד driver",
-    updateDoc(doc(dbAdminP, "orgs/orgP"), new FieldPath("org", "members", "adminP"), "driver")
-  );
-  await expectDenied(
-    "אדמין לא מוחק את מפת החברים כולה",
-    updateDoc(doc(dbAdminP, "orgs/orgP"), new FieldPath("org", "members"), {})
-  );
-  await expectAllowed(
-    "אדמין כן מסיר אדמין אחר",
-    updateDoc(doc(dbAdminP, "orgs/orgP"), new FieldPath("org", "members", HILDA), deleteField())
-  );
-  await expectDenied("ומי שהוסר מאבד גישה מיד", getDoc(doc(dbHilda, "orgs/orgP")));
-  await expectDenied(
-    "ומי שהוסר לא מחזיר את עצמו",
-    updateDoc(doc(dbHilda, "orgs/orgP"), new FieldPath("org", "members", HILDA), "admin")
-  );
-
-  // -- 9. אוסף הגילוי invites/{email} --------------------------------------
-  await seedOrgP({ [HILDA_EMAIL]: inviteRec("admin", future()) });
-  const pointer = (over = {}) => ({
-    email: HILDA_EMAIL,
-    orgId: "orgP",
-    orgName: "צי בדיקה P",
-    role: "admin",
-    invitedBy: "adminP",
-    invitedAt: new Date().toISOString(),
-    expiresAt: future(),
-    ...over,
-  });
-  await expectAllowed("אדמין יוצר מצביע הזמנה", setDoc(doc(dbAdminP, `invites/${HILDA_EMAIL}`), pointer()));
-  await expectAllowed("המוזמנת קוראת את המצביע שלה", getDoc(doc(dbHilda, `invites/${HILDA_EMAIL}`)));
-  await expectAllowed("האדמין קורא את המצביע שיצר", getDoc(doc(dbAdminP, `invites/${HILDA_EMAIL}`)));
-  await expectDenied("מישהו אחר לא קורא את המצביע", getDoc(doc(dbOutsider, `invites/${HILDA_EMAIL}`)));
-  await expectDenied(
-    "מייל לא מאומת לא קורא את המצביע שלו",
-    getDoc(doc(dbHildaUnv, `invites/${HILDA_EMAIL}`))
-  );
-  await expectDenied(
-    "מי שאינו אדמין לא יוצר מצביע לארגון של אחר",
-    setDoc(doc(dbOutsider, `invites/${OUTSIDER_EMAIL}`), pointer({ email: OUTSIDER_EMAIL }))
-  );
-  await expectDenied(
-    "המוזמנת עצמה לא יוצרת את המצביע שלה",
-    setDoc(doc(dbHilda, `invites/${HILDA_EMAIL}`), pointer())
-  );
-  await expectDenied(
-    "מצביע שבו שדה המייל אינו ה-id — נדחה",
-    setDoc(doc(dbAdminP, `invites/${HILDA_EMAIL}`), pointer({ email: OUTSIDER_EMAIL }))
-  );
-  await expectDenied(
-    "מצביע עם שדה עודף — נדחה",
-    setDoc(doc(dbAdminP, `invites/${HILDA_EMAIL}`), { ...pointer(), isSuperAdmin: true })
-  );
-  await expectDenied(
-    "מצביע בלי expiresAt — נדחה",
-    setDoc(doc(dbAdminP, `invites/${HILDA_EMAIL}`), { email: HILDA_EMAIL, orgId: "orgP", role: "admin" })
-  );
-  await expectDenied(
-    "מצביע עם id באותיות גדולות — נדחה",
-    setDoc(doc(dbAdminP, `invites/${HILDA_EMAIL.toUpperCase()}`), pointer({ email: HILDA_EMAIL.toUpperCase() }))
-  );
-  await expectAllowed("המוזמנת מוחקת את המצביע שלה", deleteDoc(doc(dbHilda, `invites/${HILDA_EMAIL}`)));
-  await expectAllowed("ואדמין יוצר אותו מחדש", setDoc(doc(dbAdminP, `invites/${HILDA_EMAIL}`), pointer()));
-  await expectDenied("ומי שאינו קשור לא מוחק אותו", deleteDoc(doc(dbOutsider, `invites/${HILDA_EMAIL}`)));
-  await expectAllowed("והאדמין מבטל אותו", deleteDoc(doc(dbAdminP, `invites/${HILDA_EMAIL}`)));
-
-  // -- 10. קוד הגישה האמיתי, מקצה לקצה ------------------------------------
+  // -- 9. קוד הגישה האמיתי, מקצה לקצה ------------------------------------
   // ⚠️ **זה המקטע שהיה תופס את באג 17.8.** כל הבדיקות שמעליו מפעילות כללים;
   // הבאג היה בקליינט (`orgId = user.uid`), ובדיקת כללים לבדה הייתה עוברת
   // בהצלחה בזמן שהאפליקציה שולחת את מנהלת הכספים למסך הקמה.
-  await seedOrgP({});
+  await seedOrg([RONEN_EMAIL]);
   const hildaUser = { uid: HILDA, email: HILDA_EMAIL, emailVerified: true };
-  const adminPUser = { uid: "adminP", email: "ronen@promall.example", emailVerified: true };
+  const ronenUser = { uid: RONEN, email: RONEN_EMAIL, emailVerified: true };
+  const cfg = { configuredOrgId: ORG };
 
-  // 10א. **בדיוק המצב בפרודקשן**: אין חברות ואין הזמנה.
-  const before = await resolveOrgAccess(dbHilda, hildaUser);
-  expectEq("(הבאג) אין ארגון ואין הזמנה ⇒ 'none' ולא ארגון חדש", before.status, "none");
+  // 9א. **בדיוק המצב בפרודקשן**: היא מחוברת, אבל אינה ברשימה.
+  const before = await resolveOrgAccess(dbHilda, hildaUser, cfg);
+  expectEq("(הבאג) לא ברשימה ⇒ 'none' — מסך 'פנה למנהל', לא הקמה", before.status, "none");
   expectEq("(הבאג) ואין orgId להאזין לו", before.orgId, null);
   expectEq("(הבאג) וזו אינה שגיאה", before.error, null);
+  expectTrue("(הבאג) ובשום מצב לא 'bootstrap'", before.status !== "bootstrap");
 
-  // 10ב. האדמין הקיים מזמין — דרך הקוד האמיתי, שני המסמכים.
-  const sent = await sendInvite(dbAdminP, {
-    orgId: "orgP",
-    orgName: "צי בדיקה P",
-    email: HILDA_EMAIL,
-    role: "admin",
-    invitedBy: "adminP",
-  });
-  expectTrue("sendInvite הצליח (מסמך הארגון + מצביע הגילוי)", sent.ok);
+  // 9ב. האדמין המקורי מוסיף אותה — דרך הקוד האמיתי.
+  const orgNow = await readOrg(dbRonen);
+  const added = await addAdminEmail(dbRonen, { orgId: ORG, org: orgNow.org, email: "HildaVazana@Gmail.Example" });
+  expectTrue("addAdminEmail הצליח", added.ok);
+  {
+    const org = await readOrg(dbRonen);
+    expectEq(
+      "והכתובת נשמרה מנורמלת ל-lowercase",
+      (org?.org?.adminEmails || []).slice().sort().join(","),
+      [HILDA_EMAIL, RONEN_EMAIL].sort().join(",")
+    );
+  }
 
-  // 10ג. עכשיו היא רואה "יש לך הזמנה" ולא מסך הקמה.
-  const invited = await resolveOrgAccess(dbHilda, hildaUser);
-  expectEq("אחרי ההזמנה — status 'invited'", invited.status, "invited");
-  expectEq("וההזמנה מצביעה על הארגון הנכון", invited.invite?.orgId || null, "orgP");
-  expectEq("ובתפקיד שהאדמין קבע", invited.invite?.role || null, "admin");
+  // 9ג. **הגזירה**: אותו orgId לשניהם, ולא ה-uid של אף אחד מהם.
+  const member = await resolveOrgAccess(dbHilda, hildaUser, cfg);
+  expectEq("אחרי ההוספה — status 'member'", member.status, "member");
+  expectEq("וה-orgId הוא הארגון הקיים", member.orgId, ORG);
+  expectTrue("וה-orgId **אינו** ה-uid שלה — זה בדיוק מה שהיה קשיח", member.orgId !== HILDA);
+  const ronenAccess = await resolveOrgAccess(dbRonen, ronenUser, cfg);
+  expectEq("והאדמין המקורי — ללא רגרסיה", ronenAccess.status, "member");
+  expectEq("ועל אותו ארגון בדיוק", ronenAccess.orgId, ORG);
 
-  // 10ד. התביעה.
-  const claimed = await claimInvite(dbHilda, hildaUser, invited.invite);
-  expectTrue("claimInvite הצליח", claimed.ok);
-
-  // 10ה. **הגזירה**: ה-orgId הוא של הארגון, לא ה-uid שלה. זה כל הבאג.
-  const member = await resolveOrgAccess(dbHilda, hildaUser);
-  expectEq("אחרי התביעה — status 'member'", member.status, "member");
-  expectEq("וה-orgId הוא הארגון הקיים ולא ה-uid שלה", member.orgId, "orgP");
-  expectTrue("וה-orgId **אינו** ה-uid — זה בדיוק מה שהיה קשיח", member.orgId !== HILDA);
-
-  // 10ו. ומכאן זרימת הנתונים הרגילה עובדת, כולל D1.
+  // 9ד. ומכאן זרימת הנתונים הרגילה עובדת, כולל D1.
   {
     const ev = { missing: 0, data: [], errors: [] };
     const stop = await startOrgSync(dbHilda, member.orgId, {
@@ -912,64 +827,54 @@ section("(ו) אדמין שני — תביעת הזמנה לפי מייל מאו
       onError: (err, phase) => ev.errors.push({ code: err?.code || String(err), phase }),
     });
     const got = await waitFor(() => ev.data.length > 0, { timeoutMs: 8000 });
-    expectTrue("האדמין החדש מקבל את נתוני הצי", got);
+    expectTrue("האדמין השני מקבל את נתוני הצי", got);
     expectEq("בלי שגיאות", ev.errors.length, 0);
     expectEq("ובלי onMissing (הארגון קיים)", ev.missing, 0);
     const live = ev.data[ev.data.length - 1];
     expectEq("שם הארגון הנכון", live?.org?.name || null, "צי בדיקה P");
     expectTrue("הרכבים הגיעו", (live?.vehicles?.length || 0) >= 1);
-    expectEq("וגם המסמך הפרטי (D1) — הוא אדמין מלא", live?.vehiclesPrivate?.length, 1);
-    expectEq("מפת החברים כוללת את שניהם", Object.keys(live?.org?.members || {}).sort().join(","), "adminP,hildaUid");
-    expectEq("וההזמנה נצרכה", listInvites(live?.org || {}).length, 0);
+    expectEq("וגם המסמך הפרטי (D1) — אדמין מלא", live?.vehiclesPrivate?.length, 1);
+    expectEq("ושתי הכתובות ב-allowlist", (live?.org?.adminEmails || []).length, 2);
     stop();
-    // ורשומת החברות נכתבה על **ה-uid שלה**, לא על ה-orgId (הבאג ב-startOrgSync).
-    const ms = await getDoc(doc(dbHilda, `memberships/${HILDA}`));
-    expectTrue("רשומת החברות נכתבה עבורה", ms.exists());
-    expectEq("והיא מצביעה על הארגון הקיים", ms.data()?.orgId || null, "orgP");
   }
 
-  // 10ז. האדמין המקורי — ללא רגרסיה.
-  const adminAccess = await resolveOrgAccess(dbAdminP, adminPUser);
-  expectEq("האדמין המקורי נשאר member", adminAccess.status, "member");
-  expectEq("ועל אותו ארגון", adminAccess.orgId, "orgP");
-
-  // 10ח. תאימות לאחור: ארגון שבו orgId === uid ואין רשומת חברות בכלל.
-  const soloAccess = await resolveOrgAccess(dbSolo, { uid: SOLO, email: "solo@x.example", emailVerified: true });
-  expectEq("יוצר ארגון בלי רשומת חברות — נמצא לפי orgs/{uid}", soloAccess.status, "member");
-  expectEq("וה-orgId הוא ה-uid שלו", soloAccess.orgId, SOLO);
-
-  // 10ט. זר גמור — 'none', ולא שגיאה ולא הקמה.
-  const outsiderAccess = await resolveOrgAccess(dbOutsider, {
-    uid: OUTSIDER,
-    email: OUTSIDER_EMAIL,
-    emailVerified: true,
-  });
-  expectEq("זר — status 'none'", outsiderAccess.status, "none");
-  expectEq("ובלי שגיאה", outsiderAccess.error, null);
-
-  // 10י. ביטול והסרה דרך הקוד האמיתי.
-  const sent2 = await sendInvite(dbAdminP, { orgId: "orgP", orgName: "צי בדיקה P", email: OUTSIDER_EMAIL, invitedBy: "adminP" });
-  expectTrue("sendInvite שני הצליח", sent2.ok);
-  const revoked = await revokeInvite(dbAdminP, { orgId: "orgP", email: OUTSIDER_EMAIL });
-  expectTrue("revokeInvite הצליח", revoked.ok);
+  // 9ה. הסרה דרך הקוד האמיתי, וההגנה על האחרון.
   {
-    const after = await getDoc(doc(dbAdminP, "orgs/orgP"));
-    expectEq("ההזמנה נמחקה מהמפה (deleteField, לא merge)", Object.keys(after.data()?.org?.invites || {}).length, 0);
+    const org = (await readOrg(dbRonen)).org;
+    const removed = await removeAdminEmail(dbRonen, { orgId: ORG, org, email: HILDA_EMAIL });
+    expectTrue("removeAdminEmail הצליח", removed.ok);
+    const afterRemove = await resolveOrgAccess(dbHilda, hildaUser, cfg);
+    expectEq("ומי שהוסר חוזר ל-'none' מיד", afterRemove.status, "none");
+    const org2 = (await readOrg(dbRonen)).org;
+    const last = await removeAdminEmail(dbRonen, { orgId: ORG, org: org2, email: RONEN_EMAIL });
+    expectEq("והאדמין האחרון נחסם גם בקוד האמיתי", last.ok, false);
+    expectEq("עם הסיבה הנכונה", last.errorKey, "team.err.lastAdmin");
   }
-  const revokedOutsider = await resolveOrgAccess(dbOutsider, {
-    uid: OUTSIDER,
-    email: OUTSIDER_EMAIL,
-    emailVerified: true,
-  });
-  expectEq("ומי שבוטל חוזר ל-'none'", revokedOutsider.status, "none");
-  const removed = await removeMember(dbAdminP, { orgId: "orgP", uid: HILDA });
-  expectTrue("removeMember הצליח", removed.ok);
-  const selfRemove = await removeMember(dbAdminP, { orgId: "orgP", uid: "adminP" });
-  expectEq("הסרה עצמית נדחית גם דרך הקוד האמיתי", selfRemove.ok, false);
+
+  // 9ו. `bootstrap` — **המסלול היחיד** ל-onboarding: אין דגל build, ומזהה
+  //     הארגון הוא ה-uid שלנו, כלומר התקנה חדשה שאין למי לפנות בה.
   {
-    const after = await getDoc(doc(dbAdminP, "orgs/orgP"));
-    expectEq("נשאר אדמין אחד — האדמין המקורי", Object.keys(after.data()?.org?.members || {}).join(","), "adminP");
+    const fresh = { uid: "brandNewUid", email: "new@x.example", emailVerified: true };
+    const dbFresh = testEnv.authenticatedContext(fresh.uid, { email: fresh.email, email_verified: true }).firestore();
+    const boot = await resolveOrgAccess(dbFresh, fresh, { configuredOrgId: null });
+    expectEq("בלי דגל build ובלי מסמך — 'bootstrap'", boot.status, "bootstrap");
+    expectEq("וה-orgId הוא ה-uid שלו", boot.orgId, fresh.uid);
+    // ⚠️ ועם דגל build שמצביע על ארגון של מישהו אחר — **לא** bootstrap.
+    const notMine = await resolveOrgAccess(dbFresh, fresh, cfg);
+    expectEq("עם דגל build לארגון של אחר — 'none' ולא 'bootstrap'", notMine.status, "none");
   }
+
+  // 9ז. ארגון שבו orgId === uid ויש דגל build — נפתר כרגיל.
+  const soloAccess = await resolveOrgAccess(dbSolo, { uid: SOLO, email: "solo@x.example", emailVerified: true }, {
+    configuredOrgId: SOLO,
+  });
+  expectEq("orgId === uid עם דגל build — 'member'", soloAccess.status, "member");
+  expectEq("ועל הארגון שלו", soloAccess.orgId, SOLO);
+  // ואותו משתמש **אינו** אדמין בארגון האחר, גם אם יכוון אליו.
+  const soloElsewhere = await resolveOrgAccess(dbSolo, { uid: SOLO, email: "solo@x.example", emailVerified: true }, {
+    configuredOrgId: "orgOther",
+  });
+  expectEq("ואינו נכנס לארגון אחר בכוח הדגל", soloElsewhere.status, "none");
 }
 
 await testEnv.cleanup();

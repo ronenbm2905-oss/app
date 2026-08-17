@@ -7,12 +7,19 @@ export const CLUB_PICKUP_POINT = "אולם עלומים, הכפר 2, קריית 
 // Vehicle-size options for transport (seats).
 export const VEHICLE_TYPES = ["16", "20"];
 
+// Session types, each carrying its own colour on the board. Edited here rather than in
+// the app — see the note in the vault: this list, and the club-specific entries in it,
+// belong in club settings. Until then, adding a type is a one-line change here.
+//
+// `id` doubles as the stored value on a session, so renaming an entry orphans every
+// session already using it. Add new ones; do not rename in place.
 export const SESSION_TYPES = [
   { id: "אימון", name: "אימון", color: "#57534E" },
   { id: "משחק בית", name: "משחק בית", color: "#16A34A" },
   { id: "משחק חוץ", name: "משחק חוץ", color: "#0EA5E9" },
   { id: "ספורטתרפיה", name: "ספורטתרפיה", color: "#9333EA" },
   { id: "יורם", name: "יורם", color: "#CA8A04" },
+  { id: "חד\"כ", name: "חד\"כ", color: "#0D9488" },
 ];
 
 export const COLORS = [

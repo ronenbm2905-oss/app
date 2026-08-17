@@ -45,9 +45,10 @@ function withDefaults(raw) {
 // ואילו השלימה אותו היה נוצר ארגון שני עם אפס רכבים. ולא הייתה שום עקיפה
 // ידנית: גם הוספה של ה-uid שלה ל-`org.members` בקונסול לא הייתה עוזרת, כי
 // הקליינט בכלל לא היה מבקש את הארגון הנכון.
-//   התיקון: ה-orgId **מתקבל מבחוץ**, מ-useOrgAccess, שגוזר אותו מ-
-//   `memberships/{uid}.orgId`. ליוצר הארגון זה יוצא אותו ערך (orgId === uid)
-//   ולכן אין רגרסיה; לאדמין שני זה הארגון האמיתי.
+//   התיקון: ה-orgId **מתקבל מבחוץ**, מ-useOrgAccess, שלוקח אותו מדגל
+//   ה-build `VITE_FLEET_ORG_ID` (הדפוס של `CLUB_ID` ב-basketball-scheduler).
+//   הערך בפרודקשן הוא מזהה הארגון הקיים, ולכן **אין הגירת נתונים** ואין
+//   רגרסיה ליוצר הארגון; ולאדמין שני זה פשוט אותו ארגון.
 //   וכל עוד ה-orgId עוד לא ידוע — **אף מאזין לא נפתח.** זה בדיוק הרצף
 //   שנשבר ב-16.8, ואין ליצור אותו מחדש.
 // ============================================================================
@@ -169,6 +170,9 @@ export function useData(user, orgId = null) {
       try {
         await writeOrgDiff(db, activeOrgId, prev, next, {
           selfUid: user.uid,
+          // אכלוס ראשוני של ה-allowlist בשמירה הראשונה — גשר ההגירה שנסגר
+          // מעצמו על מסמך הארגון שנוצר לפני 17.8 (ראה writeOrgDiff).
+          selfEmail: user.emailVerified ? user.email : null,
           ensureRoot: creating,
         });
         if (creating) {

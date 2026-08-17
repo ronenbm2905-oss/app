@@ -36,9 +36,28 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    // ⚠️ 17.8 — הבידוד נשען על **`org.adminEmails`** (allowlist של מיילים
+    // מאומתים) במסמך orgs/{orgId} ב-Firestore, בדיוק כמו ב-firestore.rules.
+    // מפת `members` נשארת כמסלול legacy כדי שה-deploy לא ינעל את המשתמש
+    // מחוץ למסמך הארגון הקיים, שאינו מכיל עוד `adminEmails`.
+    //
+    // `.get(...)` ולא גישה ישירה: לטוקן אנונימי אין `email`, ולמפת members
+    // אין בהכרח את ה-uid — וגישה ישירה מפילה את הערכת הכלל במקום להחזיר
+    // "לא מורשה" (וזו הייתה שגיאת ההערכה שנצפתה כאן ב-17.8).
+    function orgFields(orgId) {
+      return firestore.get(/databases/(default)/documents/orgs/$(orgId)).data.org;
+    }
+
     function isOrgAdmin(orgId) {
       return isSignedIn()
-        && firestore.get(/databases/(default)/documents/orgs/$(orgId)).data.org.members[request.auth.uid] == 'admin';
+        && (
+          (
+            request.auth.token.get('email_verified', false) == true
+            && request.auth.token.get('email', '').lower() != ''
+            && request.auth.token.get('email', '').lower() in orgFields(orgId).get('adminEmails', [])
+          )
+          || orgFields(orgId).get('members', {}).get(request.auth.uid, '') == 'admin'
+        );
     }
 
     // מגבלות העלאה: סוגי קבצים מותרים בלבד, עד 10MB.

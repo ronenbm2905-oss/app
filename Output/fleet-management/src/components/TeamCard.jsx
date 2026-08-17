@@ -1,37 +1,41 @@
 import { useState } from "react";
-import { UserPlus, Trash2, ShieldCheck, Clock, AlertTriangle, XCircle } from "lucide-react";
+import { UserPlus, Trash2, ShieldCheck, AlertTriangle, Lock } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import Card from "./ui/Card.jsx";
 import Button from "./ui/Button.jsx";
 import Field, { TextInput } from "./ui/Field.jsx";
 import Pill from "./ui/Pill.jsx";
-import { formatDate } from "../utils/format.js";
-import { listInvites, listMembers, INVITE_TTL_DAYS } from "../utils/invites.js";
+import { adminEmails, normalizeEmail } from "../utils/admins.js";
 
 // ============================================================================
-// TeamCard — ניהול האדמינים: הוספת מייל להזמנה, הממתינים, הקיימים, ביטול.
+// TeamCard — ניהול האדמינים: הוספת מייל, הסרה, ורשימת המורשים הנוכחיים.
+//
+// זו הפעולה שהמשתמש חיפש ולא מצא. בלעדיה הדרך היחידה "להוסיף אדמין" הייתה
+// לשלוח את הקישור ולקוות — ומי שקיבלה אותו קיבלה מסך הקמה ראשונית.
 //
 // למה **מייל** ולא uid: אדמין אינו יכול לדעת את ה-uid של מי שעוד לא נכנס
 // למערכת. המייל הוא הדבר היחיד שהוא כן יודע.
-// ⚠️ ובכל זאת **הבידוד עצמו נשאר לפי uid בלבד** (F1 של עדי): המייל הוא מפתח
-// חד-פעמי לתביעת ההזמנה, והרשומה נמחקת ברגע שנתבעה. הטבלה למטה מציגה uid-ים,
-// כי זו הזהות שההרשאות באמת נשענות עליה.
+// ⚠️ הגבול, ודרישת F1 של עדי: זה **לאדמינים בלבד**. הבידוד של הנהגים בפרוסה 2
+// יישאר לפי `uid` — שם יושב ה-PII הפרטני, ושם החלפת מייל עבודה אינה סיכון
+// מקובל. כאן מדובר בקבוצה קטנה ומוכרת.
 //
 // אין כאן שליחת מייל: התוכנית על Spark, אין Cloud Functions ואין שרת שישלח.
-// האדמין מוסיף את הכתובת ו**מוסר את הקישור בעצמו** — וזה בדיוק מה שקרה בפועל
-// (המשתמש שלח את הקישור ב-WhatsApp). המסך אומר את זה במפורש.
+// האדמין מוסיף כתובת ו**מוסר את הקישור בעצמו** — וזה בדיוק מה שקרה בפועל.
 // ============================================================================
 export function TeamCard({ data, user, team }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const org = data?.org || null;
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState(null);
   const [okMsg, setOkMsg] = useState(null);
 
-  const invites = listInvites(org);
-  const members = listMembers(org);
-  const selfUid = user?.uid || null;
+  const list = adminEmails(org);
+  const selfEmail = normalizeEmail(user?.email);
+  // ⚠️ המצב שאחרי ה-deploy הראשון: המסמך בענן עדיין בלי `adminEmails`, והגישה
+  // מגיעה ממסלול ה-legacy (`org.members[uid]`). אם לא נאמר את זה בפירוש,
+  // האדמין רואה רשימה ריקה, מניח שהמסך שבור, ולא מוסיף את עצמו.
+  const selfMissing = Boolean(selfEmail) && !list.includes(selfEmail);
 
   const run = async (fn) => {
     setBusy(true);
@@ -43,8 +47,8 @@ export function TeamCard({ data, user, team }) {
     return res;
   };
 
-  const add = async () => {
-    const res = await run(() => team.invite({ email, role: "admin" }));
+  const add = async (value) => {
+    const res = await run(() => team.add({ email: value }));
     if (res?.ok) {
       setEmail("");
       setOkMsg("team.added");
@@ -53,9 +57,24 @@ export function TeamCard({ data, user, team }) {
 
   return (
     <Card title={t("team.title")}>
-      <p className="text-xs leading-relaxed text-slate-600">
-        {t("team.intro", { days: INVITE_TTL_DAYS })}
-      </p>
+      <p className="text-xs leading-relaxed text-slate-600">{t("team.intro")}</p>
+
+      {selfMissing && (
+        <p className="mt-3 flex items-start gap-1.5 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>
+            {t("team.selfMissing")}{" "}
+            <button
+              type="button"
+              className="font-semibold underline"
+              disabled={busy}
+              onClick={() => add(selfEmail)}
+            >
+              {t("team.addSelf")}
+            </button>
+          </span>
+        </p>
+      )}
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
         <Field label={t("team.emailLabel")} className="flex-1">
@@ -66,11 +85,11 @@ export function TeamCard({ data, user, team }) {
             placeholder="name@company.co.il"
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") add();
+              if (e.key === "Enter") add(email);
             }}
           />
         </Field>
-        <Button onClick={add} disabled={busy || !email.trim()}>
+        <Button onClick={() => add(email)} disabled={busy || !email.trim()}>
           <UserPlus size={14} /> {t("team.add")}
         </Button>
       </div>
@@ -87,85 +106,51 @@ export function TeamCard({ data, user, team }) {
         </p>
       )}
 
-      {/* -- ממתינים ------------------------------------------------------- */}
-      <h3 className="mt-5 text-xs font-semibold text-slate-700">{t("team.pending")}</h3>
-      {invites.length ? (
+      {/* -- הרשימה הנוכחית ------------------------------------------------ */}
+      <h3 className="mt-5 text-xs font-semibold text-slate-700">
+        {t("team.current", { n: list.length })}
+      </h3>
+      {list.length ? (
         <ul className="mt-2 divide-y divide-slate-100 rounded border border-slate-200">
-          {invites.map((inv) => (
-            <li key={inv.email} className="flex items-center justify-between gap-2 px-3 py-2">
-              <div className="min-w-0">
-                <p className="num truncate text-xs font-medium text-slate-800" dir="ltr">
-                  {inv.email}
-                </p>
-                <p className="num mt-0.5 text-[11px] text-slate-500">
-                  {inv.expired
-                    ? t("team.expiredAt", { date: formatDate(new Date(inv.expiresAt || 0).toISOString(), lang) })
-                    : t("team.expiresAt", { date: formatDate(new Date(inv.expiresAt || 0).toISOString(), lang) })}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <Pill className="gap-1" tone={inv.expired ? "red" : "amber"}>
-                  {inv.expired ? <XCircle size={11} /> : <Clock size={11} />}
-                  {inv.expired ? t("team.expired") : t(`role.${inv.role || "admin"}`)}
-                </Pill>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={t("team.revoke")}
-                  disabled={busy}
-                  onClick={() => {
-                    if (window.confirm(t("team.revokeConfirm"))) run(() => team.revoke(inv.email));
-                  }}
-                >
-                  <Trash2 size={13} />
-                </Button>
-              </div>
-            </li>
-          ))}
+          {list.map((e) => {
+            // האדמין האחרון אינו ניתן להסרה — לא כנימוס אלא כי ארגון בלי
+            // אדמין הוא ארגון אבוד. אותה בדיקה נאכפת ב-firestore.rules.
+            const isLast = list.length <= 1;
+            return (
+              <li key={e} className="flex items-center justify-between gap-2 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="num truncate text-xs font-medium text-slate-800" dir="ltr">
+                    {e}
+                  </p>
+                  {e === selfEmail && <p className="mt-0.5 text-[11px] text-slate-500">{t("team.you")}</p>}
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Pill className="gap-1" tone="green">
+                    <ShieldCheck size={11} />
+                    {t("role.admin")}
+                  </Pill>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={t("team.remove")}
+                    disabled={busy || isLast}
+                    title={isLast ? t("team.err.lastAdmin") : undefined}
+                    onClick={() => {
+                      if (window.confirm(t("team.removeConfirm", { email: e }))) run(() => team.remove(e));
+                    }}
+                  >
+                    {isLast ? <Lock size={13} /> : <Trash2 size={13} />}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="mt-2 rounded border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
-          {t("team.noPending")}
+          {t("team.empty")}
         </p>
       )}
-
-      {/* -- החברים הקיימים ------------------------------------------------ */}
-      <h3 className="mt-5 text-xs font-semibold text-slate-700">{t("team.members")}</h3>
-      <ul className="mt-2 divide-y divide-slate-100 rounded border border-slate-200">
-        {members.map((m) => (
-          <li key={m.uid} className="flex items-center justify-between gap-2 px-3 py-2">
-            <div className="min-w-0">
-              <p className="num truncate text-xs font-medium text-slate-800" dir="ltr">
-                {m.uid}
-                {m.uid === selfUid && (
-                  <span className="ms-1.5 font-normal text-slate-500">({t("team.you")})</span>
-                )}
-              </p>
-              <p className="mt-0.5 text-[11px] text-slate-500">{t(`role.${m.role}`)}</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <Pill className="gap-1" tone={m.role === "admin" ? "green" : "slate"}>
-                <ShieldCheck size={11} />
-                {t(`role.${m.role}`)}
-              </Pill>
-              {/* ההסרה העצמית חסומה בכוונה: ארגון בלי אף אדמין הוא מצב שאין
-                  ממנו דרך חזרה, ו-firestore.rules אוכפות את זה בכל עדכון. */}
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label={t("team.remove")}
-                disabled={busy || m.uid === selfUid}
-                title={m.uid === selfUid ? t("team.err.selfRemove") : undefined}
-                onClick={() => {
-                  if (window.confirm(t("team.removeConfirm"))) run(() => team.remove(m.uid));
-                }}
-              >
-                <Trash2 size={13} />
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
 
       <p className="mt-3 text-[11px] leading-relaxed text-slate-500">{t("team.linkNote")}</p>
     </Card>

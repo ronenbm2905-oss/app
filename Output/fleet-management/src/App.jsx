@@ -9,7 +9,6 @@ import { useTeam } from "./hooks/useTeam.js";
 import { isFirebaseConfigured } from "./firebase.js";
 import TopBar from "./components/TopBar.jsx";
 import LoginPage from "./components/LoginPage.jsx";
-import JoinOrgScreen from "./components/JoinOrgScreen.jsx";
 import NoAccessScreen from "./components/NoAccessScreen.jsx";
 import Onboarding from "./components/Onboarding.jsx";
 import VehicleLobby from "./components/VehicleLobby.jsx";
@@ -40,7 +39,7 @@ export default function App() {
   const { data, orgId, update, loading, error, resetLocal } = useData(user, access.orgId);
   // actor — מי ביצע את הפעולה, נרשם בשרשרת הראיות של שיוך קנס (D5).
   const actions = useActions(update, orgId, user?.uid || null);
-  const team = useTeam({ orgId, data, user, update });
+  const team = useTeam({ orgId, data, update });
 
   // ניווט פשוט ב-state (בלי router — 6 מסכים, שני מסכי-עומק).
   const [view, setView] = useState("dashboard");
@@ -67,39 +66,18 @@ export default function App() {
     );
   // -- שער הגישה: מה קורה **לפני** שיש orgId ------------------------------
   if (access.status === "loading") return <Splash text={t("common.loading")} />;
-  if (access.status === "error")
+  // ⚠️ אין הרשאה → "פנה למנהל המערכת". זה בדיוק המצב שבו מנהלת הכספים קיבלה
+  // מסך הקמה ראשונית, שאילו השלימה היה יוצר ארגון שני נפרד עם אפס רכבים.
+  // ההקמה מגיעה **רק** ב-status 'bootstrap' — כשמזהה הארגון הוא ה-uid שלנו
+  // והמסמך באמת אינו קיים, כלומר התקנה חדשה שאין למי לפנות בה.
+  if (access.status === "none" || access.status === "error")
     return (
       <NoAccessScreen
         user={user}
         emailVerified={access.emailVerified}
+        isError={access.status === "error"}
         onRetry={access.retry}
         onSignOut={signOut}
-        onCreateOrg={access.startBootstrap}
-      />
-    );
-  // יש הזמנה ממתינה → "צורף לארגון", **לא** מסך הקמה.
-  if (access.status === "invited")
-    return (
-      <JoinOrgScreen
-        user={user}
-        invite={access.invite}
-        joining={access.joining}
-        onJoin={access.join}
-        onSignOut={signOut}
-      />
-    );
-  // ⚠️ אין חברות ואין הזמנה → "פנה למנהל המערכת". זה בדיוק המצב שבו מנהלת
-  // הכספים קיבלה מסך הקמה ראשונית, שאילו השלימה היה יוצר ארגון שני נפרד.
-  // ההקמה עדיין נגישה מהמסך הזה — אבל כבחירה מפורשת, אחרי אזהרה.
-  if (access.status === "none")
-    return (
-      <NoAccessScreen
-        user={user}
-        emailVerified={access.emailVerified}
-        staleInvite={access.invite}
-        onRetry={access.retry}
-        onSignOut={signOut}
-        onCreateOrg={access.startBootstrap}
       />
     );
 

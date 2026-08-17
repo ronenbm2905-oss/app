@@ -154,21 +154,25 @@ export async function startOrgSync(db, orgId, { onMissing, onData, onError, self
 // writeOrgDiff — כותב רק את מה שהשתנה בין prev ל-next, מסמך-מסמך.
 // כך אין דריסה של רשומות שלא נגענו בהן, וכל ישות היא יחידת-הרשאה עצמאית.
 //
-// ⚠️ `setDoc(..., {merge:true})` ממזג מפות ברמת-העלה, ולכן הוא **אינו מוחק
-// מפתחות ממפה**. מכאן שהסרת חבר מ-`org.members` או ביטול הזמנה מ-`org.invites`
-// דרך המודל שבזיכרון "תעבור" בשקט ולא תמחק כלום. שתי הפעולות האלה עוברות
-// דרך `deleteField()` על FieldPath מפורש — ראה orgMembers.js. הצד השני של
-// אותו מטבע הוא יתרון: snapshot מיושן של אדמין א' לא מוחק את אדמין ב'.
+// ⚠️ **`org.adminEmails` לא נכתב מכאן** (למעט אכלוס ראשוני, ראה selfEmail).
+// מערך אינו ממוזג ברמת-העלה אלא **נדרס כשלמותו**, ולכן snapshot מיושן של
+// אדמין א' היה מוחק אדמין ג' שאדמין ב' הוסיף רגע קודם. ה-allowlist נכתב
+// אך ורק דרך `updateDoc` על השדה הבודד — ראה orgMembers.js:setAdminEmails.
 //
 // options:
 //   selfUid   — ה-uid של הכותב. מובטח שהוא יופיע כ-'admin' ב-org.members.
 //               בלי זה **יצירת הארגון נדחית**: כלל ה-create דורש
 //               `request.resource.data.org.members[request.auth.uid] == 'admin'`,
 //               ומפתח חסר במפה מפיל את הערכת הכלל (permission-denied).
+//   selfEmail — המייל של הכותב. משמש **רק לאכלוס ראשוני** של ה-allowlist:
+//               כשהרשימה ריקה (המצב של מסמך הארגון שכבר בענן, שנוצר לפני
+//               17.8), הכתיבה הראשונה מוסיפה את הכותב לרשימה — כלומר גשר
+//               ההגירה נסגר מעצמו בשמירה הראשונה. כשהרשימה **אינה** ריקה
+//               השדה מושמט לגמרי, כדי שלא נדרוס אדמין שנוסף במקביל.
 //   ensureRoot — לכפות כתיבת מסמך השורש גם אם ה-diff לא זיהה שינוי. נדרש
 //               ביצירה: מסמך השורש חייב להיווצר **לפני** תת-האוספים, כי
 //               ה-rules שלהם עושים get() עליו.
-export async function writeOrgDiff(db, orgId, prev, next, { selfUid = null, ensureRoot = false } = {}) {
+export async function writeOrgDiff(db, orgId, prev, next, { selfUid = null, selfEmail = null, ensureRoot = false } = {}) {
   const { doc, setDoc, deleteDoc } = await import("firebase/firestore");
 
   const rootChanged =
@@ -178,10 +182,17 @@ export async function writeOrgDiff(db, orgId, prev, next, { selfUid = null, ensu
   if (rootChanged) {
     const members = { ...(next.org?.members || {}) };
     if (selfUid && members[selfUid] !== "admin") members[selfUid] = "admin";
+
+    const orgPayload = { ...next.org, id: orgId, members };
+    const list = (Array.isArray(next.org?.adminEmails) ? next.org.adminEmails : []).filter(Boolean);
+    const self = String(selfEmail || "").trim().toLowerCase();
+    if (list.length === 0 && self) orgPayload.adminEmails = [self];
+    else delete orgPayload.adminEmails; // לעולם לא כותבים רשימה קיימת מ-snapshot
+
     await setDoc(
       doc(db, "orgs", orgId),
       {
-        org: { ...next.org, id: orgId, members },
+        org: orgPayload,
         settings: next.settings,
         schemaVersion: next.schemaVersion || 1,
       },

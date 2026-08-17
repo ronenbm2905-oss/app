@@ -165,12 +165,18 @@ export const EMPTY = {
     id: null,
     name: "",
     createdAt: null,
-    // members: מיפוי uid→role. בסיס הבידוד ב-rules; בפרוסה 1 יש רק admin.
+    // adminEmails: **allowlist של מיילים** — מודל הגישה של האדמינים (17.8).
+    // מוסיפים כתובת → הבעלים של הכתובת מתחבר עם Google → הוא בפנים. הדפוס
+    // מ-basketball-scheduler, שחי בפרודקשן. נאכף ב-firestore.rules יחד עם
+    // `email_verified == true`, ומוחזק תמיד lowercase.
+    // ⚠️ כתובות **מלאות ומדויקות, מכל ספק** — אין הנחת דומיין ארגוני: מנהלת
+    // הכספים נכנסה דווקא מ-Gmail פרטי. הגבלת דומיין (R-b של עדי) אינה ישימה.
+    // ⚠️ הגבול: זה לאדמינים בלבד. בידוד נהגים בפרוסה 2 יישאר לפי uid (F1).
+    adminEmails: [],
+    // members: מיפוי uid→role. **legacy** — נשאר בסכימה ומוכר ב-rules כמסלול
+    // חלופי, כדי שה-deploy לא ינעל את המשתמש מחוץ למסמך הארגון הקיים, שאינו
+    // מכיל עוד adminEmails. אין קוד חדש שנשען עליו.
     members: {},
-    // invites: מיפוי email→{role,invitedBy,invitedAt,expiresAt} — רשימת
-    // המוזמנים לאדמין שני. **הבידוד עצמו נשאר לפי uid בלבד** (F1); המייל
-    // הוא מפתח חד-פעמי לתביעת ההזמנה, והרשומה נמחקת ברגע שנתבעה.
-    invites: {},
   },
   settings: {
     currency: CURRENCY,

@@ -19,6 +19,28 @@ const cfg = {
 // כשאין config → האפליקציה רצה במצב localStorage (fallback מקומי).
 export const isFirebaseConfigured = Boolean(cfg.apiKey && cfg.projectId);
 
+// ============================================================================
+// CONFIGURED_ORG_ID — **מזהה הארגון, קבוע בזמן build.**
+//
+// הדפוס מ-Output/basketball-scheduler (`firebase.js:34`, חי בפרודקשן):
+//     export const CLUB_ID = import.meta.env.VITE_CLUB_ID || "main";
+// כל המשתמשים פותחים את **אותו** מסמך, והגישה נשלטת ע"י allowlist של מיילים
+// בתוך המסמך. אין מיפוי uid→ארגון, אין הזמנות, אין מצב-ביניים.
+//
+// ⚠️ למה זה מחליף את `user.uid`: עד 17.8 `useData.js:63` היה
+//     const orgId = isFirebaseConfigured ? user?.uid || null : "local";
+// כלומר מזהה הארגון היה ה-uid של מי שמחובר. זה עבד בדיוק למשתמש אחד — מי
+// שיצר את הארגון — וכל uid אחר נשלח ל-`orgs/{ה-uid שלו}`, שאינו קיים, וקיבל
+// **מסך הקמה ראשונית**. זה מה שקרה למנהלת הכספים בפרודקשן; אילו השלימה את
+// המסך היה נוצר ארגון שני נפרד עם אפס רכבים.
+//
+// ⚠️ **אין הגירת נתונים.** הערך בפרודקשן הוא מזהה הארגון הקיים (שהוא ה-uid
+// של מי שהקים אותו), ולכן 36 הרכבים ו-27 הנהגים נשארים במקומם בדיוק.
+//
+// null (הדגל לא הוגדר) = התקנה חדשה: הקליינט נופל חזרה ל-`user.uid`, וכך
+// המשתמש הראשון עוד יכול להקים ארגון. ראה resolveOrgAccess.
+export const CONFIGURED_ORG_ID = env.VITE_FLEET_ORG_ID || null;
+
 const app = isFirebaseConfigured ? initializeApp(cfg) : null;
 export const db = app ? getFirestore(app) : null;
 export const auth = app ? getAuth(app) : null;
