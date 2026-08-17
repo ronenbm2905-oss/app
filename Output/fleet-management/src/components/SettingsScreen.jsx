@@ -5,11 +5,12 @@ import Card from "./ui/Card.jsx";
 import Button from "./ui/Button.jsx";
 import Modal from "./ui/Modal.jsx";
 import Field, { TextInput, NumberInput, TextArea } from "./ui/Field.jsx";
+import TeamCard from "./TeamCard.jsx";
 import { createLeaseCompany } from "../schema.js";
 import { isFirebaseConfigured } from "../firebase.js";
 import { formatDate } from "../utils/format.js";
 
-export function SettingsScreen({ data, orgId, actions, onResetLocal }) {
+export function SettingsScreen({ data, orgId, actions, onResetLocal, user = null, team = null }) {
   const { t, lang } = useI18n();
   const [editing, setEditing] = useState(null);
   const s = data.settings || {};
@@ -45,6 +46,10 @@ export function SettingsScreen({ data, orgId, actions, onResetLocal }) {
           </Field>
         </div>
       </Card>
+
+      {/* אדמין שני (17.8) — הזמנה לפי מייל מאומת. יושב גבוה בהגדרות כי זו
+          הפעולה שהמשתמש חיפש ולא מצא, ובמקומה שלח קישור למי שקיבלה מסך הקמה. */}
+      {team && <TeamCard data={data} user={user} team={team} />}
 
       {/* M3 — הראיה שהשער נחצה. אישור שלא נרשם ולא נראה אינו ראיה. */}
       <Card title={t("settings.importAck.title")}>

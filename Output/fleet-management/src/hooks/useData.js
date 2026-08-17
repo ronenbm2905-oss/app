@@ -38,10 +38,20 @@ function withDefaults(raw) {
 //     3. אחרי שיצירת הארגון **הצליחה** → re-subscribe אוטומטי (attempt),
 //        כי המאזין הקודם לא היה קיים ואין מי שינסה שוב.
 //
-// orgId בפרוסה 1 = uid של האדמין שיצר את הארגון. בפרוסה 2 נהג יגלה את ה-orgId
-// שלו דרך memberships/{uid}, בלי שינוי מבנה.
+// ⚠️ באג פרודקשן 17.8.2026 — **ה-orgId היה `user.uid` קשיח:**
+//     const orgId = isFirebaseConfigured ? user?.uid || null : "local";
+// זה עבד בדיוק למשתמש אחד — מי שיצר את הארגון. אדמין שני (מנהלת הכספים)
+// נשלח ל-`orgs/{ה-uid שלה}`, שאינו קיים → onMissing → **מסך הקמה ראשונית**,
+// ואילו השלימה אותו היה נוצר ארגון שני עם אפס רכבים. ולא הייתה שום עקיפה
+// ידנית: גם הוספה של ה-uid שלה ל-`org.members` בקונסול לא הייתה עוזרת, כי
+// הקליינט בכלל לא היה מבקש את הארגון הנכון.
+//   התיקון: ה-orgId **מתקבל מבחוץ**, מ-useOrgAccess, שגוזר אותו מ-
+//   `memberships/{uid}.orgId`. ליוצר הארגון זה יוצא אותו ערך (orgId === uid)
+//   ולכן אין רגרסיה; לאדמין שני זה הארגון האמיתי.
+//   וכל עוד ה-orgId עוד לא ידוע — **אף מאזין לא נפתח.** זה בדיוק הרצף
+//   שנשבר ב-16.8, ואין ליצור אותו מחדש.
 // ============================================================================
-export function useData(user) {
+export function useData(user, orgId = null) {
   const [data, setData] = useState(() => {
     if (isFirebaseConfigured) return deepClone(EMPTY);
     const raw = localStorage.getItem(LOCAL_KEY);
@@ -57,10 +67,11 @@ export function useData(user) {
   // orgMissingRef — "מחובר, אבל מסמך הארגון עוד לא קיים". מצב תקין: זה
   // בדיוק המצב שבו ה-onboarding הוא המסך הנכון.
   const orgMissingRef = useRef(false);
-  // hydratedUidRef — למי כבר סיימנו טעינה ראשונה. מונע ספלאש ב-re-subscribe.
-  const hydratedUidRef = useRef(null);
+  // hydratedOrgRef — לאיזה ארגון כבר סיימנו טעינה ראשונה. מונע ספלאש
+  // ב-re-subscribe.
+  const hydratedOrgRef = useRef(null);
 
-  const orgId = isFirebaseConfigured ? user?.uid || null : "local";
+  const activeOrgId = isFirebaseConfigured ? orgId || null : "local";
 
   // --- מצב מקומי: אין ענן, טעינה חד-פעמית ---
   useEffect(() => {
@@ -68,26 +79,30 @@ export function useData(user) {
     setLoading(false);
   }, []);
 
-  // --- מצב ענן: סנכרון תת-אוספים, אחרי login **ואחרי שהארגון קיים** ---
+  // --- מצב ענן: סנכרון תת-אוספים, אחרי login **ואחרי שה-orgId ידוע** ---
   useEffect(() => {
     if (!isFirebaseConfigured || !user) return;
-    const uid = user.uid;
+    // אין orgId ⇒ עדיין לא יודעים לאיזה ארגון להאזין (useOrgAccess בעבודה,
+    // או שאין גישה בכלל). **לא נרשמים** — מאזין שנדחה אינו מנסה שוב.
+    if (!activeOrgId) return;
     let unsub = () => {};
     let cancelled = false;
 
-    // ספלאש רק בטעינה הראשונה של המשתמש הזה. ב-re-subscribe שאחרי
+    // ספלאש רק בטעינה הראשונה של הארגון הזה. ב-re-subscribe שאחרי
     // ה-onboarding כבר יש נתונים על המסך — אין סיבה להבהב.
-    if (hydratedUidRef.current !== uid) {
+    if (hydratedOrgRef.current !== activeOrgId) {
       setLoading(true);
       setData(deepClone(EMPTY));
     }
 
-    startOrgSync(db, uid, {
+    startOrgSync(db, activeOrgId, {
+      // selfUid — הרשומה שנכתבת היא **שלנו**, גם כשה-orgId אינו ה-uid שלנו.
+      selfUid: user.uid,
       // אין ארגון — מצב תקין של משתמש חדש: EMPTY, בלי מאזינים ובלי באנר.
       onMissing: () => {
         if (cancelled) return;
         orgMissingRef.current = true;
-        hydratedUidRef.current = uid;
+        hydratedOrgRef.current = activeOrgId;
         setData(deepClone(EMPTY)); // settings.onboarded=false → מסך ההקמה
         setError(null);
         setLoading(false);
@@ -95,7 +110,7 @@ export function useData(user) {
       onData: (assembled) => {
         if (cancelled) return;
         orgMissingRef.current = false;
-        hydratedUidRef.current = uid;
+        hydratedOrgRef.current = activeOrgId;
         setData(assembled);
         setError(null);
         setLoading(false);
@@ -126,7 +141,7 @@ export function useData(user) {
       cancelled = true;
       unsub();
     };
-  }, [user?.uid, attempt]);
+  }, [user?.uid, activeOrgId, attempt]);
 
   // persist מחזיר { ok } — כדי שה-onboarding לא יכריז "נוצר" על כתיבה שנדחתה.
   const persist = useCallback(
@@ -143,7 +158,7 @@ export function useData(user) {
         }
         return { ok: true };
       }
-      if (!user) return { ok: false };
+      if (!user || !activeOrgId) return { ok: false };
 
       // creating — הכתיבה הזו היא **יצירת הארגון**. כאן לא כותבים אופטימית:
       // אם היצירה תידחה, משתמש שנשלח ללובי היה תקוע באפליקציה ריקה עם באנר
@@ -152,7 +167,7 @@ export function useData(user) {
       if (!creating) setData(next);
 
       try {
-        await writeOrgDiff(db, user.uid, prev, next, {
+        await writeOrgDiff(db, activeOrgId, prev, next, {
           selfUid: user.uid,
           ensureRoot: creating,
         });
@@ -172,7 +187,7 @@ export function useData(user) {
         return { ok: false, error: err };
       }
     },
-    [user?.uid]
+    [user?.uid, activeOrgId]
   );
 
   // update(mutator) — מקבל טיוטה של המצב הנוכחי, משנה אותה, ושומר.
@@ -191,5 +206,17 @@ export function useData(user) {
     setData(deepClone(EMPTY));
   }, []);
 
-  return { data, orgId, persist, update, loading, error, setError, resetLocal, canEdit: true };
+  return {
+    data,
+    orgId: activeOrgId,
+    persist,
+    update,
+    // כל עוד ה-orgId לא ידוע אנחנו **בטעינה**, לא ב"אין נתונים": בלי זה
+    // המסך היה מציג לובי ריק לרגע בכל התחברות.
+    loading: loading || (isFirebaseConfigured && Boolean(user) && !activeOrgId),
+    error,
+    setError,
+    resetLocal,
+    canEdit: true,
+  };
 }

@@ -40,10 +40,10 @@ function clone(o) {
 // אסור לפתוח מאזינים לפני שידוע שהארגון קיים; אחרת מקבלים באנר שגיאה קבוע
 // שנשאר גם אחרי שה-onboarding יוצר את הארגון (הבאג של 16.8 בפרודקשן).
 //
-// permission-denied כאן מתורגם ל-"missing" ולא ל-"error": בפרוסה 1
-// orgId === uid, ולכן הדחייה פירושה בפועל "עוד אין לי ארגון" — מצב תקין
-// וצפוי שהמסך שלו הוא ה-onboarding. אם בכל זאת מדובר במסמך קיים שאיננו
-// חברים בו, ניסיון היצירה שאחריו ייכשל ו**זו** תוצג כשגיאה אמיתית.
+// permission-denied כאן מתורגם ל-"missing" ולא ל-"error": מבחינת המשתמש
+// "אין לי ארגון" ו"אין לי גישה לארגון" הם אותו מצב — אין מה להציג. מי
+// שקובע איזה **מסך** מוצג הוא resolveOrgAccess (orgMembers.js): הקמה רק
+// למי שה-orgId שלו הוא ה-uid שלו, ואחרת "פנה למנהל המערכת".
 // שגיאת רשת (unavailable וכו') נשארת שגיאה — לא בולעים הכל.
 // ============================================================================
 export async function probeOrg(db, orgId) {
@@ -117,7 +117,7 @@ export async function subscribeOrg(db, orgId, cb, onError) {
 //
 // מחזיר תמיד פונקציית ניקוי (no-op כשלא נפתחו מאזינים).
 // ============================================================================
-export async function startOrgSync(db, orgId, { onMissing, onData, onError } = {}) {
+export async function startOrgSync(db, orgId, { onMissing, onData, onError, selfUid = null, role = "admin" } = {}) {
   const noop = () => {};
   const probe = await probeOrg(db, orgId);
 
@@ -130,10 +130,16 @@ export async function startOrgSync(db, orgId, { onMissing, onData, onError } = {
     return noop;
   }
 
-  // הארגון קיים והקריאה עברה ⇒ אנחנו האדמין שלו. רק כאן כותבים את רשומת
+  // הארגון קיים והקריאה עברה ⇒ אנחנו חברים בו. רק כאן כותבים את רשומת
   // השיוך; קודם היא נכתבה בכל login — גם למי שאינו אדמין של ארגון, מה
   // שבפרוסה 2 היה דורס את השיוך של נהג.
-  ensureMembership(db, orgId, orgId, "admin").catch((err) =>
+  //
+  // ⚠️ `selfUid` ולא `orgId`: עד 17.8 הרשומה נכתבה כ-`memberships/{orgId}`
+  // בהנחה ש-orgId === uid. לאדמין שני זו **רשומה של מישהו אחר** — הכתיבה
+  // נדחית, והרשומה שלו עצמו לא נכתבת. זה בדיוק המקום שבו הנחת
+  // "orgId === uid" מתפרקת.
+  const self = selfUid || orgId;
+  ensureMembership(db, self, orgId, role).catch((err) =>
     console.warn("membership write skipped", err)
   );
 
@@ -147,6 +153,12 @@ export async function startOrgSync(db, orgId, { onMissing, onData, onError } = {
 
 // writeOrgDiff — כותב רק את מה שהשתנה בין prev ל-next, מסמך-מסמך.
 // כך אין דריסה של רשומות שלא נגענו בהן, וכל ישות היא יחידת-הרשאה עצמאית.
+//
+// ⚠️ `setDoc(..., {merge:true})` ממזג מפות ברמת-העלה, ולכן הוא **אינו מוחק
+// מפתחות ממפה**. מכאן שהסרת חבר מ-`org.members` או ביטול הזמנה מ-`org.invites`
+// דרך המודל שבזיכרון "תעבור" בשקט ולא תמחק כלום. שתי הפעולות האלה עוברות
+// דרך `deleteField()` על FieldPath מפורש — ראה orgMembers.js. הצד השני של
+// אותו מטבע הוא יתרון: snapshot מיושן של אדמין א' לא מוחק את אדמין ב'.
 //
 // options:
 //   selfUid   — ה-uid של הכותב. מובטח שהוא יופיע כ-'admin' ב-org.members.
@@ -197,8 +209,15 @@ export async function writeOrgDiff(db, orgId, prev, next, { selfUid = null, ensu
 }
 
 // ensureMembership — מסמך ברמת-שורש שמאפשר למשתמש לגלות לאיזה ארגון הוא שייך.
-// בפרוסה 1 נכתב רק לאדמין שיוצר את הארגון; בפרוסה 2 האדמין יכתוב אותו גם
-// לנהגים שהוא מזמין. קיים כבר עכשיו כדי לא לשנות מבנה בהמשך.
+//
+// ⚠️ עד 17.8 הוא נכתב ו**לא נקרא מעולם**: `useData.js:63` היה
+// `orgId = user.uid` קשיח, ולכן אדמין שני היה נשלח ל-`orgs/{ה-uid שלו}`
+// שאינו קיים → מסך הקמה ראשונית → ארגון שני נפרד. מסמך יתום שהתיעוד הבטיח
+// שהוא פותר בעיה שהוא לא פתר. מאז `resolveOrgAccess` (orgMembers.js) קורא
+// אותו, וה-orgId **נגזר** ממנו.
+//
+// הכלל ב-firestore.rules מתיר לכתוב אותו רק אם הוא **משקף** את
+// `orgs/{orgId}.org.members[uid]` — כלומר הוא מצביע נגזר, ולא הצהרת חברות.
 export async function ensureMembership(db, uid, orgId, role = "admin", extra = {}) {
   const { doc, setDoc } = await import("firebase/firestore");
   await setDoc(doc(db, "memberships", uid), { uid, orgId, role, ...extra }, { merge: true });

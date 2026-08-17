@@ -35,3 +35,5 @@ itai/Outputs/run2dream/
 itai/Outputs/run2dream-web/
 # קובץ הרכבים האמיתי של פרויקט הליסינג
 רכבים*.xlsx
+.tmp-logo/
+.tmp-preview/

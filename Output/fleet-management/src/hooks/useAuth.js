@@ -6,6 +6,7 @@ const LOCAL_USER = {
   uid: "local-admin",
   displayName: "מנהל מקומי",
   email: "local@demo",
+  emailVerified: true,
   isLocal: true,
 };
 
@@ -24,7 +25,20 @@ export function useAuth() {
         unsub = onAuthStateChanged(
           auth,
           (u) => {
-            setUser(u ? { uid: u.uid, displayName: u.displayName, email: u.email } : null);
+            // emailVerified — **התנאי שהופך מייל למפתח** בתביעת הזמנה. ה-rules
+            // דורשות `email_verified == true`, ולכן המסך חייב לדעת אותו כדי
+            // להסביר "המייל שלך אינו מאומת" במקום להיכשל באדום. כניסת Google
+            // תמיד מאומתת; כניסה אנונימית (אמולטור) — לא, וגם אין לה מייל.
+            setUser(
+              u
+                ? {
+                    uid: u.uid,
+                    displayName: u.displayName,
+                    email: u.email,
+                    emailVerified: Boolean(u.emailVerified),
+                  }
+                : null
+            );
             setAuthLoading(false);
           },
           (err) => {

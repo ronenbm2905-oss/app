@@ -167,6 +167,10 @@ export const EMPTY = {
     createdAt: null,
     // members: מיפוי uid→role. בסיס הבידוד ב-rules; בפרוסה 1 יש רק admin.
     members: {},
+    // invites: מיפוי email→{role,invitedBy,invitedAt,expiresAt} — רשימת
+    // המוזמנים לאדמין שני. **הבידוד עצמו נשאר לפי uid בלבד** (F1); המייל
+    // הוא מפתח חד-פעמי לתביעת ההזמנה, והרשומה נמחקת ברגע שנתבעה.
+    invites: {},
   },
   settings: {
     currency: CURRENCY,

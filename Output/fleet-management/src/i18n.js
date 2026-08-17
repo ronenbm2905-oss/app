@@ -77,6 +77,81 @@ const dict = {
     "auth.error": "שגיאת הזדהות.",
     "data.localFull": "אחסון הדפדפן מלא — קובץ גדול מדי נשמר מקומית? מחק סריקות ישנות.",
 
+    // -- תפקידים (מפת members) --
+    "role.admin": "מנהל מערכת",
+    "role.driver": "נהג",
+
+    // ========================================================================
+    // אדמין שני — הזמנה לפי מייל מאומת (17.8)
+    // ========================================================================
+    // "אין גישה" — המסך שמנהלת הכספים הייתה צריכה לראות במקום מסך הקמה.
+    "noAccess.title": "אין לך גישה לצי",
+    "noAccess.body":
+      "הכתובת שאיתה נכנסת אינה מורשית עדיין. בקשו ממנהל המערכת של הצי להוסיף אותה בהגדרות ← ניהול מנהלים, ואז רעננו את הדף.",
+    "noAccess.recheck": "בדוק שוב",
+    "noAccess.inviteExpired":
+      "הייתה לך הזמנה, אבל תוקפה פג. בקשו ממנהל המערכת לשלוח אותה מחדש.",
+    "noAccess.createLink": "אני מקים ארגון חדש מאפס",
+    "noAccess.createWarnTitle": "רגע — זה יוצר צי חדש וריק",
+    "noAccess.createWarnBody":
+      "אם אתם מצטרפים לצי קיים, **אל** תמשיכו: תיווצר מערכת שנייה נפרדת בלי הרכבים והנהגים, ומנהל המערכת לא יראה אותה. במקום זה בקשו ממנו להוסיף את כתובת המייל שלכם. המשיכו רק אם אתם מקימים מערכת חדשה לגמרי.",
+    "noAccess.createConfirm": "כן, להקים צי חדש",
+
+    // "יש לך הזמנה" — המסך שמצרף לארגון קיים.
+    "join.title": "יש לך הזמנה מחכה",
+    "join.body": "הוזמנת לנהל את הצי של {org}. הצירוף מוסיף אותך לארגון הקיים — לא נוצר צי חדש.",
+    "join.thisOrg": "הארגון",
+    "join.email": "מתחבר בשם",
+    "join.role": "תפקיד",
+    "join.expires": "ההזמנה בתוקף עד",
+    "join.cta": "צירוף לארגון",
+    "join.note":
+      "ההזמנה חד-פעמית: היא נצרכת ברגע הצירוף, ומכאן והלאה ההרשאות שלך נשענות על החשבון עצמו ולא על כתובת המייל.",
+    "join.doneTitle": "צורפת לארגון",
+    "join.doneBody": "יש לך עכשיו גישת ניהול לצי של {org}. רעננו את הדף אם הנתונים לא נטענו.",
+    "join.err.signedOut": "אינך מחובר.",
+    "join.err.unverified":
+      "כתובת המייל של החשבון אינה מאומתת, ולכן לא ניתן לצרף אותה. היכנסו עם חשבון Google של הכתובת שהוזמנה.",
+    "join.err.noEmail": "לחשבון הזה אין כתובת מייל, ולכן אין דרך לזהות את ההזמנה.",
+    "join.err.noInvite": "לא נמצאה הזמנה לכתובת הזו.",
+    "join.err.expired": "תוקף ההזמנה פג. בקשו ממנהל המערכת לשלוח אותה מחדש.",
+    "join.err.alreadyMember": "החשבון הזה כבר חבר בארגון.",
+    "join.err.role": "תפקיד ההזמנה אינו מוכר. פנו למנהל המערכת.",
+    "join.err.denied": "הצירוף נדחה — ההזמנה כבר נוצלה, בוטלה או שתוקפה פג.",
+    "join.err.failed": "הצירוף נכשל. בדקו חיבור ונסו שוב.",
+
+    // ניהול מנהלים (בהגדרות)
+    "team.title": "ניהול מנהלים",
+    "team.intro":
+      "הוסיפו כתובת מייל, ומי שייכנס עם חשבון Google של אותה כתובת יצורף כמנהל מערכת. ההזמנה בתוקף {days} יום.",
+    "team.emailLabel": "כתובת מייל להזמנה",
+    "team.add": "הוספת מנהל",
+    "team.added": "ההזמנה נוספה. שלחו לה את הקישור למערכת.",
+    "team.pending": "הזמנות ממתינות",
+    "team.noPending": "אין הזמנות ממתינות",
+    "team.members": "מנהלים קיימים",
+    "team.you": "זה אתה",
+    "team.expiresAt": "בתוקף עד {date}",
+    "team.expiredAt": "פג ב-{date}",
+    "team.expired": "פג תוקף",
+    "team.revoke": "ביטול הזמנה",
+    "team.revokeConfirm": "לבטל את ההזמנה? הכתובת לא תוכל להצטרף.",
+    "team.remove": "הסרת מנהל",
+    "team.removeConfirm": "להסיר את המנהל מהארגון? הוא יאבד גישה מיד.",
+    "team.linkNote":
+      "המערכת אינה שולחת מייל — אין לה שרת לכך. אחרי ההוספה שלחו את הקישור למערכת בעצמכם. התוקף הקצר מכוון: כתובת מייל בעבודה עוברת בין עובדים, והזמנה שנשכחה פתוחה הייתה מעניקה גישה למי שיקבל את התיבה אחריהם.",
+    "team.err.email": "כתובת מייל לא תקינה.",
+    "team.err.role": "תפקיד לא מוכר.",
+    "team.err.self": "זו הכתובת שאיתה אתם מחוברים — אתם כבר מנהלים.",
+    "team.err.duplicate": "לכתובת הזו כבר יש הזמנה ממתינה.",
+    "team.err.notFound": "לא נמצא.",
+    "team.err.notAdmin": "רק מנהל מערכת יכול לשנות את רשימת המנהלים.",
+    "team.err.selfRemove":
+      "אי אפשר להסיר את עצמכם — אחרת הארגון עלול להישאר בלי אף מנהל. בקשו ממנהל אחר להסיר אתכם.",
+    "team.err.failed": "הפעולה נכשלה. בדקו חיבור והרשאות ונסו שוב.",
+    "team.err.pointerFailed":
+      "ההזמנה נרשמה, אבל פרסום ההזמנה נכשל — המוזמן לא ימצא אותה. נסו להוסיף שוב.",
+
     // -- Onboarding (מסך 0) --
     "onb.title": "הקמה ראשונית",
     "onb.step": "שלב {n} מתוך {total}",
@@ -761,6 +836,75 @@ const dict = {
     "auth.signInFailed": "Sign-in failed. Please try again.",
     "auth.error": "Authentication error.",
     "data.localFull": "Browser storage is full — a file may be too large. Delete old scans.",
+
+    // -- roles (members map) --
+    "role.admin": "Administrator",
+    "role.driver": "Driver",
+
+    // -- second admin: claim-by-verified-email (17.8) --
+    "noAccess.title": "You do not have access to this fleet",
+    "noAccess.body":
+      "The address you signed in with is not authorised yet. Ask the fleet administrator to add it under Settings → Team, then refresh this page.",
+    "noAccess.recheck": "Check again",
+    "noAccess.inviteExpired": "You had an invitation, but it has expired. Ask the administrator to send it again.",
+    "noAccess.createLink": "I am setting up a brand-new fleet",
+    "noAccess.createWarnTitle": "Wait — this creates a new, empty fleet",
+    "noAccess.createWarnBody":
+      "If you are joining an existing fleet, do NOT continue: a second, separate system will be created with no vehicles or drivers, and the administrator will not see it. Ask them to add your email address instead. Continue only if you are setting up a completely new system.",
+    "noAccess.createConfirm": "Yes, create a new fleet",
+
+    "join.title": "You have a pending invitation",
+    "join.body": "You were invited to manage the fleet of {org}. Joining adds you to the existing organisation — no new fleet is created.",
+    "join.thisOrg": "the organisation",
+    "join.email": "Signed in as",
+    "join.role": "Role",
+    "join.expires": "Invitation valid until",
+    "join.cta": "Join the organisation",
+    "join.note":
+      "The invitation is single-use: it is consumed the moment you join, and from then on your permissions rest on the account itself, not on the email address.",
+    "join.doneTitle": "You have joined",
+    "join.doneBody": "You now have admin access to the fleet of {org}. Refresh the page if the data has not loaded.",
+    "join.err.signedOut": "You are not signed in.",
+    "join.err.unverified":
+      "This account's email address is not verified, so it cannot be joined. Sign in with the Google account of the invited address.",
+    "join.err.noEmail": "This account has no email address, so the invitation cannot be identified.",
+    "join.err.noInvite": "No invitation was found for this address.",
+    "join.err.expired": "The invitation has expired. Ask the administrator to send it again.",
+    "join.err.alreadyMember": "This account is already a member of the organisation.",
+    "join.err.role": "The invitation role is not recognised. Contact the administrator.",
+    "join.err.denied": "Joining was denied — the invitation was already used, revoked or has expired.",
+    "join.err.failed": "Joining failed. Check your connection and try again.",
+
+    "team.title": "Team",
+    "team.intro":
+      "Add an email address, and whoever signs in with the Google account of that address joins as an administrator. Invitations are valid for {days} days.",
+    "team.emailLabel": "Email address to invite",
+    "team.add": "Add administrator",
+    "team.added": "Invitation added. Send them the link to the system.",
+    "team.pending": "Pending invitations",
+    "team.noPending": "No pending invitations",
+    "team.members": "Current administrators",
+    "team.you": "this is you",
+    "team.expiresAt": "valid until {date}",
+    "team.expiredAt": "expired on {date}",
+    "team.expired": "Expired",
+    "team.revoke": "Revoke invitation",
+    "team.revokeConfirm": "Revoke this invitation? The address will not be able to join.",
+    "team.remove": "Remove administrator",
+    "team.removeConfirm": "Remove this administrator from the organisation? They lose access immediately.",
+    "team.linkNote":
+      "The system does not send email — it has no server for that. After adding an address, send the link yourself. The short expiry is deliberate: work email addresses move between employees, and a forgotten open invitation would grant access to whoever inherits the mailbox.",
+    "team.err.email": "Invalid email address.",
+    "team.err.role": "Unknown role.",
+    "team.err.self": "That is the address you are signed in with — you are already an administrator.",
+    "team.err.duplicate": "That address already has a pending invitation.",
+    "team.err.notFound": "Not found.",
+    "team.err.notAdmin": "Only an administrator can change the list of administrators.",
+    "team.err.selfRemove":
+      "You cannot remove yourself — the organisation could be left with no administrator. Ask another administrator to remove you.",
+    "team.err.failed": "The action failed. Check your connection and permissions, then try again.",
+    "team.err.pointerFailed":
+      "The invitation was recorded, but publishing it failed — the invitee will not find it. Try adding it again.",
 
     "onb.title": "Initial setup",
     "onb.step": "Step {n} of {total}",
