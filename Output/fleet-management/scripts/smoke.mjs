@@ -1973,6 +1973,145 @@ ok("אין מנגנון ניכוי משכר בשום מקום בקוד המסי�
   !/deduct|salary|ניכוי|קיזוז/i.test(noticeSrc + noticeModalSrc));
 
 // ============================================================================
+section("29. אדמין שני 17.8 — allowlist של מיילים (הלוגיקה הטהורה)");
+// ============================================================================
+// הבאג: מנהלת הכספים קיבלה את הקישור, התחברה, וראתה **מסך הקמה ראשונית**
+// במקום את הצי. השורש היה `useData.js:63` — `orgId = user.uid` קשיח.
+// המודל החדש: orgId קבוע בזמן build + allowlist של מיילים במסמך הארגון.
+const {
+  normalizeEmail: normEmail,
+  isValidEmail: validEmail,
+  adminEmails: adminList,
+  isOrgAdminEmail,
+  isLegacyMemberAdmin,
+  hasAdminAccess,
+  validateAddAdmin,
+  canRemoveAdmin,
+  addToList,
+  removeFromList,
+} = await import("../src/utils/admins.js");
+
+// -- נרמול: ההבדל בין "עובד" ל"אף אחד לא מבין למה זה לא עובד" --------------
+eq("נרמול מוריד רישיות ורווחים", normEmail("  HildaVazana@Gmail.COM "), "hildavazana@gmail.com");
+eq("נרמול של undefined אינו קורס", normEmail(undefined), "");
+ok("מייל תקין", validEmail("a.b@c.co.il"));
+ok("בלי @ נדחה", !validEmail("nope"));
+ok("בלי TLD נדחה", !validEmail("a@b"));
+ok("עם רווח נדחה", !validEmail("a b@c.com"));
+// ⚠️ **אין הנחת דומיין** — מנהלת הכספים נכנסה דווקא מ-Gmail פרטי, ולכן
+// הגבלת דומיין (R-b של עדי) אינה ישימה כאן. שני הספקים תקינים באותה מידה.
+ok("Gmail פרטי תקין בדיוק כמו מייל ארגוני", validEmail("hildavazana@gmail.com"));
+ok("ומייל ארגוני תקין גם כן", validEmail("hildav@promall.co.il"));
+
+// -- הרשימה מוחזקת מנורמלת, ללא כפילויות, ממוינת ---------------------------
+{
+  const org = { adminEmails: ["B@x.com", "a@x.com", "b@x.com", "", null] };
+  eq("הרשימה מנורמלת, ייחודית וממוינת", adminList(org).join(","), "a@x.com,b@x.com");
+  eq("addToList מוסיף מנורמל", addToList(org, "C@X.com").join(","), "a@x.com,b@x.com,c@x.com");
+  eq("addToList אינו מכפיל", addToList(org, "A@x.com").join(","), "a@x.com,b@x.com");
+  eq("removeFromList מסיר לפי נרמול", removeFromList(org, "A@X.COM").join(","), "b@x.com");
+}
+
+// -- email_verified הוא **התנאי שהופך מייל למפתח** -------------------------
+{
+  const org = { adminEmails: ["hilda@gmail.com"], members: { legacyUid: "admin" } };
+  ok("מייל ברשימה + מאומת = אדמין",
+    isOrgAdminEmail(org, { email: "hilda@gmail.com", emailVerified: true }));
+  ok("**אותו מייל בדיוק, לא מאומת = לא אדמין**",
+    !isOrgAdminEmail(org, { email: "hilda@gmail.com", emailVerified: false }));
+  ok("מייל באותיות גדולות + מאומת = אדמין",
+    isOrgAdminEmail(org, { email: "Hilda@Gmail.com", emailVerified: true }));
+  ok("מייל שאינו ברשימה = לא אדמין",
+    !isOrgAdminEmail(org, { email: "other@gmail.com", emailVerified: true }));
+  ok("בלי מייל בכלל = לא אדמין", !isOrgAdminEmail(org, { emailVerified: true }));
+  // legacy — גשר ההגירה: מסמך הארגון שכבר בענן אינו מכיל adminEmails, ולכן
+  // בלי המסלול הזה ה-deploy היה נועל את המשתמש מחוץ לצי שלו.
+  ok("legacy: org.members מעניק גישה", isLegacyMemberAdmin(org, "legacyUid"));
+  ok("legacy: uid אחר לא", !isLegacyMemberAdmin(org, "someoneElse"));
+  ok("hasAdminAccess מכסה את שני המסלולים",
+    hasAdminAccess(org, { uid: "legacyUid", email: "x@y.com", emailVerified: true }));
+  ok("ומי שאינו באף אחד מהם — לא",
+    !hasAdminAccess(org, { uid: "nobody", email: "x@y.com", emailVerified: true }));
+}
+
+// -- ולידציית הוספה --------------------------------------------------------
+{
+  const org = { adminEmails: ["a@x.com"] };
+  eq("מייל לא תקין נחסם בטופס", validateAddAdmin({ email: "oops" }, { org })[0], "team.err.email");
+  eq("כתובת שכבר ברשימה נחסמת", validateAddAdmin({ email: "A@X.com" }, { org })[0], "team.err.duplicate");
+  eq("כתובת חדשה תקינה עוברת", validateAddAdmin({ email: "b@x.com" }, { org }).length, 0);
+}
+
+// -- ⚠️ האדמין האחרון אינו ניתן להסרה --------------------------------------
+// ארגון בלי אף אדמין אינו ניתן לשחזור מתוך האפליקציה — צריך גישת קונסולה
+// ל-Firestore. זו ההגנה שהכדורסל לא צריך ואנחנו כן, והיא נאכפת גם ב-rules.
+{
+  const one = { adminEmails: ["a@x.com"] };
+  const two = { adminEmails: ["a@x.com", "b@x.com"] };
+  eq("אדמין אחרון — חסום", canRemoveAdmin(one, "a@x.com").errorKey, "team.err.lastAdmin");
+  ok("אדמין אחרון — לא ok", !canRemoveAdmin(one, "a@x.com").ok);
+  ok("כשיש שניים — מותר להסיר", canRemoveAdmin(two, "a@x.com").ok);
+  ok("וגם את השני", canRemoveAdmin(two, "b@x.com").ok);
+  eq("כתובת שאינה ברשימה", canRemoveAdmin(two, "c@x.com").errorKey, "team.err.notFound");
+  ok("הרשימה אחרי הסרה אינה מתרוקנת כשיש שניים", removeFromList(two, "a@x.com").length === 1);
+}
+
+// -- ⚠️ F1 של עדי: ה-allowlist הוא **לאדמינים בלבד** ----------------------
+// בידוד הנהגים בפרוסה 2 נשאר לפי uid, כי שם יושב ה-PII הפרטני. הבדיקה הזו
+// היא השומר: אם מישהו יחליף את ההשוואה ב-access.js למייל, היא תיפול.
+{
+  const accessSrc = readFileSync(join(SRC, "utils", "access.js"), "utf8");
+  ok("driverForUid משווה userId ל-uid, לא למייל", /d\.userId === uid/.test(accessSrc));
+  // מסירים הערות לפני הבדיקה: המילה email מופיעה שם בהערת ה-F1 עצמה
+  // ("לפי uid בלבד, לעולם לא לפי email"), ומה שנבדק הוא הקוד ולא הפרוזה.
+  const accessCode = accessSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  ok("אין השוואת מייל בקוד הגישה של הנהגים", !/email/i.test(accessCode));
+  const rulesSrc = readFileSync(join(ROOT_DIR, "firestore.rules"), "utf8");
+  ok("vehiclesPrivate נשאר isOrgAdmin בלבד",
+    /match \/vehiclesPrivate\/\{docId\}\s+\{ allow read, write: if isOrgAdmin\(orgId\); \}/.test(rulesSrc));
+  ok("ה-allowlist דורש email_verified ב-rules",
+    /tokenEmailVerified\(\)[\s\S]{0,200}adminEmails/.test(rulesSrc));
+  ok("אין הגבלת דומיין ב-rules (מנהלת הכספים נכנסה מ-Gmail פרטי)",
+    !/endsWith\(|matches\('.*@/.test(rulesSrc));
+  ok("האדמין האחרון נאכף ב-rules ולא רק ב-UI", /adminEmails.*\n?.*size\(\) >= 1|size\(\) >= 1/.test(rulesSrc));
+}
+
+// -- ⚠️ ה-orgId אינו user.uid יותר ----------------------------------------
+// הבאג עצמו, כשומר-סף: אם מישהו יחזיר את השורה, הבדיקה תיפול.
+{
+  const dataSrc = readFileSync(join(SRC, "hooks", "useData.js"), "utf8");
+  ok("useData מקבל orgId מבחוץ", /export function useData\(user, orgId = null\)/.test(dataSrc));
+  // גם כאן מסירים הערות: השורה הבאגית מצוטטת **בכוונה** בהערת התיעוד
+  // שמסבירה את הבאג, וזה בדיוק מה שאנחנו רוצים שיישאר שם.
+  const dataCode = dataSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  ok("ואין בקוד יותר orgId = user.uid",
+    !/const orgId = isFirebaseConfigured \? user\?\.uid/.test(dataCode));
+  const fbSrc = readFileSync(join(SRC, "firebase.js"), "utf8");
+  ok("מזהה הארגון מגיע מדגל build", /VITE_FLEET_ORG_ID/.test(fbSrc));
+  const accessHookSrc = readFileSync(join(SRC, "hooks", "useOrgAccess.js"), "utf8");
+  ok("orgId מוחזר רק ל-member/bootstrap",
+    /status === "member" \|\| state\.status === "bootstrap"/.test(accessHookSrc));
+  const appSrc = readFileSync(join(SRC, "App.jsx"), "utf8");
+  ok("מי שאין לו הרשאה מקבל NoAccessScreen ולא Onboarding",
+    /access\.status === "none"[\s\S]{0,200}NoAccessScreen/.test(appSrc));
+  ok("וה-onboarding נשאר מאחורי settings.onboarded", /!data\.settings\?\.onboarded/.test(appSrc));
+}
+
+// -- i18n parity למפתחות שהמקטע הזה הוסיף ---------------------------------
+for (const k of [
+  "noAccess.title", "noAccess.body", "noAccess.unverified", "noAccess.recheck",
+  "noAccess.hint", "noAccess.errorTitle", "noAccess.errorBody",
+  "team.title", "team.intro", "team.emailLabel", "team.add", "team.added",
+  "team.current", "team.empty", "team.you", "team.selfMissing", "team.addSelf",
+  "team.remove", "team.removeConfirm", "team.linkNote",
+  "team.err.email", "team.err.duplicate", "team.err.notFound",
+  "team.err.lastAdmin", "team.err.failed", "role.admin", "role.driver",
+]) {
+  ok(`מפתח ${k} קיים בעברית`, Boolean(dict.he[k]));
+  ok(`מפתח ${k} קיים באנגלית`, Boolean(dict.en[k]));
+}
+
+// ============================================================================
 console.log("\n" + "=".repeat(60));
 if (failed) {
   console.error(`נכשלו ${failed} בדיקות מתוך ${pass + failed}`);

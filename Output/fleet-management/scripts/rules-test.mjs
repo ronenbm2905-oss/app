@@ -561,6 +561,10 @@ section("(ו) אדמין שני — allowlist של מיילים (באג פרוד
   const dbLegacy = testEnv.authenticatedContext(LEGACY, { email: "legacy@x.example", email_verified: true }).firestore();
   const dbSolo = testEnv.authenticatedContext(SOLO, { email: "solo@x.example", email_verified: true }).firestore();
   const stRonen = testEnv.authenticatedContext(RONEN, { email: RONEN_EMAIL, email_verified: true }).storage();
+  const stHilda = testEnv.authenticatedContext(HILDA, { email: HILDA_EMAIL, email_verified: true }).storage();
+  const stHildaUnv = testEnv
+    .authenticatedContext("hildaUnverifiedUid", { email: HILDA_EMAIL, email_verified: false })
+    .storage();
   const stOutsider = testEnv
     .authenticatedContext(OUTSIDER, { email: OUTSIDER_EMAIL, email_verified: true })
     .storage();
@@ -623,6 +627,20 @@ section("(ו) אדמין שני — allowlist של מיילים (באג פרוד
   );
   await expectDenied("Storage — מי שאינו ברשימה לא מעלה", png(stOutsider, `orgs/${ORG}/fines/fP1/x.png`));
   await expectDenied("Storage — ולא קורא", getBytes(ref(stOutsider, `orgs/${ORG}/fines/fP1/s.png`)));
+  // ⬅ storage.rules הוא קובץ **נפרד** עם מימוש נפרד של isOrgAdmin, ולכן הוא
+  //   צריך את אותה בדיקה בזכות עצמו: מייל שברשימה אך אינו מאומת נדחה גם כאן.
+  await expectDenied(
+    "Storage — מייל ברשימה אך לא מאומת לא מעלה",
+    png(stHildaUnv, `orgs/${ORG}/fines/fP1/u.png`)
+  );
+  await expectDenied(
+    "Storage — ולא קורא",
+    getBytes(ref(stHildaUnv, `orgs/${ORG}/fines/fP1/s.png`))
+  );
+  await expectAllowed(
+    "Storage — מייל ברשימה ומאומת כן קורא",
+    getBytes(ref(stHilda, `orgs/${ORG}/fines/fP1/s.png`))
+  );
 
   // -- 3. מייל ברשימה אך **לא מאומת** — נדחה ------------------------------
   // הכתובת נכונה לחלוטין; רק הדגל כבוי. בלי התנאי הזה כל אחד היה נרשם
