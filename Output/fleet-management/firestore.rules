@@ -10,11 +10,35 @@ rules_version = '2';
 //
 // חברות בארגון:
 //   orgs/{orgId}.org.members  → מפה uid→role ('admin' | 'driver')
-//   memberships/{uid}         → { orgId, role, driverId } — כדי שמשתמש יגלה
-//                               לאיזה ארגון הוא שייך בלי לסרוק אוספים.
+//   orgs/{orgId}.org.invites  → מפה email→{role,invitedBy,invitedAt,expiresAt}
+//                               רשימת המוזמנים. **נצרכת** בתביעה.
+//   memberships/{uid}         → { orgId, role, driverId } — המסמך שממנו
+//                               הקליינט **גוזר את orgId**. מצביע נגזר, לא
+//                               מקור סמכות.
+//   invites/{email}           → מצביע גילוי: איזה ארגון הזמין את המייל הזה.
 //
 // ⚠️ שער עדי (משפטי) חוסם deploy עם נתונים אמיתיים: קנס בשם עובד מלא = מידע
 //    אישי; סריקות קנסות = מסמכים עם PII; דיווח ק"מ = פוטנציאל מעקב אחר עובדים.
+//
+// ============================================================================
+// 17.8.2026 — אדמין שני: claim-by-verified-email
+// ============================================================================
+// הבעיה: הארגון נשמר ב-orgs/{uid} של מי שיצר אותו. ל-uid אחר אין ארגון,
+// והכללים — בצדק — חסמו משתמש מלרשום את עצמו לארגון קיים. מנהלת הכספים
+// התחברה וקיבלה מסך הקמה, ואילו השלימה אותו היה נוצר **ארגון שני נפרד**.
+//
+// הפתרון, בלי Cloud Functions (התוכנית על Spark — אין צד-שרת שיכתוב במקומה):
+//   1. אדמין קיים מוסיף **מייל** ל-`org.invites`.
+//   2. מי שנכנס עם Google באותו מייל **ו-`email_verified == true`** רושם את
+//      עצמו: `org.members[uid] = התפקיד מההזמנה`, ומסיר את ההזמנה.
+//   3. **הבידוד עצמו נשאר לפי uid בלבד** (F1 של עדי). המייל הוא מפתח
+//      חד-פעמי לתביעת ההזמנה, ולא זהות מתמשכת: אחרי התביעה כל ההרשאות
+//      נגזרות מ-`members[uid]`, וההזמנה כבר לא קיימת.
+//   4. `expiresAt` נאכף כאן: **מייל עבודה עובר בין עובדים.** תיבת תפקיד
+//      שמישהו אחר יקבל אחרי שהעובדת עזבה לא תוכל לתבוע הזמנה שנשכחה.
+//
+// הכלל שחוסם רישום-עצמי בלי הזמנה **נשאר** — הוא פשוט קיבל מסלול חלופי אחד,
+// צר ומאומת. ואין מסלול שלישי.
 // ============================================================================
 
 service cloud.firestore {
@@ -24,6 +48,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function orgExists(orgId) {
+      return exists(/databases/$(database)/documents/orgs/$(orgId));
+    }
+
     function orgDoc(orgId) {
       return get(/databases/$(database)/documents/orgs/$(orgId)).data;
     }
@@ -31,11 +59,124 @@ service cloud.firestore {
     // אדמין = רשום כ-'admin' במפת החברים של הארגון.
     function isOrgAdmin(orgId) {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/orgs/$(orgId))
+        && orgExists(orgId)
         && orgDoc(orgId).org.members[request.auth.uid] == 'admin';
     }
 
-    // -- מסמך הארגון --------------------------------------------------------
+    // -- הזהות שעליה נשענת התביעה -------------------------------------------
+    // `.get(key, default)` ולא גישה ישירה: לטוקן של משתמש אנונימי אין `email`
+    // בכלל, וגישה ישירה הייתה מפילה את הערכת הכלל. ברירת מחדל ריקה הופכת
+    // את המקרה הזה ל"אין מייל" — כלומר דחייה מסודרת.
+    function tokenEmail() {
+      return isSignedIn() ? request.auth.token.get('email', '').lower() : '';
+    }
+
+    // email_verified — **התנאי שהופך מייל למפתח**. בלעדיו כל אחד היה יכול
+    // להירשם ב-Firebase Auth עם כתובת שאינה שלו ולתבוע הזמנה של אחר.
+    function tokenEmailVerified() {
+      return isSignedIn() && request.auth.token.get('email_verified', false) == true;
+    }
+
+    // ========================================================================
+    // isInviteClaim — **הכתיבה הרגישה ביותר בקובץ הזה.**
+    //
+    // התובע אינו רשאי לקרוא את מסמך הארגון (הוא עוד לא חבר), ולכן הוא כותב
+    // שני עלים בלבד דרך updateDoc+FieldPath, בלי לדעת מה יש במסמך:
+    //     org.members[uid] = <התפקיד מההזמנה>
+    //     org.invites[email] = ⌫
+    // הכללים כאן מאמתים שאלה **בדיוק** שני העלים שהשתנו, ושהתפקיד נלקח
+    // מהמסמך ולא מהבקשה. כל דבר אחר — settings, members של אחר, הזמנה של
+    // אחר, schemaVersion — נדחה.
+    //
+    // מצבי הקצה, וההכרעה בכל אחד:
+    //   • הזמנה שכבר נתבעה  → ההזמנה **נמחקת** בתביעה, ולכן אין מה לתבוע
+    //                          שוב; ובנוסף `!(uid in oldMembers)`.
+    //   • מייל לא מאומת     → tokenEmailVerified() נכשל.
+    //   • מייל שכבר חבר     → `!(uid in oldMembers)` נכשל.
+    //   • מייל שעבר לעובד   → `expiresAt > request.time` — חלון קצר (14 יום)
+    //     אחר                 הוא מה שמגביל את זה **בזמן**.
+    //   • תפקיד גבוה        → `newMembers[uid] == inviteRole`, וההזמנה נקראת
+    //                          מ-`resource` (המסמך הקיים), לא מהבקשה.
+    //   • זריקת אדמין קיים  → removedKeys/changedKeys על members חייבים 0.
+    // ========================================================================
+    // ⚠️ פוצל לפונקציות-עזר לא לשם קוסמטיקה: ל-firestore.rules יש תקרה של
+    // **10 משתני `let` לפונקציה**, והגרסה המאוחדת נדחתה בקומפילציה.
+    //
+    // `.get('members'/'invites', {})` בשני הצדדים בכוונה: כשההזמנה הנתבעת
+    // היא ה**אחרונה** במפה, `org.invites` עשוי להיעלם לגמרי אחרי המחיקה.
+    // גישה ישירה הייתה מפילה את הערכת הכלל — כלומר דווקא המקרה הנפוץ
+    // (הזמנה בודדת, וזה בדיוק המצב בפרודקשן) לא היה עובד.
+    function membersBefore() { return resource.data.org.get('members', {}); }
+    function membersAfter()  { return request.resource.data.org.get('members', {}); }
+    function invitesBefore() { return resource.data.org.get('invites', {}); }
+    function invitesAfter()  { return request.resource.data.org.get('invites', {}); }
+
+    // ההזמנה נקראת מ-`resource` — **המסמך הקיים**, לא מהבקשה. זו הסיבה
+    // שהתובע אינו יכול להעניק לעצמו תפקיד גבוה מזה שהוזמן אליו.
+    function claimedInvite() {
+      return invitesBefore().get(tokenEmail(), {});
+    }
+
+    function claimedInviteIsValid() {
+      let invite = claimedInvite();
+      let role = invite.get('role', '');
+      let expiresAt = invite.get('expiresAt', 0);
+      return (role == 'admin' || role == 'driver')
+        && expiresAt is number
+        && expiresAt > request.time.toMillis();
+    }
+
+    // מה שהתובע **מותר** לו לשנות: עלה אחד ב-members (הוא עצמו) ומחיקת עלה
+    // אחד ב-invites (שלו). כל השאר — settings, schemaVersion, members של
+    // אחרים, הזמנות של אחרים — נדחה מפורשות.
+    function claimTouchesOnlyOwnMembership() {
+      let uid = request.auth.uid;
+      let email = tokenEmail();
+      let membersDiff = membersAfter().diff(membersBefore());
+      let invitesDiff = invitesAfter().diff(invitesBefore());
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['org'])
+        && request.resource.data.org.diff(resource.data.org).affectedKeys()
+             .hasOnly(['members', 'invites'])
+        && membersDiff.addedKeys().hasOnly([uid])
+        && membersDiff.addedKeys().hasAll([uid])
+        && membersDiff.removedKeys().size() == 0
+        && membersDiff.changedKeys().size() == 0
+        && invitesDiff.removedKeys().hasOnly([email])
+        && invitesDiff.removedKeys().hasAll([email])
+        && invitesDiff.addedKeys().size() == 0
+        && invitesDiff.changedKeys().size() == 0;
+    }
+
+    function isInviteClaim() {
+      return isSignedIn()
+        && tokenEmailVerified()
+        && tokenEmail() != ''
+        // -- ההזמנה: קיימת, לתפקיד מוכר, ובתוקף ----------------------------
+        && claimedInviteIsValid()
+        // -- חד-פעמיות: ה-uid עוד אינו חבר ---------------------------------
+        && !(request.auth.uid in membersBefore())
+        // -- התפקיד הוא **מה שבהזמנה**, לא מה שהתובע ביקש -------------------
+        && membersAfter().get(request.auth.uid, '') == claimedInvite().get('role', '')
+        // -- ואין שום שינוי אחר באותה כתיבה --------------------------------
+        && claimTouchesOnlyOwnMembership();
+    }
+
+    // ========================================================================
+    // adminStaysAdmin — אדמין **אינו מסיר ומוריד את עצמו**.
+    //
+    // למה זה כאן ולא בקליינט: השאלה האמיתית היא "האם יכול להיווצר ארגון בלי
+    // אף אדמין" — ארגון של 36 רכבים שאיש אינו יכול לנהל, ואין ממנו דרך חזרה
+    // (התאוששות דורשת גישת אדמין ל-Firestore). ספירת אדמינים במפה אינה
+    // ניתנת לביטוי ב-rules; "הכותב נשאר אדמין אחרי הכתיבה" **כן** — וזה
+    // מספיק, כי כל כתיבה למסמך הארגון מגיעה מאדמין. לכן זה בלתי-אפשרי מבנית.
+    //
+    // המחיר: כדי לצאת מהארגון צריך אדמין אחר שיסיר אותך. מחיר סביר.
+    // ========================================================================
+    function adminStaysAdmin() {
+      return request.resource.data.org.get('members', {}).get(request.auth.uid, '') == 'admin';
+    }
+
+    // -- מסמך הארגון ---------------------------------------------------------
     match /orgs/{orgId} {
       // יצירה: רק המשתמש עצמו, ורק כשהוא רושם את עצמו כאדמין ו-orgId הוא ה-uid.
       allow create: if isSignedIn()
@@ -43,7 +184,12 @@ service cloud.firestore {
         && request.resource.data.org.members[request.auth.uid] == 'admin';
 
       allow read: if isOrgAdmin(orgId);
-      allow update, delete: if isOrgAdmin(orgId);
+
+      // עדכון — שני מסלולים, ואין שלישי:
+      //   • אדמין קיים, שנשאר אדמין גם אחרי הכתיבה;
+      //   • תביעת הזמנה — הדרך היחידה להיכנס לארגון קיים.
+      allow update: if (isOrgAdmin(orgId) && adminStaysAdmin()) || isInviteClaim();
+      allow delete: if isOrgAdmin(orgId);
 
       // -- תת-האוספים: פרוסה 1 = אדמין בלבד, על כל הישויות ------------------
       // פרוסה 2 תוסיף כאן סעיפי read פרטניים לנהג, למשל:
@@ -70,6 +216,8 @@ service cloud.firestore {
       // firestore.rules לא יודעים להסתיר שדה בודד, ולכן העלות החודשית,
       // הערות האדמין על העובד והערכת האדמין לתקלה יושבות במסמכים נפרדים.
       // אין כאן סעיף read לנהג — לא עכשיו ולא בפרוסה 2.
+      // ⚠️ גם חבר בתפקיד 'driver' שתבע הזמנה אינו קורא מכאן: התנאי הוא
+      //    isOrgAdmin, כלומר members[uid] == 'admin' בדיוק.
       match /vehiclesPrivate/{docId}   { allow read, write: if isOrgAdmin(orgId); }
       match /finesPrivate/{docId}      { allow read, write: if isOrgAdmin(orgId); }
       match /incidentsPrivate/{docId}  { allow read, write: if isOrgAdmin(orgId); }
@@ -86,17 +234,79 @@ service cloud.firestore {
       }
     }
 
-    // -- מיפוי משתמש→ארגון --------------------------------------------------
-    // המשתמש קורא רק את הרשומה שלו. כתיבה: רק רשומה עצמית של אדמין-ארגון-עצמי
-    // (בפרוסה 1). בפרוסה 2 ההזמנה של נהג תיכתב ע"י אדמין דרך Cloud Function,
-    // כדי שלא ניתן יהיה לזייף שיוך לארגון מהקליינט.
+    // ========================================================================
+    // memberships/{uid} — uid → { orgId, role }
+    //
+    // זהו המסמך שממנו הקליינט **גוזר את orgId**. עד 17.8 הוא נכתב ולא נקרא
+    // מעולם (`useData.js:63` היה `orgId = user.uid` קשיח) — וזה, ולא הכללים,
+    // היה הבאג ששלח את מנהלת הכספים למסך הקמה ראשונית.
+    //
+    // הכלל הקודם היה `request.resource.data.orgId == request.auth.uid`, כלומר
+    // משתמש היה יכול להצהיר על חברות **רק בארגון של עצמו** — מה שחסם גם את
+    // הפתרון. ⚠️ ההכרעה החדשה: הרשומה אינה מקור סמכות אלא **מצביע נגזר**,
+    // ולכן מותר לכתוב אותה **רק אם היא משקפת את מפת החברים במסמך הארגון**:
+    //
+    //     orgDoc(orgId).org.members[uid] == request.resource.data.role
+    //
+    // זה הדוק **יותר** מ"יש לו הזמנה תקפה לארגון הזה": הזמנה נצרכת ונעלמת
+    // ברגע התביעה, ואילו מפת החברים היא האמת המתמשכת. לכן הכתיבה נדחית לפני
+    // ההזמנה, אחרי שההזמנה פגה, ואחרי שהחבר הוסר מהארגון — ובכל המקרים
+    // האלה נשאר לכל היותר מצביע יתום, שאינו מעניק דבר (כל ההרשאות נבדקות
+    // מול מסמך הארגון). הכלל שחוסם רישום-עצמי לארגון של אחר **לא הוסר**.
+    //
+    // delete מותר לבעל הרשומה — ניקוי מצביע שהתיישן, בלי שום השפעה על גישה.
+    // ========================================================================
     match /memberships/{uid} {
       allow read: if isSignedIn() && request.auth.uid == uid;
       allow create, update: if isSignedIn()
         && request.auth.uid == uid
-        && request.resource.data.orgId == request.auth.uid
-        && request.resource.data.role == 'admin';
-      allow delete: if false;
+        && request.resource.data.keys().hasAll(['orgId', 'role'])
+        && request.resource.data.orgId is string
+        && orgExists(request.resource.data.orgId)
+        && orgDoc(request.resource.data.orgId).org.get('members', {}).get(uid, '')
+             == request.resource.data.role;
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ========================================================================
+    // invites/{email} — **אוסף גילוי בלבד.**
+    //
+    // למה הוא נחוץ: מסמך הארגון קרוא לאדמינים בלבד, ולכן מוזמנת שאינה חברה
+    // אינה יכולה לקרוא אותו — וגם אינה יודעת מהו ה-orgId (הוא ה-uid של מי
+    // שהקים את הארגון). **אי אפשר לתשאל מסמך שאסור לקרוא**, ולכן דרוש מסמך
+    // ברמת-שורש שהכתובת שלו היא דבר שהיא יודעת: המייל שלה.
+    //
+    // הוא **אינו מקור סמכות**. התביעה נבדקת ב-isInviteClaim מול `org.invites`
+    // שבמסמך הארגון. מצביע מיותר, מעודכן-בפיגור או יתום אינו מעניק כלום —
+    // ולכן כשל חלקי בכתיבה הכפולה תמיד נופל לצד הבטוח.
+    //
+    // מה **כן** מוגן כאן: רק אדמין של הארגון יכול ליצור מצביע שמפנה אליו
+    // (אחרת כל אחד היה מפנה את עצמו לארגון של אחר), והקריאה מוגבלת לבעל
+    // המייל המאומת או לאדמין של אותו ארגון.
+    // ========================================================================
+    match /invites/{inviteEmail} {
+      allow read: if isSignedIn()
+        && (
+          (tokenEmailVerified() && tokenEmail() == inviteEmail)
+          || (resource != null && isOrgAdmin(resource.data.orgId))
+        );
+
+      allow create, update: if isSignedIn()
+        && request.resource.data.keys()
+             .hasOnly(['email', 'orgId', 'orgName', 'role', 'invitedBy', 'invitedAt', 'expiresAt'])
+        && request.resource.data.keys().hasAll(['email', 'orgId', 'role', 'expiresAt'])
+        && request.resource.data.email == inviteEmail
+        && inviteEmail == inviteEmail.lower()
+        && (request.resource.data.role == 'admin' || request.resource.data.role == 'driver')
+        && request.resource.data.expiresAt is number
+        && isOrgAdmin(request.resource.data.orgId);
+
+      // מחיקה: האדמין (ביטול הזמנה), או המוזמן עצמו (ניקוי אחרי תביעה).
+      allow delete: if isSignedIn()
+        && (
+          (resource != null && isOrgAdmin(resource.data.orgId))
+          || (tokenEmailVerified() && tokenEmail() == inviteEmail)
+        );
     }
 
     // -- כל השאר: חסום מפורשות --------------------------------------------
