@@ -5,7 +5,13 @@ import { IndoorBalanceCard } from "./IndoorBalanceCard";
 
 // כל יחידת אימון = שעה וחצי. סוגי אימון שאינם נספרים בדו"ח השעות.
 const HOURS_PER_UNIT = 1.5;
-const EXCLUDED_TYPES = ["ספורטתרפיה", "יורם"];
+// Session types that are not the coach's own training hours, so they stay out of the
+// monthly hours the report is used to settle.
+const EXCLUDED_TYPES = ["ספורטתרפיה", "יורם", 'חד"כ'];
+
+// Built from the list rather than written out, so the note on screen cannot drift from
+// what the report actually does — it already had, the moment a third type was added.
+const excludedLabel = EXCLUDED_TYPES.map((t) => `"${t}"`).join(", ");
 
 // "YYYY-MM" של החודש הנוכחי.
 function currentMonth() {
@@ -107,7 +113,7 @@ export function ReportView({ data, weekStart }) {
         <div className="px-4 py-3 border-b border-stone-200 bg-stone-50">
           <h2 className="text-base font-semibold text-stone-800">דו"ח שעות לפי מאמן</h2>
           <p className="text-xs text-stone-500 mt-0.5">
-            {monthLabel(month)} · כל יחידת אימון = שעה וחצי · ספורטתרפיה ו"יורם" אינם נספרים
+            {monthLabel(month)} · כל יחידת אימון = שעה וחצי · {excludedLabel} אינם נספרים
           </p>
         </div>
 
@@ -143,7 +149,7 @@ export function ReportView({ data, weekStart }) {
       </div>
 
       <p className="no-print text-xs text-stone-500">
-        הספירה כוללת כל אימון/משחק המשויך למאמן בחודש הנבחר, פרט לסוגים "ספורטתרפיה" ו"יורם".
+        הספירה כוללת כל אימון/משחק המשויך למאמן בחודש הנבחר, פרט לסוגים {excludedLabel}.
       </p>
     </div>
   );

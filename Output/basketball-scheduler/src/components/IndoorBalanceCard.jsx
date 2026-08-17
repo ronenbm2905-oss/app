@@ -63,7 +63,9 @@ export function IndoorBalanceCard({ data, weekStart }) {
             <button
               key={r.id}
               onClick={() => setRange(r.id)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+              // 44px minimum: these are the card's main controls and they are tapped with
+              // a thumb, not clicked with a mouse.
+              className={`px-3 min-h-11 text-xs font-medium rounded-md transition-colors ${
                 range === r.id ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
               }`}
             >
@@ -79,14 +81,14 @@ export function IndoorBalanceCard({ data, weekStart }) {
             <button
               onClick={() => setWeek(shiftWeek(week, range === "month" ? -4 : -1))}
               aria-label="אחורה"
-              className="p-1.5 rounded-lg border border-stone-300 bg-white text-stone-600 hover:bg-stone-50"
+              className="w-11 h-11 flex items-center justify-center rounded-lg border border-stone-300 bg-white text-stone-600 hover:bg-stone-50"
             >
               <IconChevronRight size={15} />
             </button>
             <button
               onClick={() => setWeek(shiftWeek(week, range === "month" ? 4 : 1))}
               aria-label="קדימה"
-              className="p-1.5 rounded-lg border border-stone-300 bg-white text-stone-600 hover:bg-stone-50"
+              className="w-11 h-11 flex items-center justify-center rounded-lg border border-stone-300 bg-white text-stone-600 hover:bg-stone-50"
             >
               <IconChevronLeft size={15} />
             </button>
