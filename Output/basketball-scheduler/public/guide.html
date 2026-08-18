@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>מדריך המאמן של קרית אונו</title>
+<meta name="description" content="איך לשמור את אפליקציית הלו״ז של קרית אונו בטלפון, ואיך לתפעל אותה." />
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@500;700;900&display=swap" />
+<style>
+/* ---------- tokens ---------- */
+:root {
+  --ground: #FBFAF7;
+  --surface: #FFFFFF;
+  --surface-sunk: #F3F1EC;
+  --ink: #1A1917;
+  --ink-soft: #57534E;
+  --ink-faint: #78716C;
+  --line: #E3DFD7;
+  --line-soft: #EFEBE3;
+  --brand: #2355A5;
+  --brand-deep: #17386B;
+  --on-brand: #FFFFFF;
+  --brand-tint: #EDF2FA;
+  --accent: #F58634;
+  --accent-deep: #C25E12;
+  --accent-tint: #FDF0E4;
+  --go: #0F766E;
+  --go-tint: #E7F4F1;
+  --warn: #B4341F;
+  --warn-tint: #FBEDEA;
+  --shadow: 0 1px 2px rgba(26,25,23,.05), 0 8px 24px -16px rgba(26,25,23,.28);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #14161A;
+    --surface: #1C1F25;
+    --surface-sunk: #23272E;
+    --ink: #F2EFE9;
+    --ink-soft: #BFB9B0;
+    --ink-faint: #9A948B;
+    --line: #333941;
+    --line-soft: #272C33;
+    --brand: #7CA6E0;
+    --brand-deep: #A9C6EE;
+    --on-brand: #14161A;
+    --brand-tint: #1B2634;
+    --accent: #F79A5B;
+    --accent-deep: #FBBE8C;
+    --accent-tint: #2A2119;
+    --go: #5FCFBE;
+    --go-tint: #16292A;
+    --warn: #F0917E;
+    --warn-tint: #2C1E1C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #14161A;
+  --surface: #1C1F25;
+  --surface-sunk: #23272E;
+  --ink: #F2EFE9;
+  --ink-soft: #BFB9B0;
+  --ink-faint: #9A948B;
+  --line: #333941;
+  --line-soft: #272C33;
+  --brand: #7CA6E0;
+  --brand-deep: #A9C6EE;
+  --on-brand: #14161A;
+  --brand-tint: #1B2634;
+  --accent: #F79A5B;
+  --accent-deep: #FBBE8C;
+  --accent-tint: #2A2119;
+  --go: #5FCFBE;
+  --go-tint: #16292A;
+  --warn: #F0917E;
+  --warn-tint: #2C1E1C;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Assistant", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+}
+.wrap { max-width: 42rem; margin: 0 auto; padding: 0 1.15rem 4rem; }
+
+/* ---------- masthead ---------- */
+.mast {
+  background: linear-gradient(200deg, var(--brand-deep), var(--brand) 72%);
+  color: #fff;
+  padding: 2.1rem 1.15rem 0;
+  position: relative;
+}
+.mast-inner { max-width: 42rem; margin: 0 auto; display: flex; flex-direction: column; gap: .9rem; }
+.crest { display: flex; align-items: center; gap: .7rem; }
+.crest img { width: 46px; height: 46px; border-radius: 10px; background: #fff; padding: 3px; flex: none; }
+.crest .club {
+  font-size: .78rem; font-weight: 700; letter-spacing: .09em;
+  color: rgba(255,255,255,.82); line-height: 1.35;
+}
+h1 {
+  font-family: "Frank Ruhl Libre", "Frank Ruehl", Georgia, serif;
+  font-weight: 900; font-size: clamp(2rem, 8vw, 2.7rem);
+  margin: 0; line-height: 1.1; text-wrap: balance;
+}
+.mast p.dek { margin: 0; color: rgba(255,255,255,.9); font-size: 1.02rem; max-width: 30rem; }
+.mast .baseline { height: 6px; background: var(--accent); margin-top: 1.6rem; }
+
+/* the club-blue court line that separates sections */
+.court { display: flex; align-items: center; gap: .6rem; margin: 3.1rem 0 1.15rem; }
+.court::after { content: ""; flex: 0 1 5rem; min-width: 2.2rem; height: 2px; background: var(--line); }
+.court .num {
+  font-family: "Frank Ruhl Libre", Georgia, serif;
+  font-weight: 700; font-size: .82rem; letter-spacing: .04em;
+  color: var(--accent-deep); background: var(--accent-tint);
+  border-radius: 999px; padding: .16rem .6rem; flex: none;
+}
+h2 {
+  font-family: "Frank Ruhl Libre", "Frank Ruehl", Georgia, serif;
+  font-weight: 700; font-size: 1.45rem; margin: 0; line-height: 1.25;
+  text-wrap: balance; flex: 1 1 auto;
+}
+h3 {
+  font-family: "Assistant", sans-serif; font-weight: 700;
+  font-size: 1.05rem; margin: 0 0 .45rem;
+}
+p { margin: 0 0 .85rem; }
+p:last-child { margin-bottom: 0; }
+strong { font-weight: 700; }
+a { color: var(--brand); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:focus-visible, .lede a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+.lede {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 1.1rem 1.15rem; margin-top: 1.8rem; box-shadow: var(--shadow);
+  font-size: .98rem; color: var(--ink-soft);
+}
+.lede .link-row {
+  margin-top: .8rem; padding-top: .8rem; border-top: 1px dashed var(--line);
+  display: flex; flex-direction: column; gap: .25rem;
+}
+.lede .link-label {
+  font-size: .72rem; font-weight: 700; letter-spacing: .11em; color: var(--ink-faint);
+}
+.lede .url {
+  font-size: .95rem; font-weight: 700; text-align: start;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- platform cards ---------- */
+.cards { display: grid; gap: 1rem; }
+@media (min-width: 40rem) { .cards { grid-template-columns: 1fr 1fr; } }
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 1.1rem 1.15rem; box-shadow: var(--shadow);
+}
+.card .os {
+  font-size: .74rem; font-weight: 700; letter-spacing: .11em;
+  color: var(--brand); background: var(--brand-tint);
+  display: inline-block; padding: .2rem .55rem; border-radius: 5px; margin-bottom: .55rem;
+}
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: .7rem; }
+ol.steps > li {
+  counter-increment: s; position: relative; padding-inline-start: 2.1rem;
+  font-size: .98rem;
+}
+ol.steps > li::before {
+  content: counter(s); position: absolute; inset-inline-start: 0; top: .1rem;
+  width: 1.5rem; height: 1.5rem; border-radius: 50%;
+  background: var(--brand); color: var(--on-brand);
+  font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; justify-content: center;
+}
+
+kbd {
+  font-family: inherit; font-weight: 700; font-size: .93em;
+  background: var(--surface-sunk); border: 1px solid var(--line);
+  border-radius: 5px; padding: .05em .35em; white-space: nowrap;
+}
+
+/* ---------- callouts ---------- */
+.note {
+  border-radius: 12px; padding: .9rem 1rem; font-size: .95rem;
+  display: flex; gap: .65rem; align-items: flex-start; margin: 1.15rem 0;
+}
+.note .tag { font-weight: 700; flex: none; }
+.note.stop { background: var(--warn-tint); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 25%, transparent); }
+.note.stop strong { color: var(--warn); }
+.note.tip { background: var(--go-tint); color: var(--go); border: 1px solid color-mix(in srgb, var(--go) 25%, transparent); }
+.note.plain { background: var(--surface-sunk); color: var(--ink-soft); border: 1px solid var(--line); }
+
+/* ---------- screen reference list ---------- */
+dl.screens { margin: 0; display: flex; flex-direction: column; }
+dl.screens > div {
+  display: grid; grid-template-columns: minmax(7.5rem, auto) 1fr; gap: .2rem 1rem;
+  padding: .85rem 0; border-bottom: 1px solid var(--line-soft); align-items: baseline;
+}
+dl.screens > div:first-child { border-top: 1px solid var(--line-soft); }
+dl.screens dt { font-weight: 700; color: var(--brand); font-size: 1rem; }
+dl.screens dd { margin: 0; color: var(--ink-soft); font-size: .96rem; }
+@media (max-width: 26rem) { dl.screens > div { grid-template-columns: 1fr; } }
+
+/* ---------- flow (the weekly report) ---------- */
+.flow { display: flex; flex-direction: column; gap: .55rem; margin: 0; padding: 0; list-style: none; }
+.flow li {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
+  padding: .75rem .95rem; font-size: .97rem; display: flex; gap: .7rem; align-items: baseline;
+}
+.flow li .k {
+  font-family: "Frank Ruhl Libre", Georgia, serif; font-weight: 700;
+  color: var(--accent-deep); font-size: 1rem; flex: none; font-variant-numeric: tabular-nums;
+}
+
+/* ---------- troubleshooting ---------- */
+.qa { display: flex; flex-direction: column; gap: .1rem; }
+.qa details {
+  border-bottom: 1px solid var(--line-soft); padding: .1rem 0;
+}
+.qa summary {
+  cursor: pointer; padding: .8rem 0; font-weight: 700; font-size: 1rem;
+  list-style: none; display: flex; gap: .6rem; align-items: baseline;
+}
+.qa summary::-webkit-details-marker { display: none; }
+.qa summary::before {
+  content: "+"; color: var(--accent-deep); font-weight: 700; flex: none;
+  font-size: 1.05rem; line-height: 1;
+}
+.qa details[open] summary::before { content: "–"; }
+.qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.qa .answer { padding: 0 0 .95rem 0; color: var(--ink-soft); font-size: .96rem; }
+
+/* ---------- footer ---------- */
+footer {
+  margin-top: 3.2rem; padding-top: 1.4rem; border-top: 3px solid var(--brand);
+  font-size: .93rem; color: var(--ink-soft);
+}
+footer .who { font-weight: 700; color: var(--ink); }
+footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ---------- print: one handout for the coaches' meeting ---------- */
+@media print {
+  :root, :root[data-theme="dark"], :root[data-theme="light"] {
+    --ground: #fff; --surface: #fff; --surface-sunk: #f4f4f4;
+    --ink: #000; --ink-soft: #333; --line: #bbb; --line-soft: #ddd;
+    --on-brand: #fff; --brand: #000; --brand-deep: #000; --accent-deep: #000;
+    --warn: #000; --go: #000; --warn-tint: #f4f4f4; --go-tint: #f4f4f4;
+    --accent-tint: #f4f4f4; --brand-tint: #f4f4f4; --shadow: none;
+  }
+  body { font-size: 10.5pt; }
+  .mast { background: #fff; color: #000; padding-top: 0; }
+  .mast h1, .mast p.dek, .crest .club { color: #000; }
+  .mast .baseline { background: #000; height: 2px; }
+  .qa details { break-inside: avoid; }
+  .qa details > summary ~ * { display: block !important; }
+  .card, .flow li, .note { break-inside: avoid; }
+  .court { margin-top: 1.4rem; }
+  a { color: #000; }
+  .no-print { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="mast-inner">
+    <div class="crest">
+      <img src="/icon-192.png" alt="" />
+      <div class="club">עירוני קריית אונו<br />כדורסל דור העתיד</div>
+    </div>
+    <h1>מדריך המאמן</h1>
+    <p class="dek">איך לשמור את לוח האימונים בטלפון, ואיך לעבוד איתו — בשמונה דקות קריאה, פעם אחת.</p>
+  </div>
+  <div class="baseline"></div>
+</header>
+
+<div class="wrap">
+
+  <div class="lede">
+    <p>הלו״ז של המועדון — האימונים שלך, המשחקים, ההודעות ורשימות השחקנים — חי באפליקציה אחת. אין מה להתקין מחנות האפליקציות: פותחים קישור פעם אחת, שומרים אותו למסך הבית, ומאותו רגע הוא נראה ומתנהג כמו כל אפליקציה אחרת בטלפון.</p>
+    <div class="link-row">
+      <span class="link-label">הכתובת</span>
+      <a class="url" href="https://basketball-schedule-f0f57.web.app" dir="ltr">basketball-schedule-f0f57.web.app</a>
+    </div>
+  </div>
+
+  <div class="court"><span class="num">שלב א׳</span><h2>לשמור את האפליקציה בטלפון</h2></div>
+
+  <div class="note stop">
+    <span class="tag">עצור</span>
+    <div>אל תבצע את השלבים האלה מתוך וואטסאפ. אם הגעת לכאן מקישור בוואטסאפ — לחץ על שלוש הנקודות למעלה ובחר <kbd>פתח בדפדפן</kbd>. הדפדפן הפנימי של וואטסאפ לא יודע לשמור אפליקציות למסך הבית, וזו הסיבה מספר אחת שזה לא עובד.</div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <span class="os">אייפון · SAFARI</span>
+      <ol class="steps">
+        <li>פתח את הכתובת ב־<strong>Safari</strong> (לא בכרום, לא בוואטסאפ).</li>
+        <li>לחץ על כפתור <strong>השיתוף</strong> — הריבוע עם החץ כלפי מעלה, בתחתית המסך.</li>
+        <li>גלול ברשימה ובחר <kbd>הוספה למסך הבית</kbd>.</li>
+        <li>השם <strong>״קרית אונו״</strong> כבר מופיע — לחץ <kbd>הוסף</kbd>.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <span class="os">אנדרואיד · CHROME</span>
+      <ol class="steps">
+        <li>פתח את הכתובת ב־<strong>Chrome</strong>.</li>
+        <li>לחץ על שלוש הנקודות <kbd>⋮</kbd> בפינה העליונה.</li>
+        <li>בחר <kbd>התקנת אפליקציה</kbd> או <kbd>הוספה למסך הבית</kbd> — תלוי בגרסה.</li>
+        <li>אשר <kbd>התקן</kbd>.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="note tip">
+    <span class="tag">מה קורה עכשיו</span>
+    <div>סמל המועדון יושב על מסך הבית שלך. לחיצה עליו פותחת את הלוח במסך מלא, בלי שורת כתובת ובלי לחפש קישורים בהיסטוריית וואטסאפ.</div>
+  </div>
+
+  <div class="court"><span class="num">שלב ב׳</span><h2>כניסה ראשונה</h2></div>
+
+  <ol class="steps">
+    <li>לחץ <strong>״התחבר עם Google״</strong>.</li>
+    <li>בחר את חשבון הגוגל <strong>שמסרת לרונן</strong>. חשבון אחר לא יזוהה — גם אם הוא שלך.</li>
+    <li>זהו. מכאן והלאה האפליקציה תזכור אותך; לא תצטרך להתחבר בכל פעם.</li>
+  </ol>
+
+  <div class="note plain">
+    <span class="tag">״מצב צפייה בלבד״</span>
+    <div>הפס הכחול הזה בראש המסך תקין ומכוון — מאמנים <strong>רואים</strong> את כל הלוח, והשיבוץ עצמו נעשה על ידי המנהל. אין מה לתקן.</div>
+  </div>
+
+  <div class="court"><span class="num">שלב ג׳</span><h2>המסך שנפתח</h2></div>
+
+  <p>למעלה, מעל הכול, יש שורה אחת שעונה על השאלה ״מה קורה עכשיו״: כמה אימונים יש היום, מה האימון הקרוב ובאיזה אולם, והאם המנהל כבר פרסם את הלו״ז לשבוע.</p>
+  <p>מתחתיה — משבצות גדולות, אחת לכל מסך. כל משבצת מספרת מה יש מאחוריה (״3 משחקים השבוע״, ״הלו״ז פורסם״) עוד לפני שנכנסת אליה. מכל מסך חוזרים עם כפתור <kbd>חזרה לבית</kbd> שיושב למעלה.</p>
+
+  <dl class="screens">
+    <div><dt>תצוגת מאמן</dt><dd>המסך שלך. האימונים שלך לשבוע, ומתוכו נשלח הלו״ז לקבוצה בוואטסאפ.</dd></div>
+    <div><dt>הודעות</dt><dd>הודעות המנהל למאמנים. הודעה חדשה מופיעה גם כבאנר בכל מסך.</dd></div>
+    <div><dt>לוח שבועי</dt><dd>הלוח המלא — כל הקבוצות בכל האולמות. אפשר לייצא אותו כתמונה או PDF.</dd></div>
+    <div><dt>משחקים</dt><dd>משחקי הליגה של השבוע: בית או חוץ, שעה, אולם וכתובת.</dd></div>
+    <div><dt>קבוצות ואולמות</dt><dd>מי מאמן את מי, ורשימת האולמות.</dd></div>
+    <div><dt>שחקנים</dt><dd>רשימת השחקנים לפי קבוצה — שם, טלפון, מספר גופייה, מידות.</dd></div>
+  </dl>
+
+  <div class="court"><span class="num">שלב ד׳</span><h2>תצוגת מאמן — ההסבר המלא</h2></div>
+
+  <p>זה המסך שתפתח בפועל כל שבוע, ולכן שווה להכיר אותו לעומק.</p>
+
+  <ol class="steps">
+    <li><strong>בחר את שמך</strong> מהרשימה. פעם אחת בלבד — האפליקציה תזכור. (רוצה לשנות? ״החלף מאמן״ למעלה.)</li>
+    <li><strong>בחר שבוע</strong> בחיצי הניווט. כל שבוע עומד בפני עצמו — האימונים לא ״נגררים״ אוטומטית משבוע לשבוע, ולכן שבוע ריק פירושו שהמנהל טרם שיבץ אותו.</li>
+    <li><strong>סנן</strong> לפי קבוצה או לפי יום, אם יש לך יותר מקבוצה אחת.</li>
+  </ol>
+
+  <p style="margin-top:1.15rem">לכל יום מוצגות שתי רשימות, וזו לא כפילות:</p>
+  <dl class="screens">
+    <div><dt>האימונים שלך</dt><dd>שעה, קבוצה, אולם והערות. אימון שמסומן ב<strong>אדום</strong> מתנגש עם אילוץ שרשום במערכת — הודע למנהל, זו כנראה טעות שיבוץ.</dd></div>
+    <div><dt>פעילות באולמות</dt><dd>מה עוד רץ באותם אולמות באותן שעות. זה מה שמונע ממך להגיע למגרש תפוס.</dd></div>
+  </dl>
+
+  <h3 style="margin-top:1.8rem">לשלוח לקבוצה את הלו״ז השבועי</h3>
+  <p>המלבן הירוק בראש המסך מייצר תמונה מסודרת של לוח האימונים השבועי של הקבוצה — עם הלוגו, התאריכים והאולמות — מוכנה להדבקה בקבוצת הוואטסאפ של ההורים.</p>
+  <ol class="flow">
+    <li><span class="k">1</span><span>ודא שנבחרו השבוע הנכון והקבוצה הנכונה.</span></li>
+    <li><span class="k">2</span><span>לחץ <strong>״שיתוף / הורדת דוח״</strong> והמתן שתי שניות.</span></li>
+    <li><span class="k">3</span><span>בטלפון נפתח חלון השיתוף של המכשיר — בחר וואטסאפ ואת הקבוצה. במחשב התמונה פשוט תרד לתיקיית ההורדות.</span></li>
+  </ol>
+
+  <div class="court"><span class="num">שלב ה׳</span><h2>שני דברים שחשוב לדעת</h2></div>
+
+  <div class="note plain">
+    <span class="tag">פרטיות</span>
+    <div>מסך ״שחקנים״ מכיל פרטים אישיים של קטינים — שמות, טלפונים ותאריכי לידה. הוא נועד לשימושך כמאמן בלבד: אין לצלם אותו, להעביר צילומי מסך או להעתיק ממנו רשימות לקבוצות וואטסאפ.</div>
+  </div>
+
+  <div class="note plain">
+    <span class="tag">עדכונים</span>
+    <div>שינוי שהמנהל מבצע מופיע אצלך מיד, בלי לרענן. אין התראות שקופצות על המסך הנעול — הודעה חדשה תחכה לך כבאנר בפתיחת האפליקציה, אז שווה להציץ לפני כל שבוע.</div>
+  </div>
+
+  <div class="court"><span class="num">שלב ו׳</span><h2>כשמשהו לא עובד</h2></div>
+
+  <div class="qa">
+    <details>
+      <summary>נכנסתי ואני לא רואה שום נתונים</summary>
+      <div class="answer">כתובת הגוגל שלך כנראה עדיין לא ברשימת המורשים, או שנכנסת עם חשבון גוגל אחר משמסרת. צא (״יציאה״ בפינה), היכנס עם החשבון הנכון, ואם זה עדיין ריק — פנה לרונן.</div>
+    </details>
+    <details>
+      <summary>אין לי אופציה ״הוספה למסך הבית״</summary>
+      <div class="answer">כמעט תמיד זה אומר שהדף פתוח בדפדפן הפנימי של וואטסאפ או פייסבוק. פתח את הכתובת ישירות ב-Safari (אייפון) או ב-Chrome (אנדרואיד) ונסה שוב.</div>
+    </details>
+    <details>
+      <summary>השבוע שלי ריק — אין אף אימון</summary>
+      <div class="answer">בדוק קודם שאתה על השבוע הנכון בחיצי הניווט. אם כן — המנהל טרם שיבץ את השבוע הזה. כל שבוע נבנה בנפרד, ולכן שבוע חדש נראה ריק עד שהוא משובץ.</div>
+    </details>
+    <details>
+      <summary>אימון שלי מסומן באדום</summary>
+      <div class="answer">האימון מתנגש עם אילוץ שרשום במערכת — למשל אולם תפוס או שעה שאינך זמין בה. אתה לא יכול לתקן את זה מהצד שלך; הודע למנהל.</div>
+    </details>
+    <details>
+      <summary>הדוח לקבוצה לא נוצר</summary>
+      <div class="answer">נסה שוב אחרי שניות אחדות — לפעמים הכנת התמונה נכשלת בפעם הראשונה בטלפונים ישנים. אם זה חוזר, הפק את הדוח מהמחשב; שם הוא יורד כקובץ תמונה.</div>
+    </details>
+    <details>
+      <summary>האפליקציה נראית תקועה על מידע ישן</summary>
+      <div class="answer">סגור אותה לגמרי (החלק אותה מרשימת האפליקציות הפתוחות) ופתח מחדש. הנתונים נטענים מהענן בכל פתיחה.</div>
+    </details>
+  </div>
+
+  <footer>
+    <p><span class="who">שאלות, תקלות או בקשת גישה:</span><br />
+      רונן בן מאיר · <a href="tel:0546696288">054-6696288</a> · <a href="mailto:ronenbm2905@gmail.com">ronenbm2905@gmail.com</a></p>
+    <p class="meta">מדיניות הפרטיות, תנאי השימוש והצהרת הנגישות של המערכת מקושרים בתחתית מסך ההתחברות באפליקציה. · עירוני קריית אונו — כדורסל דור העתיד.</p>
+  </footer>
+
+</div>
+</body>
+</html>
