@@ -400,12 +400,13 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
             onChange={(e) =>
               set({ homeKeywords: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })
             }
-            placeholder={"קרית אונו\nק. אונו\nק.אונו"}
+            placeholder={"שם המועדון\nקיצור נפוץ\nכתיב חלופי"}
           />
         </Field>
         {(draft.homeKeywords || []).length === 0 && (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
-            ⚠ הרשימה ריקה — המערכת תשתמש בברירת המחדל. בלי וריאציות נכונות, כל משחק יסומן כמשחק חוץ.
+            ⚠ הרשימה ריקה — <strong>ייבוא קובץ האיגוד ייחסם</strong> עד שתמלא אותה. בלי הווריאציות
+            הנכונות כל משחק היה מסומן כמשחק חוץ, ואיתו נשברים שיבוץ האולמות וייצוא ההסעות.
           </p>
         )}
         <Field label="נקודת איסוף להסעות" hint="מופיעה בקובץ ההסעות שנשלח לחברת ההסעות.">

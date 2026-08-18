@@ -243,6 +243,13 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
       });
       return;
     }
+    if (result.error === "no-home-keywords") {
+      setImportMsg({
+        type: "error",
+        text: "לא הגדרת את שמות המועדון כפי שהם מופיעים בקובץ האיגוד, ובלעדיהם כל משחק יסומן כמשחק חוץ. עבור להגדרות → זיהוי משחקי בית והזן את הווריאציות.",
+      });
+      return;
+    }
 
     const { nextGames, nextSessions, added, updated, skipped } = result;
     save({ ...data, games: nextGames, sessions: nextSessions });

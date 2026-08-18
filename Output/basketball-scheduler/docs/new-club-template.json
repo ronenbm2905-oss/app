@@ -1,5 +1,6 @@
 {
   "_comment": "Template for a new clubs/<slug> document. See new-club-setup.md. Delete this _comment field before saving.",
+  "_required": "homeKeywords must list the club's name EXACTLY as the federation's game file spells it, including common abbreviations. Leave it empty and the game import refuses to run, by design: with nothing to match, every game would be filed as away and hall matching and the transport export would break with it.",
 
   "admins": ["manager@example.com"],
   "members": [],
@@ -8,10 +9,10 @@
     "name": "שם המועדון",
     "shortName": "",
     "logoUrl": "",
-    "primaryColor": "#2355A5",
-    "accentColor": "#F58634",
+    "primaryColor": "#1F6FEB",
+    "accentColor": "#F5A524",
     "pickupPoint": "",
-    "homeKeywords": [],
+    "homeKeywords": ["שם המועדון כפי שהוא בקובץ האיגוד", "קיצור נפוץ"],
     "legal": {
       "operator": "",
       "address": "",

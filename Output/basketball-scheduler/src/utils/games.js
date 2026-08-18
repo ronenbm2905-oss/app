@@ -45,6 +45,14 @@ export function importGamesFile(rawRows, data) {
   // game, which then breaks hall matching and the transport export as well.
   const ourKeywords = clubHomeKeywords(data);
 
+  // Checked before any parsing: with no names to match, every single game would be
+  // filed as away and the club would have to undo an entire season's import by hand.
+  // A club that has not filled this in yet is one settings field away from a correct
+  // import, so stop and say so.
+  if (ourKeywords.length === 0) {
+    return { error: "no-home-keywords" };
+  }
+
   const { format, headerIdx } = detectFileFormat(rawRows);
   const rows = rowsToObjects(rawRows, headerIdx);
 

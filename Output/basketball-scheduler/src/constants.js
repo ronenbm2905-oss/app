@@ -47,9 +47,16 @@ export const DEFAULT_SETTINGS = {
   primaryColor: "#2355A5", // drives every brand-* class at runtime (utils/theme.js)
   accentColor: "#F58634",
   pickupPoint: CLUB_PICKUP_POINT,
-  // Used to tell home from away when importing the federation's game file. Getting
-  // this wrong makes EVERY game an away game, so it must be set per club.
-  homeKeywords: ["קרית אונו", "ק. אונו", "ק.אונו", "קריית אונו"],
+  // Deliberately EMPTY, and the first of these defaults to be neutralised.
+  //
+  // There is no such thing as a sensible default here: the list must match how the
+  // federation's file spells THIS club's name. Any non-empty value is one club's names
+  // handed to another, and a club document created without a `settings` object of its
+  // own reads straight through to these defaults — so a stray value here reaches
+  // exactly the clubs least equipped to notice. Empty makes the import refuse and say
+  // what to fill in. The single-club branch keeps its own list; this one serves nobody
+  // in particular.
+  homeKeywords: [],
   // Substituted into the privacy / terms / accessibility documents at render time.
   // These are the legacy values for the existing deployment; a club that leaves a
   // field empty gets a visible "to be filled" marker rather than someone else's
