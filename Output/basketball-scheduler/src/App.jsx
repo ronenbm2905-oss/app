@@ -19,6 +19,7 @@ import { SchedulePublishedBanner } from "./components/SchedulePublishedBanner";
 import { LegalFooter } from "./legal/LegalFooter";
 import { TodayStrip } from "./components/TodayStrip";
 import { HomeView } from "./components/HomeView";
+import { Greeting } from "./components/Greeting";
 import {
   IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
@@ -145,6 +146,10 @@ export default function App() {
       </div>
 
       <div className={`${headerWidth} mx-auto px-4 py-6`}>
+        {/* Home only, and above everything else: the greeting is the first thing the
+            screen says, before today's line and before the tiles. */}
+        {activeTab === "home" && <Greeting user={user} canEdit={canEdit} />}
+
         {mode === "local" && (
           <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-4">
             ⚠ מצב מקומי: הנתונים נשמרים בדפדפן הזה בלבד, ולא משותפים אוטומטית עם מכשירים אחרים. חבר את Firebase כדי לעבור לסנכרון בענן (ראה README).
