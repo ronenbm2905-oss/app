@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* RTL ועברית מוגדרים ב-index.html; הפונט נטען משם. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+  }
+
+  /* מובייל-פירסט: מונע זום אוטומטי ב-iOS על שדות קלט */
+  input,
+  select,
+  textarea {
+    @apply text-base;
+  }
+}

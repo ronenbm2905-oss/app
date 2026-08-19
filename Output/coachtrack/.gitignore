@@ -1,0 +1,29 @@
+# תלויות ותוצרי בנייה
+node_modules
+dist
+dist-ssr
+
+# סביבה — לעולם לא נכנס לגיט
+.env.local
+.env.*.local
+*.local
+
+# מפתחות שירות — גישה מלאה למסד הנתונים
+scripts/serviceAccountKey.json
+
+# Firebase
+.firebase
+firebase-debug.log
+firestore-debug.log
+
+# לוגים
+logs
+*.log
+npm-debug.log*
+
+# עורכים ומערכת הפעלה
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db

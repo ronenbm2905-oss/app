@@ -1,0 +1,488 @@
+{
+  "version": 1,
+  "sport": "basketball",
+  "locale": "he-IL",
+  "ageGroup": "cadets_13_15",
+  "exercises": [
+    {
+      "id": "shoot_form",
+      "scope": "global",
+      "orgId": null,
+      "name": "זריקות טכניקה מקרוב",
+      "category": "זריקה",
+      "unit": "count",
+      "description": "מ-1–2 מטר מהסל, יד אחת ואז שתיים. דגש על מרפק פנימה, סיבוב פרק כף היד וליווי מלא. בלי לקפוץ. אפשר בבית מול קיר אם אין סל.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": true,
+      "defaultTargets": {
+        "cadets_13_15": 300
+      },
+      "active": true
+    },
+    {
+      "id": "shoot_midrange",
+      "scope": "global",
+      "orgId": null,
+      "name": "זריקות מטווח בינוני",
+      "category": "זריקה",
+      "unit": "count",
+      "description": "5 עמדות סביב הקשת, 15–20 זריקות מכל עמדה. תופסים ומיישרים רגליים לפני כל זריקה. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": true,
+      "defaultTargets": {
+        "cadets_13_15": 400
+      },
+      "active": true
+    },
+    {
+      "id": "shoot_ft",
+      "scope": "global",
+      "orgId": null,
+      "name": "זריקות עונשין",
+      "category": "זריקה",
+      "unit": "count",
+      "description": "סדרות של 10. אותה שגרה לפני כל זריקה — אותו מספר כדרורים, אותה נשימה. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": true,
+      "defaultTargets": {
+        "cadets_13_15": 250
+      },
+      "active": true
+    },
+    {
+      "id": "shoot_off_dribble",
+      "scope": "global",
+      "orgId": null,
+      "name": "זריקות אחרי כדרור",
+      "category": "זריקה",
+      "unit": "count",
+      "description": "כדרור אחד או שניים, עצירת קפיצה, זריקה. חצי ימינה וחצי שמאלה. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": true,
+      "defaultTargets": {
+        "cadets_13_15": 200
+      },
+      "active": true
+    },
+    {
+      "id": "shoot_mikan",
+      "scope": "global",
+      "orgId": null,
+      "name": "תרגיל מיקן (סלים משני הצדדים)",
+      "category": "זריקה",
+      "unit": "count",
+      "description": "ריצה מתחת לסל, סל מימין ומשמאל לסירוגין בלי לעצור. יד חיצונית תמיד. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": true,
+      "defaultTargets": {
+        "cadets_13_15": 150
+      },
+      "active": true
+    },
+    {
+      "id": "shoot_3pt",
+      "scope": "global",
+      "orgId": null,
+      "name": "שלשות",
+      "category": "זריקה",
+      "unit": "count",
+      "description": "רק אם הטכניקה נשמרת מהקו. אם הזריקה נשברת — לחזור לטווח בינוני. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": true,
+      "defaultTargets": {
+        "cadets_13_15": 150
+      },
+      "active": true
+    },
+    {
+      "id": "dribble_stationary",
+      "scope": "global",
+      "orgId": null,
+      "name": "כדרור במקום — שתי ידיים",
+      "category": "כדרור",
+      "unit": "minutes",
+      "description": "כדרור נמוך, חזק, בלי להסתכל על הכדור. להחליף יד כל 30 שניות. אפשר בבית על משטח קשה.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 60
+      },
+      "active": true
+    },
+    {
+      "id": "dribble_weak_hand",
+      "scope": "global",
+      "orgId": null,
+      "name": "כדרור יד חלשה",
+      "category": "כדרור",
+      "unit": "minutes",
+      "description": "רק היד הפחות דומיננטית. גובה נמוך, קצב מהיר. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 40
+      },
+      "active": true
+    },
+    {
+      "id": "dribble_two_ball",
+      "scope": "global",
+      "orgId": null,
+      "name": "כדרור בשני כדורים",
+      "category": "כדרור",
+      "unit": "minutes",
+      "description": "שני כדורים במקביל ואז לסירוגין. התרגיל הכי יעיל לשליטה — לא לוותר עליו. דורש שני כדורים.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 30
+      },
+      "active": true
+    },
+    {
+      "id": "dribble_moves",
+      "scope": "global",
+      "orgId": null,
+      "name": "מהלכי החלפת כיוון",
+      "category": "כדרור",
+      "unit": "count",
+      "description": "קרוסאובר, בין הרגליים, מאחורי הגב, ספין. 60 חזרות מכל מהלך. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 300
+      },
+      "active": true
+    },
+    {
+      "id": "dribble_cones",
+      "scope": "global",
+      "orgId": null,
+      "name": "כדרור במסלול קונוסים",
+      "category": "כדרור",
+      "unit": "minutes",
+      "description": "מסלול של 5–6 קונוסים (או בקבוקים), החלפת כיוון בכל אחד. במהירות מלאה. אפשר בחצר.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 25
+      },
+      "active": true
+    },
+    {
+      "id": "pass_chest_wall",
+      "scope": "global",
+      "orgId": null,
+      "name": "מסירות חזה לקיר",
+      "category": "מסירה",
+      "unit": "count",
+      "description": "2–3 מטר מהקיר, מסירה חדה עם סיבוב אגודלים החוצה. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 300
+      },
+      "active": true
+    },
+    {
+      "id": "pass_bounce_wall",
+      "scope": "global",
+      "orgId": null,
+      "name": "מסירות קרקע לקיר",
+      "category": "מסירה",
+      "unit": "count",
+      "description": "נקודת פגיעה בערך 2/3 מהמרחק לקיר. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 200
+      },
+      "active": true
+    },
+    {
+      "id": "pass_one_hand",
+      "scope": "global",
+      "orgId": null,
+      "name": "מסירות יד אחת",
+      "category": "מסירה",
+      "unit": "count",
+      "description": "מסירת דחיפה מימין ומשמאל, 100 מכל יד. מדמה מסירה מתוך כדרור. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 200
+      },
+      "active": true
+    },
+    {
+      "id": "fit_jumprope",
+      "scope": "global",
+      "orgId": null,
+      "name": "קפיצות בחבל",
+      "category": "כושר",
+      "unit": "count",
+      "description": "סדרות של 100–150. קפיצה נמוכה ומהירה, על כריות כפות הרגליים. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 1500
+      },
+      "active": true
+    },
+    {
+      "id": "fit_run",
+      "scope": "global",
+      "orgId": null,
+      "name": "ריצה אירובית",
+      "category": "כושר",
+      "unit": "minutes",
+      "description": "2–3 ריצות בשבוע, 20–30 דקות כל אחת, בקצב שמאפשר לדבר.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 60
+      },
+      "active": true
+    },
+    {
+      "id": "fit_sprints",
+      "scope": "global",
+      "orgId": null,
+      "name": "ספרינטים",
+      "category": "כושר",
+      "unit": "sessions",
+      "description": "10×20 מטר עם 45 שניות מנוחה. לא ביום של ריצה ארוכה.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 2
+      },
+      "active": true
+    },
+    {
+      "id": "fit_strength",
+      "scope": "global",
+      "orgId": null,
+      "name": "אימון כוח משקל גוף",
+      "category": "כושר",
+      "unit": "sessions",
+      "description": "שכיבות סמיכה, סקוואט, מכרעים, פלאנק. 3 סבבים. בגיל הזה בלי משקולות כבדות.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 3
+      },
+      "active": true
+    },
+    {
+      "id": "fit_core",
+      "scope": "global",
+      "orgId": null,
+      "name": "חיזוק ליבה (בטן וגב)",
+      "category": "כושר",
+      "unit": "sessions",
+      "description": "פלאנק, פלאנק צדדי, סופרמן, כפיפות בטן. 10–12 דקות. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 4
+      },
+      "active": true
+    },
+    {
+      "id": "fit_plyo",
+      "scope": "global",
+      "orgId": null,
+      "name": "קפיצות פליומטריות",
+      "category": "כושר",
+      "unit": "sessions",
+      "description": "קפיצות לגובה, קפיצות לרוחב, קפיצות מדרגה נמוכה. נחיתה רכה על ברכיים כפופות. לא יותר מפעמיים בשבוע.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 2
+      },
+      "active": true
+    },
+    {
+      "id": "def_slides",
+      "scope": "global",
+      "orgId": null,
+      "name": "החלקות הגנתיות",
+      "category": "הגנה",
+      "unit": "minutes",
+      "description": "עמידה נמוכה, ידיים פעילות, בלי להצליב רגליים. סדרות של 30 שניות. אפשר בחצר.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 25
+      },
+      "active": true
+    },
+    {
+      "id": "def_stance",
+      "scope": "global",
+      "orgId": null,
+      "name": "החזקת עמידת הגנה",
+      "category": "הגנה",
+      "unit": "minutes",
+      "description": "עמידה נמוכה סטטית, 45 שניות בכל סדרה. בונה סיבולת רגליים ספציפית. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 15
+      },
+      "active": true
+    },
+    {
+      "id": "def_closeout",
+      "scope": "global",
+      "orgId": null,
+      "name": "יציאה לזורק (קלוזאאוט)",
+      "category": "הגנה",
+      "unit": "count",
+      "description": "ריצה למטרה, בלימה בצעדים קצרים, יד למעלה. מדמה יציאה מהגנה אזורית. דורש מגרש או חצר.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 120
+      },
+      "active": true
+    },
+    {
+      "id": "def_zone_rotation",
+      "scope": "global",
+      "orgId": null,
+      "name": "רוטציות הגנה 1-3-1",
+      "category": "הגנה",
+      "unit": "minutes",
+      "description": "תנועה לפי מיקומי הכדור בהגנה האזורית שאנחנו מריצים. לפי הסרטוט שחולק. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 20
+      },
+      "active": true
+    },
+    {
+      "id": "tech_layups",
+      "scope": "global",
+      "orgId": null,
+      "name": "לייאפים משתי הידיים",
+      "category": "טכניקה",
+      "unit": "count",
+      "description": "100 מימין, 100 משמאל. יד חיצונית, ברך פנימית למעלה. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": true,
+      "defaultTargets": {
+        "cadets_13_15": 200
+      },
+      "active": true
+    },
+    {
+      "id": "tech_jumpstop",
+      "scope": "global",
+      "orgId": null,
+      "name": "עצירות קפיצה וסיבובים",
+      "category": "טכניקה",
+      "unit": "count",
+      "description": "קבלת כדור, עצירת קפיצה בשתי רגליים, פיבוט קדימה ואחורה. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 150
+      },
+      "active": true
+    },
+    {
+      "id": "tech_footwork",
+      "scope": "global",
+      "orgId": null,
+      "name": "עבודת רגליים בסיום",
+      "category": "טכניקה",
+      "unit": "count",
+      "description": "צעד אירופאי, עצירה־זריקה, סיום הפוך. במהירות מבוקרת קודם. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 120
+      },
+      "active": true
+    },
+    {
+      "id": "tech_ball_slaps",
+      "scope": "global",
+      "orgId": null,
+      "name": "תרגילי תחושת כדור",
+      "category": "טכניקה",
+      "unit": "minutes",
+      "description": "העברת כדור סביב הגוף, בין הרגליים, בשמונה. חימום יומי קצר. אפשר בבית.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 20
+      },
+      "active": true
+    },
+    {
+      "id": "tech_rebound",
+      "scope": "global",
+      "orgId": null,
+      "name": "תפיסות ריבאונד וחסימת דרך",
+      "category": "טכניקה",
+      "unit": "count",
+      "description": "זריקת כדור ללוח, תפיסה בשתי ידיים בשיא, נחיתה מאוזנת. דורש מגרש.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 100
+      },
+      "active": true
+    },
+    {
+      "id": "learn_film",
+      "scope": "global",
+      "orgId": null,
+      "name": "צפייה בווידאו ולמידה טקטית",
+      "category": "למידה",
+      "unit": "minutes",
+      "description": "צפייה בקטעים שהמאמן שלח או במשחק מקצועני, עם תשומת לב לתנועה בלי כדור.",
+      "videoUrl": null,
+      "tracksSuccess": false,
+      "successCapable": false,
+      "defaultTargets": {
+        "cadets_13_15": 40
+      },
+      "active": true
+    }
+  ]
+}

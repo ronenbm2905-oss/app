@@ -1,0 +1,257 @@
+rules_version = '2';
+
+// CoachTrack — Firestore Security Rules
+// טיוטה. לבדוק ב-Firebase Emulator לפני deploy.
+//
+// מודל ההרשאות (הכרעה 19.8.2026): role ו-orgId נשמרים ב-users/{uid}, לא ב-Custom Claims.
+// הסיבה: Custom Claims נקבעים רק דרך Admin SDK, וה-MVP הוא בלי Cloud Functions — כלומר
+// מאמן לא היה יכול להוסיף שחקן מהממשק, שזו דרישת חובה (TASKS שלב 2).
+//
+// ⚠️ המשמעות: הכלל שחוסם עדכון-עצמי של role/orgId/teamIds/active במסמך users הוא כעת
+// הגנת האבטחה הנושאת של כל המערכת. בלעדיו כל שחקן מקדם את עצמו ל-admin. לא לגעת בו.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- עזרים ----------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // מסמך המשתמש המחובר. קריאות get() חוזרות לאותו מסמך נספרות פעם אחת בהערכה.
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // משתמש מחובר שיש לו מסמך פרופיל. בלי הבדיקה הזו כל קריאת me() תקרוס ותיחסם.
+    function hasProfile() {
+      return isSignedIn()
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userOrg() {
+      return me().orgId;
+    }
+
+    function isAdmin() {
+      return hasProfile() && me().role == 'admin' && me().active == true;
+    }
+
+    function isCoach() {
+      return hasProfile() && me().role == 'coach' && me().active == true;
+    }
+
+    function isPlayer() {
+      return hasProfile() && me().role == 'player' && me().active == true;
+    }
+
+    function sameOrg(orgId) {
+      return hasProfile() && userOrg() == orgId;
+    }
+
+    function team(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)).data;
+    }
+
+    function plan(planId) {
+      return get(/databases/$(database)/documents/plans/$(planId)).data;
+    }
+
+    // המאמן של הקבוצה
+    function isTeamCoach(teamId) {
+      return isCoach() && team(teamId).coachUid == request.auth.uid;
+    }
+
+    // חבר בקבוצה — הקבוצה מופיעה ברשימת הקבוצות של המשתמש
+    function isTeamMember(teamId) {
+      return hasProfile() && teamId in me().teamIds;
+    }
+
+    function canSeeTeam(teamId) {
+      return isAdmin() || isTeamCoach(teamId) || isTeamMember(teamId);
+    }
+
+    // חלון עריכה — עד 7 ימים מרגע יצירת הדיווח.
+    // זה לא אותו חלון כמו הדיווח הרטרואקטיבי למטה: שם מדובר על תאריך הביצוע.
+    // שני חלונות שונים באותו אורך — לא לאחד אותם.
+    function withinEditWindow(createdAt) {
+      return request.time < createdAt + duration.value(7, 'd');
+    }
+
+    // אילו שדות לא השתנו בעדכון
+    function unchanged(keys) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
+    }
+
+
+    // ---------- organizations ----------
+
+    match /organizations/{orgId} {
+      allow read:   if sameOrg(orgId);
+      allow write:  if isAdmin() && sameOrg(orgId);
+    }
+
+
+    // ---------- users ----------
+
+    match /users/{uid} {
+      // כל אחד קורא את עצמו
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid
+        || isAdmin()
+        || (isCoach() && sameOrg(resource.data.orgId))
+      );
+
+      // עדכון-עצמי: רק שדות לא-רגישים (למשל mustChangePassword, displayName).
+      // חסימת role/orgId/teamIds/active כאן היא מה שמונע הסלמת הרשאות. לא להסיר.
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && unchanged(['role', 'orgId', 'teamIds', 'active']);
+
+      // יצירה וניהול — מאמן בארגון שלו, admin בכל מקום.
+      // מאמן יכול ליצור שחקנים בלבד, לא מאמנים ולא admin.
+      allow create: if
+        (isAdmin() && sameOrg(request.resource.data.orgId))
+        || (isCoach()
+            && sameOrg(request.resource.data.orgId)
+            && request.resource.data.role == 'player');
+
+      allow update: if isAdmin()
+        || (isCoach() && sameOrg(resource.data.orgId) && resource.data.role == 'player');
+
+      // אין מחיקה קשיחה — משביתים עם active:false
+      allow delete: if false;
+    }
+
+
+    // ---------- teams ----------
+
+    match /teams/{teamId} {
+      allow read:   if isAdmin() || sameOrg(resource.data.orgId);
+      allow create: if (isAdmin() || isCoach()) && sameOrg(request.resource.data.orgId);
+      allow update: if isAdmin() || (isCoach() && resource.data.coachUid == request.auth.uid);
+      allow delete: if false;   // מסמנים active:false
+    }
+
+
+    // ---------- exercises ----------
+
+    match /exercises/{exerciseId} {
+      // ספרייה גלובלית — קריאה לכל מי שמחובר
+      allow read: if isSignedIn() && (
+        resource.data.scope == 'global' || sameOrg(resource.data.orgId)
+      );
+
+      allow create: if
+        (isAdmin() && request.resource.data.scope == 'global')
+        || ((isAdmin() || isCoach())
+            && request.resource.data.scope == 'org'
+            && sameOrg(request.resource.data.orgId));
+
+      allow update: if
+        (isAdmin())
+        || (isCoach() && resource.data.scope == 'org' && sameOrg(resource.data.orgId));
+
+      allow delete: if false;   // מסמנים active:false
+    }
+
+
+    // ---------- plans ----------
+
+    match /plans/{planId} {
+      allow read:   if canSeeTeam(resource.data.teamId);
+      allow create: if isTeamCoach(request.resource.data.teamId)
+                    && sameOrg(request.resource.data.orgId);
+      allow update: if isAdmin() || isTeamCoach(resource.data.teamId);
+      allow delete: if false;   // מסמנים status:'archived'
+    }
+
+
+    // ---------- planCycles ----------
+
+    match /planCycles/{cycleId} {
+      allow read: if canSeeTeam(resource.data.teamId);
+
+      // יצירה עצלה — גם שחקן פותח מחזור כשהוא נכנס ואין מחזור לשבוע הנוכחי.
+      // ה-itemsSnapshot חייב להיות זהה ל-items של התוכנית הפעילה. בלי הבדיקה הזו
+      // שחקן פותח מחזור עם target:1 ומקבל 100%.
+      allow create: if canSeeTeam(request.resource.data.teamId)
+        && sameOrg(request.resource.data.orgId)
+        && plan(request.resource.data.planId).teamId == request.resource.data.teamId
+        && plan(request.resource.data.planId).status == 'active'
+        && request.resource.data.itemsSnapshot == plan(request.resource.data.planId).items;
+
+      // עדכון הצילום — מאמן בלבד (עריכת תוכנית "מהשבוע הנוכחי")
+      allow update: if isAdmin() || isTeamCoach(resource.data.teamId);
+      allow delete: if false;
+    }
+
+
+    // ---------- entries ----------
+
+    match /entries/{entryId} {
+      // שחקן רואה רק את הדיווחים של עצמו. מאמן רואה את כל הקבוצה.
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.playerUid == request.auth.uid)
+        || isTeamCoach(resource.data.teamId);
+
+      // date הוא Timestamp מקובע ל-12:00 בשעון ישראל (ראה CLAUDE.md — פורמט תאריכים).
+      // הגבולות רחבים ביום אחד לכל צד כדי לספוג את עיגון הצהריים מול request.time.
+      allow create: if sameOrg(request.resource.data.orgId)
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.deleted == false
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.date <= request.time + duration.value(1, 'd')
+        && request.resource.data.date >= request.time - duration.value(8, 'd')
+        && (
+             // שחקן מדווח על עצמו
+             (isPlayer()
+               && request.resource.data.playerUid == request.auth.uid
+               && isTeamMember(request.resource.data.teamId))
+             // או מאמן מדווח עבור שחקן בקבוצתו
+             || isTeamCoach(request.resource.data.teamId)
+           );
+
+      // עריכה ומחיקה-רכה. זהות הדיווח (מי, איזו קבוצה, איזה ארגון) לא ניתנת לשינוי.
+      allow update: if unchanged(['playerUid', 'teamId', 'orgId', 'createdBy', 'createdAt'])
+        && (
+             isAdmin()
+             || isTeamCoach(resource.data.teamId)
+             || (resource.data.playerUid == request.auth.uid
+                 && withinEditWindow(resource.data.createdAt))
+           );
+
+      allow delete: if false;   // מסמנים deleted:true
+    }
+
+
+    // ---------- planTemplates ----------
+
+    match /planTemplates/{templateId} {
+      allow read:   if isAdmin() || (isCoach() && sameOrg(resource.data.orgId));
+      allow create: if isCoach() && sameOrg(request.resource.data.orgId);
+      // תבנית היא נוחות, לא היסטוריה — כאן מחיקה אמיתית מותרת
+      allow update, delete: if isAdmin()
+        || (isCoach() && resource.data.coachUid == request.auth.uid);
+    }
+
+
+    // ---------- weeklySummaries (שלב 2) ----------
+    // לוח המובילים נדחה לשלב 2 (הכרעה 19.8.2026), ואיתו הקולקציה הזו.
+    // המבנה מוגדר ב-PRD §9; המימוש יגיע עם Cloud Function שתחשב אותו.
+
+    match /weeklySummaries/{summaryId} {
+      allow read:  if canSeeTeam(resource.data.teamId);
+      allow write: if false;
+    }
+
+
+    // ---------- ברירת מחדל: חסום ----------
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
