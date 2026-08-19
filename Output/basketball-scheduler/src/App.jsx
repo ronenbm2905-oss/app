@@ -27,8 +27,8 @@ import {
   IconCalendarDays, IconUser, IconUsers, IconClock, IconSettings,
 } from "./components/ui/icons";
 import { clubName as clubNameOf } from "./utils/club";
-// NOT the bundled src/assets/club-logo.jpg that the single-club branch imports: one build
-// serves every club, so the logo is read from the club's own settings at runtime.
+// Read from the club's own settings at runtime — one build serves every club, so there
+// is no bundled crest here the way the single-club branch has one.
 import { clubLogoSrc } from "./utils/clubLogo";
 import {
   subscriptionBlocksEditing,
@@ -108,8 +108,8 @@ export default function App({ clubId }) {
   // order stays stable; applyTheme is a no-op write when the colors haven't changed.
   //
   // The NAME waits until the club document has actually been read. Until then `settings`
-  // is DEFAULT_SETTINGS, whose name belongs to the original club — writing it to the tab
-  // title put "קרית אונו – דור העתיד" above every other club's login screen.
+  // is DEFAULT_SETTINGS, and writing its placeholder name to the tab title would flash
+  // "מועדון ללא שם" over every club's login screen before their own name arrives.
   const settings = data.settings;
   const identityKnown = (!isFirebaseConfigured || Boolean(user)) && loaded && !error;
   useEffect(() => {

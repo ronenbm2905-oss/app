@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS } from "../constants";
 import { clubSettings } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
 import { applyTheme } from "../utils/theme";
-import { legalDetailsComplete, legalLooksInherited, LEGAL_FIELD_LABELS } from "../legal/fillTemplate";
+import { legalDetailsComplete, LEGAL_FIELD_LABELS } from "../legal/fillTemplate";
 import { fileToLogoDataUrl, dataUrlBytes, LOGO_MAX_BYTES } from "../utils/imageResize";
 import { generateJoinCode, formatJoinCode } from "../utils/joinCode";
 import { describeSubscription, WARN_DAYS, GRACE_DAYS } from "../utils/subscription";
@@ -281,7 +281,6 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
   }
 
   const legalOk = legalDetailsComplete(draft.legal);
-  const legalInherited = legalLooksInherited(draft, DEFAULT_SETTINGS);
   const docBytes = new Blob([JSON.stringify(data)]).size;
   const docPct = Math.min(100, Math.round((docBytes / DOC_LIMIT_BYTES) * 100));
   const keywordsText = (draft.homeKeywords || []).join("\n");
@@ -418,23 +417,13 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
         title="פרטים משפטיים"
         hint="מוצגים בתוך מדיניות הפרטיות, תנאי השימוש והצהרת הנגישות של המועדון."
         badge={
-          legalInherited ? (
-            <span className="text-xs text-red-700 font-semibold">טעון תיקון</span>
-          ) : legalOk ? (
+          legalOk ? (
             <span className="text-xs text-emerald-700 flex items-center gap-1"><IconCheck size={13} /> הושלם</span>
           ) : (
             <span className="text-xs text-amber-700">חסרים פרטים</span>
           )
         }
       >
-        {legalInherited && (
-          <p className="text-xs text-red-800 bg-red-50 border border-red-300 rounded-lg p-2.5 leading-relaxed">
-            <strong>⚠ הפרטים המשפטיים אינם של המועדון הזה.</strong> שם המועדון שונה, אך הפרטים כאן עדיין
-            שייכים ל־{DEFAULT_SETTINGS.legal.operator}. כתוצאה מכך מדיניות הפרטיות, תנאי השימוש והצהרת
-            הנגישות מציגים גוף משפטי אחר כאחראי על המידע — מצג שגוי. יש להחליף את כל השדות שלמטה
-            בפרטי המועדון בפועל לפני שהמערכת נמסרת למשתמשים.
-          </p>
-        )}
         {!legalOk && (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
             ⚠ שדה שנשאר ריק יופיע במסמכים כ״⟨... — למילוי⟩״. זה מכוון: מסמך משפטי לא יציג פרטים של גוף אחר.

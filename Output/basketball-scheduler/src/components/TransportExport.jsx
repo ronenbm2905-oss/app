@@ -23,7 +23,10 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
   const captureRef = useRef(null); // off-screen node snapshotted into the shareable image
 
   const CLUB_NAME = clubNameOf(data);
-  const pickupPoint = clubPickupPoint(data);
+  // A club that has not set one would otherwise send the bus company a sheet reading
+  // "נקודת איסוף: " with nothing after it. Say what is missing instead — the driver
+  // needs an address, and a blank looks like a formatting bug rather than a gap.
+  const pickupPoint = clubPickupPoint(data) || "⟨נקודת איסוף — למילוי בהגדרות⟩";
 
   const awayGames = awayGamesForWeek(data.games || [], weekStart);
   const rows = buildTransportRows(awayGames, {

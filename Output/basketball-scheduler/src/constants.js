@@ -5,8 +5,6 @@ export const STORAGE_KEY = "bball-schedule-v1";
 // clubs/{id}/published subcollection instead).
 export const PUBLISHED_STORAGE_KEY = "bball-published-v1";
 
-// Club home base — the pickup point for away-game transportation.
-export const CLUB_PICKUP_POINT = "אולם עלומים, הכפר 2, קריית אונו";
 // Vehicle-size options for transport (seats).
 export const VEHICLE_TYPES = ["16", "20"];
 
@@ -40,33 +38,46 @@ export const DAY_BG_COLORS = [
 // `clubs/main` document predates this field, and without them it would lose its
 // name, colors and home/away detection. A newly created club always writes its
 // own `settings` explicitly (see the club-creation flow), so it never inherits these.
+// What a club document falls back to for anything it has not set itself.
+//
+// These belong to NO club. They used to be the original club's — its name, crest,
+// colours, address and legal entity — because its document has no `settings` of its
+// own and read straight through to here. That made every value in this object a piece
+// of one association's identity handed to every other, shipped inside the same build.
+//
+// The multi-club product is built around new clubs; the original stays on the
+// single-club branch, which keeps its own values. So nothing here has to flatter any
+// existing document, and the rule is simple: a default may describe what a field IS,
+// never who a club is. Identity fields are blank or obviously unset, and the screens
+// that show them say what to fill in rather than quietly borrowing someone else's.
 export const DEFAULT_SETTINGS = {
-  name: "קרית אונו – דור העתיד",
-  shortName: "קרית אונו",
-  logoUrl: "", // empty → the logo bundled at build time (src/assets/club-logo.jpg)
-  primaryColor: "#2355A5", // drives every brand-* class at runtime (utils/theme.js)
-  accentColor: "#F58634",
-  pickupPoint: CLUB_PICKUP_POINT,
-  // Deliberately EMPTY, and the first of these defaults to be neutralised.
-  //
+  // Visibly unset rather than "" — this reaches the header and the browser tab title,
+  // where an empty string reads as a broken app instead of an unfinished one.
+  name: "מועדון ללא שם",
+  shortName: "",
+  logoUrl: "", // empty → no logo is shown at all; see utils/clubLogo
+  primaryColor: "#1F6FEB", // drives every brand-* class at runtime (utils/theme.js)
+  accentColor: "#F5A524",
+  // Appears in the transport sheet sent to the bus company. Blank by default: guessing
+  // an address here would send someone to another club's gym.
+  pickupPoint: "",
   // There is no such thing as a sensible default here: the list must match how the
-  // federation's file spells THIS club's name. Any non-empty value is one club's names
-  // handed to another, and a club document created without a `settings` object of its
-  // own reads straight through to these defaults — so a stray value here reaches
-  // exactly the clubs least equipped to notice. Empty makes the import refuse and say
-  // what to fill in. The single-club branch keeps its own list; this one serves nobody
-  // in particular.
+  // federation's file spells THIS club's name. Empty makes the game import refuse and
+  // say what to fill in, which beats matching a season of fixtures against the wrong
+  // association and filing every one of them as an away game.
   homeKeywords: [],
   // Substituted into the privacy / terms / accessibility documents at render time.
-  // These are the legacy values for the existing deployment; a club that leaves a
-  // field empty gets a visible "to be filled" marker rather than someone else's
-  // legal entity, which would be a misrepresentation.
+  //
+  // Blank on purpose, and this is the one field group where a default would do real
+  // harm: a privacy policy naming the wrong data controller is a misrepresentation,
+  // not a cosmetic bug. An unfilled field renders as ⟨… — למילוי⟩, so the document is
+  // obviously unfinished instead of quietly wrong. See legal/fillTemplate.
   legal: {
-    operator: "קרית אונו – דור העתיד",
-    address: "הכפר 2, קרית אונו",
-    email: "ronenbm2905@gmail.com",
-    a11yContact: "רונן בן מאיר",
-    a11yPhone: "054-6696288",
+    operator: "",
+    address: "",
+    email: "",
+    a11yContact: "",
+    a11yPhone: "",
   },
   subscription: { plan: "", validUntil: "" }, // display only — no billing in the app
 };

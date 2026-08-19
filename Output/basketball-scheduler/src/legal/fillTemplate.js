@@ -29,21 +29,11 @@ export function legalDetailsComplete(legal) {
   );
 }
 
-// Detects a club that carries someone else's legal identity.
-//
-// The default settings intentionally hold the original club's details so the existing
-// deployment keeps working. The side effect is that a NEW club which never fills the
-// legal section inherits them — and its privacy policy would name the wrong data
-// controller, which is a misrepresentation rather than a cosmetic bug. A club whose
-// name has been changed but whose legal details are still verbatim the defaults is
-// almost certainly in that state.
-export function legalLooksInherited(settings, defaults) {
-  if (!settings || !defaults) return false;
-  const nameChanged = (settings.name || "") !== (defaults.name || "");
-  if (!nameChanged) return false;
-  const a = settings.legal || {};
-  const b = defaults.legal || {};
-  return Object.keys(LABELS).every((k) => (a[k] || "") === (b[k] || ""));
-}
+// There was a `legalLooksInherited` here, to catch a club whose legal details were
+// still verbatim the defaults while its name had been changed — the state in which a
+// privacy policy names the wrong data controller. It existed only because the defaults
+// held one real club's details. They are blank now, so "same as the defaults" means
+// "not filled in yet", which `legalDetailsComplete` already reports without accusing a
+// new club of carrying someone else's legal identity.
 
 export const LEGAL_FIELD_LABELS = LABELS;
