@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>מדריך המאמן של קרית אונו</title>
+<title>מדריך למאמן של קרית אונו</title>
 <meta name="description" content="איך לשמור את אפליקציית הלו״ז של קרית אונו בטלפון, ואיך לתפעל אותה." />
 <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -100,12 +100,11 @@ body {
   position: relative;
 }
 .mast-inner { max-width: 42rem; margin: 0 auto; display: flex; flex-direction: column; gap: .9rem; }
-.crest { display: flex; align-items: center; gap: .7rem; }
-.crest img { width: 46px; height: 46px; border-radius: 10px; background: #fff; padding: 3px; flex: none; }
-.crest .club {
-  font-size: .78rem; font-weight: 700; letter-spacing: .09em;
-  color: rgba(255,255,255,.82); line-height: 1.35;
+.crest {
+  background: #fff; border-radius: 14px; padding: .7rem .9rem;
+  align-self: flex-start; box-shadow: 0 6px 20px -12px rgba(0,0,0,.5);
 }
+.crest img { display: block; width: 148px; height: auto; }
 h1 {
   font-family: "Frank Ruhl Libre", "Frank Ruehl", Georgia, serif;
   font-weight: 900; font-size: clamp(2rem, 8vw, 2.7rem);
@@ -260,8 +259,10 @@ footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
   }
   body { font-size: 10.5pt; }
   .mast { background: #fff; color: #000; padding-top: 0; }
-  .mast h1, .mast p.dek, .crest .club { color: #000; }
+  .mast h1, .mast p.dek { color: #000; }
   .mast .baseline { background: #000; height: 2px; }
+  .crest { box-shadow: none; padding: 0; }
+  .crest img { width: 118px; }
   .qa details { break-inside: avoid; }
   .qa details > summary ~ * { display: block !important; }
   .card, .flow li, .note { break-inside: avoid; }
@@ -276,10 +277,9 @@ footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
 <header class="mast">
   <div class="mast-inner">
     <div class="crest">
-      <img src="/icon-192.png" alt="" />
-      <div class="club">עירוני קריית אונו<br />כדורסל דור העתיד</div>
+      <img src="/club-logo.png" alt="עירוני קריית אונו — כדורסל דור העתיד" />
     </div>
-    <h1>מדריך המאמן</h1>
+    <h1>מדריך למאמן</h1>
     <p class="dek">איך לשמור את לוח האימונים בטלפון, ואיך לעבוד איתו — בשמונה דקות קריאה, פעם אחת.</p>
   </div>
   <div class="baseline"></div>
@@ -288,7 +288,7 @@ footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
 <div class="wrap">
 
   <div class="lede">
-    <p>הלו״ז של המועדון — האימונים שלך, המשחקים, ההודעות ורשימות השחקנים — חי באפליקציה אחת. אין מה להתקין מחנות האפליקציות: פותחים קישור פעם אחת, שומרים אותו למסך הבית, ומאותו רגע הוא נראה ומתנהג כמו כל אפליקציה אחרת בטלפון.</p>
+    <p>הלו״ז של המועדון — האימונים שלך, המשחקים וההודעות — חי באפליקציה אחת. אין מה להתקין מחנות האפליקציות: פותחים קישור פעם אחת, שומרים אותו למסך הבית, ומאותו רגע הוא נראה ומתנהג כמו כל אפליקציה אחרת בטלפון.</p>
     <div class="link-row">
       <span class="link-label">הכתובת</span>
       <a class="url" href="https://basketball-schedule-f0f57.web.app" dir="ltr">basketball-schedule-f0f57.web.app</a>
@@ -353,7 +353,6 @@ footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
     <div><dt>לוח שבועי</dt><dd>הלוח המלא — כל הקבוצות בכל האולמות. אפשר לייצא אותו כתמונה או PDF.</dd></div>
     <div><dt>משחקים</dt><dd>משחקי הליגה של השבוע: בית או חוץ, שעה, אולם וכתובת.</dd></div>
     <div><dt>קבוצות ואולמות</dt><dd>מי מאמן את מי, ורשימת האולמות.</dd></div>
-    <div><dt>שחקנים</dt><dd>רשימת השחקנים לפי קבוצה — שם, טלפון, מספר גופייה, מידות.</dd></div>
   </dl>
 
   <div class="court"><span class="num">שלב ד׳</span><h2>תצוגת מאמן — ההסבר המלא</h2></div>
@@ -380,16 +379,18 @@ footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
     <li><span class="k">3</span><span>בטלפון נפתח חלון השיתוף של המכשיר — בחר וואטסאפ ואת הקבוצה. במחשב התמונה פשוט תרד לתיקיית ההורדות.</span></li>
   </ol>
 
-  <div class="court"><span class="num">שלב ה׳</span><h2>שני דברים שחשוב לדעת</h2></div>
+  <div class="court"><span class="num">שלב ה׳</span><h2>איך תדע שמשהו השתנה</h2></div>
+
+  <p>שינוי שהמנהל מבצע מגיע אליך מיד, בלי לרענן ובלי לסגור ולפתוח. שלושה דברים מספרים לך מה חדש:</p>
+  <dl class="screens">
+    <div><dt>באנר הודעה</dt><dd>הודעה חדשה מהמנהל מופיעה בראש <strong>כל</strong> מסך, לא רק בטאב ״הודעות״.</dd></div>
+    <div><dt>״הלו״ז פורסם״</dt><dd>תגית ירוקה בשורה העליונה — סימן שהמנהל סיים לשבץ את השבוע והוא סופי.</dd></div>
+    <div><dt>שורת ״היום״</dt><dd>מתעדכנת מדי דקה: כמה אימונים היום ומה הקרוב שבהם.</dd></div>
+  </dl>
 
   <div class="note plain">
-    <span class="tag">פרטיות</span>
-    <div>מסך ״שחקנים״ מכיל פרטים אישיים של קטינים — שמות, טלפונים ותאריכי לידה. הוא נועד לשימושך כמאמן בלבד: אין לצלם אותו, להעביר צילומי מסך או להעתיק ממנו רשימות לקבוצות וואטסאפ.</div>
-  </div>
-
-  <div class="note plain">
-    <span class="tag">עדכונים</span>
-    <div>שינוי שהמנהל מבצע מופיע אצלך מיד, בלי לרענן. אין התראות שקופצות על המסך הנעול — הודעה חדשה תחכה לך כבאנר בפתיחת האפליקציה, אז שווה להציץ לפני כל שבוע.</div>
+    <span class="tag">שים לב</span>
+    <div>אין התראות שקופצות על המסך הנעול. כל אלה מחכים לך <strong>בתוך</strong> האפליקציה — אז שווה להציץ לפני כל שבוע, ולא לחכות שמשהו יקפוץ.</div>
   </div>
 
   <div class="court"><span class="num">שלב ו׳</span><h2>כשמשהו לא עובד</h2></div>
