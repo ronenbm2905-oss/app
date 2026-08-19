@@ -8,7 +8,7 @@ import { IconClock, IconMapPin, IconCheck } from "./ui/icons";
 //
 // About today, never about the week being viewed: the rest of the app follows you when you
 // navigate to next month, and this line would be worse than useless if it did too.
-export function TodayStrip({ data, coachId }) {
+export function TodayStrip({ data, coachId, showSessions = true }) {
   // Re-read the clock every minute so "the next session" does not go stale on a screen
   // that stays open all afternoon — which is exactly how a manager uses this.
   const [now, setNow] = useState(() => new Date());
@@ -23,9 +23,17 @@ export function TodayStrip({ data, coachId }) {
   return (
     <div className="no-print mb-4 rounded-xl bg-white shadow-sm ring-1 ring-stone-900/5 px-4 py-3 flex items-center gap-x-5 gap-y-2 flex-wrap">
       <div className="min-w-0">
+        {/* With no session line under it, the date has to be the line — a lone 11px
+            caption next to a chip reads as a leftover. */}
         <div className="text-[11px] font-semibold tracking-wider text-stone-400">
-          היום · יום {t.dayName}, {t.dateLabel}
+          {showSessions ? `היום · יום ${t.dayName}, ${t.dateLabel}` : "היום"}
         </div>
+        {!showSessions && (
+          <div className="text-[17px] font-bold text-stone-800 leading-tight">
+            יום {t.dayName}, {t.dateLabel}
+          </div>
+        )}
+        {showSessions && (
         <div className="text-[17px] font-bold text-stone-800 leading-tight">
           {t.scoped
             ? t.count === 0
@@ -39,9 +47,10 @@ export function TodayStrip({ data, coachId }) {
             ? "אימון אחד"
             : `${t.count} אימונים`}
         </div>
+        )}
       </div>
 
-      {t.next ? (
+      {!showSessions ? null : t.next ? (
         <div className="flex items-center gap-2 text-sm text-stone-600 min-w-0">
           <IconClock size={15} className="text-stone-400 shrink-0" />
           <span className="shrink-0">

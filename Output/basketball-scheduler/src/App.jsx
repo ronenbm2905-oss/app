@@ -82,9 +82,15 @@ export default function App() {
   if (!loaded) return <Loading />;
 
   const canEdit = isAdmin;
-  // A coach's own record, when an admin has filled in their sign-in address. Used to narrow
-  // today's line to their sessions; unknown simply means the club-wide line, as before.
+  // A coach's own record, when an admin has filled in their sign-in address.
   const myCoachId = canEdit ? null : coachForUser(user, data.coaches)?.id || null;
+  // Who gets a count of today's sessions at all. A manager sees the club's day because
+  // running it is the job. A coach the club can place sees their own. Anyone else — a
+  // viewer with no coach record, or a coach whose sign-in address nobody filled in — gets
+  // the date and whether the week is published, and no sessions: the club's workload was
+  // never theirs to read, and guessing that an unplaceable viewer is "everyone" is exactly
+  // how a non-coach ended up looking at five other people's trainings.
+  const showSessions = canEdit || Boolean(myCoachId);
 
   const visibleTabs = visibleTabsFor(TABS, ADMIN_ONLY_TABS, canEdit).map((t) =>
     !canEdit && COACH_TAB_LABELS[t.id] ? { ...t, label: COACH_TAB_LABELS[t.id] } : t
@@ -185,7 +191,7 @@ export default function App() {
           </div>
         )}
 
-        <TodayStrip data={data} coachId={myCoachId} />
+        <TodayStrip data={data} coachId={myCoachId} showSessions={showSessions} />
 
         {/* The published state is already a chip inside TodayStrip. The full-width banner
             that used to sit here said the same thing three lines louder, directly under the
