@@ -3,6 +3,7 @@ import { VEHICLE_TYPES } from "../constants";
 import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
 import { looksIndoor } from "../utils/indoorBalance";
+import { sortByName } from "../utils/names";
 import { Select } from "./ui/Select";
 import {
   IconPlus, IconTrash, IconPencil, IconCheck, IconAlert, IconX,
@@ -488,7 +489,11 @@ export function RostersView({ data, save, canEdit }) {
       )}
       <div className={`grid gap-4 ${canEdit ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
-        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withEmail withBirthDate withParallelGroups />
+        {/* Alphabetical, not entry order: with two dozen coaches, "where did I type it"
+            is not a way to find a name. Display only — the stored array keeps its order,
+            and every row still edits and deletes by id. Teams are left alone; their order
+            is chosen by hand with the up/down arrows and means something. */}
+        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={sortByName(data.coaches)} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withEmail withBirthDate withParallelGroups />
         {/* Halls are maintained by managers — which court a session sits in is decided on
             the scheduling screen, not here. A coach reading this screen wants teams and
             who trains them, so the card is left out of their copy of it entirely and the
