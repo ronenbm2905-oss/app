@@ -219,22 +219,22 @@ dl.screens dd { margin: 0; color: var(--ink-soft); font-size: .96rem; }
 }
 
 /* ---------- troubleshooting ---------- */
-.qa { display: flex; flex-direction: column; gap: .1rem; }
-.qa details {
-  border-bottom: 1px solid var(--line-soft); padding: .1rem 0;
+/* Plain blocks, not an accordion. Chrome hides a closed disclosure widget's content
+   through the UA slot, which no print-block override can reach — so the accordion
+   dropped every answer from the PDF. Always-open also lets a coach scan for their
+   problem instead of tapping six times to find it. */
+.qa { display: flex; flex-direction: column; }
+.qa-item { padding: .95rem 0; border-bottom: 1px solid var(--line-soft); }
+.qa-item:first-child { border-top: 1px solid var(--line-soft); }
+.qa .q {
+  font-size: 1rem; font-weight: 700; margin: 0 0 .3rem;
+  display: flex; gap: .55rem; align-items: baseline;
 }
-.qa summary {
-  cursor: pointer; padding: .8rem 0; font-weight: 700; font-size: 1rem;
-  list-style: none; display: flex; gap: .6rem; align-items: baseline;
+.qa .q::before {
+  content: "?"; color: var(--accent-deep); font-weight: 700; flex: none;
+  font-family: "Frank Ruhl Libre", Georgia, serif; font-size: 1.05rem;
 }
-.qa summary::-webkit-details-marker { display: none; }
-.qa summary::before {
-  content: "+"; color: var(--accent-deep); font-weight: 700; flex: none;
-  font-size: 1.05rem; line-height: 1;
-}
-.qa details[open] summary::before { content: "–"; }
-.qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-.qa .answer { padding: 0 0 .95rem 0; color: var(--ink-soft); font-size: .96rem; }
+.qa .a { margin: 0; color: var(--ink-soft); font-size: .96rem; padding-inline-start: 1.4rem; }
 
 /* ---------- footer ---------- */
 footer {
@@ -263,8 +263,7 @@ footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
   .mast .baseline { background: #000; height: 2px; }
   .crest { box-shadow: none; padding: 0; }
   .crest img { width: 118px; }
-  .qa details { break-inside: avoid; }
-  .qa details > summary ~ * { display: block !important; }
+  .qa-item { break-inside: avoid; }
   .card, .flow li, .note { break-inside: avoid; }
   .court { margin-top: 1.4rem; }
   a { color: #000; }
@@ -396,30 +395,30 @@ footer .meta { margin-top: .8rem; font-size: .85rem; color: var(--ink-faint); }
   <div class="court"><span class="num">שלב ו׳</span><h2>כשמשהו לא עובד</h2></div>
 
   <div class="qa">
-    <details>
-      <summary>נכנסתי ואני לא רואה שום נתונים</summary>
-      <div class="answer">כתובת הגוגל שלך כנראה עדיין לא ברשימת המורשים, או שנכנסת עם חשבון גוגל אחר משמסרת. צא (״יציאה״ בפינה), היכנס עם החשבון הנכון, ואם זה עדיין ריק — פנה לרונן.</div>
-    </details>
-    <details>
-      <summary>אין לי אופציה ״הוספה למסך הבית״</summary>
-      <div class="answer">כמעט תמיד זה אומר שהדף פתוח בדפדפן הפנימי של וואטסאפ או פייסבוק. פתח את הכתובת ישירות ב-Safari (אייפון) או ב-Chrome (אנדרואיד) ונסה שוב.</div>
-    </details>
-    <details>
-      <summary>השבוע שלי ריק — אין אף אימון</summary>
-      <div class="answer">בדוק קודם שאתה על השבוע הנכון בחיצי הניווט. אם כן — המנהל טרם שיבץ את השבוע הזה. כל שבוע נבנה בנפרד, ולכן שבוע חדש נראה ריק עד שהוא משובץ.</div>
-    </details>
-    <details>
-      <summary>אימון שלי מסומן באדום</summary>
-      <div class="answer">האימון מתנגש עם אילוץ שרשום במערכת — למשל אולם תפוס או שעה שאינך זמין בה. אתה לא יכול לתקן את זה מהצד שלך; הודע למנהל.</div>
-    </details>
-    <details>
-      <summary>הדוח לקבוצה לא נוצר</summary>
-      <div class="answer">נסה שוב אחרי שניות אחדות — לפעמים הכנת התמונה נכשלת בפעם הראשונה בטלפונים ישנים. אם זה חוזר, הפק את הדוח מהמחשב; שם הוא יורד כקובץ תמונה.</div>
-    </details>
-    <details>
-      <summary>האפליקציה נראית תקועה על מידע ישן</summary>
-      <div class="answer">סגור אותה לגמרי (החלק אותה מרשימת האפליקציות הפתוחות) ופתח מחדש. הנתונים נטענים מהענן בכל פתיחה.</div>
-    </details>
+    <div class="qa-item">
+      <h3 class="q">נכנסתי ואני לא רואה שום נתונים</h3>
+      <p class="a">כתובת הגוגל שלך כנראה עדיין לא ברשימת המורשים, או שנכנסת עם חשבון גוגל אחר משמסרת. צא (״יציאה״ בפינה), היכנס עם החשבון הנכון, ואם זה עדיין ריק — פנה לרונן.</p>
+    </div>
+    <div class="qa-item">
+      <h3 class="q">אין לי אופציה ״הוספה למסך הבית״</h3>
+      <p class="a">כמעט תמיד זה אומר שהדף פתוח בדפדפן הפנימי של וואטסאפ או פייסבוק. פתח את הכתובת ישירות ב-Safari (אייפון) או ב-Chrome (אנדרואיד) ונסה שוב.</p>
+    </div>
+    <div class="qa-item">
+      <h3 class="q">השבוע שלי ריק — אין אף אימון</h3>
+      <p class="a">בדוק קודם שאתה על השבוע הנכון בחיצי הניווט. אם כן — המנהל טרם שיבץ את השבוע הזה. כל שבוע נבנה בנפרד, ולכן שבוע חדש נראה ריק עד שהוא משובץ.</p>
+    </div>
+    <div class="qa-item">
+      <h3 class="q">אימון שלי מסומן באדום</h3>
+      <p class="a">האימון מתנגש עם אילוץ שרשום במערכת — למשל אולם תפוס או שעה שאינך זמין בה. אתה לא יכול לתקן את זה מהצד שלך; הודע למנהל.</p>
+    </div>
+    <div class="qa-item">
+      <h3 class="q">הדוח לקבוצה לא נוצר</h3>
+      <p class="a">נסה שוב אחרי שניות אחדות — לפעמים הכנת התמונה נכשלת בפעם הראשונה בטלפונים ישנים. אם זה חוזר, הפק את הדוח מהמחשב; שם הוא יורד כקובץ תמונה.</p>
+    </div>
+    <div class="qa-item">
+      <h3 class="q">האפליקציה נראית תקועה על מידע ישן</h3>
+      <p class="a">סגור אותה לגמרי (החלק אותה מרשימת האפליקציות הפתוחות) ופתח מחדש. הנתונים נטענים מהענן בכל פתיחה.</p>
+    </div>
   </div>
 
   <footer>
