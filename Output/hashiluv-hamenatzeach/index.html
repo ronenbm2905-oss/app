@@ -17,7 +17,6 @@
 <meta property="og:title" content="השילוב המנצח — ערכת הדרך למילים + 54 מדבקות מחזקות">
 <meta property="og:description" content="שני מוצרים. דרך אחת להגיע ללב. 169 ₪ בלבד כולל משלוח לנקודת איסוף.">
 <meta property="og:url" content="https://doritplus-shilluv.netlify.app/">
-<!-- כשתונח assets/bundle-final.jpg — להחליף כאן ל-.../assets/bundle-final.jpg -->
 <meta property="og:image" content="https://doritplus-shilluv.netlify.app/assets/cards-box.jpg">
 <meta property="og:image:alt" content="ערכת הקלפים ״הדרך למילים״ יחד עם מארז 54 המדבקות המחזקות">
 <meta name="twitter:card" content="summary_large_image">
@@ -150,10 +149,8 @@
     margin:0 0 24px;
   }
   .bundle-figure{margin:0 0 22px}
-  /* התמונה הסופית מוצגת במלואה — בלי חיתוך ובלי שינוי יחס */
-  .bundle-figure img{width:100%;height:auto;border-radius:var(--radius)}
 
-  /* fallback: שני המוצרים זה לצד זה, עד שתמונת השילוב הסופית תיטען */
+  /* שני המוצרים זה לצד זה — התמונה המרכזית של אזור השילוב */
   .duo{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -237,6 +234,24 @@
     width:12px;height:12px;
     border-radius:50%;
     background:var(--orange);
+  }
+  /* כותרת בלוק + וידאו ההמלצות */
+  .block-title{
+    font-family:var(--font-head);
+    font-size:clamp(19px,4.8vw,23px);
+    text-align:center;
+    margin:30px 0 16px;
+    line-height:1.45;
+  }
+  .rec-video{
+    display:block;
+    width:100%;
+    max-width:320px;
+    height:auto;
+    margin:0 auto;
+    border-radius:var(--radius);
+    background:#000;
+    border:1px solid rgba(7,61,112,.08);
   }
   .list-title{font-family:var(--font-head);margin:26px 0 14px;font-size:clamp(23px,5.8vw,27px);text-align:center}
   .centered{text-align:center}
@@ -387,20 +402,17 @@
     <p class="sub">שני מוצרים. דרך אחת להגיע ללב.</p>
 
     <figure class="bundle-figure">
-      <!-- התמונה הסופית של השילוב המנצח (ערכת הקלפים + דפי המדבקות + מחיר + משלוח חינם).
-           מוצגת במלואה, ללא חיתוך וללא שינוי ביחסי הגובה־רוחב.
-           עד שהקובץ assets/bundle-final.jpg יונח כאן — מוצגת חלופת שני המוצרים שמתחת. -->
-      <img id="bundleImg" src="assets/bundle-final.jpg"
-           alt="השילוב המנצח — ערכת הקלפים ״הדרך למילים״ יחד עם מארז 54 המדבקות המחזקות, 169 ₪ כולל משלוח חינם לנקודת איסוף">
-
-      <div class="duo" id="bundleDuo" hidden>
+      <!-- שני המוצרים שמקבלים, זה לצד זה. המחיר והמשלוח מופיעים בכרטיס שמתחת. -->
+      <div class="duo">
         <div class="plus">שני מוצרים במחיר אחד</div>
         <figure>
-          <img src="assets/cards-box.jpg" alt="ערכת הקלפים ״הדרך למילים״ — הקופסה המקורית">
+          <img src="assets/cards-box.jpg" width="900" height="1600"
+               alt="ערכת הקלפים ״הדרך למילים״ — קופסת הערכה המקורית">
           <figcaption>ערכת הקלפים<br>״הדרך למילים״</figcaption>
         </figure>
         <figure>
-          <img src="assets/stickers-sheets.jpg" alt="דפי המדבקות של ״מדבקות לדרך״ — 54 מדבקות עם משפטים מחזקים">
+          <img src="assets/stickers-sheets.jpg" width="1200" height="1600"
+               alt="דפי המדבקות של ״מדבקות לדרך״ — 54 מדבקות עם משפטים מחזקים">
           <figcaption>מארז 54<br>מדבקות מחזקות</figcaption>
         </figure>
       </div>
@@ -479,6 +491,14 @@
     </div>
     <p class="cta-note" style="text-align:center">24 קלפי משפטים מנוקדים</p>
 
+    <p class="block-title">הם ניסו, שיחקו ושיתפו - אלו ההמלצות שלהם</p>
+
+    <video class="rec-video" controls playsinline preload="none"
+           poster="assets/recommendations-poster.jpg" width="540" height="960">
+      <source src="assets/recommendations.mp4" type="video/mp4">
+      הדפדפן שלך אינו תומך בהצגת וידאו.
+    </video>
+
     <div class="gallery two">
       <figure>
         <img src="assets/cards-kids-playing.jpg" width="1400" height="1050" loading="lazy"
@@ -489,7 +509,6 @@
              alt="ילדה משחקת בקלפי האיורים — שיתוף של לקוחה">
       </figure>
     </div>
-    <p class="cta-note centered">הם ניסו, שיחקו ושיתפו - אלו ההמלצות שלהם</p>
 
   </div>
 </section>
@@ -691,19 +710,6 @@ src="https://www.facebook.com/tr?id=1655326862290518&ev=PageView&noscript=1"></n
     });
   }
 
-  /* ---------- תמונת השילוב הסופית: חלופה עד שהקובץ יונח ---------- */
-  var bundleImg = document.getElementById('bundleImg');
-  var bundleDuo = document.getElementById('bundleDuo');
-  if (bundleImg && bundleDuo){
-    bundleImg.addEventListener('error', function(){
-      bundleImg.style.display = 'none';
-      bundleDuo.hidden = false;
-    });
-    if (bundleImg.complete && bundleImg.naturalWidth === 0){
-      bundleImg.style.display = 'none';
-      bundleDuo.hidden = false;
-    }
-  }
 })();
 </script>
 
