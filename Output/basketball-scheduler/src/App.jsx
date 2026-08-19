@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
 import { todayWeekStart } from "./utils/dates";
+import { coachForUser } from "./utils/coachIdentity";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
 import { LoginPage } from "./components/LoginPage";
 import { RostersView } from "./components/RostersView";
@@ -15,7 +16,6 @@ import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { BirthdayReminder } from "./components/BirthdayReminder";
-import { SchedulePublishedBanner } from "./components/SchedulePublishedBanner";
 import { LegalFooter } from "./legal/LegalFooter";
 import { TodayStrip } from "./components/TodayStrip";
 import { HomeView } from "./components/HomeView";
@@ -82,6 +82,9 @@ export default function App() {
   if (!loaded) return <Loading />;
 
   const canEdit = isAdmin;
+  // A coach's own record, when an admin has filled in their sign-in address. Used to narrow
+  // today's line to their sessions; unknown simply means the club-wide line, as before.
+  const myCoachId = canEdit ? null : coachForUser(user, data.coaches)?.id || null;
 
   const visibleTabs = visibleTabsFor(TABS, ADMIN_ONLY_TABS, canEdit).map((t) =>
     !canEdit && COACH_TAB_LABELS[t.id] ? { ...t, label: COACH_TAB_LABELS[t.id] } : t
@@ -172,15 +175,23 @@ export default function App() {
 
         {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
 
-        <TodayStrip data={data} />
-
-        <SchedulePublishedBanner data={data} />
-        {/* Side by side rather than stacked: three full-width bars pushed the board most of
-            a screen down, and neither of these needs the whole width to be read. They drop
-            to one column on a phone, where there is no width to share. */}
+        {/* The club's standing notice comes first, above the day. It is the one thing on
+            this screen written by a person to be read by everyone, and it used to sit
+            under the day's line sharing a row — which put the association's message below
+            a schedule summary. */}
         {activeTab !== "announcements" && (
-          <div className="grid sm:grid-cols-2 gap-3 empty:hidden mb-4">
+          <div className="mb-4 empty:hidden">
             <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />
+          </div>
+        )}
+
+        <TodayStrip data={data} coachId={myCoachId} />
+
+        {/* The published state is already a chip inside TodayStrip. The full-width banner
+            that used to sit here said the same thing three lines louder, directly under the
+            line that had just said it. */}
+        {activeTab !== "announcements" && (
+          <div className="mb-4 empty:hidden">
             <BirthdayReminder coaches={data.coaches} weekStart={weekStart} compact />
           </div>
         )}

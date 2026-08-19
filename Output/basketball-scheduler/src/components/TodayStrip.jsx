@@ -8,7 +8,7 @@ import { IconClock, IconMapPin, IconCheck } from "./ui/icons";
 //
 // About today, never about the week being viewed: the rest of the app follows you when you
 // navigate to next month, and this line would be worse than useless if it did too.
-export function TodayStrip({ data }) {
+export function TodayStrip({ data, coachId }) {
   // Re-read the clock every minute so "the next session" does not go stale on a screen
   // that stays open all afternoon — which is exactly how a manager uses this.
   const [now, setNow] = useState(() => new Date());
@@ -17,7 +17,7 @@ export function TodayStrip({ data }) {
     return () => clearInterval(id);
   }, []);
 
-  const t = todaySummary(data, toISODate(now), minutesOfDay(now));
+  const t = todaySummary(data, toISODate(now), minutesOfDay(now), coachId);
   if (!t.valid) return null;
 
   return (
@@ -27,7 +27,17 @@ export function TodayStrip({ data }) {
           היום · יום {t.dayName}, {t.dateLabel}
         </div>
         <div className="text-[17px] font-bold text-stone-800 leading-tight">
-          {t.count === 0 ? "אין אימונים היום" : t.count === 1 ? "אימון אחד" : `${t.count} אימונים`}
+          {t.scoped
+            ? t.count === 0
+              ? "אין לך אימונים היום"
+              : t.count === 1
+              ? "אימון אחד שלך"
+              : `${t.count} אימונים שלך`
+            : t.count === 0
+            ? "אין אימונים היום"
+            : t.count === 1
+            ? "אימון אחד"
+            : `${t.count} אימונים`}
         </div>
       </div>
 
@@ -48,7 +58,11 @@ export function TodayStrip({ data }) {
           </span>
         </div>
       ) : (
-        t.count > 0 && <div className="text-sm text-stone-500">כל האימונים של היום הסתיימו</div>
+        t.count > 0 && (
+          <div className="text-sm text-stone-500">
+            {t.scoped ? "האימונים שלך היום הסתיימו" : "כל האימונים של היום הסתיימו"}
+          </div>
+        )
       )}
 
       {/* Publication state belongs here rather than buried in the board: it is the one

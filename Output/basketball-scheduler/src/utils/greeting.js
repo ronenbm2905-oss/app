@@ -1,3 +1,5 @@
+import { coachForUser } from "./coachIdentity";
+
 // The name the app greets you by on the home screen.
 //
 // Three sources, in order of how well the name fits the person being greeted:
@@ -15,19 +17,13 @@
 export function greetingName(user, coaches) {
   if (!user || user.local) return "";
 
-  const email = String(user.email || "").trim().toLowerCase();
-  if (email && Array.isArray(coaches)) {
-    const match = coaches.find(
-      (c) => c && String(c.email || "").trim().toLowerCase() === email
-    );
-    const clubName = match && String(match.name || "").trim();
-    if (clubName) return clubName.split(/\s+/)[0];
-  }
+  const clubName = String(coachForUser(user, coaches)?.name || "").trim();
+  if (clubName) return clubName.split(/\s+/)[0];
 
   const display = String(user.displayName || "").trim();
   if (display) return display.split(/\s+/)[0];
 
-  const local = email.split("@")[0].trim();
+  const local = String(user.email || "").split("@")[0].trim();
   if (!local) return "";
   // ron.cohen / ron_cohen / ron-cohen → "Ron". Latin only: an address written in
   // Hebrew letters is not a thing, so capitalising is safe here.

@@ -35,11 +35,17 @@ const nameOf = (list, id) => (list || []).find((x) => x && x.id === id)?.name ||
 // nowMinutes is minutes since midnight. Passed in rather than read from the clock so the
 // whole thing stays a pure function of its inputs, and so "what shows at 21:00" is a test
 // rather than something you can only find out by waiting until 21:00.
-export function todaySummary(data, todayIso, nowMinutes) {
+//
+// `coachId` narrows the day to one coach's own sessions. A coach opening the app wants to
+// know when THEY train, not how busy the club is; the club-wide count is a manager's
+// number. Left out — or unknown, because nobody filled that coach's email in — the summary
+// covers the whole club, which is what it always did.
+export function todaySummary(data, todayIso, nowMinutes, coachId) {
   const date = parseIso(todayIso);
+  const scoped = Boolean(coachId);
   const empty = {
     valid: false, dayName: "", dateLabel: "", sessions: [],
-    count: 0, remaining: 0, next: null, published: false,
+    count: 0, remaining: 0, next: null, published: false, scoped,
   };
   if (!date) return empty;
 
@@ -48,6 +54,7 @@ export function todaySummary(data, todayIso, nowMinutes) {
 
   const sessions = (data?.sessions || [])
     .filter((s) => s && s.day === dayName && (s.weekOf || "") === weekOf)
+    .filter((s) => !scoped || s.coachId === coachId)
     .slice()
     .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
     .map((s) => ({
@@ -73,6 +80,7 @@ export function todaySummary(data, todayIso, nowMinutes) {
     remaining: upcoming.length,
     next: upcoming[0] || null,
     published: (data?.schedulePublished?.weekOf || "") === weekOf,
+    scoped,
   };
 }
 
