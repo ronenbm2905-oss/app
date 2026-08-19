@@ -44,14 +44,21 @@ const TABS = [
 ];
 
 // Screens only the club's managers see. The rest are read-only for everyone else, which
-// is what the "view only" notice has always meant — these three are hidden outright
-// because they are building tools: entering sessions, maintaining constraints, and the
-// monthly hours report. A coach has nothing to do with any of them.
+// is what the "view only" notice has always meant — these are hidden outright. Three are
+// building tools a coach has nothing to do with: entering sessions, maintaining
+// constraints, and the monthly hours report. The fourth, the player list, is hidden for a
+// different reason — it holds minors' personal details, and a coach does not need the
+// whole club's roster to do their job.
 //
 // This hides screens; it is NOT a security boundary. Access to the club's data is decided
 // by the Firestore rules and the admins/members lists, and every write still goes through
 // the same check. Hiding a tab keeps the app uncluttered — it does not protect anything.
-const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "report"]);
+const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "report", "players"]);
+
+// The roster screen shows a coach two of its three cards — halls are a manager's concern
+// and are hidden from them — so the tab that opens it should not promise a third. Same
+// screen, honest name.
+const COACH_TAB_LABELS = { rosters: "קבוצות ומאמנים" };
 
 function Loading() {
   return (
@@ -76,7 +83,9 @@ export default function App() {
 
   const canEdit = isAdmin;
 
-  const visibleTabs = visibleTabsFor(TABS, ADMIN_ONLY_TABS, canEdit);
+  const visibleTabs = visibleTabsFor(TABS, ADMIN_ONLY_TABS, canEdit).map((t) =>
+    !canEdit && COACH_TAB_LABELS[t.id] ? { ...t, label: COACH_TAB_LABELS[t.id] } : t
+  );
   const activeTab = resolveActiveTab(visibleTabs, tab);
 
   // Was max-w-4xl (896px) everywhere but the board, which is what forced nine tabs onto
@@ -186,6 +195,7 @@ export default function App() {
             tabs={visibleTabs.filter((t) => t.id !== "home")}
             data={data}
             weekStart={weekStart}
+            canEdit={canEdit}
             onOpen={setTab}
           />
         ) : activeTab === "announcements" ? (

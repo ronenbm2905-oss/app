@@ -221,7 +221,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
                         </span>
                       )}
                     </span>
-                    {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
+                    {canEdit && inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
                       <div className="flex items-center gap-1 shrink-0">
                         <button onClick={() => setEditingId(item.id)} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500" aria-label="ערוך">
@@ -350,7 +350,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
                       <div className="text-sm text-stone-700">{item.name}</div>
                       {item.coachId && <div className="text-xs text-stone-600">מאמן: {coachName(item.coachId)}</div>}
                     </div>
-                    {inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
+                    {canEdit && inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
                       <div className="flex items-center gap-1 shrink-0">
                         <div className="flex flex-col -my-1">
@@ -486,10 +486,17 @@ export function RostersView({ data, save, canEdit }) {
           </button>
         </div>
       )}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className={`grid gap-4 ${canEdit ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
         <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withEmail withBirthDate withParallelGroups />
-        <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} withIndoor headerExtra={indoorHelper} />
+        {/* Halls are maintained by managers — which court a session sits in is decided on
+            the scheduling screen, not here. A coach reading this screen wants teams and
+            who trains them, so the card is left out of their copy of it entirely and the
+            grid closes to two columns. This hides a screen area, not data: see the note
+            on ADMIN_ONLY_TABS in App.jsx. */}
+        {canEdit && (
+          <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} withIndoor headerExtra={indoorHelper} />
+        )}
       </div>
     </div>
   );

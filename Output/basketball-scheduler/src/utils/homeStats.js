@@ -20,7 +20,9 @@ function plural(n, one, many) {
   return `${n} ${many}`;
 }
 
-export function homeStats(data, weekStart) {
+// `canEdit` is here for one line only: a coach's roster screen has no halls on it, so
+// counting them on the tile would describe a screen they are not going to get.
+export function homeStats(data, weekStart, canEdit = true) {
   const d = data || {};
   const sessions = arr(d.sessions).filter((s) => s && (s.weekOf || "") === weekStart);
   const games = arr(d.games).filter((g) => g && g.date && weekStartOfDMY(g.date) === weekStart);
@@ -30,7 +32,9 @@ export function homeStats(data, weekStart) {
     announcements: notice
       ? notice.replace(/\s+/g, " ").slice(0, 40) + (notice.length > 40 ? "…" : "")
       : "אין הודעות כרגע",
-    rosters: `${plural(count(d.teams), "קבוצה אחת", "קבוצות")} · ${plural(count(d.halls), "אולם אחד", "אולמות")}`,
+    rosters: canEdit
+      ? `${plural(count(d.teams), "קבוצה אחת", "קבוצות")} · ${plural(count(d.halls), "אולם אחד", "אולמות")}`
+      : `${plural(count(d.teams), "קבוצה אחת", "קבוצות")} · ${plural(count(d.coaches), "מאמן אחד", "מאמנים")}`,
     manager: plural(sessions.length, "אימון אחד השבוע", "אימונים השבוע"),
     constraints: plural(count(d.constraints), "אילוץ אחד", "אילוצים"),
     games: plural(games.length, "משחק אחד השבוע", "משחקים השבוע"),
