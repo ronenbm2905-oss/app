@@ -148,7 +148,7 @@ export default function App() {
       <div className={`${headerWidth} mx-auto px-4 py-6`}>
         {/* Home only, and above everything else: the greeting is the first thing the
             screen says, before today's line and before the tiles. */}
-        {activeTab === "home" && <Greeting user={user} canEdit={canEdit} />}
+        {activeTab === "home" && <Greeting user={user} coaches={data.coaches} canEdit={canEdit} />}
 
         {mode === "local" && (
           <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-4">

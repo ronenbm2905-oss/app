@@ -6,8 +6,8 @@ import { greetingName } from "../utils/greeting";
 //
 // Renders nothing when there is no name to use (local mode, or a signed-out state that
 // cannot reach here anyway), so the tiles simply move up.
-export function Greeting({ user, canEdit }) {
-  const name = greetingName(user);
+export function Greeting({ user, coaches, canEdit }) {
+  const name = greetingName(user, coaches);
   if (!name) return null;
 
   return (
