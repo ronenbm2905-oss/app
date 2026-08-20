@@ -187,7 +187,13 @@ export default function PortalApp() {
           </button>
         </div>
 
-        <LegalFooter className="mt-8 pt-6 border-t border-stone-200" />
+        {/* The club's own legal details, carried on the published week. Without them the
+            documents render ⟨… — למילוי⟩ to the one reader who most needs to know who
+            holds their child's data and where to write to have it corrected. */}
+        <LegalFooter
+          className="mt-8 pt-6 border-t border-stone-200"
+          data={week?.legal ? { settings: { legal: week.legal } } : undefined}
+        />
       </div>
     </div>
   );

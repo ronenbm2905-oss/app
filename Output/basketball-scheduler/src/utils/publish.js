@@ -13,7 +13,7 @@
 
 import { DAYS } from "../constants";
 import { getWeekDates, toISODate, formatDate, weekStartOfDMY } from "./dates";
-import { clubName } from "./club";
+import { clubName, clubLegal } from "./club";
 
 // Effective address of a game: a manual override wins over the federation file's value.
 const gameAddress = (g) => (g.addressOverride || g.venue || "");
@@ -83,6 +83,13 @@ export function buildPublicWeek(data, weekStart, publishedAt) {
     weekOf: weekStart,
     publishedAt: publishedAt || "",
     clubName: clubName(data),
+    // Added to the allowlist deliberately, and it is the club's OWN contact details —
+    // never a player's or a coach's. The portal cannot read clubs/{clubId}, by design,
+    // so without this a parent opening the privacy policy from the portal footer was
+    // shown ⟨שם המפעיל — למילוי⟩ and no address to write to: no way to identify the
+    // controller of their child's data, and no way to exercise access or erasure. The
+    // notice obligation is owed to the parent, so the details have to reach them.
+    legal: clubLegal(data),
     teams,
     holidays: holidaysInWeek(data.holidays, weekStart),
   };

@@ -171,6 +171,16 @@ export function PortalJoin({ clubId, onJoined }) {
               החשבון מיועד להורה. אנו שומרים את כתובת הדוא״ל שלך ואת שיוך הקבוצה בלבד — לא את שם
               הילד/ה ולא פרטים אישיים נוספים.
             </p>
+            {/* Before joining there is no published week, and the portal cannot read the
+                club document — so the club's own contact details are genuinely unavailable
+                here. Saying who runs the software and where to write is the minimum a
+                person is owed before they consent to anything. */}
+            <p className="text-xs text-stone-500 leading-relaxed border-t border-stone-200 pt-3">
+              הלו״ז מנוהל על ידי האגודה של הקבוצה שלך, והיא האחראית על המידע. את התוכנה מפעיל
+              רונן בן מאיר. פרטי ההתקשרות המלאים של האגודה — כולל כתובת לפניות בנושא פרטיות —
+              מופיעים במדיניות הפרטיות מיד לאחר ההצטרפות. לשאלה לפני כן, פנו לאגודה שמסרה לכם
+              את הקוד.
+            </p>
           </>
         ) : (
           <form onSubmit={submit} className="space-y-3">

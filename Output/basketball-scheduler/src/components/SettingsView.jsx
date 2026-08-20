@@ -147,7 +147,15 @@ function PortalCard({ data, save, syncJoinCode, clubId, canEdit }) {
       teams: teams.map((t) => (t.id === team.id ? { ...t, joinCode: newCode } : t)),
     });
     await syncJoinCode({ oldCode, newCode, teamId: team.id, teamName: team.name });
-    setMsg(oldCode ? `הקוד של "${team.name}" הוחלף. הקוד הקודם הפסיק לעבוד.` : `נוצר קוד עבור "${team.name}".`);
+    // Precisely worded on purpose. Replacing a code stops it being used to join, but it
+    // does NOT sign out a parent who already joined — their access lives on their own
+    // portalUsers document, which this does not touch. A manager rotating a leaked code
+    // would otherwise believe they had revoked access, and would not.
+    setMsg(
+      oldCode
+        ? `הקוד של "${team.name}" הוחלף. הקוד הישן לא יאפשר עוד הצטרפות — אבל הורים שכבר הצטרפו ממשיכים לראות את הלו״ז.`
+        : `נוצר קוד עבור "${team.name}".`
+    );
   };
 
   const copy = async (text, label) => {
@@ -537,6 +545,12 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
         <div className="grid sm:grid-cols-2 gap-3">
           <Field label={LEGAL_FIELD_LABELS.operator} hint="הגוף המשפטי שמפעיל את השירות (עמותה / חברה).">
             <input className={inputCls} value={draft.legal?.operator || ""} onChange={(e) => setLegal({ operator: e.target.value })} />
+          </Field>
+          <Field
+            label="צורת התאגדות (אופציונלי)"
+            hint='מופיע בסוגריים אחרי שם הגוף במסמכים — למשל "עמותה" או "בע״מ". השאירו ריק אם אינכם בטוחים; שגוי גרוע מחסר.'
+          >
+            <input className={inputCls} value={draft.legal?.entityType || ""} onChange={(e) => setLegal({ entityType: e.target.value })} />
           </Field>
           <Field label={LEGAL_FIELD_LABELS.address}>
             <input className={inputCls} value={draft.legal?.address || ""} onChange={(e) => setLegal({ address: e.target.value })} />

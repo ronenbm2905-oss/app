@@ -100,6 +100,11 @@ export const DEFAULT_SETTINGS = {
     email: "",
     a11yContact: "",
     a11yPhone: "",
+    // Form of incorporation — "עמותה", "בע״מ", or nothing. Optional, and blank by
+    // default: the documents used to hard-code "(עמותה)", which is a false statement
+    // about the controller for any customer that is a company. Renders to nothing when
+    // unset rather than a "to be filled" marker — see legal/fillTemplate.
+    entityType: "",
   },
   subscription: { plan: "", validUntil: "" }, // display only — no billing in the app
 };

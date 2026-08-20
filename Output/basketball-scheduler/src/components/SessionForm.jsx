@@ -136,15 +136,27 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
           <Select value={type} onChange={setType} options={typeOptions} placeholder="בחר סוג" />
         </div>
         <div>
-          <label className="text-xs text-stone-500 mb-1 block">הערות (אופציונלי)</label>
+          {/* The label carries the warning because this field is published verbatim to
+              every parent in the portal (utils/publish.js), and nothing here used to say
+              so. A note like "חוזרת מפציעה" is medical information about an identified
+              minor — the one category the law treats as specially sensitive — and it was
+              being written by a coach who reasonably believed it was an internal remark. */}
+          <label className="text-xs text-stone-500 mb-1 block">
+            הערות (אופציונלי) — <span className="text-amber-700 font-medium">מוצג להורים בפורטל</span>
+          </label>
           <input
             type="text"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="לדוגמה: משחק נגד הפועל, משחק חוץ"
+            placeholder="לדוגמה: משחק נגד הפועל, להביא חולצה כהה"
+            aria-describedby="notes-visibility"
             className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             dir="rtl"
           />
+          <span id="notes-visibility" className="text-[11px] text-stone-500 mt-1 block">
+            כשהלו״ז מפורסם, ההערה נראית לכל הורה בקבוצה. אל תכתבו כאן מידע רפואי או אישי על
+            שחקן/ית.
+          </span>
         </div>
       </div>
 

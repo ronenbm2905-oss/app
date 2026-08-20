@@ -14,8 +14,23 @@ const LABELS = {
   a11yPhone: "טלפון רכז/ת נגישות",
 };
 
+// Tokens that render to nothing when unset, instead of a "to be filled" marker.
+//
+// entitySuffix is the club's form of incorporation, and the documents used to hard-code
+// "(עמותה)" — telling every customer's readers that the controller of their data is a
+// non-profit, which for a company is simply untrue. It is genuinely optional: a club
+// that leaves it blank reads "**שם המועדון** ("המפעיל")", which is correct, whereas a
+// ⟨… — למילוי⟩ here would make a finished document look unfinished.
+const OPTIONAL = {
+  entitySuffix: (legal) => {
+    const type = legal && typeof legal.entityType === "string" ? legal.entityType.trim() : "";
+    return type ? ` (${type})` : "";
+  },
+};
+
 export function fillLegalTemplate(source, legal) {
   return String(source || "").replace(/\{\{(\w+)\}\}/g, (_match, key) => {
+    if (OPTIONAL[key]) return OPTIONAL[key](legal);
     const raw = legal && typeof legal[key] === "string" ? legal[key].trim() : "";
     return raw || `⟨${LABELS[key] || key} — למילוי⟩`;
   });
