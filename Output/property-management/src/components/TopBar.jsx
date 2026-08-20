@@ -11,11 +11,11 @@ export function TopBar({ view, onNavigate, onToggleLang, isLocal, onSignOut }) {
     { key: "reminders", label: t("nav.reminders"), icon: <IconCalendar size={18} /> },
   ];
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 bg-navy text-white">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2">
-        <div className="flex items-center gap-1.5 text-brand-600">
-          <IconGlobe size={22} />
-          <span className="hidden text-sm font-bold text-slate-800 sm:inline">{t("app.title")}</span>
+        <div className="flex items-center gap-1.5 font-bold text-white">
+          <span className="text-accent"><IconGlobe size={22} /></span>
+          <span className="hidden text-sm sm:inline">{t("app.title")}</span>
         </div>
 
         <nav className="flex items-center gap-1" aria-label="main">
@@ -24,8 +24,8 @@ export function TopBar({ view, onNavigate, onToggleLang, isLocal, onSignOut }) {
               key={it.key}
               onClick={() => onNavigate(it.key)}
               aria-current={view === it.key ? "page" : undefined}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition ${
-                view === it.key ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100"
+              className={`inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-sm font-medium transition ${
+                view === it.key ? "bg-white/10 text-white" : "text-onnavy-muted hover:bg-white/10 hover:text-white"
               }`}
             >
               {it.icon}
@@ -35,12 +35,12 @@ export function TopBar({ view, onNavigate, onToggleLang, isLocal, onSignOut }) {
         </nav>
 
         <div className="flex items-center gap-1">
-          <button onClick={onToggleLang} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100" aria-label={t("nav.language")}>
+          <button onClick={onToggleLang} className="inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-sm text-onnavy-muted transition hover:bg-white/10 hover:text-white" aria-label={t("nav.language")}>
             <IconLang size={16} />
             <span className="hidden sm:inline">{t("nav.language")}</span>
           </button>
           {!isLocal && (
-            <button onClick={onSignOut} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100" aria-label={t("nav.signOut")}>
+            <button onClick={onSignOut} className="inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-sm text-onnavy-muted transition hover:bg-white/10 hover:text-white" aria-label={t("nav.signOut")}>
               <IconLogout size={16} />
             </button>
           )}

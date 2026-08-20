@@ -6,6 +6,7 @@
 ## Topics
 
 - [[basketball-scheduler-cloud-migration]] — המרת scheduler.html לאפליקציית ענן (Vite+React+Firebase) עם fallback מקומי
+- [[coachtrack-app]] — CoachTrack: מעקב תרגילי בית לקבוצת כדורסל (Vite+React+**TypeScript**+Firebase). הגיע כחבילת handoff מוכנה; קריאה צולבת 19.8.2026 חשפה 2 חוסמים לוגיים + 3 חורים ב-rules. הכרעות: `role` במסמך `users` במקום Custom Claims, לוח מובילים נדחה לשלב 2, `entries.date` על 12:00 ישראל. **שלב 0 shipped**, שלב 1 חסום עד `.env.local`
 - [[ab-atelier-spec-review]] — AB Atelier (תכשיטים): ביקורת אפיון חנות Shopify → פיבוט לדף נחיתה כשלב בדיקה (בריף תויק)
 - [[personal-caricatures]] — קריקטורות/איורים אישיים של איתי (מתנות לחברים) דרך gpt-image-gen
 - [[team-expansion-noam-fullstack]] — לוג הרחבת הצוות: נועם (אפליקציות Full-Stack), מאיה (משרד/תפעול), ליאור (מצגות)

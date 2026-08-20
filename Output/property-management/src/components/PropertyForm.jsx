@@ -95,7 +95,7 @@ export function PropertyForm({ initial, mode = "full", onSubmit, onCancel }) {
           </div>
 
           <div>
-            <span className="mb-2 block text-sm font-medium text-slate-700">{t("gen.attachments")}</span>
+            <span className="mb-2 block text-sm font-medium text-ink-body">{t("gen.attachments")}</span>
             <div className="flex flex-wrap gap-3">
               {ATTACHMENTS.map((a) => (
                 <Checkbox
@@ -112,8 +112,8 @@ export function PropertyForm({ initial, mode = "full", onSubmit, onCancel }) {
           <Checkbox label={t("gen.shortTerm")} checked={p.shortTerm} onChange={(v) => setP({ ...p, shortTerm: v })} />
 
           {/* פרטים כלכליים — בסיס לחישוב התשואה */}
-          <fieldset className="rounded-xl border border-slate-200 p-4">
-            <legend className="px-2 text-sm font-semibold text-slate-700">{t("gen.finance")}</legend>
+          <fieldset className="rounded-xl border border-border p-4">
+            <legend className="px-2 text-sm font-semibold text-ink-body">{t("gen.finance")}</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label={t("gen.purchaseDate")} type="date" value={p.finance.purchaseDate} onChange={(v) => setFin("purchaseDate", v)} />
               <Field label={t("gen.purchasePrice")} type="number" value={p.finance.purchasePrice ?? ""} onChange={(v) => setFin("purchasePrice", num(v))} />
@@ -121,7 +121,7 @@ export function PropertyForm({ initial, mode = "full", onSubmit, onCancel }) {
             </div>
 
             <div className="mt-3">
-              <span className="mb-2 block text-sm font-medium text-slate-600">{t("gen.financing")}</span>
+              <span className="mb-2 block text-sm font-medium text-ink-body">{t("gen.financing")}</span>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label={t("gen.financing.amount")} type="number" value={p.finance.financing.amount ?? ""} onChange={(v) => setFinancing("amount", num(v))} />
                 <Field label={t("gen.financing.lender")} value={p.finance.financing.lender} onChange={(v) => setFinancing("lender", v)} />
@@ -131,7 +131,7 @@ export function PropertyForm({ initial, mode = "full", onSubmit, onCancel }) {
             </div>
 
             <div className="mt-3">
-              <span className="mb-2 block text-sm font-medium text-slate-600">{t("gen.extraCosts")}</span>
+              <span className="mb-2 block text-sm font-medium text-ink-body">{t("gen.extraCosts")}</span>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label={t("gen.purchaseTax")} type="number" value={p.finance.extraCosts.purchaseTax ?? ""} onChange={(v) => setExtra("purchaseTax", num(v))} />
                 <Field label={t("gen.notary")} type="number" value={p.finance.extraCosts.notary ?? ""} onChange={(v) => setExtra("notary", num(v))} />

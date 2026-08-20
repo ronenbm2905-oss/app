@@ -23,15 +23,15 @@ export function PropertyPage({ property, data, ownerId, actions, canEdit, onBack
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
       {/* כותרת קבועה */}
-      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+      <button onClick={onBack} className="mb-3 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink-body">
         <BackIcon size={16} /> {t("nav.back")}
       </button>
 
       <div className="mb-5 rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-slate-800">{addressLine(property)}</h1>
-            <div className="mt-1 flex items-center gap-2 text-sm text-slate-500">
+            <h1 className="text-xl font-bold text-navy">{addressLine(property)}</h1>
+            <div className="mt-1 flex items-center gap-2 text-sm text-ink-muted">
               <span>{t(`enum.propertyType.${property.type}`)}</span>
               <Pill tone="blue">{t(`enum.propertyStatus.${property.status}`)}</Pill>
             </div>
@@ -46,7 +46,7 @@ export function PropertyPage({ property, data, ownerId, actions, canEdit, onBack
       </div>
 
       {/* טאבים */}
-      <div role="tablist" className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+      <div role="tablist" className="mb-4 flex flex-wrap gap-1 border-b border-border">
         {TABS.map((key) => (
           <button
             key={key}
@@ -55,8 +55,8 @@ export function PropertyPage({ property, data, ownerId, actions, canEdit, onBack
             onClick={() => setTab(key)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition ${
               tab === key
-                ? "border-brand-600 text-brand-700"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                ? "border-b-accent text-navy"
+                : "border-transparent text-ink-muted hover:text-navy"
             }`}
           >
             {t(`prop.tab.${key}`)}

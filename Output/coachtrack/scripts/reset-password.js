@@ -19,14 +19,17 @@
  */
 
 const crypto = require('crypto');
-const admin = require('firebase-admin');
+// firebase-admin v13+ הסיר את ה-namespace הישן — ה-API המודולרי מגיע דרך subpaths.
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 
 const serviceAccount = require('./serviceAccountKey.json');
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+initializeApp({ credential: cert(serviceAccount) });
 
-const db = admin.firestore();
-const auth = admin.auth();
+const db = getFirestore();
+const auth = getAuth();
 
 const EMAIL_DOMAIN = 'coachtrack.local';
 

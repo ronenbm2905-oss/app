@@ -14,7 +14,7 @@ export function FinancialDashboard({ data, onOpenProperty }) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
-      <h1 className="mb-4 text-xl font-bold text-slate-800">{t("fin.title")}</h1>
+      <h1 className="mb-4 text-xl font-bold text-navy">{t("fin.title")}</h1>
 
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi icon={<IconBuilding size={18} />} label={t("fin.kpi.properties")} value={totals.propertyCount} />
@@ -25,9 +25,9 @@ export function FinancialDashboard({ data, onOpenProperty }) {
 
       {/* גרף הכנסות/הוצאות */}
       <div className="mb-5 rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-slate-700">{t("fin.chart.title")}</h3>
+        <h3 className="mb-4 text-sm font-semibold text-ink-body">{t("fin.chart.title")}</h3>
         {chart.length === 0 ? (
-          <p className="text-sm text-slate-500">{t("fin.chart.empty")}</p>
+          <p className="text-sm text-ink-muted">{t("fin.chart.empty")}</p>
         ) : (
           <BarChart data={chart} lang={lang} labels={{ income: t("fin.chart.income"), expenses: t("fin.chart.expenses") }} />
         )}
@@ -35,18 +35,18 @@ export function FinancialDashboard({ data, onOpenProperty }) {
 
       {/* מצבים קריטיים */}
       <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-slate-700">{t("fin.critical.title")}</h3>
+        <h3 className="mb-3 text-sm font-semibold text-ink-body">{t("fin.critical.title")}</h3>
         {critical.length === 0 ? (
-          <p className="text-sm text-slate-500">{t("fin.critical.none")}</p>
+          <p className="text-sm text-ink-muted">{t("fin.critical.none")}</p>
         ) : (
           <ul className="space-y-2">
             {critical.map((c, i) => (
               <li
                 key={i}
                 onClick={() => onOpenProperty(c.propertyId)}
-                className="flex cursor-pointer items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm hover:bg-slate-100"
+                className="flex cursor-pointer items-center justify-between rounded-lg bg-surface-alt px-3 py-2 text-sm hover:bg-surface-sunk"
               >
-                <span className="font-medium text-slate-700">{c.address}</span>
+                <span className="font-medium text-ink-body">{c.address}</span>
                 <span className="text-red-600">{c.text}</span>
               </li>
             ))}
@@ -60,12 +60,12 @@ export function FinancialDashboard({ data, onOpenProperty }) {
 function Kpi({ icon, label, value, hint }) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-xs text-slate-500">
+      <div className="flex items-center gap-2 text-xs text-ink-muted">
         <span className="text-brand-500">{icon}</span>
         {label}
       </div>
-      <div className="mt-1 text-xl font-bold text-slate-800">{value}</div>
-      {hint && <div className="mt-1 text-[11px] text-slate-400">{hint}</div>}
+      <div className="mt-1 text-xl font-bold text-navy">{value}</div>
+      {hint && <div className="mt-1 text-[11px] text-ink-faint">{hint}</div>}
     </div>
   );
 }
@@ -90,7 +90,7 @@ function BarChart({ data, lang, labels }) {
               <g key={i}>
                 <rect x={x} y={chartH - incH} width={barW} height={incH} rx={2} className="fill-green-500" />
                 <rect x={x + barW + gap} y={chartH - expH} width={barW} height={expH} rx={2} className="fill-red-400" />
-                <text x={x + barW} y={chartH + 16} textAnchor="middle" className="fill-slate-400 text-[9px]">
+                <text x={x + barW} y={chartH + 16} textAnchor="middle" className="fill-ink-faint text-[9px]">
                   {d.label}
                 </text>
               </g>
@@ -98,7 +98,7 @@ function BarChart({ data, lang, labels }) {
           })}
         </svg>
       </div>
-      <div className="flex gap-4 text-xs text-slate-600">
+      <div className="flex gap-4 text-xs text-ink-body">
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-green-500" /> {labels.income}</span>
         <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-red-400" /> {labels.expenses}</span>
       </div>

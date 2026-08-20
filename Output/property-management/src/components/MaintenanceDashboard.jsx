@@ -20,8 +20,8 @@ export function MaintenanceDashboard({ data, onOpenProperty, onNewTicket, onEdit
     <div className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">{t("maint.title")}</h1>
-          <p className="text-sm text-slate-500">{t("maint.openCount", { count: openTickets.length })}</p>
+          <h1 className="text-xl font-bold text-navy">{t("maint.title")}</h1>
+          <p className="text-sm text-ink-muted">{t("maint.openCount", { count: openTickets.length })}</p>
         </div>
         <Button onClick={onNewTicket}>
           <IconPlus size={16} /> {t("maint.newTicket")}
@@ -29,12 +29,12 @@ export function MaintenanceDashboard({ data, onOpenProperty, onNewTicket, onEdit
       </div>
 
       {openTickets.length === 0 ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-slate-500 shadow-sm">{t("maint.empty")}</div>
+        <div className="rounded-2xl bg-white p-10 text-center text-ink-muted shadow-sm">{t("maint.empty")}</div>
       ) : (
         <div className="table-scroll rounded-2xl bg-white shadow-sm">
           <table className="w-full min-w-[820px] text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-xs text-slate-500">
+              <tr className="border-b border-border text-xs text-ink-muted">
                 <th className="px-3 py-2 text-start">{t("maint.col.property")}</th>
                 <th className="px-3 py-2 text-start">{t("maint.col.opened")}</th>
                 <th className="px-3 py-2 text-start">{t("maint.col.type")}</th>
@@ -53,7 +53,7 @@ export function MaintenanceDashboard({ data, onOpenProperty, onNewTicket, onEdit
                   <tr
                     key={tk.id}
                     onClick={() => onEditTicket(tk.propertyId, tk.id)}
-                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
+                    className="cursor-pointer border-b border-border hover:bg-surface-alt"
                   >
                     <td className="px-3 py-3">
                       <button
@@ -66,11 +66,11 @@ export function MaintenanceDashboard({ data, onOpenProperty, onNewTicket, onEdit
                         {p ? addressLine(p) : "—"}
                       </button>
                     </td>
-                    <td className="px-3 py-3 text-slate-600">{formatDate(tk.openedDate, lang)}</td>
-                    <td className="px-3 py-3 text-slate-700">{t(`enum.ticketType.${tk.type}`)}</td>
-                    <td className="px-3 py-3 text-slate-600">{tk.handler?.name || "—"}</td>
-                    <td className="px-3 py-3 text-slate-700">{daysOpen}</td>
-                    <td className="px-3 py-3 text-slate-700">{formatCurrency(tk.cost ?? tk.quote, p?.currency || "ILS", lang)}</td>
+                    <td className="px-3 py-3 text-ink-body">{formatDate(tk.openedDate, lang)}</td>
+                    <td className="px-3 py-3 text-ink-body">{t(`enum.ticketType.${tk.type}`)}</td>
+                    <td className="px-3 py-3 text-ink-body">{tk.handler?.name || "—"}</td>
+                    <td className="px-3 py-3 text-ink-body">{daysOpen}</td>
+                    <td className="px-3 py-3 text-ink-body">{formatCurrency(tk.cost ?? tk.quote, p?.currency || "ILS", lang)}</td>
                     <td className="px-3 py-3">
                       <Pill tone={STATUS_TONE[tk.status]}>{t(`enum.ticketStatus.${tk.status}`)}</Pill>
                     </td>

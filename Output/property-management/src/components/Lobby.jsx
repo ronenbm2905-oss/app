@@ -19,7 +19,7 @@ export function Lobby({ data, onOpenProperty, onAddProperty, canEdit }) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">{t("lobby.title")}</h1>
+        <h1 className="text-xl font-bold text-navy">{t("lobby.title")}</h1>
         {canEdit && (
           <Button onClick={onAddProperty}>
             <IconPlus size={16} /> {t("lobby.addProperty")}
@@ -35,14 +35,14 @@ export function Lobby({ data, onOpenProperty, onAddProperty, canEdit }) {
       </div>
 
       {properties.length === 0 ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-slate-500 shadow-sm">
+        <div className="rounded-2xl bg-white p-10 text-center text-ink-muted shadow-sm">
           {t("lobby.empty")}
         </div>
       ) : (
         <div className="table-scroll rounded-2xl bg-white shadow-sm">
           <table className="w-full min-w-[880px] text-start text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-xs text-slate-500">
+              <tr className="border-b border-border text-xs text-ink-muted">
                 <Th>{t("lobby.col.address")}</Th>
                 <Th>{t("lobby.col.type")}</Th>
                 <Th>{t("lobby.col.tenant")}</Th>
@@ -68,12 +68,12 @@ export function Lobby({ data, onOpenProperty, onAddProperty, canEdit }) {
                   <tr
                     key={p.id}
                     onClick={() => onOpenProperty(p.id)}
-                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50"
+                    className="cursor-pointer border-b border-border hover:bg-surface-alt"
                   >
                     <Td>
-                      <span className="font-medium text-slate-800">{addressLine(p)}</span>
+                      <span className="font-medium text-navy">{addressLine(p)}</span>
                     </Td>
-                    <Td className="text-slate-600">{t(`enum.propertyType.${p.type}`)}</Td>
+                    <Td className="text-ink-body">{t(`enum.propertyType.${p.type}`)}</Td>
                     <Td>
                       {tenant ? (
                         wa ? (
@@ -93,15 +93,15 @@ export function Lobby({ data, onOpenProperty, onAddProperty, canEdit }) {
                         "—"
                       )}
                     </Td>
-                    <Td className="text-slate-600">
+                    <Td className="text-ink-body">
                       {lease?.monthlyRent ? formatCurrency(lease.monthlyRent, p.currency, lang) : "—"}
                     </Td>
-                    <Td className="text-slate-600">
+                    <Td className="text-ink-body">
                       {lease?.paymentDay ? t("lobby.payDayShort", { day: lease.paymentDay }) : "—"}
                     </Td>
                     <Td>
                       {lease?.endDate ? (
-                        <span className={leaseEnding ? "font-medium text-amber-700" : "text-slate-600"}>
+                        <span className={leaseEnding ? "font-medium text-amber-700" : "text-ink-body"}>
                           {formatDate(lease.endDate, lang)}
                           {leaseEnding && <span className="ms-1">⚠</span>}
                         </span>
@@ -113,14 +113,14 @@ export function Lobby({ data, onOpenProperty, onAddProperty, canEdit }) {
                       {debt > 0 ? (
                         <Pill tone="red">{formatCurrency(debt, p.currency, lang)}</Pill>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-ink-faint">—</span>
                       )}
                     </Td>
                     <Td>
-                      {openTk > 0 ? <Pill tone="amber">{openTk}</Pill> : <span className="text-slate-400">—</span>}
+                      {openTk > 0 ? <Pill tone="amber">{openTk}</Pill> : <span className="text-ink-faint">—</span>}
                     </Td>
                     <Td>
-                      <span className={y !== null && y < (data.settings?.lowYieldThreshold ?? 3) ? "font-medium text-red-600" : "text-slate-700"}>
+                      <span className={y !== null && y < (data.settings?.lowYieldThreshold ?? 3) ? "font-medium text-red-600" : "text-ink-body"}>
                         {formatPercent(y, lang)}
                       </span>
                     </Td>
@@ -138,8 +138,8 @@ export function Lobby({ data, onOpenProperty, onAddProperty, canEdit }) {
 function SummaryCard({ label, value, tone = "slate" }) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`mt-1 text-xl font-bold ${tone === "red" ? "text-red-600" : "text-slate-800"}`}>
+      <div className="text-xs text-ink-muted">{label}</div>
+      <div className={`mt-1 text-xl font-bold ${tone === "red" ? "text-red-600" : "text-navy"}`}>
         {value}
       </div>
     </div>

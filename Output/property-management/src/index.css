@@ -1,16 +1,43 @@
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200..800&family=Heebo:wght@300..800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
+  --focus-ring: 0 0 0 3px rgba(0, 129, 232, 0.35);
+  --shadow-elevated: 0 24px 80px rgba(0, 44, 73, 0.12);
 }
 
 body {
   margin: 0;
-  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  background: #f1f5f9;
-  color: #0f172a;
+  font-family: "Assistant", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  background: #f2f6f9; /* surface-alt = canvas האפליקציה */
+  color: #3f5566; /* ink-body */
+}
+
+h1, h2, h3, h4 {
+  color: #002c49; /* navy */
+  text-wrap: pretty;
+}
+p {
+  text-wrap: pretty;
+}
+
+/* focus גלוי אחיד (brand-blue) — a11y */
+:where(a, button, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 2px;
+}
+
+/* מספרים/מחרוזות לטיניות בתוך עברית: Heebo + LTR + ספרות מיושרות */
+.num {
+  font-family: "Heebo", sans-serif;
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  font-weight: 300; /* signature: מספר קליל */
 }
 
 /* טבלאות שגולשות במובייל — גלילה אופקית חלקה */

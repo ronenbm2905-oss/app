@@ -40,7 +40,7 @@ export function DocumentsTab({ property, data, ownerId, onSave, onDelete, canEdi
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">{t("doc.title")}</h3>
+        <h3 className="text-sm font-semibold text-ink-body">{t("doc.title")}</h3>
         {canEdit && (
           <Button onClick={() => setModal(true)}>
             <IconPlus size={16} /> {t("doc.add")}
@@ -51,19 +51,19 @@ export function DocumentsTab({ property, data, ownerId, onSave, onDelete, canEdi
       <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{t("doc.uploadNote")}</p>
 
       {docs.length === 0 ? (
-        <p className="text-sm text-slate-500">{t("doc.none")}</p>
+        <p className="text-sm text-ink-muted">{t("doc.none")}</p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-border">
           {docs.map((d) => (
             <li key={d.id} className="flex items-center justify-between py-2 text-sm">
-              <span className="flex items-center gap-2 text-slate-700">
-                <IconDoc size={16} className="text-slate-400" />
+              <span className="flex items-center gap-2 text-ink-body">
+                <IconDoc size={16} className="text-ink-faint" />
                 <span className="font-medium">{t(`enum.docType.${d.type}`)}</span>
-                {d.fileName && <span className="text-slate-500">· {d.fileName}</span>}
-                <span className="text-slate-400">· {formatDate(d.uploadDate, lang)}</span>
+                {d.fileName && <span className="text-ink-muted">· {d.fileName}</span>}
+                <span className="text-ink-faint">· {formatDate(d.uploadDate, lang)}</span>
               </span>
               {canEdit && (
-                <button onClick={() => onDelete(d.id)} aria-label={t("common.delete")} className="text-slate-400 hover:text-red-600">
+                <button onClick={() => onDelete(d.id)} aria-label={t("common.delete")} className="text-ink-faint hover:text-red-600">
                   <IconDelete size={16} />
                 </button>
               )}
@@ -150,14 +150,14 @@ function DocModal({ initial, onClose, onSave }) {
         <Field label={t("doc.uploadDate")} type="date" value={d.uploadDate} onChange={(v) => set("uploadDate", v)} />
 
         {/* --- סריקת AI (opt-in פר-מסמך) --- */}
-        <fieldset className="rounded-xl border border-slate-200 p-3">
-          <legend className="px-2 text-sm font-semibold text-slate-700">{t("ai.title")}</legend>
-          <p className="mb-2 text-xs text-slate-500">{t("ai.optInNote")}</p>
+        <fieldset className="rounded-xl border border-border p-3">
+          <legend className="px-2 text-sm font-semibold text-ink-body">{t("ai.title")}</legend>
+          <p className="mb-2 text-xs text-ink-muted">{t("ai.optInNote")}</p>
           <p className="mb-3 rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-800">{t("ai.gateNote")}</p>
 
           {/* B-AI-2: סוג מסמך רגיש (ת.ז. וכו') — סריקת AI חסומה, חילוץ ידני בלבד. */}
           {!canScan ? (
-            <p className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{t("ai.blockedType")}</p>
+            <p className="rounded-lg bg-surface-alt px-2 py-1.5 text-xs text-ink-body">{t("ai.blockedType")}</p>
           ) : (
           <>
           <input
@@ -165,7 +165,7 @@ function DocModal({ initial, onClose, onSave }) {
             accept=".pdf,image/*"
             onChange={onPickFile}
             aria-label={t("ai.scan")}
-            className="block w-full text-xs text-slate-600 file:me-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+            className="block w-full text-xs text-ink-body file:me-3 file:rounded-lg file:border-0 file:bg-surface-sunk file:px-3 file:py-1.5 file:text-sm file:font-medium"
           />
 
           <div className="mt-2">
@@ -177,9 +177,9 @@ function DocModal({ initial, onClose, onSave }) {
           {scanError && <p className="mt-2 text-xs text-red-600">{t(scanError)}</p>}
 
           {result && (
-            <div className="mt-3 rounded-lg bg-slate-50 p-3">
+            <div className="mt-3 rounded-lg bg-surface-alt p-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-700">{t("ai.result")}</span>
+                <span className="text-xs font-semibold text-ink-body">{t("ai.result")}</span>
                 {result.mock && <Pill tone="amber">{t("ai.mockBadge")}</Pill>}
               </div>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -205,8 +205,8 @@ function DocModal({ initial, onClose, onSave }) {
 function Row({ label, value }) {
   return (
     <div className="flex justify-between gap-2">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="font-medium text-slate-800">{value}</dd>
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="font-medium text-navy">{value}</dd>
     </div>
   );
 }

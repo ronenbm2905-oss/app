@@ -4,51 +4,111 @@
     {
       "name": "basketball-scheduler",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "Output/basketball-scheduler",
       "port": 5173
     },
     {
       "name": "basketball-offline",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:offline", "--", "--port", "5178", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "dev:offline",
+        "--",
+        "--port",
+        "5178",
+        "--strictPort"
+      ],
       "cwd": "Output/basketball-scheduler",
       "port": 5178
     },
     {
       "name": "basketball-saas",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:saas", "--", "--port", "5176", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "dev:saas",
+        "--",
+        "--port",
+        "5176",
+        "--strictPort"
+      ],
       "cwd": "Output/basketball-scheduler",
       "port": 5176
     },
     {
       "name": "haderech-lamilim",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "Output/haderech-lamilim",
       "port": 5174
     },
     {
       "name": "madbekot-laderech",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "serve", "-l", "5180", "."],
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "-l",
+        "5180",
+        "."
+      ],
       "cwd": "Output/2026-07-27-madbekot-laderech",
       "port": 5180
     },
     {
       "name": "madbekot-poster",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "serve", "-l", "5181", "."],
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "-l",
+        "5181",
+        "."
+      ],
       "cwd": "itai/Outputs/madbekot-poster",
       "port": 5181
     },
     {
       "name": "property-management",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "Output/property-management",
       "port": 5175
+    },
+    {
+      "name": "nrcar-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "-s",
+        "dist"
+      ],
+      "cwd": "Output/nrcar",
+      "port": 5182,
+      "autoPort": true
+    },
+    {
+      "name": "run2dream",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "."
+      ],
+      "cwd": ".tmp-preview",
+      "port": 5187,
+      "autoPort": true
     }
   ]
 }

@@ -32,8 +32,8 @@ export function TicketForm({ initial, property, onSave, onClose }) {
     >
       <div className="space-y-4">
         {property && (
-          <div className="text-sm text-slate-500">
-            {t("tkt.property")}: <span className="font-medium text-slate-700">{addressLine(property)}</span>
+          <div className="text-sm text-ink-muted">
+            {t("tkt.property")}: <span className="font-medium text-ink-body">{addressLine(property)}</span>
           </div>
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -55,8 +55,8 @@ export function TicketForm({ initial, property, onSave, onClose }) {
         </div>
 
         {/* שיוך לצוות תחזוקה (פרוסה 2) — שדה email + סטטוס (שלד הזמנה) */}
-        <fieldset className="rounded-xl border border-slate-200 p-4">
-          <legend className="px-2 text-sm font-semibold text-slate-700">{t("tkt.assignee")}</legend>
+        <fieldset className="rounded-xl border border-border p-4">
+          <legend className="px-2 text-sm font-semibold text-ink-body">{t("tkt.assignee")}</legend>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               label={t("tkt.assigneeEmail")}

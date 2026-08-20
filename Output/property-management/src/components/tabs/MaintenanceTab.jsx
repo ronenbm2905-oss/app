@@ -16,7 +16,7 @@ export function MaintenanceTab({ property, data, onNewTicket, onEditTicket, onDe
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">{t("ptkt.title")}</h3>
+        <h3 className="text-sm font-semibold text-ink-body">{t("ptkt.title")}</h3>
         {canEdit && (
           <Button onClick={onNewTicket}>
             <IconPlus size={16} /> {t("ptkt.add")}
@@ -24,12 +24,12 @@ export function MaintenanceTab({ property, data, onNewTicket, onEditTicket, onDe
         )}
       </div>
       {tickets.length === 0 ? (
-        <p className="text-sm text-slate-500">{t("ptkt.none")}</p>
+        <p className="text-sm text-ink-muted">{t("ptkt.none")}</p>
       ) : (
         <div className="table-scroll">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-xs text-slate-500">
+              <tr className="border-b border-border text-xs text-ink-muted">
                 <th className="px-2 py-2 text-start">{t("maint.col.opened")}</th>
                 <th className="px-2 py-2 text-start">{t("maint.col.type")}</th>
                 <th className="px-2 py-2 text-start">{t("maint.col.handler")}</th>
@@ -40,21 +40,21 @@ export function MaintenanceTab({ property, data, onNewTicket, onEditTicket, onDe
             </thead>
             <tbody>
               {tickets.map((tk) => (
-                <tr key={tk.id} className="border-b border-slate-100">
-                  <td className="px-2 py-2 text-slate-600">{formatDate(tk.openedDate, lang)}</td>
-                  <td className="px-2 py-2 text-slate-700">{t(`enum.ticketType.${tk.type}`)}</td>
-                  <td className="px-2 py-2 text-slate-600">{tk.handler?.name || "—"}</td>
-                  <td className="px-2 py-2 text-slate-700">{formatCurrency(tk.cost ?? tk.quote, c, lang)}</td>
+                <tr key={tk.id} className="border-b border-border">
+                  <td className="px-2 py-2 text-ink-body">{formatDate(tk.openedDate, lang)}</td>
+                  <td className="px-2 py-2 text-ink-body">{t(`enum.ticketType.${tk.type}`)}</td>
+                  <td className="px-2 py-2 text-ink-body">{tk.handler?.name || "—"}</td>
+                  <td className="px-2 py-2 text-ink-body">{formatCurrency(tk.cost ?? tk.quote, c, lang)}</td>
                   <td className="px-2 py-2">
                     <Pill tone={STATUS_TONE[tk.status]}>{t(`enum.ticketStatus.${tk.status}`)}</Pill>
                   </td>
                   {canEdit && (
                     <td className="px-2 py-2">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => onEditTicket(tk.id)} aria-label={t("common.edit")} className="text-slate-400 hover:text-brand-600">
+                        <button onClick={() => onEditTicket(tk.id)} aria-label={t("common.edit")} className="text-ink-faint hover:text-brand-600">
                           <IconEdit size={16} />
                         </button>
-                        <button onClick={() => onDelete(tk.id)} aria-label={t("common.delete")} className="text-slate-400 hover:text-red-600">
+                        <button onClick={() => onDelete(tk.id)} aria-label={t("common.delete")} className="text-ink-faint hover:text-red-600">
                           <IconDelete size={16} />
                         </button>
                       </div>

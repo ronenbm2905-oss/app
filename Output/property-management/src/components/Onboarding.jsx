@@ -31,13 +31,13 @@ export function Onboarding({ ownerId, onComplete, onSkip }) {
           <li key={i} className="flex items-center gap-2">
             <span
               className={`flex h-7 w-7 items-center justify-center rounded-full font-semibold ${
-                i <= step ? "bg-brand-600 text-white" : "bg-slate-200 text-slate-500"
+                i <= step ? "bg-brand-600 text-white" : "bg-border text-ink-muted"
               }`}
             >
               {i < step ? <IconCheck size={16} /> : i + 1}
             </span>
-            <span className={i <= step ? "text-slate-700" : "text-slate-400"}>{label}</span>
-            {i < steps.length - 1 && <span className="mx-1 text-slate-300">—</span>}
+            <span className={i <= step ? "text-ink-body" : "text-ink-faint"}>{label}</span>
+            {i < steps.length - 1 && <span className="mx-1 text-ink-faint">—</span>}
           </li>
         ))}
       </ol>
@@ -45,9 +45,9 @@ export function Onboarding({ ownerId, onComplete, onSkip }) {
       <div className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
         {step === 0 && (
           <div>
-            <h1 className="mb-1 text-2xl font-bold text-slate-800">{t("onb.welcome")}</h1>
-            <p className="mb-6 text-slate-600">{t("onb.intro")}</p>
-            <h2 className="mb-3 text-lg font-semibold text-slate-700">{t("onb.q.portfolio")}</h2>
+            <h1 className="mb-1 text-2xl font-bold text-navy">{t("onb.welcome")}</h1>
+            <p className="mb-6 text-ink-body">{t("onb.intro")}</p>
+            <h2 className="mb-3 text-lg font-semibold text-ink-body">{t("onb.q.portfolio")}</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {PORTFOLIO_SIZES.map((size) => (
                 <button
@@ -59,7 +59,7 @@ export function Onboarding({ ownerId, onComplete, onSkip }) {
                   className={`rounded-xl border-2 p-4 text-center text-sm font-medium transition ${
                     portfolioSize === size
                       ? "border-brand-500 bg-brand-50 text-brand-700"
-                      : "border-slate-200 text-slate-600 hover:border-brand-300"
+                      : "border-border text-ink-body hover:border-brand-300"
                   }`}
                 >
                   {t(`enum.portfolio.${size}`)}
@@ -76,8 +76,8 @@ export function Onboarding({ ownerId, onComplete, onSkip }) {
 
         {step === 1 && (
           <div>
-            <h1 className="mb-1 text-2xl font-bold text-slate-800">{t("onb.address.title")}</h1>
-            <p className="mb-6 text-slate-600">{t("onb.address.hint")}</p>
+            <h1 className="mb-1 text-2xl font-bold text-navy">{t("onb.address.title")}</h1>
+            <p className="mb-6 text-ink-body">{t("onb.address.hint")}</p>
             <PropertyForm
               initial={createProperty({ ownerId })}
               mode="onboarding"
@@ -92,8 +92,8 @@ export function Onboarding({ ownerId, onComplete, onSkip }) {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-700">
               <IconCheck size={32} />
             </div>
-            <h1 className="mb-2 text-2xl font-bold text-slate-800">{t("onb.done.title")}</h1>
-            <p className="mb-6 text-slate-600">{t("onb.done.body")}</p>
+            <h1 className="mb-2 text-2xl font-bold text-navy">{t("onb.done.title")}</h1>
+            <p className="mb-6 text-ink-body">{t("onb.done.body")}</p>
             <div className="flex justify-center gap-2">
               <Button onClick={() => onComplete({ property: draftProperty, portfolioSize, goTo: null })}>
                 {t("nav.lobby")}

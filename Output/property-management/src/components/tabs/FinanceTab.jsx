@@ -33,7 +33,7 @@ export function FinanceTab({ property, data, ownerId, onSave, onDelete, canEdit 
 
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">{t("txn.title")}</h3>
+          <h3 className="text-sm font-semibold text-ink-body">{t("txn.title")}</h3>
           {canEdit && (
             <Button onClick={() => setModal(true)}>
               <IconPlus size={16} /> {t("txn.add")}
@@ -41,12 +41,12 @@ export function FinanceTab({ property, data, ownerId, onSave, onDelete, canEdit 
           )}
         </div>
         {txns.length === 0 ? (
-          <p className="text-sm text-slate-500">{t("txn.none")}</p>
+          <p className="text-sm text-ink-muted">{t("txn.none")}</p>
         ) : (
           <div className="table-scroll">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-xs text-slate-500">
+                <tr className="border-b border-border text-xs text-ink-muted">
                   <th className="px-2 py-2 text-start">{t("txn.date")}</th>
                   <th className="px-2 py-2 text-start">{t("txn.type")}</th>
                   <th className="px-2 py-2 text-start">{t("txn.category")}</th>
@@ -57,17 +57,17 @@ export function FinanceTab({ property, data, ownerId, onSave, onDelete, canEdit 
               </thead>
               <tbody>
                 {txns.map((tx) => (
-                  <tr key={tx.id} className="border-b border-slate-100">
-                    <td className="px-2 py-2 text-slate-600">{formatDate(tx.date, lang)}</td>
+                  <tr key={tx.id} className="border-b border-border">
+                    <td className="px-2 py-2 text-ink-body">{formatDate(tx.date, lang)}</td>
                     <td className="px-2 py-2">
                       <Pill tone={tx.type === "income" ? "green" : "red"}>{t(`enum.txnType.${tx.type}`)}</Pill>
                     </td>
-                    <td className="px-2 py-2 text-slate-600">{t(`enum.txnCategory.${tx.category}`)}</td>
-                    <td className="px-2 py-2 font-medium text-slate-800">{formatCurrency(tx.amount, c, lang)}</td>
-                    <td className="px-2 py-2 text-slate-500">{t(`enum.txnSource.${tx.source}`)}</td>
+                    <td className="px-2 py-2 text-ink-body">{t(`enum.txnCategory.${tx.category}`)}</td>
+                    <td className="px-2 py-2 font-medium text-navy">{formatCurrency(tx.amount, c, lang)}</td>
+                    <td className="px-2 py-2 text-ink-muted">{t(`enum.txnSource.${tx.source}`)}</td>
                     {canEdit && (
                       <td className="px-2 py-2 text-end">
-                        <button onClick={() => onDelete(tx.id)} aria-label={t("common.delete")} className="text-slate-400 hover:text-red-600">
+                        <button onClick={() => onDelete(tx.id)} aria-label={t("common.delete")} className="text-ink-faint hover:text-red-600">
                           <IconDelete size={16} />
                         </button>
                       </td>
@@ -124,10 +124,10 @@ function TxnModal({ initial, onClose, onSave }) {
 }
 
 function SummaryCard({ label, value, tone }) {
-  const color = tone === "green" ? "text-green-700" : tone === "red" ? "text-red-600" : "text-slate-800";
+  const color = tone === "green" ? "text-green-700" : tone === "red" ? "text-red-600" : "text-navy";
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-ink-muted">{label}</div>
       <div className={`mt-1 text-lg font-bold ${color}`}>{value}</div>
     </div>
   );

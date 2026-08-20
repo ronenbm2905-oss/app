@@ -76,7 +76,7 @@ export function GeneralTab({ property, onSave, canEdit }) {
 function Section({ title, children }) {
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-slate-700">{title}</h3>
+      <h3 className="mb-3 text-sm font-semibold text-ink-body">{title}</h3>
       <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">{children}</dl>
     </div>
   );
@@ -85,9 +85,9 @@ function Section({ title, children }) {
 function Row({ label, value }) {
   const display = value === "" || value === null || value === undefined ? "—" : value;
   return (
-    <div className="flex justify-between gap-4 border-b border-slate-50 py-1 text-sm">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-start font-medium text-slate-800">{display}</dd>
+    <div className="flex justify-between gap-4 border-b border-border py-1 text-sm">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="text-start font-medium text-navy">{display}</dd>
     </div>
   );
 }

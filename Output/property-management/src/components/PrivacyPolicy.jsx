@@ -66,12 +66,12 @@ const DRAFT = {
 function Section({ title, rows }) {
   return (
     <section className="mb-5">
-      <h3 className="mb-2 text-sm font-bold text-slate-800">{title}</h3>
+      <h3 className="mb-2 text-sm font-bold text-navy">{title}</h3>
       <dl className="space-y-2">
         {rows.map(([term, desc]) => (
           <div key={term}>
-            <dt className="text-sm font-semibold text-slate-700">{term}</dt>
-            <dd className="text-sm text-slate-600">{desc}</dd>
+            <dt className="text-sm font-semibold text-ink-body">{term}</dt>
+            <dd className="text-sm text-ink-body">{desc}</dd>
           </div>
         ))}
       </dl>

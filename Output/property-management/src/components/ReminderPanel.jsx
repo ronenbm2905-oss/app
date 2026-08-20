@@ -24,8 +24,8 @@ export function ReminderPanel({ data, ownerId, onOpenProperty, onAddReminder, on
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">{t("rem.title")}</h1>
-          <p className="text-sm text-slate-500">{t("rem.count", { count: withinCount })}</p>
+          <h1 className="text-xl font-bold text-navy">{t("rem.title")}</h1>
+          <p className="text-sm text-ink-muted">{t("rem.count", { count: withinCount })}</p>
         </div>
         {canEdit && (
           <Button onClick={() => setModal(true)}>
@@ -34,10 +34,10 @@ export function ReminderPanel({ data, ownerId, onOpenProperty, onAddReminder, on
         )}
       </div>
 
-      <p className="mb-3 text-xs text-slate-500">{t("rem.windowHint")}</p>
+      <p className="mb-3 text-xs text-ink-muted">{t("rem.windowHint")}</p>
 
       {reminders.length === 0 ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-slate-500 shadow-sm">{t("rem.none")}</div>
+        <div className="rounded-2xl bg-white p-10 text-center text-ink-muted shadow-sm">{t("rem.none")}</div>
       ) : (
         <ul className="space-y-2">
           {reminders.map((r) => {
@@ -55,11 +55,11 @@ export function ReminderPanel({ data, ownerId, onOpenProperty, onAddReminder, on
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <IconCalendar size={16} className="text-slate-400" />
-                    <span className="font-medium text-slate-800">{t(`enum.reminderType.${r.type}`)}</span>
+                    <IconCalendar size={16} className="text-ink-faint" />
+                    <span className="font-medium text-navy">{t(`enum.reminderType.${r.type}`)}</span>
                     {r.source === "derived" && <Pill tone="slate">{t("rem.derived")}</Pill>}
                   </div>
-                  <div className="mt-1 text-sm text-slate-500">
+                  <div className="mt-1 text-sm text-ink-muted">
                     {formatDate(r.dueDate, lang)}
                     {prop && (
                       <button
@@ -72,7 +72,7 @@ export function ReminderPanel({ data, ownerId, onOpenProperty, onAddReminder, on
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-medium ${r.overdue ? "text-red-600" : r.within ? "text-amber-700" : "text-slate-500"}`}>
+                  <span className={`text-sm font-medium ${r.overdue ? "text-red-600" : r.within ? "text-amber-700" : "text-ink-muted"}`}>
                     {r.daysUntil === 0
                       ? t("rem.today")
                       : r.overdue
@@ -81,10 +81,10 @@ export function ReminderPanel({ data, ownerId, onOpenProperty, onAddReminder, on
                   </span>
                   {canEdit && r.source === "stored" && (
                     <div className="flex gap-1">
-                      <button onClick={() => onSetStatus(r.id, "done")} aria-label={t("rem.done")} className="rounded p-1 text-slate-400 hover:text-green-600">
+                      <button onClick={() => onSetStatus(r.id, "done")} aria-label={t("rem.done")} className="rounded p-1 text-ink-faint hover:text-green-600">
                         <IconCheck size={16} />
                       </button>
-                      <button onClick={() => onSetStatus(r.id, "dismissed")} aria-label={t("rem.dismiss")} className="rounded p-1 text-slate-400 hover:text-red-600">
+                      <button onClick={() => onSetStatus(r.id, "dismissed")} aria-label={t("rem.dismiss")} className="rounded p-1 text-ink-faint hover:text-red-600">
                         <IconClose size={16} />
                       </button>
                     </div>

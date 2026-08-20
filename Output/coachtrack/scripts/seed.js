@@ -17,46 +17,53 @@
  *      node scripts/seed.js --with-org         # תרגילים + ארגון + קבוצה + מאמן + admin
  */
 
-const admin = require('firebase-admin');
+// firebase-admin v13+ הסיר את ה-namespace הישן (admin.credential / admin.firestore()).
+// ה-API המודולרי מגיע דרך subpaths — זה הייבוא הנכון מכאן והלאה.
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 const fs = require('fs');
 const path = require('path');
 
 const serviceAccount = require('./serviceAccountKey.json');
 
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+initializeApp({ credential: cert(serviceAccount) });
 
-const db = admin.firestore();
-const auth = admin.auth();
+const db = getFirestore();
+const auth = getAuth();
 
 const WITH_ORG = process.argv.includes('--with-org');
 
 // ---------- הגדרות הארגון הראשון — ערוך לפני הרצה ----------
+// מזהים תיאוריים ולא 'org_main'/'team_main': האגודה מפעילה כמה מאמנים וכמה קבוצות,
+// והפיילוט הוא קבוצה אחת מתוכן. מזהה גנרי היה מסבך את ההוספה של הקבוצה השנייה.
 const ORG = {
-  id: 'org_main',
-  name: 'המועדון שלי',
+  id: 'org_kiryat_ono',
+  name: 'קרית אונו – דור העתיד',
   timezone: 'Asia/Jerusalem',
   weekStartDay: 0, // 0 = ראשון
 };
 
+// המאמן בפיילוט — לא רונן. רונן הוא ה-admin למטה.
 const COACH = {
-  email: 'coach@coachtrack.local', // Firebase Auth דורש פורמט אימייל
-  username: 'coach',
-  password: 'ChangeMe123!',
-  displayName: 'המאמן',
+  email: 'emanuel@coachtrack.local', // Firebase Auth דורש פורמט אימייל
+  username: 'emanuel',
+  password: 'CoachTrack26!',
+  displayName: 'עמנואל ורדי',
 };
 
 // ה-admin נדרש: כתיבה לספריית התרגילים הגלובלית היא admin-only ב-firestore.rules.
 // בלעדיו אי אפשר יהיה להוסיף או לערוך תרגיל גלובלי מהממשק.
 const ADMIN = {
-  email: 'admin@coachtrack.local',
-  username: 'admin',
-  password: 'ChangeMe123!',
-  displayName: 'מנהל מערכת',
+  email: 'ronen@coachtrack.local',
+  username: 'ronen',
+  password: 'CoachTrack26!',
+  displayName: 'רונן בן מאיר',
 };
 
 const TEAM = {
-  id: 'team_main',
-  name: 'קדטים',
+  id: 'team_yeladim_a',
+  name: 'ילדים א',
   season: '2026/27',
 };
 
@@ -85,7 +92,7 @@ async function seedExercises() {
       successCapable: ex.successCapable,
       defaultTargets: ex.defaultTargets,
       active: true,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     count++;
@@ -122,7 +129,7 @@ async function seedOrg() {
     name: ORG.name,
     ownerUid: null, // יעודכן אחרי יצירת המאמן
     settings: { timezone: ORG.timezone, weekStartDay: ORG.weekStartDay },
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
 
   const coachUser = await ensureAuthUser(COACH, 'מאמן');
@@ -137,7 +144,7 @@ async function seedOrg() {
     teamIds: [TEAM.id],
     active: true,
     mustChangePassword: true,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
 
   await db.collection('users').doc(adminUser.uid).set({
@@ -148,7 +155,7 @@ async function seedOrg() {
     teamIds: [],
     active: true,
     mustChangePassword: true,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
 
   await db.collection('organizations').doc(ORG.id).update({ ownerUid: coachUser.uid });
@@ -166,7 +173,7 @@ async function seedOrg() {
       streakThreshold: 80,
       weekStartDay: ORG.weekStartDay,
     },
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
 
   console.log(`✓ ארגון "${ORG.name}" וקבוצה "${TEAM.name}" נוצרו`);

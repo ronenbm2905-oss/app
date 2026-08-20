@@ -25,7 +25,7 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
       {/* דייר */}
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">{t("tenant.title")}</h3>
+          <h3 className="text-sm font-semibold text-ink-body">{t("tenant.title")}</h3>
           {canEdit && (
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={() => setTenantModal(true)}>
@@ -71,14 +71,14 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
             {tenant.hasManager && <Row label={t("tenant.manager")} value={tenant.manager.name} />}
           </dl>
         ) : (
-          <p className="text-sm text-slate-500">{t("tenant.none")}</p>
+          <p className="text-sm text-ink-muted">{t("tenant.none")}</p>
         )}
       </div>
 
       {/* חוזה */}
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700">{t("lease.title")}</h3>
+          <h3 className="text-sm font-semibold text-ink-body">{t("lease.title")}</h3>
           {canEdit && (
             <Button variant="secondary" onClick={() => setLeaseModal(true)} disabled={!tenant}>
               {lease ? <IconEdit size={16} /> : <IconPlus size={16} />}
@@ -98,7 +98,7 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
             <Row label={t("lease.extension")} value={lease.extensionOption ? t("common.yes") : t("common.no")} />
           </dl>
         ) : (
-          <p className="text-sm text-slate-500">{t("lease.none")}</p>
+          <p className="text-sm text-ink-muted">{t("lease.none")}</p>
         )}
       </div>
 
@@ -197,9 +197,9 @@ function LeaseModal({ initial, onClose, onSave }) {
 function Row({ label, value }) {
   const display = value === "" || value === null || value === undefined ? "—" : value;
   return (
-    <div className="flex justify-between gap-4 border-b border-slate-50 py-1 text-sm">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-start font-medium text-slate-800">{display}</dd>
+    <div className="flex justify-between gap-4 border-b border-border py-1 text-sm">
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="text-start font-medium text-navy">{display}</dd>
     </div>
   );
 }
