@@ -1,7 +1,7 @@
 {
-  "_comment": "On the saas branch there is deliberately NO usable 'default' project: a bare `firebase deploy` must fail rather than reach the live Kiryat Ono app. Deploy explicitly — `--project saas` for the multi-club version, `--project prod` only when you really mean the live one. The main branch keeps default=prod for Kiryat Ono hotfixes.",
+  "_comment": "On the saas branch there is deliberately NO 'default' project: a bare `firebase deploy` must fail with 'No currently active project' rather than reach the live Kiryat Ono app. Deploy explicitly — `--project saas` for the multi-club version, `--project prod` only when you really mean the live one. The main branch keeps default=prod for Kiryat Ono hotfixes.",
+  "_why_absent_not_placeholder": "This used to be default=UNSET-PASS-PROJECT-EXPLICITLY. That blocked deploys, but an invalid project id fails the CLI at STARTUP, so it also broke `firebase login` — a command that needs no project at all — with a confusing 'Invalid project id' before it did anything. Omitting the key blocks exactly what should be blocked and nothing else.",
   "projects": {
-    "default": "UNSET-PASS-PROJECT-EXPLICITLY",
     "prod": "basketball-schedule-f0f57",
     "saas": "basketball-all"
   }
