@@ -218,7 +218,7 @@ export default function App() {
         ) : activeTab === "announcements" ? (
           <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
         ) : activeTab === "rosters" ? (
-          <RostersView data={data} save={save} canEdit={canEdit} />
+          <RostersView data={data} save={save} canEdit={canEdit} currentEmail={user?.email || ""} />
         ) : activeTab === "manager" ? (
           <ManagerView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "constraints" ? (

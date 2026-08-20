@@ -3,6 +3,7 @@ import { VEHICLE_TYPES } from "../constants";
 import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
 import { looksIndoor } from "../utils/indoorBalance";
+import { AccessCard } from "./AccessCard";
 import { sortByName } from "../utils/names";
 import { Select } from "./ui/Select";
 import {
@@ -400,7 +401,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
   );
 }
 
-export function RostersView({ data, save, canEdit }) {
+export function RostersView({ data, save, canEdit, currentEmail }) {
   const [blockedMsg, setBlockedMsg] = useState(null);
 
   // One-time convenience for a club whose halls are already named "… מקורה": tick them all
@@ -503,6 +504,11 @@ export function RostersView({ data, save, canEdit }) {
           <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} withIndoor headerExtra={indoorHelper} />
         )}
       </div>
+
+      {/* Managers only, and not because the data is secret — a coach can read the club
+          document either way. It is a list of everyone's addresses, and there is nothing
+          a coach can do with it. */}
+      {canEdit && <AccessCard data={data} save={save} currentEmail={currentEmail} />}
     </div>
   );
 }
