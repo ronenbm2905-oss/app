@@ -304,7 +304,11 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
     ]);
   };
 
-  if (!canEdit) {
+  // isAdmin, not canEdit. A lapsed subscription makes canEdit false, and turning this
+  // screen away on that basis took away the only way back in: the renewal date lives on
+  // this page, so a club whose subscription expired could not renew without the Firebase
+  // console. Editing is withheld below — the screen itself is not.
+  if (!isAdmin) {
     return (
       <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm">
         רק מנהל יכול לצפות בהגדרות המועדון ולערוך אותן.
@@ -314,6 +318,16 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
 
   return (
     <div className="space-y-4">
+      {!canEdit && (
+        <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-2.5 leading-relaxed">
+          <strong>המנוי פג, ולכן ההגדרות נעולות לעריכה.</strong> כרטיס המנוי בהמשך הדף נשאר פתוח —
+          עדכון מועד החידוש שם יחזיר את העריכה בכל המערכת. שום נתון לא נמחק בינתיים.
+        </p>
+      )}
+
+      {/* Everything a lapsed club may not change. The subscription card below stays
+          outside, because it is the way out of exactly this state. */}
+      <fieldset disabled={!canEdit} className="space-y-4 min-w-0 disabled:opacity-60">
       <Card
         title="זהות המועדון"
         hint="השם, הלוגו והצבעים שמופיעים בכל המסכים, בהדפסות ובתמונות שנשלחות בוואטסאפ."
@@ -538,6 +552,7 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
           </Field>
         </div>
       </Card>
+      </fieldset>
 
       <PortalCard data={data} save={save} syncJoinCode={syncJoinCode} clubId={clubId} canEdit={canEdit} />
 
@@ -563,7 +578,7 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
       <div className="flex items-center gap-2 flex-wrap sticky bottom-0 bg-stone-50/95 py-3">
         <button
           onClick={onSave}
-          disabled={!dirty}
+          disabled={!dirty || !canEdit}
           className="px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600"
         >
           שמור הגדרות
