@@ -7,12 +7,14 @@
  * המבנה מקונן לפי אזורי המסך:
  *   common   — טקסטים חוצי-מסכים (כפתורים, מצבי טעינה)
  *   auth     — התחברות והחלפת סיסמה (שלב 1)
+ *   roles    — שמות התפקידים
  *   player   — מסכי שחקן (שלב 4)
  *   coach    — מסכי מאמן (שלבים 2, 3, 5)
+ *   admin    — מסך ניהול (שלב 2)
  *   units    — שמות יחידות המדידה
  *   errors   — הודעות שגיאה
  *
- * זהו **שלד**. קבוצות המפתחות של מסכים שטרם נבנו נשארות ריקות בכוונה,
+ * קבוצות המפתחות של מסכים שטרם נבנו נשארות מינימליות בכוונה,
  * ומתמלאות בשלב שבו המסך נבנה.
  */
 
@@ -30,16 +32,74 @@ export const he = {
     close: 'סגירה',
     search: 'חיפוש',
     empty: 'אין מה להציג',
+    retry: 'נסה שוב',
+    signOut: 'התנתקות',
+    show: 'הצג',
+    hide: 'הסתר',
+    /** מסכים שהשלד שלהם קיים אבל התוכן נבנה בשלב מאוחר יותר. */
+    comingSoon: 'המסך הזה ייבנה בשלב הבא.',
   },
 
-  /** שלב 1 — מסך התחברות, החלפת סיסמה בכניסה ראשונה. */
+  /** שלב 1 — מסך התחברות, החלפת סיסמה בכניסה ראשונה, ומצבי הפרופיל. */
   auth: {
     signIn: {
       title: 'התחברות',
+      subtitle: 'הזן את שם המשתמש והסיסמה שקיבלת מהמאמן.',
+      username: 'שם משתמש',
+      usernamePlaceholder: 'לדוגמה: emanuel',
+      password: 'סיסמה',
+      submit: 'כניסה',
+      submitting: 'מתחבר…',
+      forgotHelp: 'שכחת סיסמה? פנה למאמן — הוא יאפס אותה עבורך.',
     },
+
     changePassword: {
       title: 'החלפת סיסמה',
+      forcedNotice: 'זו הכניסה הראשונה שלך. בחר סיסמה חדשה כדי להמשיך.',
+      newPassword: 'סיסמה חדשה',
+      confirmPassword: 'אימות הסיסמה',
+      hint: 'לפחות {min} תווים.',
+      submit: 'שמירת הסיסמה',
+      submitting: 'שומר…',
+      keepItSafe: 'שמור את הסיסמה במקום בטוח — אין אימייל לשחזור.',
     },
+
+    session: {
+      signedInAs: 'מחובר בתור {name}',
+    },
+
+    /** מצבי ביניים ותקלות בטעינת מסמך users/{uid}. */
+    profile: {
+      loading: 'טוען את הפרופיל…',
+      missingTitle: 'החשבון עדיין לא מוכן',
+      missingBody:
+        'המשתמש קיים אבל אין לו פרופיל במערכת, ולכן אי אפשר לדעת מה ההרשאות שלו. פנה למאמן.',
+      inactiveTitle: 'החשבון מושבת',
+      inactiveBody: 'החשבון הזה הושבת. פנה למאמן כדי להפעיל אותו מחדש.',
+      errorTitle: 'טעינת הפרופיל נכשלה',
+      errorBody: 'לא הצלחנו לקרוא את פרטי המשתמש. בדוק את החיבור לאינטרנט ונסה שוב.',
+    },
+
+    errors: {
+      missingUsername: 'הזן שם משתמש.',
+      invalidUsername: 'שם משתמש יכול להכיל אותיות באנגלית, ספרות, נקודה, מקף וקו תחתון.',
+      missingPassword: 'הזן סיסמה.',
+      invalidCredentials: 'שם המשתמש או הסיסמה שגויים.',
+      userDisabled: 'החשבון הזה מושבת. פנה למאמן.',
+      tooManyAttempts: 'יותר מדי ניסיונות כניסה. המתן כמה דקות ונסה שוב.',
+      network: 'אין חיבור לשרת. בדוק את האינטרנט ונסה שוב.',
+      weakPassword: 'הסיסמה קצרה מדי.',
+      passwordMismatch: 'שתי הסיסמאות אינן זהות.',
+      requiresRecentLogin: 'מטעמי אבטחה צריך להתחבר מחדש לפני החלפת הסיסמה.',
+      generic: 'ההתחברות נכשלה. נסה שוב.',
+    },
+  },
+
+  /** שמות התפקידים כפי שהם מוצגים למשתמש. */
+  roles: {
+    admin: 'מנהל מערכת',
+    coach: 'מאמן',
+    player: 'שחקן',
   },
 
   /** שלב 4 — מסכי שחקן. */
@@ -71,6 +131,13 @@ export const he = {
     },
   },
 
+  /** שלב 2 — מסך ניהול לארגון ולספרייה הגלובלית. */
+  admin: {
+    home: {
+      title: 'ניהול מערכת',
+    },
+  },
+
   /** יחידות המדידה של תרגיל — מקבילות ל-`Unit` ב-types/types.ts. */
   units: {
     count: 'חזרות',
@@ -84,6 +151,8 @@ export const he = {
     network: 'אין חיבור לשרת.',
     permission: 'אין לך הרשאה לפעולה הזו.',
     notFound: 'לא נמצא.',
+    /** הקונפיג של Firebase חסר — .env.local לא קיים או שה-build ישן. */
+    configMissing: 'האפליקציה לא מוגדרת מול Firebase. פנה למי שהתקין אותה.',
   },
 } as const;
 
@@ -109,7 +178,7 @@ export type TranslationParams = Record<string, string | number>;
 /**
  * מחזירה את המחרוזת העברית לפי נתיב מקונן.
  * `t('common.loading')` → `'טוען…'`
- * `t('player.myWeek.daysLeft', { days: 3 })` → מציב `{days}` במחרוזת.
+ * `t('auth.changePassword.hint', { min: 8 })` → מציב `{min}` במחרוזת.
  */
 export function t(key: TranslationKey, params?: TranslationParams): string {
   let current: string | Dictionary = he as Dictionary;
