@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import App from "./App.jsx";
 import PortalApp from "./portal/PortalApp.jsx";
+import NewClubPage from "./admin/NewClubPage.jsx";
 import { DEFAULT_CLUB_ID } from "./firebase";
 import { isValidClubSlug, clubPath } from "./utils/clubId";
 import "./index.css";
@@ -60,6 +61,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App clubId={DEFAULT_CLUB_ID} />} />
+        {/* Service operator, not any one club, so it sits outside /c/:clubSlug rather
+            than under some club's path. Unlisted rather than secret: the real gate is
+            config/global in the rules, which only an operator may read. */}
+        <Route path="/admin/new-club" element={<NewClubPage />} />
         <Route path="/c/:clubSlug" element={<ClubRoute />} />
         {/* Parent / player portal — reads only the published weekly projection. */}
         <Route path="/c/:clubSlug/portal" element={<PortalRoute />} />
