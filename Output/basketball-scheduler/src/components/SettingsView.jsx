@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { DEFAULT_SETTINGS } from "../constants";
+import { DEFAULT_SETTINGS, BASE_SESSION_TYPES, COLORS } from "../constants";
+import { customSessionTypes } from "../utils/sessionTypes";
+import { uid } from "../utils/dates";
 import { clubSettings } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
 import { applyTheme } from "../utils/theme";
@@ -285,6 +287,23 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
   const docPct = Math.min(100, Math.round((docBytes / DOC_LIMIT_BYTES) * 100));
   const keywordsText = (draft.homeKeywords || []).join("\n");
 
+  // Custom session types, read through the same normaliser the rest of the app uses so
+  // a hand-edited club document shows here exactly as it behaves everywhere else.
+  const customTypes = customSessionTypes({ settings: draft });
+  const writeCustomTypes = (list) => set({ sessionTypes: list });
+  const setCustomType = (i, patch) =>
+    writeCustomTypes(customTypes.map((t, j) => (j === i ? { ...t, ...patch } : t)));
+  const removeCustomType = (i) => writeCustomTypes(customTypes.filter((_, j) => j !== i));
+  const addCustomType = () => {
+    // The id is what a session stores, so it is fixed at creation and never follows a
+    // later rename — renaming a type must not orphan every session already using it.
+    const id = uid();
+    writeCustomTypes([
+      ...customTypes,
+      { id, name: "סוג חדש", color: COLORS[customTypes.length % COLORS.length] },
+    ]);
+  };
+
   if (!canEdit) {
     return (
       <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm">
@@ -411,6 +430,78 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
         <Field label="נקודת איסוף להסעות" hint="מופיעה בקובץ ההסעות שנשלח לחברת ההסעות.">
           <input className={inputCls} value={draft.pickupPoint || ""} onChange={(e) => set({ pickupPoint: e.target.value })} />
         </Field>
+      </Card>
+
+      <Card
+        title="סוגי אימון"
+        hint="שלושת הסוגים הראשונים קבועים ומשותפים לכל המועדונים — סנכרון המשחקים מסתמך עליהם. מתחתם אפשר להוסיף סוגים משלכם."
+      >
+        <ul className="flex flex-wrap gap-2">
+          {BASE_SESSION_TYPES.map((t) => (
+            <li key={t.id} className="flex items-center gap-1.5 text-xs text-stone-600 bg-stone-100 rounded-lg px-2.5 py-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: t.color }} />
+              {t.name}
+              <span className="text-[10px] text-stone-400">קבוע</span>
+            </li>
+          ))}
+        </ul>
+
+        {customTypes.length > 0 && (
+          <ul className="divide-y divide-stone-100 border border-stone-200 rounded-lg">
+            {customTypes.map((t, i) => (
+              <li key={t.id} className="flex items-center gap-2 px-3 py-2">
+                <input
+                  type="color"
+                  aria-label={`צבע עבור ${t.name}`}
+                  value={t.color}
+                  disabled={!canEdit}
+                  onChange={(e) => setCustomType(i, { color: e.target.value })}
+                  className="w-8 h-8 rounded border border-stone-300 bg-white p-0.5 shrink-0"
+                />
+                <input
+                  className={inputCls}
+                  aria-label="שם הסוג"
+                  value={t.name}
+                  disabled={!canEdit}
+                  onChange={(e) => setCustomType(i, { name: e.target.value })}
+                />
+                <label className="flex items-center gap-1.5 text-xs text-stone-600 shrink-0 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={t.excludeFromReport}
+                    disabled={!canEdit}
+                    onChange={(e) => setCustomType(i, { excludeFromReport: e.target.checked })}
+                    className="rounded border-stone-300"
+                  />
+                  לא נספר בדו״ח שעות
+                </label>
+                {canEdit && (
+                  <button
+                    onClick={() => removeCustomType(i)}
+                    aria-label={`מחק את ${t.name}`}
+                    className="p-2 text-stone-400 hover:text-red-600 shrink-0"
+                  >
+                    <IconTrash size={15} />
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {canEdit && (
+          <button
+            onClick={addCustomType}
+            className="px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+          >
+            הוסף סוג
+          </button>
+        )}
+
+        <p className="text-xs text-stone-500">
+          מחיקת סוג לא משנה אימונים שכבר סומנו בו — הם ימשיכו להציג את השם, ובטופס האימון הוא יופיע
+          כ״(סוג שהוסר)״ עד שתבחרו אחר.
+        </p>
       </Card>
 
       <Card

@@ -3,7 +3,9 @@ import { useParams } from "react-router-dom";
 import { usePublishedWeek } from "../hooks/usePublishedWeek";
 import { todayWeekStart, shiftWeek, formatWeekRange } from "../utils/dates";
 import { formatHolidayRange } from "../utils/holidays";
-import { sessionTypeColor } from "../utils/colors";
+// The portal is served a session's type NAME but not the club's palette, so a club-
+// specific type shows in the neutral colour. See utils/sessionTypes.
+import { sessionTypeColor } from "../utils/sessionTypes";
 import { applyTheme } from "../utils/theme";
 import { DEFAULT_SETTINGS } from "../constants";
 import { PortalJoin, loadMembership, clearMembership } from "./PortalJoin";

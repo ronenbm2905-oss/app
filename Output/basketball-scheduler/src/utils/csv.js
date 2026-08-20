@@ -1,4 +1,5 @@
-import { SESSION_TYPES } from "../constants";
+import { DEFAULT_SESSION_TYPE } from "../constants";
+import { clubSessionTypes } from "./sessionTypes";
 import { uid } from "./dates";
 
 // ---------- CSV helpers ----------
@@ -29,6 +30,9 @@ export function buildCsvTemplate() {
 }
 
 export function importCsvToData(rows, base) {
+  // Validated against THIS club's types: a row naming another club's custom type must
+  // not be accepted just because some club somewhere uses it.
+  const allowedTypes = clubSessionTypes(base);
   const data = {
     teams: [...base.teams],
     coaches: [...base.coaches],
@@ -56,9 +60,9 @@ export function importCsvToData(rows, base) {
       const coach = findOrCreate(data.coaches, row.coach);
       const hall = findOrCreate(data.halls, row.hall);
       if (team && coach && hall && row.day && row.start && row.end) {
-        const sessionType = SESSION_TYPES.some((t) => t.id === row.session_type)
+        const sessionType = allowedTypes.some((t) => t.id === row.session_type)
           ? row.session_type
-          : "אימון";
+          : DEFAULT_SESSION_TYPE;
         data.sessions.push({
           id: uid(),
           teamId: team.id,

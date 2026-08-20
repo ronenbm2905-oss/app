@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { DAYS } from "../constants";
+import { DAYS, DEFAULT_SESSION_TYPE } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
-import { colorFor, sessionTypeColor } from "../utils/colors";
+import { colorFor } from "../utils/colors";
+import { clubSessionTypes, sessionTypeColor } from "../utils/sessionTypes";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
@@ -12,6 +13,7 @@ import { clubName as clubNameOf } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
 
 export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
+  const sessionTypes = clubSessionTypes(data);
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
   const [teamId, setTeamId] = useState(""); // team filter / report scope
@@ -189,7 +191,7 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
                                   <span dir="ltr">{s.start}–{s.end}</span>
                                 </span>
                                 <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>{nameOf(data.teams, s.teamId)}</Pill>
-                                {s.type && s.type !== "אימון" && <Pill color={sessionTypeColor(s.type)}>{s.type}</Pill>}
+                                {s.type && s.type !== DEFAULT_SESSION_TYPE && <Pill color={sessionTypeColor(s.type, sessionTypes)}>{s.type}</Pill>}
                                 <span className="text-sm text-stone-600 flex items-center gap-1">
                                   <IconMapPin size={12} /> {nameOf(data.halls, s.hallId)}
                                 </span>
@@ -275,7 +277,7 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
                   <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "center" }}><span dir="ltr">{s.start}–{s.end}</span></td>
                   <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right" }}>{nameOf(data.halls, s.hallId)}</td>
                   <td style={{ border: "1px solid #D6D3D1", padding: "6px 8px", textAlign: "right" }}>
-                    {[s.type && s.type !== "אימון" ? s.type : "", s.notes || ""].filter(Boolean).join(" · ") || "אימון"}
+                    {[s.type && s.type !== DEFAULT_SESSION_TYPE ? s.type : "", s.notes || ""].filter(Boolean).join(" · ") || DEFAULT_SESSION_TYPE}
                   </td>
                 </tr>
               ))}

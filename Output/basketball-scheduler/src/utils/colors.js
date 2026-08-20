@@ -1,4 +1,7 @@
-import { COLORS, SESSION_TYPES } from "../constants";
+import { COLORS } from "../constants";
+
+// sessionTypeColor moved to utils/sessionTypes — the palette is per club now, and this
+// module is imported by screens that have no club document to read it from.
 
 export function colorFor(id, list) {
   const idx = list.indexOf(id);
@@ -16,8 +19,4 @@ export function colorForTeamByCoach(team, teams) {
   });
   const idx = seen.indexOf(key);
   return COLORS[idx % COLORS.length];
-}
-
-export function sessionTypeColor(type) {
-  return SESSION_TYPES.find((t) => t.id === type)?.color || "#57534E";
 }

@@ -1,8 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { flushSync } from "react-dom";
-import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
+import { DAYS, DEFAULT_SESSION_TYPE, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
-import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
+import { colorFor, colorForTeamByCoach } from "../utils/colors";
+import { clubSessionTypes, sessionTypeColor } from "../utils/sessionTypes";
 import { holidayNameOn } from "../utils/holidays";
 import {
   findHallClashes,
@@ -18,6 +19,7 @@ import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
 import { clubLogoSrc } from "../utils/clubLogo";
 
 export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, setWeekStart }) {
+  const sessionTypes = clubSessionTypes(data);
   const clubLogo = clubLogoSrc(data);
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
@@ -169,7 +171,7 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
   const activeDays = DAYS.filter((d) => filterDays.includes(d));
   const weekDates = getWeekDates(weekStart);
 
-  const typeColor = (type) => sessionTypeColor(type);
+  const typeColor = (type) => sessionTypeColor(type, sessionTypes);
 
   // With a coach selected the board narrows to that coach's own sessions, so the row for
   // a team they share with someone else shows only the slots they are actually in — which
@@ -500,7 +502,7 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                               ) : (
                                 <div className="space-y-1.5">
                                   {sessions.map((s) => {
-                                    const color = typeColor(s.type || "אימון");
+                                    const color = typeColor(s.type || DEFAULT_SESSION_TYPE);
                                     const editable = canEdit && !s.fromGame;
                                     // All three are suppressed together during export/print when
                                     // the manager has asked for it — one flag clears every tint,
@@ -526,7 +528,7 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                                         {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
                                         <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}><span dir="ltr">{s.start}–{s.end}</span></div>
                                         <div className={`mt-0.5 ${clash ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
-                                        {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
+                                        {s.type && s.type !== DEFAULT_SESSION_TYPE && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
                                         {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
                                       </>
                                     );
@@ -636,7 +638,7 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
             )}
           </div>
           <div className="no-print flex flex-wrap gap-3 text-xs text-stone-500">
-            {SESSION_TYPES.map((t) => (
+            {sessionTypes.map((t) => (
               <span key={t.id} className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: t.color }} />
                 {t.name}
@@ -722,7 +724,7 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                           className="border border-stone-200 px-3 py-2 text-xs text-stone-500"
                           style={stripe ? { borderInlineEndWidth: "4px", borderInlineEndColor: stripe } : undefined}
                         >
-                          {s.type && s.type !== "אימון" && <span className="font-medium" style={{ color: typeColor(s.type) }}>{s.type} </span>}
+                          {s.type && s.type !== DEFAULT_SESSION_TYPE && <span className="font-medium" style={{ color: typeColor(s.type) }}>{s.type} </span>}
                           {s.notes || ""}
                         </td>
                       </tr>

@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { DAYS } from "../constants";
 import { IconDownload, IconChevronRight, IconChevronLeft } from "./ui/icons";
+import { customSessionTypes, reportExcludedTypeIds } from "../utils/sessionTypes";
 
 // כל יחידת אימון = שעה וחצי. סוגי אימון שאינם נספרים בדו"ח השעות.
 const HOURS_PER_UNIT = 1.5;
-const EXCLUDED_TYPES = ["ספורטתרפיה", "יורם"];
 
 // "YYYY-MM" של החודש הנוכחי.
 function currentMonth() {
@@ -43,9 +43,16 @@ export function ReportView({ data }) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` === month;
   };
 
+  // Which types this club does not pay for. A per-club decision, so it comes from the
+  // club document rather than a list in the code.
+  const excludedIds = reportExcludedTypeIds(data);
+  const excludedNames = customSessionTypes(data)
+    .filter((t) => t.excludeFromReport)
+    .map((t) => t.name);
+
   const rows = useMemo(() => {
     const monthSessions = data.sessions.filter(
-      (s) => inMonth(s) && !EXCLUDED_TYPES.includes(s.type)
+      (s) => inMonth(s) && !excludedIds.includes(s.type)
     );
     return data.coaches
       .map((coach) => {
@@ -105,7 +112,8 @@ export function ReportView({ data }) {
         <div className="px-4 py-3 border-b border-stone-200 bg-stone-50">
           <h2 className="text-base font-semibold text-stone-800">דו"ח שעות לפי מאמן</h2>
           <p className="text-xs text-stone-500 mt-0.5">
-            {monthLabel(month)} · כל יחידת אימון = שעה וחצי · ספורטתרפיה ו"יורם" אינם נספרים
+            {monthLabel(month)} · כל יחידת אימון = שעה וחצי
+            {excludedNames.length > 0 && ` · ${excludedNames.join(", ")} ${excludedNames.length > 1 ? "אינם נספרים" : "אינו נספר"}`}
           </p>
         </div>
 
@@ -141,7 +149,10 @@ export function ReportView({ data }) {
       </div>
 
       <p className="no-print text-xs text-stone-500">
-        הספירה כוללת כל אימון/משחק המשויך למאמן בחודש הנבחר, פרט לסוגים "ספורטתרפיה" ו"יורם".
+        הספירה כוללת כל אימון/משחק המשויך למאמן בחודש הנבחר
+        {excludedNames.length > 0
+          ? `, פרט לסוגים: ${excludedNames.join(", ")}.`
+          : ". אפשר להחריג סוגי אימון מהספירה בהגדרות → סוגי אימון."}
       </p>
     </div>
   );

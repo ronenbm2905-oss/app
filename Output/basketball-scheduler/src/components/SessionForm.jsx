@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { DAYS, SESSION_TYPES } from "../constants";
+import { DAYS, DEFAULT_SESSION_TYPE } from "../constants";
 import { timeToMinutes, overlaps } from "../utils/dates";
 import { colorFor } from "../utils/colors";
+import { sessionTypeOptions } from "../utils/sessionTypes";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
@@ -16,9 +17,13 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
   const [day, setDay] = useState(initial?.day || DAYS[0]);
   const [start, setStart] = useState(initial?.start || "16:00");
   const [end, setEnd] = useState(initial?.end || "17:00");
-  const [type, setType] = useState(initial?.type || "אימון");
+  const [type, setType] = useState(initial?.type || DEFAULT_SESSION_TYPE);
   const [notes, setNotes] = useState(initial?.notes || "");
   const sessionIdRef = useRef(initial?.id || uid());
+
+  // Includes the session's current type even if the club has since deleted it, so
+  // opening an old session and saving it cannot silently retype it.
+  const typeOptions = sessionTypeOptions(data, initial?.type);
 
   useEffect(() => {
     sessionIdRef.current = initial?.id || uid();
@@ -28,7 +33,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
     setDay(initial?.day || DAYS[0]);
     setStart(initial?.start || "16:00");
     setEnd(initial?.end || "17:00");
-    setType(initial?.type || "אימון");
+    setType(initial?.type || DEFAULT_SESSION_TYPE);
     setNotes(initial?.notes || "");
   }, [initial]);
 
@@ -128,7 +133,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
         </div>
         <div>
           <label className="text-xs text-stone-500 mb-1 block">סוג</label>
-          <Select value={type} onChange={setType} options={SESSION_TYPES} placeholder="בחר סוג" />
+          <Select value={type} onChange={setType} options={typeOptions} placeholder="בחר סוג" />
         </div>
         <div>
           <label className="text-xs text-stone-500 mb-1 block">הערות (אופציונלי)</label>

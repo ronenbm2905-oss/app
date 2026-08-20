@@ -1,8 +1,9 @@
 import { useState, useMemo, useRef } from "react";
-import { DAYS } from "../constants";
+import { DAYS, DEFAULT_SESSION_TYPE } from "../constants";
 import { timeToMinutes, shiftWeek } from "../utils/dates";
 import { uid } from "../utils/dates";
-import { colorFor, sessionTypeColor } from "../utils/colors";
+import { colorFor } from "../utils/colors";
+import { clubSessionTypes, sessionTypeColor } from "../utils/sessionTypes";
 import { findConflicts, findConstraintViolations } from "../utils/conflicts";
 import { parseCSV, buildCsvTemplate, importCsvToData } from "../utils/csv";
 import { Select } from "./ui/Select";
@@ -15,6 +16,7 @@ import {
 } from "./ui/icons";
 
 export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
+  const sessionTypes = clubSessionTypes(data);
   const [editingId, setEditingId] = useState(null);
   const [filterDay, setFilterDay] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
@@ -259,8 +261,8 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
                           <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>
                             {nameOf(data.teams, s.teamId)}
                           </Pill>
-                          {s.type && s.type !== "אימון" && (
-                            <Pill color={sessionTypeColor(s.type)}>{s.type}</Pill>
+                          {s.type && s.type !== DEFAULT_SESSION_TYPE && (
+                            <Pill color={sessionTypeColor(s.type, sessionTypes)}>{s.type}</Pill>
                           )}
                           {isGameSession && (
                             <span className="text-xs text-stone-600 italic">מייבוא משחקים</span>

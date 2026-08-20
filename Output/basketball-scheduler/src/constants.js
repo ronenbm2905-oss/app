@@ -8,13 +8,31 @@ export const PUBLISHED_STORAGE_KEY = "bball-published-v1";
 // Vehicle-size options for transport (seats).
 export const VEHICLE_TYPES = ["16", "20"];
 
-export const SESSION_TYPES = [
+// The three types the app itself depends on, in every club.
+//
+// These ids are STRUCTURAL, not labels: the federation import writes "משחק בית" /
+// "משחק חוץ" when it turns a fixture into a session (utils/games), and "אימון" is the
+// ordinary case that several screens check for in order to NOT draw a type pill. A club
+// renaming them would break its own game sync, so they are fixed and every club gets
+// exactly these three.
+//
+// Anything beyond them — a club's therapy slot, a session named after the coach who
+// runs it — is that club's own, and lives in settings.sessionTypes. See
+// utils/sessionTypes.
+export const BASE_SESSION_TYPES = [
   { id: "אימון", name: "אימון", color: "#57534E" },
   { id: "משחק בית", name: "משחק בית", color: "#16A34A" },
   { id: "משחק חוץ", name: "משחק חוץ", color: "#0EA5E9" },
-  { id: "ספורטתרפיה", name: "ספורטתרפיה", color: "#9333EA" },
-  { id: "יורם", name: "יורם", color: "#CA8A04" },
 ];
+
+// The type a session gets when none was chosen, and the one the screens treat as
+// "nothing worth labelling".
+export const DEFAULT_SESSION_TYPE = "אימון";
+
+// A colour for a type nobody recognises — a session still carrying a custom type the
+// club has since deleted, or the parent portal, which is served the type name but not
+// the club's palette.
+export const UNKNOWN_TYPE_COLOR = "#57534E";
 
 export const COLORS = [
   "#EA580C", "#0EA5E9", "#16A34A", "#9333EA", "#DC2626",
@@ -61,6 +79,10 @@ export const DEFAULT_SETTINGS = {
   // Appears in the transport sheet sent to the bus company. Blank by default: guessing
   // an address here would send someone to another club's gym.
   pickupPoint: "",
+  // Session types this club adds on top of BASE_SESSION_TYPES — [{ id, name, color }].
+  // Empty by default: the original club's "ספורטתרפיה" and "יורם" (a coach's name) were
+  // in the shared list, so every other association saw them in its own session form.
+  sessionTypes: [],
   // There is no such thing as a sensible default here: the list must match how the
   // federation's file spells THIS club's name. Empty makes the game import refuse and
   // say what to fill in, which beats matching a season of fixtures against the wrong
