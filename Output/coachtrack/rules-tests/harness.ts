@@ -45,6 +45,10 @@ export const U = {
 } as const;
 
 export const PLAN_A1 = 'plan_a1';
+/** תוכנית עם **שני** פריטים — בלעדיה אי אפשר לבדוק שסדר המערך נחשב. */
+export const PLAN_A1_TWO = 'plan_a1_two';
+/** תוכנית בארכיון — יצירת מחזור שמפנה אליה חייבת להיחסם (PRD §8.4). */
+export const PLAN_A1_ARCHIVED = 'plan_a1_archived';
 export const CYCLE_A1 = 'cycle_a1';
 export const EX_GLOBAL = 'ex_global';
 export const EX_ORG_A = 'ex_org_a';
@@ -67,6 +71,18 @@ export const PLAN_ITEMS = [
     unit: 'count',
     target: 300,
     notes: '',
+  },
+];
+
+/** פריטי התוכנית הדו-פריטית. הסדר כאן הוא חלק מהבדיקה. */
+export const PLAN_ITEMS_TWO = [
+  PLAN_ITEMS[0],
+  {
+    exerciseId: EX_ORG_A,
+    exerciseName: 'חיזוק ליבה',
+    unit: 'minutes',
+    target: 60,
+    notes: 'שלוש פעמים בשבוע',
   },
 ];
 
@@ -237,6 +253,28 @@ export async function seed(env: RulesTestEnvironment): Promise<void> {
         effectiveTo: null,
         createdBy: U.coachA,
         createdAt: daysAgo(14),
+        items: PLAN_ITEMS,
+      }),
+
+      put(`plans/${PLAN_A1_TWO}`, {
+        teamId: TEAM_A1,
+        orgId: ORG_A,
+        status: 'active',
+        effectiveFrom: daysAgo(14),
+        effectiveTo: null,
+        createdBy: U.coachA,
+        createdAt: daysAgo(14),
+        items: PLAN_ITEMS_TWO,
+      }),
+
+      put(`plans/${PLAN_A1_ARCHIVED}`, {
+        teamId: TEAM_A1,
+        orgId: ORG_A,
+        status: 'archived',
+        effectiveFrom: daysAgo(60),
+        effectiveTo: daysAgo(20),
+        createdBy: U.coachA,
+        createdAt: daysAgo(60),
         items: PLAN_ITEMS,
       }),
 

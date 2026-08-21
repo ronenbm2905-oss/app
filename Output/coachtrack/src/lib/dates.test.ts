@@ -19,6 +19,7 @@ import {
   addDaysToDayKey,
   daysLeftInWeek,
   formatIsraeliDate,
+  getNextWeekBounds,
   getWeekBounds,
   getWeekKey,
   isInWeek,
@@ -268,5 +269,49 @@ describe('formatIsraeliDate / daysLeftInWeek', () => {
     expect(daysLeftInWeek(utc('2026-08-16T09:00:00Z'))).toBe(7); // ראשון
     expect(daysLeftInWeek(utc('2026-08-19T09:00:00Z'))).toBe(4); // רביעי
     expect(daysLeftInWeek(utc('2026-08-22T09:00:00Z'))).toBe(1); // שבת
+  });
+});
+
+describe('getNextWeekBounds — הבסיס של "מהשבוע הבא"', () => {
+  it('מהשבוע של רביעי 19.8.2026 עוברים לראשון 23.8 עד שבת 29.8', () => {
+    // 19.8.2026 הוא רביעי. השבוע שלו: 16.8–22.8. הבא: 23.8–29.8.
+    const { weekStart, weekEnd } = getNextWeekBounds(utc('2026-08-19T09:00:00Z'));
+
+    expect(israeliWall(weekStart)).toBe('2026-08-23 00:00:00.000');
+    expect(israeliWall(weekEnd)).toBe('2026-08-29 23:59:59.999');
+  });
+
+  it('סוף השבוע הנוכחי ותחילת הבא צמודים באלפית — בלי חור ובלי חפיפה', () => {
+    const at = utc('2026-08-19T09:00:00Z');
+    const current = getWeekBounds(at);
+    const next = getNextWeekBounds(at);
+
+    expect(next.weekStart.getTime() - current.weekEnd.getTime()).toBe(1);
+  });
+
+  it('שבת 23:30 קופצת לשבוע שאחרי זה שראשון 00:30 כבר נמצא בו', () => {
+    // שבת 22.8.2026 23:30 בישראל (UTC+3) = 20:30Z.
+    const saturday = utc('2026-08-22T20:30:00Z');
+    // ראשון 23.8.2026 00:30 בישראל = 21:30Z של שבת.
+    const sunday = utc('2026-08-22T21:30:00Z');
+
+    expect(getWeekKey(getNextWeekBounds(saturday).weekStart)).toBe(getWeekKey(sunday));
+    expect(getWeekKey(getNextWeekBounds(sunday).weekStart)).toBe('2026-08-30');
+  });
+
+  it('קפיצה מעל תחילת שעון קיץ נשארת על ראשון בחצות בשעון ישראל', () => {
+    // שעון קיץ מתחיל בשישי 27.3.2026. השבוע 22.3–28.3 חוצה אותו.
+    const { weekStart, weekEnd } = getNextWeekBounds(utc('2026-03-24T10:00:00Z'));
+
+    expect(israeliWall(weekStart)).toBe('2026-03-29 00:00:00.000');
+    expect(israeliWall(weekEnd)).toBe('2026-04-04 23:59:59.999');
+  });
+
+  it('קפיצה מעל סוף שעון קיץ — אותו דבר לכיוון השני', () => {
+    // שעון קיץ מסתיים בראשון 25.10.2026 ב-02:00.
+    const { weekStart, weekEnd } = getNextWeekBounds(utc('2026-10-21T10:00:00Z'));
+
+    expect(israeliWall(weekStart)).toBe('2026-10-25 00:00:00.000');
+    expect(israeliWall(weekEnd)).toBe('2026-10-31 23:59:59.999');
   });
 });

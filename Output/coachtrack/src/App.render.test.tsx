@@ -133,16 +133,18 @@ describe('ניתוב לפי תפקיד — קריטריון הסיום של של
   });
 });
 
-describe('מסכי המאמן של שלב 2', () => {
+describe('מסכי המאמן של שלבים 2–3', () => {
   it('כל נתיב בתפריט המאמן מגיע למסך שלו', () => {
     const profile = fakeProfile('coach');
     expect(render('ready', profile, ROUTES.coachTeam)).toContain(he.coach.team.title);
+    expect(render('ready', profile, ROUTES.coachPlan)).toContain(he.coach.plan.title);
     expect(render('ready', profile, ROUTES.coachExercises)).toContain(he.coach.exercises.title);
   });
 
   it('התפריט מוצג למאמן', () => {
     const html = render('ready', fakeProfile('coach'), ROUTES.coach);
     expect(html).toContain(he.coach.nav.team);
+    expect(html).toContain(he.coach.nav.plan);
     expect(html).toContain(he.coach.nav.exercises);
   });
 

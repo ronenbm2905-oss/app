@@ -27,6 +27,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import {
@@ -41,7 +42,10 @@ import {
   ORG_A,
   ORG_B,
   PLAN_A1,
+  PLAN_A1_ARCHIVED,
+  PLAN_A1_TWO,
   PLAN_ITEMS,
+  PLAN_ITEMS_TWO,
   SUMMARY_A1,
   TEAM_A1,
   TEAM_A2,
@@ -686,6 +690,195 @@ describe('planCycles — יצירה עצלה בלי לרמות', () => {
   });
 });
 
+
+describe('planCycles — מזהה דטרמיניסטי, סדר וצילום (שלב 3)', () => {
+  /** אותו מזהה שהקוד מחשב: `${teamId}_${weekKey}`. */
+  const DERIVED_ID = `${TEAM_A1}_2026-08-16`;
+
+  // גבולות השבוע מוקפאים פעם אחת: שתי קריאות ל-daysAgo(0) מחזירות חותמות
+  // שונות באלפית, וכתיבה חוזרת עם ערך "זהה" הייתה נראית לכללים כהזזת שבוע.
+  const WEEK_START = daysAgo(0);
+  const WEEK_END = daysAhead(6);
+
+  const cycleDoc = (overrides: Record<string, unknown> = {}) => ({
+    planId: PLAN_A1,
+    teamId: TEAM_A1,
+    orgId: ORG_A,
+    weekStart: WEEK_START,
+    weekEnd: WEEK_END,
+    itemsSnapshot: PLAN_ITEMS,
+    createdAt: daysAgo(0),
+    ...overrides,
+  });
+
+  it('יצירה במזהה נגזר עוברת כרגיל — הכללים לא מתעניינים בצורת המזהה', async () => {
+    await assertSucceeds(setDoc(doc(as(U.playerA1), 'planCycles', DERIVED_ID), cycleDoc()));
+  });
+
+  it('כתיבה שנייה על אותו מזהה היא כבר update — ולכן שחקן שני נחסם', async () => {
+    // זו הסיבה ש-getOrCreateCurrentCycle עוטף את היצירה בטרנזקציה שמוותרת
+    // כשהמסמך כבר קיים: שחקן שני שהיה מנצח את המרוץ וכותב שוב היה מקבל
+    // PERMISSION_DENIED על מסך הבית שלו, בלי שום סיבה נראית לעין.
+    await assertSucceeds(setDoc(doc(as(U.playerA1), 'planCycles', DERIVED_ID), cycleDoc()));
+    await assertFails(setDoc(doc(as(U.playerA1b), 'planCycles', DERIVED_ID), cycleDoc()));
+
+    // ביקורת חיובית: אותה כתיבה בדיוק מהמאמן עוברת, כי update מותר לו.
+    await assertSucceeds(setDoc(doc(as(U.coachA), 'planCycles', DERIVED_ID), cycleDoc()));
+  });
+
+  it('גם למאמן, כתיבה חוזרת שמזיזה את גבולות השבוע — נחסמת', async () => {
+    // זהות המחזור נעולה: שינוי weekStart היה משכתב למפרע לאיזה שבוע כל
+    // הדיווחים משתייכים. לכן הקוד לא כותב מחדש מחזור קיים אלא מעדכן שדה.
+    await assertSucceeds(setDoc(doc(as(U.playerA1), 'planCycles', DERIVED_ID), cycleDoc()));
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'planCycles', DERIVED_ID),
+        cycleDoc({ weekStart: daysAgo(7), weekEnd: daysAgo(1) }),
+      ),
+    );
+  });
+
+  it('קריאת מחזור שאינו קיים נחסמת — הממצא שקבע איך היצירה העצלה שואלת', async () => {
+    // במסמך חסר `resource` הוא null, וכל נגיעה ב-resource.data מפילה את הכלל
+    // ל-deny. כלומר "האם כבר נפתח מחזור לשבוע הזה?" — השאלה שהיצירה העצלה
+    // חייבת לשאול — אסור שתישאל ב-getDoc. אומת גם מול המסד החי (21.8.2026).
+    await assertFails(getDoc(doc(as(U.playerA1), 'planCycles', `${TEAM_A1}_2099-01-04`)));
+
+    // ביקורת חיובית: אותה שאלה בדיוק, בשאילתה מסוננת — עוברת ומחזירה ריק.
+    await assertSucceeds(
+      getDocs(
+        query(collection(as(U.playerA1), 'planCycles'), where('teamId', '==', TEAM_A1)),
+      ),
+    );
+  });
+
+  it('סדר האיברים במערך נחשב: אותו צילום הפוך — נחסם', async () => {
+    // ההשוואה itemsSnapshot == plan.items היא השוואת מערכים, ומערך הוא סדור.
+    // בגלל זה buildCycleData מעביר את plan.items כמות שהוא, בלי map ובלי sort.
+    const forPlanTwo = (items: unknown) =>
+      cycleDoc({ planId: PLAN_A1_TWO, itemsSnapshot: items });
+
+    await assertSucceeds(
+      setDoc(doc(as(U.coachA), 'planCycles', 'cycle_order_ok'), forPlanTwo(PLAN_ITEMS_TWO)),
+    );
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'planCycles', 'cycle_order_bad'),
+        forPlanTwo([PLAN_ITEMS_TWO[1], PLAN_ITEMS_TWO[0]]),
+      ),
+    );
+  });
+
+  it('שדה עודף או חסר בפריט — נחסם', async () => {
+    // undefined שנופל בכתיבה, או שדה מחושב שנוסף בדרך, מפילים את ההשוואה.
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'planCycles', 'cycle_extra_field'),
+        cycleDoc({ itemsSnapshot: [{ ...PLAN_ITEMS[0], computedPct: 0 }] }),
+      ),
+    );
+
+    const { notes: _dropped, ...withoutNotes } = PLAN_ITEMS[0];
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'planCycles', 'cycle_missing_field'),
+        cycleDoc({ itemsSnapshot: [withoutNotes] }),
+      ),
+    );
+  });
+
+  it('מחזור שמפנה לתוכנית בארכיון — נחסם; לתוכנית פעילה — עובר', async () => {
+    // PRD §8.4: אין תוכנית פעילה → לא נוצר מחזור. הכלל אוכף את זה גם כשהלקוח
+    // מנסה בכל זאת — למשל שחקן שנכנס בשבוע חופשה עם קוד ישן במטמון.
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'planCycles', 'cycle_archived'),
+        cycleDoc({ planId: PLAN_A1_ARCHIVED }),
+      ),
+    );
+    await assertSucceeds(
+      setDoc(doc(as(U.coachA), 'planCycles', 'cycle_active'), cycleDoc()),
+    );
+  });
+});
+
+describe('שתי אפשרויות העריכה — הכתיבות יוצאות יחד (שלב 3)', () => {
+  it('"מהשבוע הנוכחי": plans.items ו-planCycles.itemsSnapshot ב-batch אחד', async () => {
+    // אם אחד ייכתב והשני לא, השבוע הנוכחי מציג יעד אחד והתוכנית אומרת אחר.
+    const items = [{ ...PLAN_ITEMS[0], target: 500 }];
+    const db = as(U.coachA);
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'plans', PLAN_A1), { items });
+    batch.update(doc(db, 'planCycles', CYCLE_A1), { itemsSnapshot: items });
+
+    await assertSucceeds(batch.commit());
+  });
+
+  it('אותו batch בדיוק, משחקן — נחסם כולו', async () => {
+    const items = [{ ...PLAN_ITEMS[0], target: 1 }];
+    const db = as(U.playerA1);
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'plans', PLAN_A1), { items });
+    batch.update(doc(db, 'planCycles', CYCLE_A1), { itemsSnapshot: items });
+
+    await assertFails(batch.commit());
+  });
+
+  it('"מהשבוע הבא": סגירת הישנה ופתיחת החדשה ב-batch אחד', async () => {
+    const db = as(U.coachA);
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'plans', PLAN_A1), {
+      status: 'archived',
+      effectiveTo: daysAhead(3),
+    });
+    batch.set(doc(db, 'plans', 'plan_next_week'), {
+      teamId: TEAM_A1,
+      orgId: ORG_A,
+      status: 'active',
+      effectiveFrom: daysAhead(4),
+      effectiveTo: null,
+      createdBy: U.coachA,
+      createdAt: daysAgo(0),
+      items: [{ ...PLAN_ITEMS[0], target: 500 }],
+    });
+
+    await assertSucceeds(batch.commit());
+  });
+
+  it('מאמן של קבוצה אחרת לא יכול לבצע את אותו מעבר', async () => {
+    const db = as(U.coachA2);
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'plans', PLAN_A1), { status: 'archived', effectiveTo: daysAhead(3) });
+    batch.set(doc(db, 'plans', 'plan_hijack'), {
+      teamId: TEAM_A1,
+      orgId: ORG_A,
+      status: 'active',
+      effectiveFrom: daysAhead(4),
+      effectiveTo: null,
+      createdBy: U.coachA2,
+      createdAt: daysAgo(0),
+      items: PLAN_ITEMS,
+    });
+
+    await assertFails(batch.commit());
+  });
+
+  it('הפסקת תוכנית (שבוע בלי יעדים) — מאמן כן, שחקן לא', async () => {
+    await assertFails(
+      updateDoc(doc(as(U.playerA1), 'plans', PLAN_A1), {
+        status: 'archived',
+        effectiveTo: daysAhead(3),
+      }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'plans', PLAN_A1), {
+        status: 'archived',
+        effectiveTo: daysAhead(3),
+      }),
+    );
+  });
+});
+
 describe('entries — יצירה', () => {
   it('שחקן מדווח על עצמו', async () => {
     await assertSucceeds(
@@ -910,6 +1103,26 @@ describe('planTemplates', () => {
         items: [{ ...PLAN_ITEMS[0], target: 200 }],
       }),
     );
+  });
+
+  it('מאמן שומר תבנית חדשה בשם עצמו; בשם מאמן אחר — נחסם', async () => {
+    const template = {
+      orgId: ORG_A,
+      coachUid: U.coachA,
+      name: 'שבוע לפני משחק',
+      items: PLAN_ITEMS_TWO,
+    };
+    await assertSucceeds(setDoc(doc(as(U.coachA), 'planTemplates', 'tpl_new'), template));
+    await assertFails(
+      setDoc(doc(as(U.playerA1), 'planTemplates', 'tpl_player'), {
+        ...template,
+        coachUid: U.playerA1,
+      }),
+    );
+  });
+
+  it('מאמן אחר באותו ארגון קורא וטוען תבנית — היא נכס של המועדון', async () => {
+    await assertSucceeds(getDoc(doc(as(U.coachA2), 'planTemplates', TEMPLATE_A)));
   });
 
   it('הבעלים מוחק תבנית; מאמן אחר — לא. כאן מחיקה אמיתית מותרת בכוונה', async () => {

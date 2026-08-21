@@ -180,3 +180,30 @@ export function daysLeftInWeek(value: DateInput, weekStartDay: WeekStartDay = 0)
   const daysSinceStart = (weekday - weekStartDay + 7) % 7;
   return 7 - daysSinceStart;
 }
+
+/**
+ * גבולות **השבוע הבא** אחרי זה שאליו שייך התאריך.
+ *
+ * נבנה על `getWeekBounds` ולא מחשב מחדש: קופצים 7 ימים על מפתח-היום של תחילת
+ * השבוע, ומעגנים ב-12:00 לפני ההמרה חזרה. העיגון בצהריים הוא מה שמונע מסטיית
+ * שעון קיץ להזיז את הקפיצה ליום הלא נכון — בדיוק מאותה סיבה שבגללה `entries.date`
+ * מקובע לצהריים (CLAUDE.md → פורמט תאריכים).
+ *
+ * זו הפונקציה שמניעה את "עדכון תוכנית מהשבוע הבא" (PRD §7.4).
+ */
+export function getNextWeekBounds(value: DateInput, weekStartDay: WeekStartDay = 0): WeekBounds {
+  const { weekStart } = getWeekBounds(value, weekStartDay);
+  const nextStartKey = addDaysToDayKey(toIsraeliDayKey(weekStart), 7);
+  return getWeekBounds(israeliWallTime(nextStartKey, '12:00:00.000'), weekStartDay);
+}
+
+/**
+ * הרגע הנוכחי.
+ *
+ * **הנקודה היחידה בקוד שקוראת את שעון המערכת.** כל שאר הקוד מקבל `now`
+ * כפרמטר — זה מה שמאפשר לבדוק מעבר שבוע בטסט בלי לגעת בשעון המכשיר
+ * (קריטריון הסיום של שלב 3), ומה שמקיים את הכלל "אין `new Date()` מפוזר בקוד".
+ */
+export function nowInstant(): Date {
+  return new Date();
+}
