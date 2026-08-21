@@ -20,6 +20,7 @@ export const ROUTES = {
   coachPlan: '/coach/plan',
   coachExercises: '/coach/exercises',
   player: '/player',
+  playerHistory: '/player/history',
   admin: '/admin',
 } as const;
 
@@ -42,7 +43,10 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
     { path: ROUTES.coachPlan, labelKey: 'coach.nav.plan' },
     { path: ROUTES.coachExercises, labelKey: 'coach.nav.exercises' },
   ],
-  player: [{ path: ROUTES.player, labelKey: 'player.myWeek.title' }],
+  player: [
+    { path: ROUTES.player, labelKey: 'player.nav.myWeek' },
+    { path: ROUTES.playerHistory, labelKey: 'player.nav.history' },
+  ],
   admin: [{ path: ROUTES.admin, labelKey: 'admin.home.title' }],
 };
 

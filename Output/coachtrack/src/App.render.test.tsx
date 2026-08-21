@@ -120,9 +120,17 @@ describe('ניתוב לפי תפקיד — קריטריון הסיום של של
     expect(html).toContain(he.admin.home.title);
   });
 
-  it('המסכים ריקים בכוונה — כותרת והודעה שהתוכן ייבנה בשלב הבא', () => {
-    const html = render('ready', fakeProfile('player'), landingPathForRole('player'));
+  it('דשבורד המאמן עדיין ריק בכוונה — התוכן שלו נבנה בשלב 5', () => {
+    const html = render('ready', fakeProfile('coach'), landingPathForRole('coach'));
     expect(html).toContain(he.common.comingSoon);
+  });
+
+  it('מסך השחקן כבר לא ריק — משלב 4 הוא טוען את השבוע', () => {
+    // ברינדור סטטי אין useEffect, ולכן אין מאזין ואין נתונים: מה שנבדק כאן
+    // הוא שהמסך נכנס למצב הטעינה שלו ולא למצב "ייבנה בשלב הבא".
+    const html = render('ready', fakeProfile('player'), landingPathForRole('player'));
+    expect(html).toContain(he.player.myWeek.loading);
+    expect(html).not.toContain(he.common.comingSoon);
   });
 
   it('הכותרת מציגה את השם ואת התפקיד שנקראו ממסמך המשתמש', () => {
@@ -148,10 +156,17 @@ describe('מסכי המאמן של שלבים 2–3', () => {
     expect(html).toContain(he.coach.nav.exercises);
   });
 
-  it('לשחקן אין תפריט — יש לו מסך אחד', () => {
+  it('לשחקן תפריט משלו משלב 4 — ובו אין אף מסך של מאמן', () => {
     const html = render('ready', fakeProfile('player'), ROUTES.player);
-    expect(html).not.toContain('<nav');
+    expect(html).toContain(he.player.nav.myWeek);
+    expect(html).toContain(he.player.nav.history);
     expect(html).not.toContain(he.coach.nav.team);
+    expect(html).not.toContain(he.coach.nav.plan);
+  });
+
+  it('נתיב ההיסטוריה של השחקן מגיע למסך ההיסטוריה', () => {
+    const html = render('ready', fakeProfile('player'), ROUTES.playerHistory);
+    expect(html).toContain(he.player.history.title);
   });
 
   it('שחקן שמנסה נתיב של מאמן לא מקבל את המסך', () => {

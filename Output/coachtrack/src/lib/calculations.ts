@@ -110,6 +110,23 @@ export function groupEntriesByExercise<T extends CountableEntry & { exerciseId: 
   return grouped;
 }
 
+/**
+ * דרגת האחוז — הסף שקובע את הצבע על המסך.
+ *
+ * הספים מגיעים מ-PRD §7.3א (אדום < 50, כתום 50–79, ירוק ≥ 80) והם **החלטת
+ * מוצר, לא עיצוב**: אותה דרגה בדיוק צובעת את מטריצת המאמן בשלב 5 ואת כרטיס
+ * התרגיל של השחקן. לכן היא יושבת כאן, עם טסטים, ולא בתוך קומפוננטה.
+ *
+ * מיפוי דרגה→צבע נשאר בקומפוננטה — זה כן עיצוב.
+ */
+export type PctTone = 'low' | 'mid' | 'high';
+
+export function pctTone(pct: number): PctTone {
+  if (!Number.isFinite(pct) || pct < 50) return 'low';
+  if (pct < 80) return 'mid';
+  return 'high';
+}
+
 /** אחוז מעוגל להצגה. העיגול הוא בתצוגה בלבד — החישוב עצמו נשאר מדויק. */
 export function roundPct(pct: number): number {
   if (!Number.isFinite(pct)) return 0;

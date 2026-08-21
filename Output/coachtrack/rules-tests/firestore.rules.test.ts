@@ -11,7 +11,7 @@
  * הרצה: `npm run test:rules` (מרים אמולטור Firestore ומריץ את הקובץ).
  */
 
-import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import {
   assertFails,
   assertSucceeds,
@@ -59,6 +59,7 @@ import {
   exerciseData,
   seed,
 } from './harness';
+import { MAX_BACKDATE_DAYS, dateOptions, entryDateForDay } from '../src/lib/entries';
 
 let env: RulesTestEnvironment;
 
@@ -974,6 +975,52 @@ describe('entries — יצירה', () => {
       setDoc(
         doc(as(U.coachA2), 'entries', 'e_by_other_coach'),
         entryData({ createdBy: U.coachA2, date: daysAgo(0) }),
+      ),
+    );
+  });
+});
+
+describe('entries — מה שמסך השחקן מציע מול מה שהכלל מתיר (שלב 4)', () => {
+  /**
+   * הבדיקות כאן מייבאות את הקוד של המסך עצמו (`src/lib/entries.ts`) ולא מחשבות
+   * תאריכים בעצמן. זו הנקודה: אם מישהו ירחיב את `MAX_BACKDATE_DAYS` בממשק בלי
+   * לגעת בכלל, הבדיקה הזו תיפול — במקום שהשחקן יגלה את זה כ"השמירה נכשלה".
+   *
+   * `entryDateForDay` הוא בדיוק מה שהמסך כותב: Timestamp מקובע ל-12:00 בשעון
+   * ישראל. עיגון הצהריים הוא הסיבה שהכלל מרשה 8 ימים ולא 7 — מרווח של יום
+   * לספיגת ההפרש מול `request.time`, לא הרחבה של החלון.
+   */
+  it('התאריך הרחוק ביותר שהבורר מציע — עובר', async () => {
+    const options = dateOptions(new Date());
+    const oldest = options[options.length - 1];
+
+    expect(oldest.daysAgo).toBe(MAX_BACKDATE_DAYS);
+    await assertSucceeds(
+      setDoc(
+        doc(as(U.playerA1), 'entries', 'e_ui_oldest'),
+        entryData({ date: entryDateForDay(oldest.dayKey) }),
+      ),
+    );
+  });
+
+  it('יום אחד מעבר למה שהבורר מציע — נחסם', async () => {
+    const beyond = dateOptions(new Date(), MAX_BACKDATE_DAYS + 2);
+
+    await assertFails(
+      setDoc(
+        doc(as(U.playerA1), 'entries', 'e_ui_beyond'),
+        entryData({ date: entryDateForDay(beyond[beyond.length - 1].dayKey) }),
+      ),
+    );
+  });
+
+  it('דיווח רטרואקטיבי בלי מחזור (cycleId: null) — עובר', async () => {
+    // כך נראה דיווח על שבוע שלא נפתח בו מחזור (PRD §8.4): נשמר בהיסטוריה,
+    // לא משויך לתוכנית. cycleId עדיין אינו מאומת מול date — ראה ה-todo למטה.
+    await assertSucceeds(
+      setDoc(
+        doc(as(U.playerA1), 'entries', 'e_no_cycle'),
+        entryData({ cycleId: null, date: entryDateForDay(dateOptions(new Date())[3].dayKey) }),
       ),
     );
   });

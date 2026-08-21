@@ -5,10 +5,16 @@
  * שדות סיסמה מקבלים `dir="ltr"` עם יישור לימין: הסיסמה עצמה לטינית, אבל המסך RTL.
  */
 
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import type { InputHTMLAttributes, ReactNode, Ref } from 'react';
 
 interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
   id: string;
+  /**
+   * ref ל-input עצמו. ב-React 19 `ref` הוא prop רגיל של קומפוננטת פונקציה,
+   * ולכן אין כאן `forwardRef` — הוא נכנס ל-`rest` ונפרש על ה-input.
+   * חלון הדיווח משתמש בו כדי למקד את שדה הכמות ברגע שהוא נפתח.
+   */
+  ref?: Ref<HTMLInputElement>;
   label: string;
   /** הודעת שגיאה מתורגמת. קיומה מסמן את השדה כלא-תקין. */
   error?: string | null;

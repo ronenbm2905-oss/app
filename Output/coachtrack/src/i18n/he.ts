@@ -105,14 +105,137 @@ export const he = {
 
   /** שלב 4 — מסכי שחקן. */
   player: {
+    /** תפריט הניווט של השחקן. */
+    nav: {
+      myWeek: 'השבוע שלי',
+      history: 'היסטוריה',
+    },
+
     myWeek: {
       title: 'השבוע שלי',
+      loading: 'טוען את השבוע שלך…',
+      loadError: 'טעינת השבוע נכשלה. בדוק את החיבור לאינטרנט ונסה שוב.',
+      noTeam: 'עדיין לא צורפת לקבוצה, ולכן אין לך תוכנית. פנה למאמן.',
+      weekRange: '{start} עד {end}',
+      daysLeft: 'נשארו {count} ימים לסוף השבוע',
+      lastDay: 'היום הוא היום האחרון של השבוע',
+
+      overallLabel: 'השלמה כללית',
+      overallHint: 'ממוצע כל התרגילים. תרגיל שעברת בו את היעד נספר כ-100%.',
+
+      noPlan: 'אין תוכנית לשבוע זה. כשהמאמן יפרסם תוכנית היא תופיע כאן.',
+      noPlanEntries: 'הדיווחים שרשמת בשבוע הזה נשמרים בהיסטוריה, אבל אין מולם יעד.',
+      cycleFailed: 'פתיחת השבוע נכשלה. רענן את הדף ונסה שוב.',
+
+      exercisesTitle: 'התרגילים שלך',
+      progress: '{total} מתוך {target} {unit}',
+      remaining: 'נשארו {remaining} {unit}',
+      done: 'היעד הושלם',
+      entryCount: '{count} דיווחים',
+      entryCountOne: 'דיווח אחד',
+      noEntriesYet: 'עוד לא דיווחת על התרגיל הזה',
+      showInstructions: 'הנחיות ביצוע',
+      noInstructions: 'המאמן לא כתב הנחיות לתרגיל הזה.',
+      reportAction: 'דיווח',
+      historyLink: 'ההיסטוריה שלי',
     },
+
+    /** יומן הדיווחים של השבוע — מתחת לכרטיסים. */
+    log: {
+      title: 'הדיווחים שלי השבוע',
+      empty: 'עוד לא דיווחת השבוע. כל דיווח שתרשום יופיע כאן.',
+      amount: '{amount} {unit}',
+      offPlan: 'לא בתוכנית של השבוע',
+      edit: 'עריכה',
+      delete: 'מחיקה',
+      locked: 'אפשר לערוך דיווח עד {days} ימים מרגע הרישום. לתיקון מאוחר יותר פנה למאמן.',
+      deleteConfirm: 'למחוק את הדיווח הזה? הוא לא ייספר יותר לאחוזים.',
+      deleteSuccess: 'הדיווח נמחק.',
+    },
+
+    /** חלון הדיווח. */
     report: {
-      title: 'דיווח',
+      title: 'דיווח — {exercise}',
+      editTitle: 'עריכת דיווח — {exercise}',
+      close: 'סגירת החלון',
+      targetLine: 'היעד השבועי: {target} {unit}',
+
+      amount: 'כמה ביצעת? ({unit})',
+      amountPlaceholder: 'מספר בלבד',
+      quickAdd: 'הוספה מהירה',
+      quickAddValue: '+{value}',
+
+      date: 'תאריך הביצוע',
+      today: 'היום',
+      yesterday: 'אתמול',
+      twoDaysAgo: 'לפני יומיים',
+      daysAgo: 'לפני {count} ימים',
+      dateHint: 'אפשר לדווח על היום ועד {days} ימים אחורה.',
+      dateChosen: 'הדיווח יישמר על התאריך {date}.',
+
+      noteLabel: 'הערה (לא חובה)',
+      notePlaceholder: 'לדוגמה: התאמנתי במגרש ליד הבית',
+      noteHint:
+        'ההערה נשמרת במערכת והמאמן קורא אותה. אין לכתוב כאן מידע רפואי — כאבים, פציעות או תרופות — ואין לכתוב פרטים אישיים כמו טלפון, כתובת או מספר תעודת זהות.',
+
+      submit: 'שמירת הדיווח',
+      submitEdit: 'שמירת השינויים',
+      submitting: 'שומר…',
+      success: 'נשמר. {amount} {unit} ב{exercise}.',
+      updateSuccess: 'הדיווח עודכן.',
+
+      /** דיאלוג הערך החריג — הגנה מטעות הקלדה (PRD §8.4). */
+      outlier: {
+        title: 'רגע — הכמות נראית גדולה',
+        body: 'רשמת {amount} {unit} ברישום אחד, והיעד לכל השבוע הוא {target}. האם התכוונת ל-{amount}?',
+        confirm: 'כן, זו הכמות',
+        back: 'חזרה לתיקון',
+      },
+
+      errors: {
+        amountRequired: 'הזן כמה ביצעת.',
+        amountPositive: 'הכמות חייבת להיות גדולה מאפס.',
+        amountTooLarge: 'הכמות גדולה מדי — עד {max}.',
+        dateOutOfWindow: 'אפשר לדווח על היום ועד {days} ימים אחורה.',
+        noteTooLong: 'ההערה ארוכה מדי — עד {max} תווים.',
+        saveFailed: 'שמירת הדיווח נכשלה. נסה שוב.',
+        updateFailed: 'עדכון הדיווח נכשל. נסה שוב.',
+        deleteFailed: 'מחיקת הדיווח נכשלה. נסה שוב.',
+        noTeam: 'אין לך קבוצה, ולכן אי אפשר לשמור דיווח.',
+      },
     },
+
+    /** מסך ההיסטוריה. */
     history: {
       title: 'היסטוריה',
+      loading: 'טוען את ההיסטוריה…',
+      loadError: 'טעינת ההיסטוריה נכשלה. בדוק את החיבור לאינטרנט ונסה שוב.',
+      empty: 'עוד אין מה להציג. אחרי הדיווח הראשון ההיסטוריה תתחיל להיבנות.',
+      backToWeek: 'חזרה לשבוע שלי',
+
+      streakTitle: 'רצף התמדה',
+      streakWeeks: '{count} שבועות ברצף',
+      streakOne: 'שבוע אחד ברצף',
+      streakNone: 'עוד אין רצף',
+      streakHint: 'שבוע נספר לרצף כשההשלמה הכללית בו {threshold}% ומעלה.',
+      streakOpenHint: 'שבוע שתסיים מעל {threshold}% פותח רצף.',
+      streakRunningWeek: 'השבוע הנוכחי עדיין רץ ולא שובר את הרצף.',
+
+      chartTitle: 'אחוז שבועי',
+      chartHint: 'העמודה הימנית היא השבוע האחרון.',
+
+      weeksTitle: 'שבוע אחר שבוע',
+      currentWeek: 'השבוע הנוכחי',
+      noPlanWeek: 'שבוע בלי תוכנית',
+      noPlanWeekHint: 'לא הייתה תוכנית בשבוע הזה, ולכן אין אחוז השלמה.',
+      weekEntries: '{count} דיווחים',
+      weekEntriesOne: 'דיווח אחד',
+      weekExercise: '{name}: {total} מתוך {target} {unit}',
+
+      breakdownTitle: 'פילוח לפי תרגיל',
+      breakdownHint: 'ממוצע האחוזים בכל השבועות שבהם התרגיל היה בתוכנית.',
+      breakdownTotals: '{total} מתוך {target} {unit}',
+      breakdownWeeks: 'ב-{count} שבועות',
     },
   },
 

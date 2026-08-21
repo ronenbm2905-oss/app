@@ -27,6 +27,7 @@ import { TeamPage } from './features/coach/TeamPage';
 import { ExerciseLibraryPage } from './features/coach/ExerciseLibraryPage';
 import { PlanPage } from './features/coach/PlanPage';
 import { MyWeekPage } from './features/player/MyWeekPage';
+import { HistoryPage } from './features/player/HistoryPage';
 import { useAuth } from './hooks/useAuth';
 import { ROUTES, landingPathForRole, navItemsForRole } from './lib/routing';
 import type { RoutePath } from './lib/routing';
@@ -43,6 +44,7 @@ const SCREEN_BY_PATH: Partial<Record<RoutePath, ComponentType>> = {
   [ROUTES.coachPlan]: PlanPage,
   [ROUTES.coachExercises]: ExerciseLibraryPage,
   [ROUTES.player]: MyWeekPage,
+  [ROUTES.playerHistory]: HistoryPage,
   [ROUTES.admin]: AdminHomePage,
 };
 

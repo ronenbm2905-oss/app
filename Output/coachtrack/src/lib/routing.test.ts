@@ -31,8 +31,14 @@ describe('פריטי הניווט', () => {
     ]);
   });
 
-  it('לשחקן ול-admin מסך אחד — ולכן לא יוצג להם תפריט', () => {
-    expect(navItemsForRole('player')).toHaveLength(1);
+  it('לשחקן שני מסכים משלב 4: השבוע שלי והיסטוריה', () => {
+    expect(navItemsForRole('player').map((item) => item.path)).toEqual([
+      ROUTES.player,
+      ROUTES.playerHistory,
+    ]);
+  });
+
+  it('ל-admin מסך אחד — ולכן לא יוצג לו תפריט', () => {
     expect(navItemsForRole('admin')).toHaveLength(1);
   });
 
@@ -66,6 +72,12 @@ describe('מה מותר לתפקיד', () => {
       expect(isPathAllowedForRole(path, 'player')).toBe(false);
       expect(isPathAllowedForRole(path, 'admin')).toBe(false);
     }
+  });
+
+  it('מסך ההיסטוריה של השחקן חסום למאמן ול-admin', () => {
+    expect(isPathAllowedForRole(ROUTES.playerHistory, 'player')).toBe(true);
+    expect(isPathAllowedForRole(ROUTES.playerHistory, 'coach')).toBe(false);
+    expect(isPathAllowedForRole(ROUTES.playerHistory, 'admin')).toBe(false);
   });
 
   it('נתיב שלא קיים אינו מותר לאיש', () => {
