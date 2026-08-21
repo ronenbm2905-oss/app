@@ -52,6 +52,8 @@ export const EX_ORG_B = 'ex_org_b';
 export const ENTRY_FRESH = 'entry_fresh';
 export const ENTRY_OLD = 'entry_old';
 export const ENTRY_A2 = 'entry_a2';
+/** דיווח בן חודשיים — מחוץ לכל חלון. מאמן חייב להיות מסוגל לגעת בו בכל זאת. */
+export const ENTRY_ANCIENT = 'entry_ancient';
 export const TEMPLATE_A = 'template_a';
 export const SUMMARY_A1 = 'summary_a1';
 
@@ -250,6 +252,10 @@ export async function seed(env: RulesTestEnvironment): Promise<void> {
 
       put(`entries/${ENTRY_FRESH}`, entryData()),
       put(`entries/${ENTRY_OLD}`, entryData({ createdAt: daysAgo(10), date: daysAgo(6) })),
+      put(
+        `entries/${ENTRY_ANCIENT}`,
+        entryData({ createdAt: daysAgo(60), date: daysAgo(60) }),
+      ),
       put(
         `entries/${ENTRY_A2}`,
         entryData({ playerUid: U.playerA2, teamId: TEAM_A2, createdBy: U.playerA2 }),

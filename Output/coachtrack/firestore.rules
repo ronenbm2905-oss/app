@@ -68,6 +68,13 @@ service cloud.firestore {
       return hasProfile() && teamId in me().teamIds;
     }
 
+    // חברות של משתמש **אחר** בקבוצה. isTeamMember בודק את המשתמש המחובר;
+    // כאן נבדק זה שכותבים עליו — למשל שחקן שהמאמן מזין עבורו דיווח.
+    function playerInTeam(uid, teamId) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+             && teamId in get(/databases/$(database)/documents/users/$(uid)).data.teamIds;
+    }
+
     function canSeeTeam(teamId) {
       return isAdmin() || isTeamCoach(teamId) || isTeamMember(teamId);
     }
@@ -88,8 +95,13 @@ service cloud.firestore {
     // ---------- organizations ----------
 
     match /organizations/{orgId} {
-      allow read:   if sameOrg(orgId);
-      allow write:  if isAdmin() && sameOrg(orgId);
+      allow read: if sameOrg(orgId);
+
+      // `write` היה כולל גם `delete`, וזו הייתה הפרצה היחידה בכלל 5
+      // (אין מחיקה קשיחה) — בכל שאר הקולקציות הוא נאכף במפורש.
+      allow create: if isAdmin() && sameOrg(orgId);
+      allow update: if isAdmin() && sameOrg(orgId);
+      allow delete: if false;
     }
 
 
@@ -117,8 +129,17 @@ service cloud.firestore {
             && sameOrg(request.resource.data.orgId)
             && request.resource.data.role == 'player');
 
+      // ניהול ע"י מאמן: displayName / username / teamIds / active בלבד.
+      // ⚠️ `unchanged(['role','orgId'])` הוא הכרחי ואינו כפילות של `resource.data.role`:
+      // אותה בדיקה מסתכלת על התפקיד ה**קיים**, ובלי `unchanged` מאמן היה יכול לשלוח
+      // עדכון שמשנה שחקן ל-admin — הבדיקה הייתה עוברת, כי ברגע הבדיקה הוא עדיין player.
+      // ההגנה על עדכון-עצמי למעלה לא מכסה את המקרה הזה: היא חוסמת הסלמה של המשתמש
+      // את עצמו, לא הסלמה בתיווך מאמן. (דגל B2, סקירת עדי 21.8.2026.)
       allow update: if isAdmin()
-        || (isCoach() && sameOrg(resource.data.orgId) && resource.data.role == 'player');
+        || (isCoach()
+            && sameOrg(resource.data.orgId)
+            && resource.data.role == 'player'
+            && unchanged(['role', 'orgId']));
 
       // אין מחיקה קשיחה — משביתים עם active:false
       allow delete: if false;
@@ -130,7 +151,14 @@ service cloud.firestore {
     match /teams/{teamId} {
       allow read:   if isAdmin() || sameOrg(resource.data.orgId);
       allow create: if (isAdmin() || isCoach()) && sameOrg(request.resource.data.orgId);
-      allow update: if isAdmin() || (isCoach() && resource.data.coachUid == request.auth.uid);
+      // ⚠️ אותו דפוס של B2: הבדיקה `resource.data.coachUid == request.auth.uid`
+      // מסתכלת על הבעלות ה**קיימת** ולא על מה שנשלח. בלי unchanged, מאמן היה
+      // יכול לשנות את coachUid (למסור את הקבוצה או לקחת אותה) ואת orgId שלה.
+      // ל-admin זה נשאר מותר — העברת בעלות על קבוצה היא פעולת ניהול לגיטימית.
+      allow update: if isAdmin()
+        || (isCoach()
+            && resource.data.coachUid == request.auth.uid
+            && unchanged(['coachUid', 'orgId']));
       allow delete: if false;   // מסמנים active:false
     }
 
@@ -149,9 +177,15 @@ service cloud.firestore {
             && request.resource.data.scope == 'org'
             && sameOrg(request.resource.data.orgId));
 
-      allow update: if
-        (isAdmin())
-        || (isCoach() && resource.data.scope == 'org' && sameOrg(resource.data.orgId));
+      // ⚠️ scope ו-orgId נעולים לכולם, כולל admin. תרגיל של מועדון שמשנים לו את
+      // ה-scope ל-global מופיע מיד בספרייה של **כל ארגון אחר** (כלל הקריאה מתיר
+      // scope == 'global' לכל מחובר) — זו זליגה חוצת-ארגונים, והחמורה מבין
+      // ממצאי הסקירה. קידום תרגיל לקטלוג נעשה ב-scripts/seed.js, לא מהאפליקציה.
+      allow update: if (
+          isAdmin()
+          || (isCoach() && resource.data.scope == 'org' && sameOrg(resource.data.orgId))
+        )
+        && unchanged(['scope', 'orgId']);
 
       allow delete: if false;   // מסמנים active:false
     }
@@ -163,7 +197,10 @@ service cloud.firestore {
       allow read:   if canSeeTeam(resource.data.teamId);
       allow create: if isTeamCoach(request.resource.data.teamId)
                     && sameOrg(request.resource.data.orgId);
-      allow update: if isAdmin() || isTeamCoach(resource.data.teamId);
+      // teamId ו-orgId מגדירים למי התוכנית שייכת — לא שדות תוכן.
+      // בלי הנעילה, מאמן היה יכול להעביר תוכנית קיימת לקבוצה אחרת.
+      allow update: if (isAdmin() || isTeamCoach(resource.data.teamId))
+        && unchanged(['teamId', 'orgId']);
       allow delete: if false;   // מסמנים status:'archived'
     }
 
@@ -182,8 +219,14 @@ service cloud.firestore {
         && plan(request.resource.data.planId).status == 'active'
         && request.resource.data.itemsSnapshot == plan(request.resource.data.planId).items;
 
-      // עדכון הצילום — מאמן בלבד (עריכת תוכנית "מהשבוע הנוכחי")
-      allow update: if isAdmin() || isTeamCoach(resource.data.teamId);
+      // עדכון הצילום — מאמן בלבד (עריכת תוכנית "מהשבוע הנוכחי").
+      //
+      // ⚠️ itemsSnapshot **חייב** להישאר ניתן לשינוי — זה בדיוק המנגנון של
+      // "עדכון תוכנית מהשבוע הנוכחי" (PRD §7.4). מה שננעל הוא זהות המחזור:
+      // לאיזו קבוצה, לאיזו תוכנית ולאיזה שבוע הוא שייך. שינוי weekStart היה
+      // משכתב למפרע לאיזה שבוע כל הדיווחים משתייכים.
+      allow update: if (isAdmin() || isTeamCoach(resource.data.teamId))
+        && unchanged(['teamId', 'orgId', 'planId', 'weekStart', 'weekEnd']);
       allow delete: if false;
     }
 
@@ -210,12 +253,30 @@ service cloud.firestore {
              (isPlayer()
                && request.resource.data.playerUid == request.auth.uid
                && isTeamMember(request.resource.data.teamId))
-             // או מאמן מדווח עבור שחקן בקבוצתו
-             || isTeamCoach(request.resource.data.teamId)
+             // או מאמן מדווח עבור שחקן בקבוצתו.
+             // playerInTeam נדרש: בלעדיו מאמן היה יכול לרשום דיווח על שם שחקן
+             // מקבוצה אחרת בארגון, ולזהם לו את הנתונים.
+             || (isTeamCoach(request.resource.data.teamId)
+                 && playerInTeam(request.resource.data.playerUid,
+                                 request.resource.data.teamId))
            );
 
       // עריכה ומחיקה-רכה. זהות הדיווח (מי, איזו קבוצה, איזה ארגון) לא ניתנת לשינוי.
+      //
+      // הוולידציות של amount ושל date נאכפו עד כה **ביצירה בלבד**, ולכן אפשר היה
+      // ליצור דיווח תקין ומיד לעדכן אותו ל-amount שלילי או לתאריך מלפני חצי שנה.
+      //
+      // גבולות התאריך נבדקים רק כשה-date **משתנה**, ולא בכל עדכון. אחרת מאמן לא
+      // היה יכול לגעת בדיווח ישן בכלל — גם לא למחוק אותו רכות — וזה סותר את
+      // "עריכה/מחיקת דיווח: מאמן תמיד" בטבלת ההרשאות.
       allow update: if unchanged(['playerUid', 'teamId', 'orgId', 'createdBy', 'createdAt'])
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && (
+             request.resource.data.date == resource.data.date
+             || (request.resource.data.date <= request.time + duration.value(1, 'd')
+                 && request.resource.data.date >= request.time - duration.value(8, 'd'))
+           )
         && (
              isAdmin()
              || isTeamCoach(resource.data.teamId)
@@ -232,8 +293,13 @@ service cloud.firestore {
     match /planTemplates/{templateId} {
       allow read:   if isAdmin() || (isCoach() && sameOrg(resource.data.orgId));
       allow create: if isCoach() && sameOrg(request.resource.data.orgId);
+      // update ו-delete מופרדים ולא מאוחדים: unchanged() קורא ל-diff() על
+      // request.resource.data, שאינו קיים במחיקה — כלל מאוחד היה חוסם כל מחיקה.
+      allow update: if (isAdmin() || (isCoach() && resource.data.coachUid == request.auth.uid))
+        && unchanged(['coachUid', 'orgId']);
+
       // תבנית היא נוחות, לא היסטוריה — כאן מחיקה אמיתית מותרת
-      allow update, delete: if isAdmin()
+      allow delete: if isAdmin()
         || (isCoach() && resource.data.coachUid == request.auth.uid);
     }
 

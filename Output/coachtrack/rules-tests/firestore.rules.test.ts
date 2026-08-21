@@ -32,6 +32,7 @@ import {
 import {
   CYCLE_A1,
   ENTRY_A2,
+  ENTRY_ANCIENT,
   ENTRY_FRESH,
   ENTRY_OLD,
   EX_GLOBAL,
@@ -380,6 +381,11 @@ describe('organizations', () => {
     await assertFails(updateDoc(doc(as(U.coachA), 'organizations', ORG_A), { name: 'שם חדש' }));
   });
 
+  it('אין מחיקת ארגון — גם ל-admin שלו', async () => {
+    // allow write כלל גם delete, וזו הייתה הפרצה היחידה בכלל 5.
+    await assertFails(deleteDoc(doc(as(U.adminA), 'organizations', ORG_A)));
+  });
+
   it('admin לא כותב לארגון אחר', async () => {
     await assertFails(updateDoc(doc(as(U.adminA), 'organizations', ORG_B), { name: 'שם חדש' }));
   });
@@ -398,6 +404,32 @@ describe('teams', () => {
   it('מאמן הקבוצה מעדכן אותה; מאמן אחר באותו ארגון — לא', async () => {
     await assertSucceeds(updateDoc(doc(as(U.coachA), 'teams', TEAM_A1), { name: 'ילדים א+' }));
     await assertFails(updateDoc(doc(as(U.coachA2), 'teams', TEAM_A1), { name: 'ילדים א+' }));
+  });
+
+  it('מאמן משנה את coachUid של הקבוצה שלו — נחסם', async () => {
+    // אותו דפוס: הכלל בדק בעלות קיימת, לא את הערך הנשלח.
+    await assertFails(updateDoc(doc(as(U.coachA), 'teams', TEAM_A1), { coachUid: U.coachA2 }));
+  });
+
+  it('מאמן מעביר את הקבוצה לארגון אחר — נחסם', async () => {
+    await assertFails(updateDoc(doc(as(U.coachA), 'teams', TEAM_A1), { orgId: ORG_B }));
+  });
+
+  it('admin כן מעביר בעלות על קבוצה — פעולת ניהול לגיטימית', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(U.adminA), 'teams', TEAM_A1), { coachUid: U.coachA2 }),
+    );
+  });
+
+  it('מאמן ממשיך לשנות שם, עונה, הגדרות ומצב פעיל', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'teams', TEAM_A1), {
+        name: 'ילדים א 2027',
+        season: '2027',
+        active: false,
+        settings: { leaderboardEnabled: false, streakThreshold: 70, weekStartDay: 0 },
+      }),
+    );
   });
 
   it('שחקן לא מעדכן קבוצה', async () => {
@@ -475,6 +507,35 @@ describe('exercises — כתיבה', () => {
     );
   });
 
+  it('מאמן משנה scope של תרגיל מועדון ל-global — נחסם', async () => {
+    // הזליגה החוצת-ארגונים: תרגיל עם scope גלובלי נקרא בידי **כל** מחובר,
+    // בכל ארגון. זה היה הופך תרגיל פנימי של מועדון לחלק מהקטלוג של כולם.
+    await assertFails(
+      updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), { scope: 'global' }),
+    );
+  });
+
+  it('מאמן מעביר תרגיל לארגון אחר — נחסם', async () => {
+    await assertFails(updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), { orgId: ORG_B }));
+  });
+
+  it('גם admin לא משנה scope — קידום לקטלוג נעשה ב-seed, לא מהאפליקציה', async () => {
+    await assertFails(
+      updateDoc(doc(as(U.adminA), 'exercises', EX_ORG_A), { scope: 'global', orgId: null }),
+    );
+  });
+
+  it('אבל עריכת תוכן התרגיל ממשיכה לעבוד — שם, קטגוריה, יעד והשבתה', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), {
+        name: 'תרגיל בשם חדש',
+        category: 'זריקה',
+        defaultTargets: { cadets_13_15: 250 },
+        active: false,
+      }),
+    );
+  });
+
   it('שחקן לא עורך תרגילים', async () => {
     await assertFails(
       updateDoc(doc(as(U.playerA1), 'exercises', EX_ORG_A), { description: 'שלי' }),
@@ -532,6 +593,20 @@ describe('plans', () => {
     await assertFails(updateDoc(doc(as(U.playerA1), 'plans', PLAN_A1), { status: 'archived' }));
   });
 
+  it('מאמן מעביר תוכנית קיימת לקבוצה אחרת או לארגון אחר — נחסם', async () => {
+    await assertFails(updateDoc(doc(as(U.coachA), 'plans', PLAN_A1), { teamId: TEAM_A2 }));
+    await assertFails(updateDoc(doc(as(U.coachA), 'plans', PLAN_A1), { orgId: ORG_B }));
+  });
+
+  it('אבל עריכת תוכן התוכנית ממשיכה לעבוד — פריטים, יעדים וסטטוס', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'plans', PLAN_A1), {
+        items: [{ ...PLAN_ITEMS[0], target: 500, notes: 'הנחיה חדשה' }],
+        effectiveTo: daysAhead(7),
+      }),
+    );
+  });
+
   it('אין מחיקת תוכנית', async () => {
     await assertFails(deleteDoc(doc(as(U.coachA), 'plans', PLAN_A1)));
   });
@@ -576,6 +651,25 @@ describe('planCycles — יצירה עצלה בלי לרמות', () => {
   it('חבר הקבוצה קורא את המחזור; מי שאינו חבר — לא', async () => {
     await assertSucceeds(getDoc(doc(as(U.playerA1), 'planCycles', CYCLE_A1)));
     await assertFails(getDoc(doc(as(U.playerA2), 'planCycles', CYCLE_A1)));
+  });
+
+  it('מאמן משנה את זהות המחזור — קבוצה, תוכנית או גבולות השבוע — נחסם', async () => {
+    // שינוי weekStart משכתב למפרע לאיזה שבוע כל הדיווחים משתייכים.
+    const db = as(U.coachA);
+    await assertFails(updateDoc(doc(db, 'planCycles', CYCLE_A1), { teamId: TEAM_A2 }));
+    await assertFails(updateDoc(doc(db, 'planCycles', CYCLE_A1), { orgId: ORG_B }));
+    await assertFails(updateDoc(doc(db, 'planCycles', CYCLE_A1), { planId: 'plan_other' }));
+    await assertFails(updateDoc(doc(db, 'planCycles', CYCLE_A1), { weekStart: daysAgo(30) }));
+    await assertFails(updateDoc(doc(db, 'planCycles', CYCLE_A1), { weekEnd: daysAhead(30) }));
+  });
+
+  it('itemsSnapshot נשאר פתוח לשינוי — זה "עדכון תוכנית מהשבוע הנוכחי" (PRD §7.4)', async () => {
+    // הפיצ'ר שהתיקון הכי עלול לשבור. אם הבדיקה הזו נופלת, נעלתי יותר מדי.
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'planCycles', CYCLE_A1), {
+        itemsSnapshot: [{ ...PLAN_ITEMS[0], target: 450, notes: 'העלינו את היעד' }],
+      }),
+    );
   });
 
   it('מאמן הקבוצה מעדכן צילום; שחקן — לא', async () => {
@@ -647,6 +741,26 @@ describe('entries — יצירה', () => {
     );
   });
 
+  it('מאמן מדווח על שחקן שאינו בקבוצה — נחסם, גם באותו ארגון', async () => {
+    // player_a2 שייך ל-team_a2. בלי הבדיקה, coach_a היה רושם עליו דיווח
+    // שנספר בקבוצה שלו ומזהם את הנתונים של שחקן שאינו שלו.
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'entries', 'e_not_my_player'),
+        entryData({ playerUid: U.playerA2, createdBy: U.coachA, date: daysAgo(0) }),
+      ),
+    );
+  });
+
+  it('מאמן מדווח על uid שאין לו מסמך משתמש — נחסם', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'entries', 'e_ghost_player'),
+        entryData({ playerUid: U.ghost, createdBy: U.coachA, date: daysAgo(0) }),
+      ),
+    );
+  });
+
   it('דיווח שנולד מחוק — נחסם', async () => {
     await assertFails(
       setDoc(
@@ -714,6 +828,42 @@ describe('entries — קריאה, עריכה ומחיקה', () => {
     await assertSucceeds(updateDoc(doc(as(U.coachA), 'entries', ENTRY_OLD), { amount: 60 }));
   });
 
+  it('עריכה לכמות אפס, שלילית או לא-מספר — נחסמת', async () => {
+    // עד התיקון, הוולידציות האלה חלו ביצירה בלבד: אפשר היה ליצור דיווח תקין
+    // ומיד לעדכן אותו ל-amount שלילי.
+    const db = as(U.playerA1);
+    await assertFails(updateDoc(doc(db, 'entries', ENTRY_FRESH), { amount: 0 }));
+    await assertFails(updateDoc(doc(db, 'entries', ENTRY_FRESH), { amount: -5 }));
+    await assertFails(updateDoc(doc(db, 'entries', ENTRY_FRESH), { amount: '60' }));
+  });
+
+  it('הזזת תאריך אל מחוץ לחלון — נחסמת; לתוך החלון — עוברת', async () => {
+    const db = as(U.playerA1);
+    await assertFails(updateDoc(doc(db, 'entries', ENTRY_FRESH), { date: daysAgo(30) }));
+    await assertFails(updateDoc(doc(db, 'entries', ENTRY_FRESH), { date: daysAhead(5) }));
+    await assertSucceeds(updateDoc(doc(db, 'entries', ENTRY_FRESH), { date: daysAgo(3) }));
+  });
+
+  it('מאמן עורך דיווח בן חודשיים בלי לגעת בתאריך — עדיין עובד', async () => {
+    // הסיבה שגבולות התאריך נבדקים רק כשהוא משתנה: אחרת "מאמן תמיד" בטבלת
+    // ההרשאות היה נשבר, ודיווח ישן היה הופך לבלתי ניתן לתיקון ולמחיקה רכה.
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'entries', ENTRY_ANCIENT), { amount: 80 }),
+    );
+  });
+
+  it('מחיקה רכה של דיווח בן חודשיים — עדיין עובדת', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'entries', ENTRY_ANCIENT), { deleted: true }),
+    );
+  });
+
+  it('מאמן שמזיז דיווח ישן לתאריך חוקי — מותר; לתאריך לא חוקי — לא', async () => {
+    const db = as(U.coachA);
+    await assertSucceeds(updateDoc(doc(db, 'entries', ENTRY_ANCIENT), { date: daysAgo(2) }));
+    await assertFails(updateDoc(doc(db, 'entries', ENTRY_ANCIENT), { date: daysAgo(45) }));
+  });
+
   it('שינוי בעלות על דיווח — נחסם', async () => {
     await assertFails(
       updateDoc(doc(as(U.playerA1), 'entries', ENTRY_FRESH), { playerUid: U.playerA1b }),
@@ -747,6 +897,21 @@ describe('planTemplates', () => {
     await assertFails(getDoc(doc(as(U.coachB), 'planTemplates', TEMPLATE_A)));
   });
 
+  it('מאמן משנה בעלות או ארגון של תבנית — נחסם', async () => {
+    const db = as(U.coachA);
+    await assertFails(updateDoc(doc(db, 'planTemplates', TEMPLATE_A), { coachUid: U.coachA2 }));
+    await assertFails(updateDoc(doc(db, 'planTemplates', TEMPLATE_A), { orgId: ORG_B }));
+  });
+
+  it('שינוי שם ותוכן של תבנית ממשיך לעבוד', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'planTemplates', TEMPLATE_A), {
+        name: 'תבנית מעודכנת',
+        items: [{ ...PLAN_ITEMS[0], target: 200 }],
+      }),
+    );
+  });
+
   it('הבעלים מוחק תבנית; מאמן אחר — לא. כאן מחיקה אמיתית מותרת בכוונה', async () => {
     await assertFails(deleteDoc(doc(as(U.coachA2), 'planTemplates', TEMPLATE_A)));
     await assertSucceeds(deleteDoc(doc(as(U.coachA), 'planTemplates', TEMPLATE_A)));
@@ -776,15 +941,20 @@ describe('ברירת מחדל: חסום', () => {
   });
 });
 
-describe('דגלים פתוחים — ממתינים להחלטה של דורית', () => {
-  // אותו דפוס של B2: הכלל בודק את resource.data (המצב הקיים) ולא את
-  // request.resource.data (מה שנשלח). לא נוגעים בכללים בלי החלטה, ולכן אין כאן
-  // טסטים ירוקים שמנציחים את ההתנהגות — רק רישום גלוי.
-  it.todo('exercises.update: מאמן משנה scope של תרגיל org ל-global (זליגה בין ארגונים)');
-  it.todo('teams.update: מאמן משנה coachUid או orgId של הקבוצה שלו');
-  it.todo('plans.update: מאמן משנה teamId או orgId של תוכנית קיימת');
-  it.todo('planCycles.update: מאמן משנה teamId / planId / weekStart של מחזור');
-  it.todo('entries.update: amount ו-date אינם מאומתים בעריכה, רק ביצירה');
-  it.todo('planTemplates.update: מאמן משנה coachUid או orgId של תבנית');
-  it.todo('organizations: allow write כולל delete — מחיקה קשיחה של ארגון');
+describe('מה שנשאר פתוח — ממתין להחלטה', () => {
+  // שבעת הדגלים מסקירת 21.8.2026 תוקנו, וכל אחד מהם מכוסה עכשיו בבדיקה עם
+  // ביקורת חיובית לצידה. מה שנשאר כאן הוא מה שהתגלה תוך כדי, ולא הוכרע.
+
+  // cycleId אינו מאומת מול date — לא ביצירה ולא בעריכה. **הכרעה: לא לנעול**
+  // (ראה דיווח). נעילת cycleId בעדכון הייתה שוברת עריכת תאריך רטרואקטיבית
+  // לגיטימית שחוצה גבול שבוע, ולא הייתה סוגרת כלום — הערך חופשי כבר ביצירה.
+  // האכיפה האמיתית היא get() על המחזור ובדיקת weekStart <= date <= weekEnd,
+  // בשני המקומות יחד, וזה שייך לשלב 3 שבו נבנה מנגנון המחזורים.
+  it.todo('entries: cycleId מול date — אכיפה עם get() על המחזור, בשלב 3');
+
+  // isAdmin() אינו מוגבל לארגון של ה-admin עצמו. בכל אלה admin של ארגון א
+  // יכול לגעת בתוכן של ארגון ב (השיוך עצמו כבר נעול אחרי התיקונים). היום יש
+  // ארגון אחד ו-admin אחד, אבל זו התשתית הרב-ארגונית.
+  it.todo('users.update: allow update: if isAdmin() — בלי sameOrg');
+  it.todo('exercises.update / plans.update / planCycles.update / entries.update: ענף admin בלי sameOrg');
 });
