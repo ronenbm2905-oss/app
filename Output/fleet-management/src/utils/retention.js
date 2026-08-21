@@ -25,6 +25,7 @@
 
 import { nowIso } from "./id.js";
 import { emptyNotice } from "./notice.js";
+import { canonicalEmail } from "./admins.js";
 import { normText, compareKey, words } from "./importExcel.js";
 
 // מפתח i18n שמסמן שם מאונן. נשמר בתוך fullName כ-"<prefix>|<token>".
@@ -64,6 +65,19 @@ export const REDACTABLE_TEXT_FIELDS = {
 
 // מילים קצרות מדי מכדי לזהות אדם — לא מוחקים אותן מהטקסט.
 const MIN_NAME_WORD = 2;
+
+// ============================================================================
+// שדות שמחזיקים **כתובת מייל של נהג** ולכן נכנסים לאנונימיזציה.
+//
+// 3.3.4 בהכוונת עדי (17.8): M1 כפי שהיה אכף ששם העובד אינו שורד באף שדה —
+// והחמיץ את הכתובת. אצל עובד שנכנס לפורטל מגימייל **פרטי**, הכתובת היא
+// מזהה חזק יותר מהשם: היא ייחודית, קבועה, וניתנת לחיפוש. עובד שעזב, עבר
+// אנונימיזציה, וכתובתו נשארה ב-`portalLinkedEmail` — לא עבר אנונימיזציה.
+// ============================================================================
+export const EMAIL_BEARING_FIELDS = {
+  drivers: ["email", "portalLinkedEmail"],
+  leaseCompanies: ["email"],
+};
 
 const getPath = (obj, path) =>
   path.split(".").reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), obj);
@@ -141,6 +155,60 @@ export function protectedNameWords(data, driverId) {
 // [#A17]"), ומסומן ב-`importRawRedactedAt`. `importSource` (קובץ/גיליון/שורה)
 // נשמר במלואו: הוא העקבה האמיתית, ואין בו PII.
 // ============================================================================
+// ============================================================================
+// redactDriverEmailEverywhere — אותה סריקה, על כתובת המייל.
+//
+// המייל אינו "מילה בשם" ולכן אינו עובר ב-redactNameFromText: הוא מחרוזת
+// אחת שיש להחליף כשלמותה, והוא מופיע גם בצורות שקולות (גימייל מתעלם
+// מנקודות ומ-+alias). ההשוואה היא על הצורה הקנונית משני הצדדים.
+// ============================================================================
+export function redactDriverEmailEverywhere(data, driverId, token, at = null) {
+  const driver = (data?.drivers || []).find((d) => d.id === driverId) || null;
+  const targets = new Set(
+    [driver?.email, driver?.portalLinkedEmail]
+      .map((e) => canonicalEmail(e))
+      .filter(Boolean)
+  );
+  if (!targets.size) return { data, redacted: 0, fields: [] };
+
+  const stamp = at || nowIso();
+  const mark = `[${token}]`;
+  const out = { ...data };
+  const fields = [];
+
+  // כל שדה טקסט חופשי שסורקים ממילא ל-M1, ובנוסף שדות המייל הייעודיים.
+  const paths = { ...REDACTABLE_TEXT_FIELDS };
+  for (const [c, list] of Object.entries(EMAIL_BEARING_FIELDS)) {
+    paths[c] = [...new Set([...(paths[c] || []), ...list])];
+  }
+
+  for (const [collection, keys] of Object.entries(paths)) {
+    const list = data[collection];
+    if (!Array.isArray(list) || !list.length) continue;
+    out[collection] = list.map((entity) => {
+      // הרשומה של העובד עצמו מטופלת ב-anonymizeDriver (איפוס מלא).
+      if (collection === "drivers" && entity.id === driverId) return entity;
+      let next = entity;
+      let touched = false;
+      for (const path of keys) {
+        const cur = getPath(entity, path);
+        if (typeof cur !== "string" || !cur) continue;
+        // מחליפים רק אם **מופע שלם** בטקסט מתקנן לאותה כתובת.
+        const replaced = cur.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) =>
+          targets.has(canonicalEmail(m)) ? mark : m
+        );
+        if (replaced === cur) continue;
+        next = setPath(next, path, replaced);
+        touched = true;
+        fields.push(`${collection}.${path}`);
+      }
+      if (!touched) return entity;
+      return { ...next, updatedAt: stamp };
+    });
+  }
+  return { data: out, redacted: fields.length, fields };
+}
+
 export function redactDriverNameEverywhere(data, driverId, token, at = null) {
   const driver = (data?.drivers || []).find((d) => d.id === driverId) || null;
   const name = driver?.fullName || "";
@@ -216,6 +284,16 @@ export function anonymizeDriver(data, driverId) {
   );
   data = redactedData;
 
+  // 3.3.4 — ואותו דבר לכתובת המייל, מאותה סיבה בדיוק ובאותו חלון זמן.
+  const { data: mailRedacted, fields: mailFields } = redactDriverEmailEverywhere(
+    data,
+    driverId,
+    token,
+    at
+  );
+  data = mailRedacted;
+  redactedFields.push(...mailFields);
+
   const drivers = (data.drivers || []).map((d) =>
     d.id === driverId
       ? {
@@ -223,6 +301,9 @@ export function anonymizeDriver(data, driverId) {
           fullName: `${ANON_PREFIX}|${token}`, // מפתח i18n + טוקן, מפורק בתצוגה
           phone: "",
           email: "",
+          // 3.3.4 — הכתובת שאיתה נכנס לפורטל היא מזהה ישיר, ולכן היא נמחקת
+          // ברשומה **וגם** נסרקת מכל טקסט חופשי (redactDriverEmailEverywhere).
+          portalLinkedEmail: null,
           employeeNumber: "",
           userId: null,
           portalStatus: "revoked",

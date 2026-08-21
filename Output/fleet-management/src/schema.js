@@ -75,6 +75,19 @@ export function createDriver(p = {}) {
     department: p.department || "",
     employeeNumber: p.employeeNumber || "",
     userId: p.userId || null, // auth.uid — הקישור לפורטל (F1: rules לפי uid בלבד)
+    // ============================================================================
+    // portalLinkedEmail — **הכתובת שאיתה נקשר החשבון בפועל, לתיעוד בלבד.**
+    //
+    // 3.2.1 בהכוונת עדי (17.8): המייל נקרא **פעם אחת**, ברגע הקישור, ואחר כך
+    // אף החלטת הרשאה אינה נוגעת בו. השדה קיים כדי שאפשר יהיה לענות "מי בעצם
+    // נכנס לרשומה הזו" — `email` הוא מה שהאדמין **הקליד**, וזה מה ש-Google
+    // **אימתה**. בגימייל השניים נבדלים לגיטימית (נקודות, +alias).
+    //
+    // ⚠️ 3.3.4: **כתובת גימייל פרטית היא מזהה ישיר של אדם, לא פחות משמו** —
+    // ולעיתים יותר, כי היא ייחודית וניתנת לחיפוש. לכן היא נכנסת לסריקת M1
+    // (utils/retention.js) ולא רק מתאפסת ברשומה עצמה.
+    // ============================================================================
+    portalLinkedEmail: p.portalLinkedEmail || null,
     portalStatus: p.portalStatus || "none", // none|invited|active|disabled|revoked
     invitedAt: p.invitedAt || null,
     status: p.status || "active", // active | inactive | archived

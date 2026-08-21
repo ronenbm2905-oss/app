@@ -12,18 +12,36 @@
 import { ADMIN_ONLY_COLLECTIONS, ENTITY_COLLECTIONS } from "../constants.js";
 import { inRange } from "./dates.js";
 
-// אוספים שנהג עשוי לקרוא מהם (בפרוסה 2), ברמת-מסמך ובכפוף לתנאים למטה.
+// ============================================================================
+// מה שנהג באמת קורא בפרוסה 2 — הרשימה הזו **תואמת אחד-לאחד** ל-firestore.rules.
+//
+// היא צומצמה ביודעין מול הטיוטה של פרוסה 1, ובשני מקומות היא **צרה יותר**
+// ממה שהאפיון התיר:
+//   • `vehicles` **אינו** כאן. הנהג אינו קורא את מסמך הרכב בכלל, אלא את
+//     ההיטל `driverPortal/{driverId}` (utils/portal.js). הסיבה מבנית: ב-rules
+//     אין שאילתות, ולכן "האם הוא מחזיק את הרכב הזה היום" אינה שאלה שאפשר
+//     לשאול על מסמך הרכב — וכל פתרון שכן פותח את מסמך הרכב מדליף בשקט כל
+//     שדה שיתווסף לרכב בעתיד. זו צורת הכשל של D1.
+//   • `leaseCompanies` **אינו** כאן. פרטי חברת הליסינג נכנסים לתוך ההיטל.
+//     לנהג אין דרך להוכיח ב-rules זיקה לחברת ליסינג מסוימת, ולכן פתיחת
+//     האוסף הייתה חושפת את **כל** ספקי החברה לכל עובד.
+// המסך של הנהג מציג בדיוק את אותו מידע; רק ההרשאה צרה יותר.
+//
+// `serviceRecords` / `documents` / `incidents` אינם נפתחים בסבב הזה כלל —
+// אין להם מסך בפורטל. (`driverCanReadVehicleDocument` נשאר להלן כביטוי בדיק
+// לסבב הבא; **הוא אינו נאכף כרגע**, וזה מכוון.)
+// ============================================================================
 export const DRIVER_READABLE_COLLECTIONS = [
-  "vehicles",
+  "driverPortal", // ההיטל: הרכב שלו, בלי שדות מסחריים
+  "drivers", // הרשומה שלו בלבד (userId == uid), או תביעה חד-פעמית לפי מייל
   "assignments",
   "fines",
   "fineScans",
   "odometerReadings",
-  "serviceRecords",
-  "documents",
-  "incidents",
-  "leaseCompanies",
 ];
+
+// אוספים שתוכננו לנהג אבל **טרם נפתחו** — כדי שהפער יהיה מתועד ולא נשכח.
+export const DRIVER_PLANNED_COLLECTIONS = ["documents", "serviceRecords", "incidents"];
 
 // אוספים שנהג לעולם לא קורא מהם.
 export const DRIVER_DENIED_COLLECTIONS = ENTITY_COLLECTIONS.filter(
@@ -107,4 +125,66 @@ export const DRIVER_FORBIDDEN_FIELDS = ["monthlyCost", "commercialNotes", "admin
 export function leaksForbiddenField(obj) {
   if (!obj || typeof obj !== "object") return [];
   return DRIVER_FORBIDDEN_FIELDS.filter((f) => Object.prototype.hasOwnProperty.call(obj, f));
+}
+
+// ============================================================================
+// ownedByDriver — **הביטוי המדויק של סעיף הקריאה ב-rules** לכל ישות נושאת-נהג
+// (assignment / fine / fineScan / odometerReading).
+//
+// שני התנאים, ובסדר הזה:
+//   1. `driverId` של המסמך הוא רשומת הנהג **הפעילה** של ה-uid הזה. זה התנאי
+//      שנושא את המשקל, והוא זה שגורם ל-`portalStatus='revoked'` לשלול גישה
+//      **מיד** — בלי לגעת באף מסמך אחר.
+//   2. אם `driverUid` מדונרמל (D3) — הוא חייב להסכים. נתונים שיובאו לפני
+//      הקישור נושאים `driverUid: null`, ולכן היעדרו אינו שולל גישה; אבל ערך
+//      **סותר** כן שולל, כי אחד משני השדות משקר ואין לדעת איזה.
+//
+// ⚠️ ההרשאה נשענת על **הישות**, לא על הרכב. זו הדליפה שעדי תפסה ב-D2: רכב
+// עובר בין נהגים לאורך השנים, וסריקת קנס של המחזיק הקודם אסור שתהיה קריאה
+// למחזיק הנוכחי. השיוך הוא לפי הקנס.
+// ============================================================================
+export function ownedByDriver(data, entity, uid) {
+  if (!entity || !uid) return false;
+  const driver = driverForUid(data, uid);
+  if (!driver) return false;
+  if (entity.driverId !== driver.id) return false;
+  if (entity.driverUid !== null && entity.driverUid !== undefined && entity.driverUid !== uid) {
+    return false;
+  }
+  return true;
+}
+
+// ההיטל של הנהג — נקרא לפי **מזהה המסמך**, שהוא driverId. אין כאן שאילתה
+// ואין join: זו בדיקה אחת על נתיב ידוע, וזו כל הסיבה ש-id === driverId.
+export function driverCanReadPortalEntry(data, entry, uid) {
+  if (!entry || !uid) return false;
+  const driver = driverForUid(data, uid);
+  return Boolean(driver && entry.driverId === driver.id);
+}
+
+// ============================================================================
+// driverCanWriteReading — הכתיבה **היחידה** שנהג מבצע במערכת.
+//
+// המפתח: `vehicleId` נבדק מול ההיטל (`driverPortal/{driverId}.vehicleId`)
+// ולא מול `assignments`. ב-rules אין שאילתות, ולכן זו הדרך היחידה לענות
+// "האם זה הרכב שלו **היום**" בקריאת מסמך אחת בנתיב ידוע.
+// ============================================================================
+export function driverCanWriteReading(data, reading, uid) {
+  if (!reading || !uid) return false;
+  const driver = driverForUid(data, uid);
+  if (!driver) return false;
+  if (reading.driverId !== driver.id) return false;
+  if (reading.driverUid !== uid) return false;
+  if (reading.source !== "driver") return false;
+  const entry = (data.driverPortal || []).find((p) => p.driverId === driver.id) || null;
+  if (!entry || !entry.vehicleId) return false;
+  if (reading.vehicleId !== entry.vehicleId) return false;
+  // D4 — בלי צילום ובלי מיקום. Storage דורש Blaze ואינו פעיל, ו-navigator.
+  // geolocation לא נקרא בשום מקום בפורטל; הכלל אוכף את זה גם בצד השרת.
+  if (reading.photoRef) return false;
+  if (reading.photoStorageMode && reading.photoStorageMode !== "none") return false;
+  // D4.3 — בלי חותמת דיוק-שנייה. `createdAt` של דיווח נהג הוא **היום**, לא
+  // רגע הלחיצה: אחרת המערכת מתעדת מתי בדיוק העובד עמד ליד הרכב.
+  if (reading.createdAt !== reading.date) return false;
+  return true;
 }

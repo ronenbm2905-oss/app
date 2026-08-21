@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // ============================================================================
-// Firestore — deny-by-default. פרוסה 1: **admin בלבד**.
+// Firestore — deny-by-default. פרוסה 2: admin + **פורטל נהג**.
 //
 // מבנה: orgs/{orgId}/<collection>/{id} — תת-אוספים מהיום הראשון, כדי שהבידוד
 // ברמת-מסמך לפורטל הנהג (פרוסה 2) לא ידרוש רסטרקטורינג של מודל הנתונים.
@@ -62,13 +62,41 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.get('email_verified', false) == true;
     }
 
+    // ========================================================================
+    // canonEmail — נרמול **ייחודי לגימייל** (3.2.4 בהכוונת עדי, 17.8).
+    //
+    // אצל Google, `a.b@gmail.com`, `ab@gmail.com` ו-`ab+work@gmail.com` הם
+    // **אותה תיבה** — אבל שלוש מחרוזות שונות, ו-`token.email` מחזיר את מה
+    // שנרשם. השוואת lowercase בלבד מייצרת "הרשאה שלא עובדת" שנראית כמו באג.
+    //
+    // ⚠️ מוחל **רק** על gmail.com/googlemail.com: בדומיין ארגוני נקודה בשם
+    // המשתמש היא תו משמעותי, והסרתה הייתה מאחדת שני אנשים שונים.
+    //
+    // ⚠️ משוכפל ב-`src/utils/admins.js:canonicalEmail`. שני המימושים חייבים
+    // להסכים, ומקטע (ז) ב-scripts/rules-test.mjs בודק את שניהם על אותו קלט.
+    function canonEmail(raw) {
+      let e = raw.lower().trim();
+      let parts = e.split('@');
+      let local = parts[0];
+      let domain = parts.size() > 1 ? parts[1] : '';
+      return (domain == 'gmail.com' || domain == 'googlemail.com')
+        ? local.split('\\+')[0].replace('\\.', '') + '@gmail.com'
+        : e;
+    }
+
     // emailIsAllowed — הבדיקה עצמה, מול המערך שבמסמך.
     // המערך מוחזק **תמיד lowercase** (admins.js:normalizeEmail), ולכן ההשוואה
     // היא מול `.lower()` של הטוקן. אחרת אדמין שהוקלד באותיות גדולות לא נכנס.
+    // ⚠️ **raw או canon — הרחבה בלבד.** התנאי הישן (`tokenEmail() in list`)
+    // נשאר כפי שהוא, ו-canonEmail רק **מוסיף** התאמה. זו לא קפדנות יתר: מסמך
+    // הארגון בפרודקשן כבר מכיל כתובות שנכתבו בצורתן הגולמית, ולו הכלל היה
+    // משווה **רק** לצורה הקנונית, ה-deploy היה נועל אדמין קיים מחוץ לצי שלו.
+    // כלל חדש שמצמצם גישה קיימת הוא בדיוק הדרך לחזור על באג 17.8.
     function emailIsAllowed(org) {
       return tokenEmailVerified()
         && tokenEmail() != ''
-        && tokenEmail() in org.get('adminEmails', []);
+        && (tokenEmail() in org.get('adminEmails', [])
+            || canonEmail(tokenEmail()) in org.get('adminEmails', []));
     }
 
     // ========================================================================
@@ -89,6 +117,311 @@ service cloud.firestore {
       return isSignedIn()
         && orgExists(orgId)
         && (emailIsAllowed(orgDoc(orgId).org) || isLegacyMemberAdmin(orgDoc(orgId).org));
+    }
+
+    // ========================================================================
+    // ==================  פרוסה 2 — פורטל הנהג  ==============================
+    // ========================================================================
+    //
+    // ⚠️ **הבידוד לפי `uid` בלבד** — דרישת F1 של עדי. המייל משמש אך ורק
+    // לאירוע הקישור החד-פעמי (isSelfLinkClaim למטה); מרגע שה-uid נצרב
+    // ברשומת הנהג, אף החלטת הרשאה אינה נוגעת בו יותר.
+    //
+    // ⚠️ **אין כאן שום הנחה על Google.** `token.email` ו-`token.email_verified`
+    // קיימים זהים בכל ספק ב-Firebase Auth. לפרומול אין חשבונות Google
+    // ארגוניים (אומת: `hildav@promall.co.il` נדחה, והיא נכנסה מ-Gmail פרטי),
+    // החברה על Microsoft 365 וה-IT חיצוני. מעבר לספק Microsoft בעתיד הוא
+    // הפעלה בקונסולה + ניתוק/חיבור מחדש (uid חדש) — לא שינוי בקובץ הזה.
+    //
+    // הפונקציות כאן משקפות אחת-לאחת את `src/utils/access.js`:
+    //   driverForUid  → isMyDriverId
+    //   ownedByDriver → ownedByMe
+    // אם אחת מהן משתנה, השנייה חייבת להשתנות איתה — ובדיקות מקטע (ז)
+    // ב-scripts/rules-test.mjs נופלות אם לא.
+
+    function driverRef(orgId, driverId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/drivers/$(driverId);
+    }
+
+    // isMyDriverId — האם `driverId` הוא רשומת הנהג **הפעילה** של המחובר.
+    //
+    // ⚠️ שלושת התנאים על הרשומה הם המנגנון שהופך את "ניתוק קישור" לאפקטיבי
+    // **מיד ובכל האוספים**: אחרי ניתוק `userId` הוא null ו-`portalStatus`
+    // הוא 'revoked', ולכן כל קריאה של אותו uid נופלת כאן — בלי לגעת באף
+    // מסמך קנס, החזקה או דיווח.
+    //
+    // עלות: כל קריאות הנהג נוגעות באותו driverId, ו-get() על אותו נתיב
+    // נספר פעם אחת להערכת בקשה.
+    function isMyDriverId(orgId, driverId) {
+      return isSignedIn()
+        && driverId is string
+        && driverId != ''
+        && exists(driverRef(orgId, driverId))
+        && get(driverRef(orgId, driverId)).data.get('userId', '') == request.auth.uid
+        && get(driverRef(orgId, driverId)).data.get('portalStatus', 'none') == 'active'
+        && get(driverRef(orgId, driverId)).data.get('status', 'active') != 'archived';
+    }
+
+    // ownedByMe — סעיף הקריאה לכל ישות נושאת-נהג.
+    //
+    // `driverUid` הוא המפתח המדונרמל של D3, אבל **הוא אינו התנאי**: 27 הנהגים
+    // וההחזקות שיובאו מהאקסל נושאים `driverUid: null`, כי בזמן הייבוא לא היה
+    // uid בעולם. לכן היעדרו אינו שולל גישה — אבל ערך **סותר** כן שולל, כי אז
+    // אחד משני השדות משקר ואין לדעת איזה.
+    function ownedByMe(orgId, d) {
+      return isMyDriverId(orgId, d.get('driverId', ''))
+        && (d.get('driverUid', null) == null || d.get('driverUid', null) == request.auth.uid);
+    }
+
+    // ========================================================================
+    // isSelfLinkClaim — **תביעת הרשומה.** הכתיבה היחידה שנהג מבצע על עצמו.
+    //
+    // חמישה תנאים, וכל אחד מהם הוא חור אם הוא נופל:
+    //   1. המייל ברשומה שווה למייל בטוקן (מנורמל) — אחרת כל אחד תופס כל נהג;
+    //   2. `email_verified` — בלעדיו נרשמים ב-Auth עם הכתובת של מישהו אחר;
+    //   3. `userId == null` — אי אפשר לחטוף רשומה מקושרת;
+    //   4. `portalStatus` ב-none/invited — 'revoked' **אינו** ניתן לתביעה,
+    //      אחרת עובד שעזב היה מקשר את עצמו מחדש בלחיצה אחת;
+    //   5. `hasOnly` — הכתיבה נוגעת בשלושה שדות ותו לא. בלעדיו העובד היה
+    //      עורך לעצמו מחלקה, מספר עובד, הערות, ואת רשומת היידוע של D8.
+    // ========================================================================
+    function isSelfLinkClaim() {
+      return tokenEmailVerified()
+        && tokenEmail() != ''
+        && canonEmail(resource.data.get('email', '')) == canonEmail(tokenEmail())
+        && resource.data.get('userId', null) == null
+        && resource.data.get('portalStatus', 'none') in ['none', 'invited']
+        && resource.data.get('status', 'active') != 'archived'
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['userId', 'portalStatus', 'portalLinkedEmail', 'updatedAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.portalStatus == 'active'
+        // 3.2.1 — הכתובת שאיתה נכנס בפועל, **לתיעוד בלבד**. היא נצרבת כאן
+        // כדי שיהיה אפשר לענות "מי בעצם נכנס לרשומה הזו"; שום כלל אינו קורא
+        // אותה. הכלל כן אוכף שהיא הכתובת האמיתית של הטוקן ולא מחרוזת חופשית.
+        && request.resource.data.get('portalLinkedEmail', '') == tokenEmail();
+    }
+
+    // ========================================================================
+    // isMyPortalVehicle — "האם זה הרכב שלי **היום**".
+    //
+    // ב-rules אין שאילתות, ולכן אי אפשר לשאול את `assignments`. התשובה מגיעה
+    // מההיטל `driverPortal/{driverId}` — מסמך בנתיב **ידוע** (id === driverId)
+    // שהאדמין מפרסם כנגזרת (src/utils/portal.js).
+    // ========================================================================
+    function portalRef(orgId, driverId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/driverPortal/$(driverId);
+    }
+
+    function isMyPortalVehicle(orgId, driverId, vehicleId) {
+      return exists(portalRef(orgId, driverId))
+        && vehicleId is string
+        && vehicleId != ''
+        && get(portalRef(orgId, driverId)).data.get('vehicleId', '') == vehicleId;
+    }
+
+    // ========================================================================
+    // isDriverReadingCreate — הכתיבה **היחידה** של נהג לנתוני הצי.
+    //
+    // D4 (עדי): **בלי צילום ובלי מיקום.** Storage דורש Blaze ואינו פעיל, ולכן
+    // אין העלאת תמונת מד — וכיוון שאין תמונה, אין EXIF, אין geolocation, ואין
+    // מה "לחשוף בטעות". הכלל אוכף את זה בצד השרת ולא רק בממשק.
+    //
+    // D4.3: `createdAt == date` — **תאריך, לא חותמת דיוק-שנייה.** דיווח ק"מ
+    // עם 2026-08-21T22:47:13Z מתעד מתי בדיוק העובד עמד ליד הרכב; זה מעקב אחר
+    // עובדים, ולא מה שהמערכת נועדה לעשות.
+    // ========================================================================
+    function isDriverReadingCreate(orgId, readingId) {
+      let d = request.resource.data;
+      return isSignedIn()
+        && isMyDriverId(orgId, d.get('driverId', ''))
+        && d.get('driverUid', '') == request.auth.uid
+        && d.get('source', '') == 'driver'
+        && isMyPortalVehicle(orgId, d.get('driverId', ''), d.get('vehicleId', ''))
+        && d.get('id', '') == readingId
+        && d.get('orgId', '') == orgId
+        && d.get('km', -1) is int
+        && d.get('km', -1) > 0
+        && d.get('km', -1) < 3000000
+        && d.get('date', '') is string
+        && d.get('date', '').matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}
+    //
+    // אין ממנו דרך חזרה בלי גישת קונסולה ל-Firestore, וכאן מדובר בצי של 36
+    // רכבים שאיש אינו יכול לנהל. מערך — בשונה ממפה — **כן** ניתן לספירה
+    // ב-rules, ולכן זה נאכף כאן ולא רק ב-UI: הרשימה חייבת להישאר עם לפחות
+    // רשומה אחת, ולהיות מערך של מחרוזות.
+    //
+    // הסרת אדמין אחר, וגם הסרה עצמית כשיש עוד אדמין, מותרות — זו החלטה
+    // שהאדמין רשאי לקבל. מה שאסור הוא לרוקן את הרשימה.
+    // ========================================================================
+    // ⚠️ הכלל **חייב** להיות מותנה בכך שהכתיבה נוגעת ברשימה. אחרת, בזמן
+    // ההגירה — כשהמסמך בענן עדיין בלי `adminEmails` — כל שמירה רגילה של
+    // הגדרות הייתה נדחית על `size() >= 1`, והמשתמש היה מגלה שהאפליקציה
+    // הפסיקה לשמור. כתיבה שאינה נוגעת ברשימה אינה כפופה לתנאי.
+    function adminListUntouched() {
+      return !request.resource.data.org.diff(resource.data.org).affectedKeys().hasAny(['adminEmails']);
+    }
+
+    function adminListStaysValid() {
+      let list = request.resource.data.org.get('adminEmails', []);
+      return adminListUntouched()
+        || (list is list && list.size() >= 1 && list.size() <= 50);
+    }
+
+    // -- מסמך הארגון ---------------------------------------------------------
+    match /orgs/{orgId} {
+      // יצירה: רק המשתמש עצמו, ורק כשהוא רושם את עצמו כאדמין ו-orgId הוא ה-uid.
+      // ⚠️ orgId == uid נשאר גם עכשיו: אחרת כל אחד היה יכול "לתפוס" מזהה
+      // ארגון שהוגדר ב-build אצל מישהו אחר, לפני שהמסמך נוצר.
+      allow create: if isSignedIn()
+        && orgId == request.auth.uid
+        && (
+          request.resource.data.org.get('members', {}).get(request.auth.uid, '') == 'admin'
+          || emailIsAllowed(request.resource.data.org)
+        );
+
+      allow read: if isOrgAdmin(orgId);
+      allow update: if isOrgAdmin(orgId) && adminListStaysValid();
+      allow delete: if isOrgAdmin(orgId);
+
+      // -- תת-האוספים -------------------------------------------------------
+      // אדמין: הכל. נהג: **ברמת-מסמך**, לפי uid (F1), וכל סעיף מנומק במקומו.
+
+      // ⚠️ `vehicles` נשאר **אדמין בלבד**, גם בפרוסה 2. הנהג אינו קורא את מסמך
+      // הרכב אלא את ההיטל `driverPortal/{driverId}`. הסיבה אינה נוחות: מסמך
+      // הרכב הוא מסמך חי שממשיכים להוסיף לו שדות, וכל פתיחה שלו לנהג הופכת
+      // כל תוספת עתידית לדליפה שקטה. זו בדיוק צורת הכשל של D1.
+      match /vehicles/{docId}          { allow read, write: if isOrgAdmin(orgId); }
+      // ⚠️ ומאותה סיבה `leaseCompanies` נשאר סגור: לנהג אין דרך להוכיח ב-rules
+      // זיקה לחברת ליסינג מסוימת, ולכן פתיחה כאן הייתה חושפת את **כל** ספקי
+      // החברה לכל עובד. פרטי חברת הליסינג של הרכב שלו יושבים בתוך ההיטל.
+      match /leaseCompanies/{docId}    { allow read, write: if isOrgAdmin(orgId); }
+      match /serviceRecords/{docId}    { allow read, write: if isOrgAdmin(orgId); }
+      match /documents/{docId}         { allow read, write: if isOrgAdmin(orgId); }
+      match /incidents/{docId}         { allow read, write: if isOrgAdmin(orgId); }
+
+      // -- הרשומה של הנהג עצמו ----------------------------------------------
+      // read: הרשומה שכבר מקושרת אליי (uid — F1), או רשומה **לא מקושרת**
+      // שהמייל שלה הוא המייל המאומת שלי. השאילתה שהפורטל שולח היא
+      // `where('email','==',<המייל שלי>)`, ולכן היא לעולם לא מחזירה רשומה של
+      // עובד אחר. מי שכבר מקושר אינו נחשף — התנאי דורש `userId == null`.
+      match /drivers/{docId} {
+        allow read: if isOrgAdmin(orgId)
+          || (isSignedIn() && resource.data.get('userId', '') == request.auth.uid)
+          || (tokenEmailVerified()
+              && tokenEmail() != ''
+              && canonEmail(resource.data.get('email', '')) == canonEmail(tokenEmail())
+              && resource.data.get('userId', null) == null);
+        allow create, delete: if isOrgAdmin(orgId);
+        allow update: if isOrgAdmin(orgId) || isSelfLinkClaim();
+      }
+
+      // -- ההיטל: הרכב שלו, בלי שדות מסחריים --------------------------------
+      // `docId` הוא ה-driverId, ולכן ההרשאה היא בדיקה אחת בנתיב ידוע.
+      // כתיבה — אדמין בלבד; זו נגזרת שהאדמין מפרסם, לא נתון שהנהג מזין.
+      match /driverPortal/{docId} {
+        allow read: if isOrgAdmin(orgId) || isMyDriverId(orgId, docId);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      match /assignments/{docId} {
+        allow read: if isOrgAdmin(orgId) || ownedByMe(orgId, resource.data);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      match /fines/{docId} {
+        allow read: if isOrgAdmin(orgId) || ownedByMe(orgId, resource.data);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      // -- דיווח ק"מ: קורא את שלו, וכותב **רק** לרכב שההיטל שלו מצביע עליו --
+      // אין update ואין delete לנהג: דיווח שנשלח הוא רשומה, לא טיוטה. תיקון
+      // נעשה בדיווח חדש, וההיסטוריה נשארת.
+      match /odometerReadings/{docId} {
+        allow read: if isOrgAdmin(orgId) || ownedByMe(orgId, resource.data);
+        allow create: if isOrgAdmin(orgId) || isDriverReadingCreate(orgId, docId);
+        allow update, delete: if isOrgAdmin(orgId);
+      }
+
+      // -- D2: סריקות קנס — אוסף נפרד, מורשה לפי **הקנס** ולא לפי הרכב ------
+      // בפרוסה 2 ייפתח כאן read לנהג לפי `driverUid == request.auth.uid`
+      // (המפתח המדונרמל של D3) — ולא לפי הנהג הנוכחי של הרכב. זו בדיוק
+      // הדליפה שעדי תפסה: רכב עובר בין נהגים, סריקת קנס לא עוברת איתו.
+      // ⚠️ **הדליפה של D2, סגורה.** ההרשאה היא לפי `driverId`/`driverUid` של
+      // **הסריקה עצמה** — כלומר לפי הקנס — ולא לפי מי מחזיק את הרכב היום.
+      // רכב עובר בין נהגים; סריקת קנס לא עוברת איתו.
+      match /fineScans/{docId} {
+        allow read: if isOrgAdmin(orgId) || ownedByMe(orgId, resource.data);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      // -- D1: מסמכים אדמין-בלבד. **לעולם לא נפתחים לנהג** ------------------
+      // firestore.rules לא יודעים להסתיר שדה בודד, ולכן העלות החודשית,
+      // הערות האדמין על העובד והערכת האדמין לתקלה יושבות במסמכים נפרדים.
+      // ⚠️ **אין כאן סעיף read לנהג — גם לא בפרוסה 2, וגם לא על הרכב שהוא
+      // מחזיק עכשיו.** זו נקודת ה"חסום מוחלט" של האפיון, ומקטע (ז) של
+      // scripts/rules-test.mjs בודק אותה פר-אוסף ולא כהצהרה.
+      match /vehiclesPrivate/{docId}   { allow read, write: if isOrgAdmin(orgId); }
+      match /finesPrivate/{docId}      { allow read, write: if isOrgAdmin(orgId); }
+      match /incidentsPrivate/{docId}  { allow read, write: if isOrgAdmin(orgId); }
+
+      // תת-מסמכי private תחת ישות (אם ייווצרו בעתיד) — אדמין בלבד, מפורשות.
+      match /vehicles/{docId}/private/{p}  { allow read, write: if isOrgAdmin(orgId); }
+      match /fines/{docId}/private/{p}     { allow read, write: if isOrgAdmin(orgId); }
+      match /incidents/{docId}/private/{p} { allow read, write: if isOrgAdmin(orgId); }
+      match /drivers/{docId}/private/{p}   { allow read, write: if isOrgAdmin(orgId); }
+
+      // כל תת-אוסף שלא נמנה במפורש — חסום.
+      match /{other=**} {
+        allow read, write: if false;
+      }
+    }
+
+    // ========================================================================
+    // memberships/{uid} — uid → { orgId, role }
+    //
+    // ⚠️ במודל ה-allowlist זה **מסמך תיעוד, לא מקור סמכות.** מזהה הארגון בא
+    // מדגל ה-build, והגישה מ-`org.adminEmails`; אף החלטת הרשאה אינה נשענת על
+    // הרשומה הזו. היא נשארת כי היא כבר נכתבת בפרודקשן ומתעדת מי נכנס לאיזה
+    // ארגון, ו-`ensureMembership` ממשיך לכתוב אותה.
+    //
+    // הכלל הקודם היה `request.resource.data.orgId == request.auth.uid`, כלומר
+    // אפשר היה להצהיר על חברות **רק בארגון של עצמך** — מה שגם חסם אדמין שני.
+    // ההכרעה החדשה: מותר לכתוב את הרשומה **רק אם אנחנו באמת אדמינים של אותו
+    // ארגון** (isOrgAdmin, שהוא כבר בדיקת ה-allowlist). כך אי אפשר להצהיר על
+    // ארגון של מישהו אחר, וגם אין צורך במיפוי מיוחד לאדמין השני.
+    // ========================================================================
+    match /memberships/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasAll(['orgId', 'role'])
+        && request.resource.data.orgId is string
+        && isOrgAdmin(request.resource.data.orgId);
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // -- כל השאר: חסום מפורשות --------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && d.get('createdAt', '') == d.get('date', '')
+        && d.get('updatedAt', '') == d.get('date', '')
+        && d.get('photoRef', null) == null
+        && d.get('photoName', 'x') == ''
+        && d.get('photoStorageMode', '') == 'none'
+        && d.get('metadataStripped', true) == false
+        && d.get('notes', 'x') == ''
+        && d.get('retentionClass', '') == 'odometer'
+        && d.keys().hasOnly([
+             'id', 'orgId', 'createdAt', 'updatedAt', 'schemaVersion',
+             'vehicleId', 'driverId', 'driverUid', 'date', 'km', 'source',
+             'photoRef', 'photoName', 'photoStorageMode', 'metadataStripped',
+             'retentionClass', 'notes'
+           ]);
     }
 
     // ========================================================================

@@ -28,6 +28,12 @@ export const ENTITY_COLLECTIONS = [
   "documents",
   "incidents",
   "incidentsPrivate", // D1 — אדמין בלבד (הערכת האדמין)
+  // פרוסה 2 — **ההיטל שנשלח למכשיר של הנהג**. מסמך פר-נהג (id === driverId)
+  // שמכיל רק את מה שהנהג רשאי לראות על הרכב שלו. נגזר במלואו מ-vehicles/
+  // assignments/leaseCompanies (utils/portal.js) ואינו מקור אמת.
+  // למה אוסף ולא קריאה ישירה ל-vehicles: ב-rules אין שאילתות, ולכן "האם הוא
+  // מחזיק את הרכב הזה **היום**" אינה שאלה שניתן לשאול על מסמך הרכב.
+  "driverPortal",
 ];
 
 // אוספים שנהג לעולם לא קורא מהם — נבדק גם ב-rules וגם ב-smoke.
@@ -200,4 +206,5 @@ export const EMPTY = {
   documents: [],
   incidents: [],
   incidentsPrivate: [],
+  driverPortal: [], // נגזר — ראה utils/portal.js
 };

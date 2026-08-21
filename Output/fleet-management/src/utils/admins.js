@@ -112,3 +112,40 @@ export function removeFromList(org, email) {
   const e = normalizeEmail(email);
   return adminEmails(org).filter((x) => x !== e);
 }
+
+// ============================================================================
+// canonicalEmail — נרמול **ייחודי לגימייל**, מעבר ל-lowercase.
+//
+// דרישת 3.2.4 בהכוונה של עדי (2026-08-17): אצל Google, `a.b@gmail.com`,
+// `ab@gmail.com` ו-`ab+work@gmail.com` הם **אותו חשבון**, אבל שלוש מחרוזות
+// שונות. השוואה מחמירה מייצרת "הרשאה שלא עובדת" שנראית כמו באג; השוואה
+// רופפת מייצרת הרשאת יתר. הפתרון הוא צורה קנונית אחת, בשני הצדדים.
+//
+// ⚠️ מוחל **רק על gmail.com / googlemail.com.** בדומיינים אחרים נקודה בשם
+// המשתמש היא תו משמעותי (`hilda.vazana@promall.co.il` אינו
+// `hildavazana@promall.co.il`), והסרתה הייתה מאחדת שני אנשים שונים.
+//
+// ⚠️ הפונקציה הזו **משוכפלת ב-firestore.rules** (`canonEmail`), כי הכלל חייב
+// להגיע לאותה תשובה בלי לסמוך על הקליינט. כל שינוי כאן = שינוי שם, ובדיקות
+// מקטע (ז) באמולטור נופלות אם השניים נפרדים.
+//
+// ⚠️ **אינה מוחלת על allowlist האדמינים.** הרשימה בפרודקשן כבר מאוכלסת
+// בכתובות גולמיות, ונרמול חד-צדדי היה מנתק את מי שכבר בפנים. שם זה תיקון
+// נפרד שדורש הגירה, ולא חלק מהפרוסה הזו.
+// ============================================================================
+const GMAIL_DOMAINS = ["gmail.com", "googlemail.com"];
+
+export function canonicalEmail(email) {
+  const e = normalizeEmail(email);
+  const at = e.indexOf("@");
+  if (at < 1) return e;
+  const local = e.slice(0, at);
+  const domain = e.slice(at + 1);
+  if (!GMAIL_DOMAINS.includes(domain)) return e;
+  return `${local.split("+")[0].replace(/\./g, "")}@gmail.com`;
+}
+
+export function sameEmail(a, b) {
+  const x = canonicalEmail(a);
+  return Boolean(x) && x === canonicalEmail(b);
+}
