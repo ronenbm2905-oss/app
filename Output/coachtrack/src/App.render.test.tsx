@@ -120,9 +120,12 @@ describe('ניתוב לפי תפקיד — קריטריון הסיום של של
     expect(html).toContain(he.admin.home.title);
   });
 
-  it('דשבורד המאמן עדיין ריק בכוונה — התוכן שלו נבנה בשלב 5', () => {
+  it('דשבורד המאמן כבר לא ריק — משלב 5 הוא מסך אמיתי', () => {
+    // ברינדור סטטי אין useEffect, ולכן אף מאזין לא נרשם והקבוצות לא נטענות:
+    // המסך נופל למצב "אין קבוצה", וזה בדיוק מה שהוא אמור להגיד אז.
     const html = render('ready', fakeProfile('coach'), landingPathForRole('coach'));
-    expect(html).toContain(he.common.comingSoon);
+    expect(html).toContain(he.coach.dashboard.noTeam);
+    expect(html).not.toContain(he.common.comingSoon);
   });
 
   it('מסך השחקן כבר לא ריק — משלב 4 הוא טוען את השבוע', () => {

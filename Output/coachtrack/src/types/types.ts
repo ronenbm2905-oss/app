@@ -233,6 +233,24 @@ export interface PlanTemplate {
 export type PlanTemplateDoc = PlanTemplate & WithId;
 
 /* ------------------------------------------------------------------ */
+/* teams/{teamId}/notes/{playerUid} — הערות מאמן                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * הערת מאמן על שחקן (PRD §7.3ג) — **פרטית, לא נראית לשחקן**.
+ *
+ * המסמך אינו נושא `teamId`, `playerUid` או `orgId`: כולם נגזרים מהנתיב, וזה
+ * מה שמאפשר ל-`firestore.rules` להחליט בלי לגעת ב-`resource.data` — כולל על
+ * מסמך שעדיין לא קיים. ראה `lib/coachNotes.ts` להסבר המלא, ולדגל תיקון 13.
+ */
+export interface CoachNote {
+  text: string;
+  updatedAt: Timestamp;
+  /** ה-uid של המאמן שכתב אחרון. */
+  updatedBy: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* weeklySummaries/{summaryId} — מחושב, שלב 2                         */
 /* ------------------------------------------------------------------ */
 

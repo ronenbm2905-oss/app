@@ -21,6 +21,7 @@ import {
   NOTE_MAX_LENGTH,
   buildWeekSummaries,
   canEditEntry,
+  coachDateOptions,
   currentStreak,
   cycleIdForEntryDay,
   dateOptions,
@@ -36,6 +37,7 @@ import {
   parseAmount,
   quickAddValues,
   summarizeWeek,
+  validateCoachEntryDraft,
   validateEntryDraft,
   visibleEntries,
   type EntryDraft,
@@ -481,5 +483,43 @@ describe('שיוך הדיווח למחזור', () => {
 
   it('שבוע בלי מחזור מחזיר null ולא נופל על המחזור הקרוב', () => {
     expect(cycleIdForEntryDay(cycles, '2026-07-20')).toBeNull();
+  });
+});
+
+describe('בורר התאריך של המאמן (שלב 5)', () => {
+  it('דיווח מהשבוע האחרון — אותן אפשרויות בדיוק של השחקן', () => {
+    const recent = toIsraeliDayKey(new Date('2026-08-19T06:00:00Z'));
+    expect(coachDateOptions(NOW, recent)).toEqual(dateOptions(NOW));
+  });
+
+  it('דיווח ישן — התאריך המקורי נוסף בסוף עם מספר הימים הנכון', () => {
+    const options = coachDateOptions(NOW, '2026-06-21');
+    expect(options).toHaveLength(MAX_BACKDATE_DAYS + 2);
+
+    const original = options[options.length - 1];
+    expect(original.dayKey).toBe('2026-06-21');
+    expect(original.daysAgo).toBe(61);
+  });
+
+  it('התאריך המקורי חוקי גם מחוץ לחלון — אחרת אי אפשר לתקן כמות בלי להזיז שבוע', () => {
+    const draft: EntryDraft = { amount: '80', dayKey: '2026-06-21', note: '' };
+
+    // ולידציית השחקן פוסלת אותו, וזה בדיוק ההבדל.
+    expect(validateEntryDraft(draft, NOW).date).toBe('player.report.errors.dateOutOfWindow');
+    expect(isEntryDraftValid(validateCoachEntryDraft(draft, NOW, '2026-06-21'))).toBe(true);
+  });
+
+  it('תאריך ישן שאינו המקורי — עדיין נחסם', () => {
+    const draft: EntryDraft = { amount: '80', dayKey: '2026-06-01', note: '' };
+    expect(validateCoachEntryDraft(draft, NOW, '2026-06-21').date).toBe(
+      'player.report.errors.dateOutOfWindow',
+    );
+  });
+
+  it('שאר הוולידציות נשארות בתוקף גם למאמן', () => {
+    const draft: EntryDraft = { amount: '0', dayKey: '2026-06-21', note: '' };
+    const errors = validateCoachEntryDraft(draft, NOW, '2026-06-21');
+    expect(errors.amount).toBe('player.report.errors.amountPositive');
+    expect(errors.date).toBeUndefined();
   });
 });

@@ -163,6 +163,34 @@ service cloud.firestore {
     }
 
 
+    // ---------- teams/{teamId}/notes — הערות מאמן על שחקן (שלב 5) ----------
+    //
+    // ⚠️ ההערה **פרטית לחלוטין: שחקן אינו רשאי לקרוא אותה.** זה כלל ולא הסתרה
+    // בממשק (כלל 4), ובדיוק בגלל זה היא יושבת כאן ולא כשדה במסמך users/{uid} —
+    // שם השחקן קורא את עצמו, והיא הייתה גלויה לו בקריאה ישירה.
+    //
+    // הזהות (איזו קבוצה, איזה שחקן) מגיעה מהנתיב ולא מגוף המסמך. לכן הכלל אינו
+    // נוגע ב-resource.data, וגם קריאה של הערה **שעדיין לא נכתבה** עוברת ומחזירה
+    // "לא קיים" במקום PERMISSION_DENIED שנראה בדיוק כמו תקלה.
+    match /teams/{teamId}/notes/{playerUid} {
+      allow read: if isAdmin() || isTeamCoach(teamId);
+
+      // 400 תווים — מיתון הדגל של עדי (תיקון 13: הערכה מקצועית על קטין היא מידע
+      // רגיש). נאכף כאן, לא רק ב-maxLength של השדה. hasOnly חוסם הברחת שדות
+      // נוספים למסמך שאיש לא מצפה למצוא בו כאלה.
+      allow create, update: if (isAdmin() || isTeamCoach(teamId))
+        && playerInTeam(playerUid, teamId)
+        && request.resource.data.keys().hasOnly(['text', 'updatedAt', 'updatedBy'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 400
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      // מחיקת הערה נעשית בכתיבת טקסט ריק — Firestore אינו שומר גרסאות,
+      // ולכן דריסה היא מחיקה בפועל. מחיקה קשיחה נשארת חסומה (כלל 5).
+      allow delete: if false;
+    }
+
+
     // ---------- exercises ----------
 
     match /exercises/{exerciseId} {

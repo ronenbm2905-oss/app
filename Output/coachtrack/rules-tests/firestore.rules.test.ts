@@ -60,6 +60,7 @@ import {
   seed,
 } from './harness';
 import { MAX_BACKDATE_DAYS, dateOptions, entryDateForDay } from '../src/lib/entries';
+import { COACH_NOTE_MAX_LENGTH, coachNotePath } from '../src/lib/coachNotes';
 
 let env: RulesTestEnvironment;
 
@@ -1124,6 +1125,113 @@ describe('entries — קריאה, עריכה ומחיקה', () => {
 
   it('שחקן לא עורך דיווח של שחקן אחר', async () => {
     await assertFails(updateDoc(doc(as(U.playerA2), 'entries', ENTRY_FRESH), { amount: 1000 }));
+  });
+});
+
+describe('entries — השאילתה של המאמן (שלב 5)', () => {
+  it('סינון ב-teamId עובר; בלי סינון — נחסם', async () => {
+    // זו השאילתה שמזינה את כל הדשבורד. היא חייבת לשאת את התנאי שהכלל בודק.
+    const db = as(U.coachA);
+    await assertSucceeds(getDocs(query(collection(db, 'entries'), where('teamId', '==', TEAM_A1))));
+    await assertFails(getDocs(collection(db, 'entries')));
+  });
+
+  it('מאמן לא שולף את דיווחי הקבוצה של מאמן אחר — גם באותו ארגון', async () => {
+    await assertFails(
+      getDocs(query(collection(as(U.coachA), 'entries'), where('teamId', '==', TEAM_A2))),
+    );
+  });
+
+  it('שחקן לא שולף את דיווחי הקבוצה שלו, גם עם סינון תקין', async () => {
+    // אחרת המטריצה הייתה זמינה לכל ילד בקבוצה. הסינון היחיד שמותר לו הוא playerUid.
+    await assertFails(
+      getDocs(query(collection(as(U.playerA1), 'entries'), where('teamId', '==', TEAM_A1))),
+    );
+  });
+});
+
+describe('teams/{teamId}/notes — הערות מאמן פרטיות (שלב 5)', () => {
+  const NOTE_A1 = coachNotePath(TEAM_A1, U.playerA1);
+  const NOTE_NEW = coachNotePath(TEAM_A1, U.playerA1b);
+
+  function note(overrides: Record<string, unknown> = {}) {
+    return { text: 'הערה מקצועית', updatedAt: daysAgo(0), updatedBy: U.coachA, ...overrides };
+  }
+
+  it('מאמן הקבוצה קורא הערה קיימת', async () => {
+    await assertSucceeds(getDoc(doc(as(U.coachA), NOTE_A1)));
+  });
+
+  it('מאמן קורא גם הערה שעדיין לא נכתבה', async () => {
+    // אם הכלל היה נשען על resource.data, כל שחקן בלי הערה היה מחזיר
+    // PERMISSION_DENIED — שנראה על המסך בדיוק כמו תקלה.
+    await assertSucceeds(getDoc(doc(as(U.coachA), NOTE_NEW)));
+  });
+
+  it('⛔ השחקן עצמו אינו קורא את ההערה עליו', async () => {
+    // זה כל הרעיון של השדה הזה, וזו הסיבה שהוא לא יושב ב-users/{uid}.
+    await assertFails(getDoc(doc(as(U.playerA1), NOTE_A1)));
+  });
+
+  it('שחקן אחר, מאמן של קבוצה אחרת ומאמן מארגון אחר — כולם נחסמים', async () => {
+    await assertFails(getDoc(doc(as(U.playerA1b), NOTE_A1)));
+    await assertFails(getDoc(doc(as(U.coachA2), NOTE_A1)));
+    await assertFails(getDoc(doc(as(U.coachB), NOTE_A1)));
+    await assertFails(getDoc(doc(anonymous(), NOTE_A1)));
+  });
+
+  it('admin קורא', async () => {
+    await assertSucceeds(getDoc(doc(as(U.adminA), NOTE_A1)));
+  });
+
+  it('מאמן הקבוצה כותב הערה חדשה ומעדכן קיימת', async () => {
+    await assertSucceeds(setDoc(doc(as(U.coachA), NOTE_NEW), note({ updatedBy: U.coachA })));
+    await assertSucceeds(setDoc(doc(as(U.coachA), NOTE_A1), note({ text: 'עודכן' })));
+  });
+
+  it('טקסט ריק מותר — זו דרך המחיקה', async () => {
+    await assertSucceeds(setDoc(doc(as(U.coachA), NOTE_A1), note({ text: '' })));
+  });
+
+  it('טקסט מעל האורך המרבי — נחסם, ובדיוק באורך — עובר', async () => {
+    const max = 'א'.repeat(COACH_NOTE_MAX_LENGTH);
+    await assertSucceeds(setDoc(doc(as(U.coachA), NOTE_A1), note({ text: max })));
+    await assertFails(setDoc(doc(as(U.coachA), NOTE_A1), note({ text: `${max}א` })));
+  });
+
+  it('שדה נוסף במסמך — נחסם', async () => {
+    await assertFails(
+      setDoc(doc(as(U.coachA), NOTE_A1), note({ medicalHistory: 'לא אמור להיות כאן' })),
+    );
+  });
+
+  it('כתיבה בשם מאמן אחר — נחסמת', async () => {
+    await assertFails(setDoc(doc(as(U.coachA), NOTE_A1), note({ updatedBy: U.coachA2 })));
+  });
+
+  it('הערה על מי שאינו שחקן בקבוצה — נחסמת', async () => {
+    await assertFails(
+      setDoc(doc(as(U.coachA), coachNotePath(TEAM_A1, U.playerA2)), note()),
+    );
+    await assertFails(setDoc(doc(as(U.coachA), coachNotePath(TEAM_A1, 'uid_lo_kayam')), note()));
+  });
+
+  it('שחקן לא כותב הערה על עצמו ולא על אחר', async () => {
+    await assertFails(
+      setDoc(doc(as(U.playerA1), NOTE_A1), note({ updatedBy: U.playerA1 })),
+    );
+    await assertFails(
+      setDoc(doc(as(U.playerA1), NOTE_NEW), note({ updatedBy: U.playerA1 })),
+    );
+  });
+
+  it('מאמן של קבוצה אחרת לא כותב, גם באותו ארגון', async () => {
+    await assertFails(setDoc(doc(as(U.coachA2), NOTE_A1), note({ updatedBy: U.coachA2 })));
+  });
+
+  it('מחיקה קשיחה חסומה — גם למאמן וגם ל-admin', async () => {
+    await assertFails(deleteDoc(doc(as(U.coachA), NOTE_A1)));
+    await assertFails(deleteDoc(doc(as(U.adminA), NOTE_A1)));
   });
 });
 

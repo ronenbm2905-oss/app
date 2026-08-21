@@ -299,6 +299,13 @@ export async function seed(env: RulesTestEnvironment): Promise<void> {
         entryData({ playerUid: U.playerA2, teamId: TEAM_A2, createdBy: U.playerA2 }),
       ),
 
+      // הערת מאמן קיימת. הנתיב הוא תת-קולקציה של הקבוצה — שם השחקן אינו קורא.
+      put(`teams/${TEAM_A1}/notes/${U.playerA1}`, {
+        text: 'סוכם שיעלה לשלושה אימוני כוח.',
+        updatedAt: daysAgo(2),
+        updatedBy: U.coachA,
+      }),
+
       put(`planTemplates/${TEMPLATE_A}`, {
         orgId: ORG_A,
         coachUid: U.coachA,

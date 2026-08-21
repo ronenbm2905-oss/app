@@ -191,6 +191,61 @@ export function isEntryDraftValid(errors: EntryDraftErrors): boolean {
   return Object.keys(errors).length === 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* עריכה בידי המאמן (שלב 5)                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * בורר התאריך של המאמן: אותן אפשרויות של השחקן, **ובנוסף התאריך המקורי של
+ * הדיווח** — גם כשהוא מלפני חודשיים.
+ *
+ * ⚠️ בלי התוספת הזו יש כאן באג שקט ומכוער: `firestore.rules` מתירים למאמן
+ * לערוך דיווח ישן רק כל עוד `date` **לא משתנה** (`request.resource.data.date
+ * == resource.data.date`). בורר שמציע רק 8 ימים אחורה היה מכריח את המאמן
+ * להזיז את תאריך הביצוע כדי לתקן כמות — כלומר, תיקון של מספר היה מעביר דיווח
+ * לשבוע אחר ומשנה למפרע שני אחוזים שבועיים.
+ *
+ * התאריך המקורי נוסף **בסוף**, כדי שהאפשרות החריגה לא תיראה כמו ברירת מחדל.
+ */
+export function coachDateOptions(
+  now: DateInput,
+  originalDayKey: DayKey,
+  maxDays: number = MAX_BACKDATE_DAYS,
+): EntryDateOption[] {
+  const options = dateOptions(now, maxDays);
+  if (options.some((option) => option.dayKey === originalDayKey)) return options;
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const daysAgo = Math.round(
+    (entryInstantForDay(toIsraeliDayKey(now)).getTime() -
+      entryInstantForDay(originalDayKey).getTime()) /
+      dayMs,
+  );
+
+  return [...options, { dayKey: originalDayKey, daysAgo }];
+}
+
+/**
+ * ולידציית העריכה של המאמן.
+ *
+ * זהה לזו של השחקן, למעט חריג אחד: **התאריך המקורי תמיד חוקי**. זה לא ריכוך
+ * של הכלל אלא מראה מדויק שלו — הכלל מתיר `date` שלא השתנה בלי קשר לחלון.
+ * כל תאריך אחר עדיין חייב ליפול בחלון 7 הימים.
+ */
+export function validateCoachEntryDraft(
+  draft: EntryDraft,
+  now: DateInput,
+  originalDayKey: DayKey,
+): EntryDraftErrors {
+  const errors = validateEntryDraft(draft, now);
+  if (errors.date && draft.dayKey === originalDayKey) {
+    const cleaned: EntryDraftErrors = { ...errors };
+    delete cleaned.date;
+    return cleaned;
+  }
+  return errors;
+}
+
 /**
  * ערך חריג — מעל פי שלושה מהיעד **ברישום בודד** (PRD §8.4).
  *

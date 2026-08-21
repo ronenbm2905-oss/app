@@ -20,7 +20,7 @@ import type { ExerciseTrend, WeekSummary } from '../../lib/entries';
 import type { LoadStatus } from '../../hooks/loadStatus';
 import { ROUTES } from '../../lib/routing';
 import { t } from '../../i18n/he';
-import { WeeklyBars } from './WeeklyBars';
+import { WeeklyBars } from '../../components/WeeklyBars';
 
 export interface HistoryViewProps {
   status: LoadStatus;
