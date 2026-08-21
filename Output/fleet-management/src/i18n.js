@@ -67,7 +67,8 @@ const dict = {
     // -- כניסה / מצב מקומי --
     "auth.signInGoogle": "כניסה עם Google",
     "auth.signInTitle": "כניסה למערכת",
-    "auth.signInSub": "המערכת פתוחה לאנשי האדמין של הצי בלבד.",
+    "auth.signInSub":
+      "מנהלי הצי נכנסים לניהול; עובד שכתובת המייל שלו רשומה בכרטיס הנהג שלו נכנס לפורטל שלו.",
     "auth.localMode": "מצב מקומי",
     "auth.localModeNote":
       "אין קונפיג Firebase — הנתונים נשמרים בדפדפן הזה בלבד (localStorage) ואין התחברות. להפעלת ענן: מלא .env לפי .env.example.",
@@ -852,7 +853,8 @@ const dict = {
 
     "auth.signInGoogle": "Sign in with Google",
     "auth.signInTitle": "Sign in",
-    "auth.signInSub": "This system is for fleet admins only.",
+    "auth.signInSub":
+      "Fleet managers reach the admin app; an employee whose email is on their driver record reaches their own portal.",
     "auth.localMode": "Local mode",
     "auth.localModeNote":
       "No Firebase config — data is stored in this browser only (localStorage) and there is no sign-in. To enable the cloud, fill .env from .env.example.",

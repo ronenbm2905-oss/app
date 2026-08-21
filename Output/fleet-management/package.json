@@ -14,7 +14,8 @@
     "import:check": "node scripts/import-check.mjs",
     "rules:test": "node scripts/rules-test.mjs",
     "rules:test:exec": "firebase emulators:exec --only firestore,storage --project fleet-rules-test \"node scripts/rules-test.mjs\"",
-    "team:check": "node scripts/team-render.mjs"
+    "team:check": "node scripts/team-render.mjs",
+    "portal:check": "node scripts/portal-render.mjs"
   },
   "dependencies": {
     "firebase": "^10.12.0",

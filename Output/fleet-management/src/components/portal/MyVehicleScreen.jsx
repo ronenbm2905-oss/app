@@ -40,8 +40,8 @@ export function MyVehicleScreen({ entry, driver, contact }) {
         <h2 className="text-xs font-medium text-slate-600">{t("portal.myVehicle")}</h2>
         {/* הלוחית היא המידע שבשבילו נכנסים למסך. dir=ltr + tabular-nums כדי
             שספרות לא יתהפכו בעמוד RTL. */}
-        <p className="num mt-1 text-3xl font-semibold tracking-wide text-slate-900" dir="ltr">
-          {entry.plate || "—"}
+        <p className="num mt-1 text-3xl font-semibold tracking-wide text-slate-900">
+          <bdi dir="ltr">{entry.plate || "—"}</bdi>
         </p>
         <dl className="mt-3 grid gap-2 text-sm">
           {rows.map((r) => (
@@ -62,8 +62,8 @@ export function MyVehicleScreen({ entry, driver, contact }) {
           {entry.leaseCompany?.name || t("common.notSet")}
         </p>
         {entry.leaseCompany?.phone && (
-          <p className="num mt-1 text-sm text-slate-700" dir="ltr">
-            {entry.leaseCompany.phone}
+          <p className="num mt-1 text-sm text-slate-700">
+            <bdi dir="ltr">{entry.leaseCompany.phone}</bdi>
           </p>
         )}
       </section>

@@ -33,7 +33,7 @@ import { todayIso } from "./utils/dates.js";
 
 export default function App() {
   const { t } = useI18n();
-  const { user, authLoading, authError, signIn, signInFresh, signOut, isLocal, isEmulator } =
+  const { user, authLoading, authError, signIn, signInFresh, signInAsEmulatorEmail, signOut, isLocal, isEmulator } =
     useAuth();
   // ⚠️ הסדר כאן הוא התיקון של 17.8: קודם **גוזרים את ה-orgId** (מ-
   // memberships/{uid}), ורק אחר כך נרשמים לנתונים. עד עכשיו useData הניח
@@ -99,6 +99,7 @@ export default function App() {
       <LoginPage
         onSignIn={signIn}
         onSignInFresh={signInFresh}
+        onSignInEmail={signInAsEmulatorEmail}
         isEmulator={isEmulator}
         error={authError}
       />

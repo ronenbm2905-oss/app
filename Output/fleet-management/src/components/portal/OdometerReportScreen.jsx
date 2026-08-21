@@ -75,8 +75,8 @@ export function OdometerReportScreen({ entry, readings = [], onSubmit }) {
           <Gauge size={18} className="text-brand-600" aria-hidden="true" />
           {t("odoReport.title")}
         </h2>
-        <p className="num mt-1 text-sm text-slate-700" dir="ltr">
-          {entry.plate}
+        <p className="num mt-1 text-sm text-slate-700">
+          <bdi dir="ltr">{entry.plate}</bdi>
         </p>
 
         {last && (

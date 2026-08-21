@@ -41,14 +41,12 @@ export function DriverPortalCard({ driver, actions }) {
         <div className="min-w-0 flex-1 text-sm">
           {!email && <p className="text-amber-800">{t("driverLink.noEmail")}</p>}
           {email && linked && (
-            <p className="num text-slate-700" dir="ltr">
+            <p className="num text-slate-700">
               {t("driverLink.linked", { email: driver.portalLinkedEmail || email })}
             </p>
           )}
           {email && !linked && !revoked && (
-            <p className="num text-slate-700" dir="ltr">
-              {t("driverLink.waiting", { email })}
-            </p>
+            <p className="num text-slate-700">{t("driverLink.waiting", { email })}</p>
           )}
           {email && revoked && <p className="text-slate-700">{t("driverLink.revoked")}</p>}
           {email && !linked && !revoked && (

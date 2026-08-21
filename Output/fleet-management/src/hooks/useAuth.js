@@ -86,6 +86,36 @@ export function useAuth() {
     }
   }, []);
 
+  // ==========================================================================
+  // signInAsEmulatorEmail — **פיתוח מול אמולטור בלבד**, כמו signInFresh.
+  //
+  // למה זה נחוץ: `signInFresh` נותן משתמש אנונימי — בלי מייל ובלי
+  // `email_verified`. כלומר **אי אפשר לבדוק בדפדפן את הזרימה המרכזית של
+  // פרוסה 2** (עובד נכנס עם המייל שבכרטיס שלו ונקשר) בלי לגעת בפרויקט אמיתי,
+  // ובלי חשבון Google אמיתי לכל נהג בדיקה. זו בדיוק סוג הפרצה שבה התחבא באג
+  // הפרודקשן של 16.8: מסלול שלא היה ניתן להרצה בדפדפן.
+  //
+  // אמולטור ה-Auth מקבל "טוקן זהות" שהוא JSON פשוט, ולכן אפשר לייצר משתמש
+  // עם כל כתובת ועם `email_verified: true` בלי ספק חיצוני. **וזה גם מדגים
+  // את הנקודה**: הקישור נשען על שני שדות שקיימים בכל ספק, ולא על Google.
+  //
+  // הבלוק מת בבנייה לפרודקשן — `isEmulator` מתקמפל ל-false מילולי
+  // (ראה vite.config.js / firebase.js).
+  // ==========================================================================
+  const signInAsEmulatorEmail = useCallback(async (email, { verified = true } = {}) => {
+    if (!isEmulator || !auth) return;
+    setAuthError(null);
+    try {
+      const { signInWithCredential, GoogleAuthProvider } = await import("firebase/auth");
+      const sub = `emu-${String(email).replace(/[^a-z0-9]/gi, "-")}`;
+      const token = JSON.stringify({ sub, email, email_verified: verified });
+      await signInWithCredential(auth, GoogleAuthProvider.credential(token));
+    } catch (err) {
+      console.error("emulator signIn failed", err);
+      setAuthError("auth.signInFailed");
+    }
+  }, []);
+
   const signOutUser = useCallback(async () => {
     if (!isFirebaseConfigured || !auth) return;
     const { signOut } = await import("firebase/auth");
@@ -98,6 +128,7 @@ export function useAuth() {
     authError,
     signIn,
     signInFresh,
+    signInAsEmulatorEmail,
     signOut: signOutUser,
     isLocal: !isFirebaseConfigured,
     isEmulator,
