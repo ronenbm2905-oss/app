@@ -91,7 +91,7 @@ if (!up.firestore || !up.storage) {
 const { initializeTestEnvironment, assertFails, assertSucceeds } = await import(
   "@firebase/rules-unit-testing"
 );
-const { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, collection, getDocs, FieldPath } =
+const { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, collection, getDocs, query, where, FieldPath } =
   await import("firebase/firestore");
 const { ref, uploadBytes, getBytes, deleteObject } = await import("firebase/storage");
 
@@ -105,6 +105,16 @@ const { probeOrg, subscribeOrg, startOrgSync, writeOrgDiff } = await import(
 const { resolveOrgAccess, addAdminEmail, removeAdminEmail } = await import(
   "../src/utils/orgMembers.js"
 );
+// מקטע (ז) — הביטוי הבדיק של מודל הגישה, מול הכללים בפועל. אם השניים
+// נפרדים, זו בדיוק הדליפה שאיש לא יראה.
+const { canonicalEmail } = await import("../src/utils/admins.js");
+const { buildDriverPortal } = await import("../src/utils/portal.js");
+const {
+  ownedByDriver,
+  driverCanWriteReading,
+  driverForUid: driverForUidRef,
+  DRIVER_READABLE_COLLECTIONS,
+} = await import("../src/utils/access.js");
 const { EMPTY } = await import("../src/constants.js");
 const emptyData = () => JSON.parse(JSON.stringify(EMPTY));
 
@@ -893,6 +903,609 @@ section("(ו) אדמין שני — allowlist של מיילים (באג פרוד
     configuredOrgId: "orgOther",
   });
   expectEq("ואינו נכנס לארגון אחר בכוח הדגל", soloElsewhere.status, "none");
+}
+
+
+// ============================================================================
+section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח (פרוסה 2)");
+// ============================================================================
+// למה המקטע הזה הוא הלב של הפרוסה, ולא "עוד בדיקות":
+//
+// לפרומול אין חשבונות Google ארגוניים. העובד נכנס מגימייל **פרטי**, שהחברה
+// לא הנפיקה ולא יכולה לכבות. ביום שהוא עוזב אין קונסולה שמשביתה את החשבון,
+// אין ניתוק סשן, ואין איפוס. ניסוח עדי (3.3): *"אינכם יכולים לכבות את
+// החשבון. אתם יכולים רק לחסום אותו אצלכם."*
+//
+// ומכאן: **סעיפי ה-rules כאן אינם הגנת עומק — הם מנגנון הביטול היחיד שקיים.**
+// בידוד שנאכף בקומפוננטה משאיר לעובד שעזב גישת קריאה מלאה עם סשן תקף. לכן
+// כל תנאי נבדק כאן **בנפרד**, בהיפוך, ולא כחלק מתרחיש מוצלח: בדיקה שעוברת
+// כי משהו אחר חסם אינה בדיקה, היא צירוף מקרים.
+{
+  const ORG = "orgDrv";
+  const AD_MAIL = "fleet.admin@promall.example";
+
+  const DA = "drvA";   const UIDA = "uidDriverA"; const MAIL_A = "driver.a@promall.example";
+  const DB = "drvB";   const UIDB = "uidDriverB"; const MAIL_B = "driver.b@promall.example";
+  // ⬅ גימייל **אמיתי** בכוונה: canonEmail מוחל רק על gmail.com/googlemail.com,
+  //   ולכן דומיין .example לא היה בודק את הנרמול בכלל.
+  const DC = "drvC";   const UIDC = "uidDriverC"; const MAIL_C = "hilda.v@gmail.com";
+  const DR = "drvRev"; const UIDR = "uidDriverR"; const MAIL_R = "left.us@promall.example";
+  // נהג שכתובתו בדומיין ארגוני עם נקודה — הבקרה השלילית לנרמול.
+  const DD = "drvDot"; const MAIL_D = "first.last@promall.example";
+
+  const VA = "vehA";   const VB = "vehB";
+
+  // --------------------------------------------------------------------
+  // seed — VA הוחזק ע"י B ואז עבר ל-A. זה **בדיוק** תרחיש D2: הקנס והסריקה
+  // של B נשארים קשורים אליו, בזמן שהרכב כבר אצל A.
+  // --------------------------------------------------------------------
+  const seed = () =>
+    testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const put = (path, data) => setDoc(doc(db, path), { orgId: ORG, ...data });
+
+      await setDoc(doc(db, `orgs/${ORG}`), {
+        org: { id: ORG, name: "צי הנהגים", adminEmails: [AD_MAIL], members: {} },
+        settings: { onboarded: true },
+        schemaVersion: 2,
+      });
+
+      await put(`orgs/${ORG}/drivers/${DA}`, {
+        id: DA, fullName: "נהג א", email: MAIL_A, userId: UIDA, portalStatus: "active", status: "active",
+      });
+      await put(`orgs/${ORG}/drivers/${DB}`, {
+        id: DB, fullName: "נהג ב", email: MAIL_B, userId: UIDB, portalStatus: "active", status: "active",
+      });
+      await put(`orgs/${ORG}/drivers/${DC}`, {
+        id: DC, fullName: "נהג ג", email: MAIL_C, userId: null, portalStatus: "none", status: "active",
+      });
+      await put(`orgs/${ORG}/drivers/${DR}`, {
+        id: DR, fullName: "עזב", email: MAIL_R, userId: null, portalStatus: "revoked", status: "active",
+      });
+      await put(`orgs/${ORG}/drivers/${DD}`, {
+        id: DD, fullName: "נקודה", email: MAIL_D, userId: null, portalStatus: "none", status: "active",
+      });
+
+      await put(`orgs/${ORG}/vehicles/${VA}`, { id: VA, plate: "111-11-111", model: "דגם א", leaseCompanyId: "lc1" });
+      await put(`orgs/${ORG}/vehicles/${VB}`, { id: VB, plate: "222-22-222", model: "דגם ב", leaseCompanyId: "lc1" });
+      await put(`orgs/${ORG}/vehiclesPrivate/${VA}`, { id: VA, vehicleId: VA, monthlyCost: 3900 });
+      await put(`orgs/${ORG}/leaseCompanies/lc1`, { id: "lc1", name: "ליסינג בדיקה", phone: "03-0000000" });
+
+      // ההחזקות. asgOld — B החזיק את VA בעבר; asgA — A מחזיק אותו היום.
+      await put(`orgs/${ORG}/assignments/asgOld`, {
+        id: "asgOld", vehicleId: VA, driverId: DB, driverUid: null, fromDate: "2024-01-01", toDate: "2025-12-31",
+      });
+      await put(`orgs/${ORG}/assignments/asgA`, {
+        id: "asgA", vehicleId: VA, driverId: DA, driverUid: null, fromDate: "2026-01-01", toDate: null,
+      });
+      await put(`orgs/${ORG}/assignments/asgB`, {
+        id: "asgB", vehicleId: VB, driverId: DB, driverUid: UIDB, fromDate: "2026-01-01", toDate: null,
+      });
+
+      // ⚠️ הקנס והסריקה של **המחזיק הקודם**, על הרכב שכעת אצל A.
+      await put(`orgs/${ORG}/fines/finOld`, {
+        id: "finOld", vehicleId: VA, driverId: DB, driverUid: UIDB, amount: 750, violationDate: "2025-05-05",
+      });
+      await put(`orgs/${ORG}/fineScans/scnOld`, {
+        id: "scnOld", fineId: "finOld", driverId: DB, driverUid: UIDB, fileName: "s.pdf",
+      });
+      // קנס של A — driverUid **null**, כמו כל מה שיובא מהאקסל לפני הקישור.
+      await put(`orgs/${ORG}/fines/finA`, {
+        id: "finA", vehicleId: VA, driverId: DA, driverUid: null, amount: 250, violationDate: "2026-03-01",
+      });
+      await put(`orgs/${ORG}/fineScans/scnA`, {
+        id: "scnA", fineId: "finA", driverId: DA, driverUid: null, fileName: "a.pdf",
+      });
+      await put(`orgs/${ORG}/finesPrivate/finA`, { id: "finA", fineId: "finA", adminNotes: "נהג חוזר" });
+
+      await put(`orgs/${ORG}/odometerReadings/odoA`, {
+        id: "odoA", vehicleId: VA, driverId: DA, driverUid: null, date: "2026-02-01", km: 10000, source: "admin",
+      });
+      await put(`orgs/${ORG}/odometerReadings/odoB`, {
+        id: "odoB", vehicleId: VB, driverId: DB, driverUid: UIDB, date: "2026-02-01", km: 20000, source: "admin",
+      });
+
+      await put(`orgs/${ORG}/incidents/incA`, { id: "incA", vehicleId: VA, driverId: DA, description: "שריטה" });
+      await put(`orgs/${ORG}/incidentsPrivate/incA`, { id: "incA", incidentId: "incA", adminAssessment: "רשלנות" });
+      await put(`orgs/${ORG}/documents/docA`, { id: "docA", vehicleId: VA, type: "insurance", title: "ביטוח" });
+      await put(`orgs/${ORG}/serviceRecords/srvA`, { id: "srvA", vehicleId: VA, date: "2026-01-10", km: 9000 });
+
+      // ההיטל — נגזר מהקוד האמיתי (utils/portal.js), לא משוכפל כאן ביד.
+      const model = {
+        org: { id: ORG },
+        schemaVersion: 2,
+        drivers: [
+          { id: DA, orgId: ORG, status: "active" },
+          { id: DB, orgId: ORG, status: "active" },
+          { id: DC, orgId: ORG, status: "active" },
+        ],
+        assignments: [
+          { id: "asgA", vehicleId: VA, driverId: DA, fromDate: "2026-01-01", toDate: null },
+          { id: "asgB", vehicleId: VB, driverId: DB, fromDate: "2026-01-01", toDate: null },
+        ],
+        vehicles: [
+          { id: VA, plate: "111-11-111", model: "דגם א", manufacturer: "יצרן", leaseCompanyId: "lc1", contractEnd: "2028-01-01" },
+          { id: VB, plate: "222-22-222", model: "דגם ב", manufacturer: "יצרן", leaseCompanyId: "lc1", contractEnd: "2028-01-01" },
+        ],
+        leaseCompanies: [{ id: "lc1", name: "ליסינג בדיקה", phone: "03-0000000", email: "", contactName: "" }],
+      };
+      const portal = buildDriverPortal(model, "2026-06-01");
+      expectEq("(ז0) ההיטל נבנה לשלושת הנהגים", portal.length, 3);
+      for (const entry of portal) await setDoc(doc(db, `orgs/${ORG}/driverPortal/${entry.id}`), entry);
+
+      // ⬅ הבדיקה שקושרת את הקוד לכללים: **אין monthlyCost בהיטל.** אם מישהו
+      //   יוסיף שדה מסחרי ל-driverVehicleProjection, זה ייפול כאן ולא בפרודקשן.
+      const forA = portal.find((x) => x.id === DA);
+      expectEq("(ז0) ההיטל של A מצביע לרכב שלו", forA.vehicleId, VA);
+      expectTrue("(ז0) ואין בו monthlyCost", !("monthlyCost" in forA));
+      expectTrue("(ז0) ואין בו notes של האדמין", !("notes" in forA));
+    });
+
+  await seed();
+
+  const ctxOf = (uid, email, verified = true) =>
+    testEnv.authenticatedContext(uid, email ? { email, email_verified: verified } : {});
+
+  const dbAdminD = ctxOf("fleetAdminUid", AD_MAIL).firestore();
+  const dbA = ctxOf(UIDA, MAIL_A).firestore();
+  const dbB = ctxOf(UIDB, MAIL_B).firestore();
+
+  const P = (rest) => `orgs/${ORG}/${rest}`;
+  const col = (db, name) => collection(db, `orgs/${ORG}/${name}`);
+
+  // ======================================================================
+  // ז.1 — אדמין: אפס רגרסיה. הפרוסה הזו נגעה בכל סעיף בקובץ.
+  // ======================================================================
+  await expectAllowed("ז.1 אדמין קורא את מסמך הארגון", getDoc(doc(dbAdminD, "orgs", ORG)));
+  for (const c of [
+    "vehicles", "vehiclesPrivate", "drivers", "assignments", "fines", "finesPrivate",
+    "fineScans", "odometerReadings", "serviceRecords", "documents", "incidents",
+    "incidentsPrivate", "leaseCompanies", "driverPortal",
+  ]) {
+    await expectAllowed(`ז.1 אדמין קורא ${c}`, getDocs(col(dbAdminD, c)));
+  }
+  await expectAllowed(
+    "ז.1 אדמין כותב היטל",
+    setDoc(doc(dbAdminD, P(`driverPortal/${DA}`)), { id: DA, driverId: DA, vehicleId: VA, orgId: ORG }, { merge: true })
+  );
+  await expectAllowed(
+    "ז.1 אדמין כותב קריאת מד רגילה (source=admin)",
+    setDoc(doc(dbAdminD, P("odometerReadings/odoAdmin")), {
+      id: "odoAdmin", orgId: ORG, vehicleId: VA, driverId: DA, date: "2026-06-01", km: 12345, source: "admin",
+    })
+  );
+  await expectAllowed("ז.1 ואדמין מוחק קריאה", deleteDoc(doc(dbAdminD, P("odometerReadings/odoAdmin"))));
+
+  // ======================================================================
+  // ז.2 — מה שנהג A **כן** רואה. הרשימה סגורה, וזהו כל הפורטל.
+  // ======================================================================
+  await expectAllowed("ז.2 A קורא את רשומת הנהג שלו", getDoc(doc(dbA, P(`drivers/${DA}`))));
+  await expectAllowed(
+    "ז.2 A מוצא את עצמו בשאילתה לפי uid",
+    getDocs(query(col(dbA, "drivers"), where("userId", "==", UIDA)))
+  );
+  await expectAllowed("ז.2 A קורא את ההיטל שלו", getDoc(doc(dbA, P(`driverPortal/${DA}`))));
+  await expectAllowed(
+    "ז.2 A קורא את ההחזקות שלו",
+    getDocs(query(col(dbA, "assignments"), where("driverId", "==", DA)))
+  );
+  await expectAllowed(
+    "ז.2 A קורא את הקנסות שלו (driverUid ריק — נתוני ייבוא)",
+    getDocs(query(col(dbA, "fines"), where("driverId", "==", DA)))
+  );
+  await expectAllowed("ז.2 A קורא את סריקת הקנס שלו", getDoc(doc(dbA, P("fineScans/scnA"))));
+  await expectAllowed(
+    "ז.2 A קורא את דיווחי הק״מ שלו",
+    getDocs(query(col(dbA, "odometerReadings"), where("driverId", "==", DA)))
+  );
+
+  // ======================================================================
+  // ז.3 — **החומה מול נהג אחר.** פר-אוסף, בקריאת מסמך ובשאילתה.
+  // ======================================================================
+  await expectDenied("ז.3 A לא קורא את רשומת הנהג של B", getDoc(doc(dbA, P(`drivers/${DB}`))));
+  await expectDenied("ז.3 A לא קורא את ההיטל של B", getDoc(doc(dbA, P(`driverPortal/${DB}`))));
+  await expectDenied("ז.3 A לא קורא את ההחזקה של B", getDoc(doc(dbA, P("assignments/asgB"))));
+  await expectDenied("ז.3 A לא קורא את הקנס של B", getDoc(doc(dbA, P("fines/finOld"))));
+  await expectDenied("ז.3 A לא קורא את דיווח הק״מ של B", getDoc(doc(dbA, P("odometerReadings/odoB"))));
+  await expectDenied("ז.3 A לא קורא את הרכב של B", getDoc(doc(dbA, P(`vehicles/${VB}`))));
+  // ⬅ ולא דרך שאילתה שמנסה לעקוף את מסמך-מסמך.
+  await expectDenied("ז.3 ולא בשאילתה על כל הנהגים", getDocs(col(dbA, "drivers")));
+  await expectDenied("ז.3 ולא בשאילתה על כל הקנסות", getDocs(col(dbA, "fines")));
+  await expectDenied("ז.3 ולא בשאילתה על כל ההחזקות", getDocs(col(dbA, "assignments")));
+  await expectDenied("ז.3 ולא בשאילתה על כל דיווחי הק״מ", getDocs(col(dbA, "odometerReadings")));
+  await expectDenied(
+    "ז.3 ולא בשאילתה ממוקדת על הנהג האחר",
+    getDocs(query(col(dbA, "fines"), where("driverId", "==", DB)))
+  );
+  await expectDenied(
+    "ז.3 ולא בשאילתה על רשומת הנהג של B לפי המייל שלו",
+    getDocs(query(col(dbA, "drivers"), where("email", "==", MAIL_B)))
+  );
+
+  // ======================================================================
+  // ז.4 — **שלושת האוספים הפרטיים (D1), גם על הרכב שהוא מחזיק עכשיו.**
+  // זו נקודת ה"חסום מוחלט": הרכב שלו, הקנס שלו, התקלה שלו — ובכל זאת לא.
+  // ======================================================================
+  await expectDenied("ז.4 A לא קורא vehiclesPrivate של הרכב **שלו**", getDoc(doc(dbA, P(`vehiclesPrivate/${VA}`))));
+  await expectDenied("ז.4 A לא קורא finesPrivate של הקנס **שלו**", getDoc(doc(dbA, P("finesPrivate/finA"))));
+  await expectDenied("ז.4 A לא קורא incidentsPrivate של התקלה **שלו**", getDoc(doc(dbA, P("incidentsPrivate/incA"))));
+  await expectDenied("ז.4 ולא בשאילתה על vehiclesPrivate", getDocs(col(dbA, "vehiclesPrivate")));
+  await expectDenied("ז.4 ולא בשאילתה על finesPrivate", getDocs(col(dbA, "finesPrivate")));
+  await expectDenied("ז.4 ולא בשאילתה על incidentsPrivate", getDocs(col(dbA, "incidentsPrivate")));
+  // ⬅ וגם מסמך הרכב עצמו סגור — הנהג קורא את ההיטל, לא את הרכב. אחרת כל
+  //   שדה שיתווסף לרכב בעתיד היה מגיע אליו בשקט.
+  await expectDenied("ז.4 A לא קורא את מסמך הרכב **שלו**", getDoc(doc(dbA, P(`vehicles/${VA}`))));
+  await expectDenied("ז.4 A לא קורא את אוסף חברות הליסינג", getDocs(col(dbA, "leaseCompanies")));
+  await expectDenied("ז.4 A לא קורא מסמכי רכב", getDoc(doc(dbA, P("documents/docA"))));
+  await expectDenied("ז.4 A לא קורא טיפולים", getDoc(doc(dbA, P("serviceRecords/srvA"))));
+  await expectDenied("ז.4 A לא קורא תקלות", getDoc(doc(dbA, P("incidents/incA"))));
+  await expectDenied("ז.4 A לא קורא את מסמך הארגון", getDoc(doc(dbA, "orgs", ORG)));
+
+  // ======================================================================
+  // ז.5 — **הדליפה של D2.** A מחזיק את VA היום. הקנס והסריקה שייכים ל-B,
+  // שהחזיק את אותו רכב עד סוף 2025. השיוך הוא לפי **הקנס**, לא לפי הרכב.
+  // ======================================================================
+  await expectDenied(
+    "ז.5 A לא קורא סריקת קנס של המחזיק הקודם — למרות שהרכב שלו",
+    getDoc(doc(dbA, P("fineScans/scnOld")))
+  );
+  await expectDenied(
+    "ז.5 ולא את הקנס שממנו היא נגזרת",
+    getDoc(doc(dbA, P("fines/finOld")))
+  );
+  await expectDenied(
+    "ז.5 ולא בשאילתה על סריקות הרכב שלו",
+    getDocs(query(col(dbA, "fineScans"), where("fineId", "==", "finOld")))
+  );
+  await expectDenied("ז.5 ולא בשאילתה על כל הסריקות", getDocs(col(dbA, "fineScans")));
+  await expectAllowed("ז.5 ו-B כן קורא את הסריקה שלו", getDoc(doc(dbB, P("fineScans/scnOld"))));
+  // ⬅ ואותה תשובה בדיוק מגיעה מהקוד הטהור, על אותם נתונים.
+  {
+    const model = {
+      drivers: [
+        { id: DA, userId: UIDA, portalStatus: "active", status: "active" },
+        { id: DB, userId: UIDB, portalStatus: "active", status: "active" },
+      ],
+    };
+    const scanOld = { id: "scnOld", fineId: "finOld", driverId: DB, driverUid: UIDB };
+    expectTrue("ז.5 access.js מסכים: A לא קורא", !ownedByDriver(model, scanOld, UIDA));
+    expectTrue("ז.5 access.js מסכים: B כן קורא", ownedByDriver(model, scanOld, UIDB));
+  }
+
+  // ======================================================================
+  // ז.6 — **הכתיבה.** דיווח ק״מ לרכב שלו כן; כל השאר לא.
+  // ======================================================================
+  const reading = (over = {}) => ({
+    id: "odoNew", orgId: ORG, createdAt: "2026-06-01", updatedAt: "2026-06-01", schemaVersion: 2,
+    vehicleId: VA, driverId: DA, driverUid: UIDA, date: "2026-06-01", km: 12500, source: "driver",
+    photoRef: null, photoName: "", photoStorageMode: "none", metadataStripped: false,
+    retentionClass: "odometer", notes: "",
+    ...over,
+  });
+  const write = (db, id, data) => setDoc(doc(db, P(`odometerReadings/${id}`)), data);
+
+  await expectAllowed("ז.6 A כותב קריאה לרכב שלו", write(dbA, "odoNew", reading()));
+  // ⬅ ואותה רשומה בדיוק עוברת גם ב-access.js — הקוד והכללים מסכימים.
+  {
+    const model = {
+      drivers: [{ id: DA, userId: UIDA, portalStatus: "active", status: "active" }],
+      driverPortal: [{ id: DA, driverId: DA, vehicleId: VA }],
+    };
+    expectTrue("ז.6 access.js מאשר את אותה רשומה", driverCanWriteReading(model, reading(), UIDA));
+  }
+
+  // -- **השיניים**: כל תנאי בהיפוך, בנפרד. ------------------------------
+  // כל שורה כאן מחזירה **בדיוק תנאי אחד**, כדי שאם מישהו יסיר אותו מהכלל
+  // הבדיקה תיפול — ולא תיוותר ירוקה כי תנאי אחר במקרה חסם.
+  const teeth = [
+    ["רכב שאינו שלו", { id: "t1", vehicleId: VB }],
+    ["רכב לא קיים", { id: "t2", vehicleId: "vehX" }],
+    ["בלי vehicleId", { id: "t3", vehicleId: "" }],
+    ["driverId של נהג אחר", { id: "t4", driverId: DB }],
+    ["driverUid של מישהו אחר", { id: "t5", driverUid: UIDB }],
+    ["driverUid ריק", { id: "t6", driverUid: null }],
+    ["source=admin (התחזות לרשומת אדמין)", { id: "t7", source: "admin" }],
+    ["⚠️ עם צילום — D4", { id: "t8", photoRef: "orgs/x/p.jpg", photoStorageMode: "storage" }],
+    ["⚠️ עם שם קובץ צילום", { id: "t9", photoName: "IMG_4471.jpg" }],
+    ["⚠️ עם חותמת דיוק-שנייה ב-createdAt — D4.3", { id: "t10", createdAt: "2026-06-01T22:47:13.000Z" }],
+    ["⚠️ עם חותמת דיוק-שנייה ב-updatedAt", { id: "t11", updatedAt: "2026-06-01T22:47:13.000Z" }],
+    ["⚠️ עם שדה מיקום שאינו בסכימה", { id: "t12", latitude: 32.08 }],
+    ["עם הערה חופשית", { id: "t13", notes: "עצרתי בתחנת דלק" }],
+    ["ק״מ שלילי", { id: "t14", km: -5 }],
+    ["ק״מ אפס", { id: "t15", km: 0 }],
+    ["ק״מ כמחרוזת", { id: "t16", km: "12500" }],
+    ["ק״מ מעל הגבול", { id: "t17", km: 5000000 }],
+    ["תאריך בפורמט שגוי", { id: "t18", date: "1.6.2026", createdAt: "1.6.2026", updatedAt: "1.6.2026" }],
+    ["retentionClass אחר", { id: "t19", retentionClass: "fine" }],
+    ["orgId של ארגון אחר", { id: "t20", orgId: "orgA" }],
+  ];
+  for (const [label, over] of teeth) {
+    await expectDenied(`ז.6 נדחה — ${label}`, write(dbA, over.id, reading(over)));
+  }
+  // מזהה המסמך חייב להתאים ל-id שבגוף — אחרת אפשר לדרוס רשומה קיימת.
+  await expectDenied("ז.6 נדחה — id בגוף שונה ממזהה המסמך", write(dbA, "odoMismatch", reading({ id: "odoNew" })));
+  await expectDenied(
+    "ז.6 נדחה — דריסת דיווח קיים (אין update לנהג)",
+    updateDoc(doc(dbA, P("odometerReadings/odoNew")), { km: 999999 })
+  );
+  await expectDenied("ז.6 נדחה — מחיקת דיווח", deleteDoc(doc(dbA, P("odometerReadings/odoNew"))));
+  await expectDenied("ז.6 נדחה — כתיבת דיווח בשם נהג אחר", write(dbA, "odoForB", reading({ id: "odoForB", driverId: DB, driverUid: UIDB, vehicleId: VB })));
+  await expectDenied(
+    "ז.6 נדחה — כתיבה לרכב",
+    setDoc(doc(dbA, P(`vehicles/${VA}`)), { plate: "hacked" }, { merge: true })
+  );
+  await expectDenied(
+    "ז.6 נדחה — כתיבה להיטל של עצמו",
+    setDoc(doc(dbA, P(`driverPortal/${DA}`)), { vehicleId: VB }, { merge: true })
+  );
+  await expectDenied(
+    "ז.6 נדחה — כתיבת קנס",
+    setDoc(doc(dbA, P("fines/finFake")), { id: "finFake", orgId: ORG, driverId: DA, amount: 0 })
+  );
+  await expectDenied(
+    "ז.6 נדחה — סגירת ההחזקה של עצמו",
+    updateDoc(doc(dbA, P("assignments/asgA")), { toDate: "2026-06-01" })
+  );
+
+  // ======================================================================
+  // ז.7 — **הקישור.** האירוע החד-פעמי שבו מייל הופך ל-uid.
+  // ======================================================================
+  const linkWrite = (db, driverId, fields) => updateDoc(doc(db, P(`drivers/${driverId}`)), fields);
+
+  // 7א. מייל תואם ומאומת — ובצורה **שונה** מזו שנשמרה: הכתובת ברשומה היא
+  //     hilda.v@gmail.com, והטוקן מגיע כ-Hilda.V+fleet@GMail.com. אצל Google
+  //     זו אותה תיבה, ובלי canonEmail הכניסה הייתה נכשלת בלי שאיש יבין למה.
+  const TOKEN_C = "Hilda.V+fleet@GMail.com";
+  expectEq("ז.7 canonicalEmail מאחד את שתי הצורות", canonicalEmail(TOKEN_C), canonicalEmail(MAIL_C));
+  const dbC = ctxOf(UIDC, TOKEN_C).firestore();
+  await expectAllowed(
+    "ז.7 A רשומה לא מקושרת נמצאת בשאילתה לפי המייל הקנוני",
+    getDocs(query(col(dbC, "drivers"), where("email", "==", canonicalEmail(TOKEN_C))))
+  );
+  await expectAllowed(
+    "ז.7 מייל תואם + מאומת ⇒ הקישור מתבצע",
+    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "2026-06-01" })
+  );
+  await expectAllowed("ז.7 ומכאן הוא קורא את ההיטל שלו", getDoc(doc(dbC, P(`driverPortal/${DC}`))));
+
+  // 7ב. **השיניים של הקישור** — כל תנאי בנפרד, על רשומה נקייה בכל פעם.
+  const resetDC = () =>
+    testEnv.withSecurityRulesDisabled(async (ctx) =>
+      setDoc(doc(ctx.firestore(), P(`drivers/${DC}`)), {
+        id: DC, orgId: ORG, fullName: "נהג ג", email: MAIL_C, userId: null,
+        portalStatus: "none", status: "active",
+      })
+    );
+
+  await resetDC();
+  const dbWrongMail = ctxOf("uidWrong", "someone.else@gmail.com").firestore();
+  await expectDenied(
+    "ז.7 נדחה — מייל שאינו תואם",
+    linkWrite(dbWrongMail, DC, { userId: "uidWrong", portalStatus: "active", portalLinkedEmail: "someone.else@gmail.com", updatedAt: "x" })
+  );
+  await expectDenied(
+    "ז.7 נדחה — וגם לא קורא את הרשומה",
+    getDoc(doc(dbWrongMail, P(`drivers/${DC}`)))
+  );
+
+  const dbUnverified = ctxOf("uidUnv", TOKEN_C, false).firestore();
+  await expectDenied(
+    "ז.7 נדחה — הכתובת נכונה אבל **לא מאומתת**",
+    linkWrite(dbUnverified, DC, { userId: "uidUnv", portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+  );
+  await expectDenied("ז.7 ולא קורא את הרשומה", getDoc(doc(dbUnverified, P(`drivers/${DC}`))));
+
+  const dbNoMail = ctxOf("uidNoMail", null).firestore();
+  await expectDenied(
+    "ז.7 נדחה — טוקן בלי מייל בכלל",
+    linkWrite(dbNoMail, DC, { userId: "uidNoMail", portalStatus: "active", portalLinkedEmail: "", updatedAt: "x" })
+  );
+
+  // ⬅ **הבקרה השלילית לנרמול**: בדומיין ארגוני נקודה היא תו משמעותי.
+  //   first.last@promall.example ו-firstlast@promall.example הם שני אנשים.
+  const dbDotAttack = ctxOf("uidDot", "firstlast@promall.example").firestore();
+  await expectDenied(
+    "ז.7 נדחה — הסרת נקודה **אינה** חלה על דומיין ארגוני",
+    linkWrite(dbDotAttack, DD, { userId: "uidDot", portalStatus: "active", portalLinkedEmail: "firstlast@promall.example", updatedAt: "x" })
+  );
+  expectTrue(
+    "ז.7 וגם canonicalEmail בקוד אינו מאחד אותם",
+    canonicalEmail("first.last@promall.example") !== canonicalEmail("firstlast@promall.example")
+  );
+
+  // רשומה **שכבר מקושרת** אינה ניתנת לתפיסה, גם ע"י מי שהמייל שלו תואם.
+  await testEnv.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), P(`drivers/${DC}`)), {
+      id: DC, orgId: ORG, fullName: "נהג ג", email: MAIL_C, userId: "someoneElseUid",
+      portalStatus: "active", status: "active",
+    })
+  );
+  await expectDenied(
+    "ז.7 נדחה — הרשומה כבר מקושרת למישהו אחר",
+    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+  );
+  await expectDenied("ז.7 וגם לא קורא אותה", getDoc(doc(dbC, P(`drivers/${DC}`))));
+
+  // 7ג. **שינוי שדה נוסף באותה כתיבה** — הסעיף שמונע מהעובד לערוך את עצמו.
+  await resetDC();
+  for (const [label, extra] of [
+    ["שם", { fullName: "שם אחר" }],
+    ["מחלקה", { department: "הנהלה" }],
+    ["מספר עובד", { employeeNumber: "999" }],
+    ["הערות", { notes: "מגיע לי רכב אחר" }],
+    ["רשומת היידוע (D8)", { notice: { policyVersion: "9.9", deliveredAt: "2026-01-01" } }],
+    ["סטטוס העובד", { status: "inactive" }],
+    ["המייל עצמו", { email: "new.address@gmail.com" }],
+  ]) {
+    await expectDenied(
+      `ז.7 נדחה — הקישור נוגע גם ב${label}`,
+      linkWrite(dbC, DC, {
+        userId: UIDC, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x", ...extra,
+      })
+    );
+  }
+  await expectDenied(
+    "ז.7 נדחה — portalStatus שאינו active",
+    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "invited", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+  );
+  await expectDenied(
+    "ז.7 נדחה — קישור ל-uid של מישהו אחר",
+    linkWrite(dbC, DC, { userId: UIDB, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+  );
+  await expectDenied(
+    "ז.7 נדחה — portalLinkedEmail שאינו הכתובת שבטוקן",
+    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "active", portalLinkedEmail: "someone.else@gmail.com", updatedAt: "x" })
+  );
+  await expectDenied(
+    "ז.7 נדחה — נהג מקושר משנה את רשומת נהג אחר",
+    linkWrite(dbA, DC, { userId: UIDA, portalStatus: "active", portalLinkedEmail: MAIL_A, updatedAt: "x" })
+  );
+
+  // 7ד. **'revoked' אינו ניתן לתביעה מחדש.** זה מה שהופך את כפתור הניתוק
+  //     לאפקטיבי: בלעדיו עובד שעזב היה מקשר את עצמו בחזרה בלחיצה אחת.
+  const dbLeft = ctxOf(UIDR, MAIL_R).firestore();
+  await expectDenied(
+    "ז.7 נדחה — רשומה שנותקה ('revoked') אינה ניתנת לקישור מחדש",
+    linkWrite(dbLeft, DR, { userId: UIDR, portalStatus: "active", portalLinkedEmail: MAIL_R, updatedAt: "x" })
+  );
+  await expectDenied("ז.7 ומי שנותק גם לא קורא את הרשומה שלו", getDoc(doc(dbLeft, P(`drivers/${DR}`))));
+  // ורק אחרי שהאדמין מזמין מחדש ('invited') — הקישור אפשרי שוב.
+  await expectAllowed(
+    "ז.7 אדמין מחזיר גישה: portalStatus='invited'",
+    updateDoc(doc(dbAdminD, P(`drivers/${DR}`)), { portalStatus: "invited" })
+  );
+  await expectAllowed(
+    "ז.7 ואז הקישור מתבצע",
+    linkWrite(dbLeft, DR, { userId: UIDR, portalStatus: "active", portalLinkedEmail: MAIL_R, updatedAt: "x" })
+  );
+
+  // 7ה. נהג בארכיון — לא מקשר, ולא קורא.
+  await testEnv.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), P(`drivers/${DD}`)), {
+      id: DD, orgId: ORG, fullName: "נקודה", email: MAIL_D, userId: null,
+      portalStatus: "invited", status: "archived",
+    })
+  );
+  const dbArch = ctxOf("uidArch", MAIL_D).firestore();
+  await expectDenied(
+    "ז.7 נדחה — נהג בארכיון אינו מקשר חשבון",
+    linkWrite(dbArch, DD, { userId: "uidArch", portalStatus: "active", portalLinkedEmail: MAIL_D, updatedAt: "x" })
+  );
+
+  // ======================================================================
+  // ז.8 — **הניתוק.** יום העזיבה, בסדר שעדי הגדירה (3.3): קודם כל ה-rules.
+  // ======================================================================
+  await expectAllowed("ז.8 לפני הניתוק — A קורא את ההיטל שלו", getDoc(doc(dbA, P(`driverPortal/${DA}`))));
+  await expectAllowed(
+    "ז.8 האדמין מנתק",
+    updateDoc(doc(dbAdminD, P(`drivers/${DA}`)), { userId: null, portalStatus: "revoked", portalLinkedEmail: null })
+  );
+  // ⬅ **הבדיקה שמצדיקה את כל המקטע.** לא נגענו באף מסמך קנס, החזקה או דיווח —
+  //   ובכל זאת אף אחד מהם אינו קריא יותר. זו הסיבה שהבידוד חייב לשבת ב-rules:
+  //   בלקוח, עובד עם סשן Google תקף היה ממשיך לקרוא את כולם.
+  await expectDenied("ז.8 אחרי הניתוק — ההיטל", getDoc(doc(dbA, P(`driverPortal/${DA}`))));
+  await expectDenied("ז.8 אחרי הניתוק — הקנס שלו", getDoc(doc(dbA, P("fines/finA"))));
+  await expectDenied("ז.8 אחרי הניתוק — סריקת הקנס שלו", getDoc(doc(dbA, P("fineScans/scnA"))));
+  await expectDenied("ז.8 אחרי הניתוק — ההחזקה שלו", getDoc(doc(dbA, P("assignments/asgA"))));
+  await expectDenied("ז.8 אחרי הניתוק — דיווח הק״מ שלו", getDoc(doc(dbA, P("odometerReadings/odoA"))));
+  await expectDenied("ז.8 אחרי הניתוק — רשומת הנהג שלו", getDoc(doc(dbA, P(`drivers/${DA}`))));
+  await expectDenied("ז.8 אחרי הניתוק — אין דיווח חדש", write(dbA, "odoAfter", reading({ id: "odoAfter" })));
+  // ⬅ ולא ניתן לתבוע את הרשומה מחדש עם אותו מייל.
+  await expectDenied(
+    "ז.8 ומי שנותק לא מקשר את עצמו בחזרה",
+    linkWrite(dbA, DA, { userId: UIDA, portalStatus: "active", portalLinkedEmail: MAIL_A, updatedAt: "x" })
+  );
+  // B, שלא נגעו בו, ממשיך לעבוד — הניתוק ממוקד ולא כללי.
+  await expectAllowed("ז.8 ו-B אינו מושפע", getDoc(doc(dbB, P(`driverPortal/${DB}`))));
+
+  // ======================================================================
+  // ז.8ב — **שני מצבי-ביניים שהניתוק המלא מסתיר.**
+  //
+  // ⚠️ שתי הבדיקות האלה נוספו אחרי ריצת מוטציות: הוצאת `portalStatus=='active'`
+  // ו-`status!='archived'` מ-`isMyDriverId` **שרדה את כל החבילה**. הסיבה היא
+  // שבתרחיש הניתוק המלא (ז.8) גם `userId` מתאפס, ולכן התנאי הראשון חסם ממילא
+  // ושני התנאים האחרים מעולם לא נבחנו לבדם. בדיקה שעוברת כי משהו אחר חסם
+  // אינה בדיקה.
+  //
+  // שני המצבים אמיתיים לגמרי:
+  //   • **השעיה זמנית** — האדמין מכבה גישה בלי לנתק (portalStatus='disabled').
+  //   • **ארכוב** — העובד סומן כעזב, אבל הקישור נשאר. זו בדיוק התקלה
+  //     ש-3.3.7 בהכוונת עדי מזהיר מפניה: "נהגים בארכיון עם גישת פורטל פעילה".
+  // ======================================================================
+  {
+    const DS = "drvSusp";
+    const UIDS = "uidSusp";
+    const DZ = "drvArch2";
+    const UIDZ = "uidArch2";
+    const mk = (id, over) =>
+      testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, P(`drivers/${id}`)), {
+          id, orgId: ORG, fullName: "ביניים", email: `${id}@promall.example`,
+          portalStatus: "active", status: "active", ...over,
+        });
+        await setDoc(doc(db, P(`driverPortal/${id}`)), {
+          id, driverId: id, orgId: ORG, vehicleId: VB, plate: "222-22-222",
+        });
+        await setDoc(doc(db, P(`fines/fin_${id}`)), {
+          id: `fin_${id}`, orgId: ORG, vehicleId: VB, driverId: id, driverUid: null, amount: 100,
+        });
+      });
+
+    // (1) קישור פעיל, אבל הגישה **מושהית**.
+    await mk(DS, { userId: UIDS, portalStatus: "disabled" });
+    const dbSusp = ctxOf(UIDS, `${DS}@promall.example`).firestore();
+    await expectDenied("ז.8ב portalStatus='disabled' — אין היטל", getDoc(doc(dbSusp, P(`driverPortal/${DS}`))));
+    await expectDenied("ז.8ב ואין קנסות", getDoc(doc(dbSusp, P(`fines/fin_${DS}`))));
+    await expectDenied(
+      "ז.8ב ואין דיווח ק״מ",
+      setDoc(doc(dbSusp, P("odometerReadings/odoSusp")), {
+        id: "odoSusp", orgId: ORG, createdAt: "2026-06-01", updatedAt: "2026-06-01", schemaVersion: 2,
+        vehicleId: VB, driverId: DS, driverUid: UIDS, date: "2026-06-01", km: 100, source: "driver",
+        photoRef: null, photoName: "", photoStorageMode: "none", metadataStripped: false,
+        retentionClass: "odometer", notes: "",
+      })
+    );
+    // ⬅ והשוואה: אותה רשומה בדיוק, עם portalStatus='active' — כן עוברת.
+    //   בלי הצמד הזה אי אפשר לדעת אם הדחייה נבעה מהתנאי הנכון.
+    await mk(DS, { userId: UIDS, portalStatus: "active" });
+    await expectAllowed("ז.8ב ובאותה רשומה עם 'active' — כן", getDoc(doc(dbSusp, P(`driverPortal/${DS}`))));
+
+    // (2) קישור פעיל, אבל העובד **בארכיון** (3.3.7).
+    await mk(DZ, { userId: UIDZ, portalStatus: "active", status: "archived" });
+    const dbArch2 = ctxOf(UIDZ, `${DZ}@promall.example`).firestore();
+    await expectDenied("ז.8ב עובד בארכיון עם קישור פעיל — אין היטל", getDoc(doc(dbArch2, P(`driverPortal/${DZ}`))));
+    await expectDenied("ז.8ב ואין קנסות", getDoc(doc(dbArch2, P(`fines/fin_${DZ}`))));
+    await mk(DZ, { userId: UIDZ, portalStatus: "active", status: "active" });
+    await expectAllowed("ז.8ב ובאותה רשומה כשאינו בארכיון — כן", getDoc(doc(dbArch2, P(`driverPortal/${DZ}`))));
+
+    // ⬅ ו-access.js מגיע לאותן שתי התשובות, על אותם נתונים.
+    const model = (over) => ({ drivers: [{ id: DS, userId: UIDS, portalStatus: "active", status: "active", ...over }] });
+    expectTrue("ז.8ב access.js מסכים: 'disabled' חסום", !driverForUidRef(model({ portalStatus: "disabled" }), UIDS));
+    expectTrue("ז.8ב access.js מסכים: 'archived' חסום", !driverForUidRef(model({ status: "archived" }), UIDS));
+    expectTrue("ז.8ב ו'active' מותר", Boolean(driverForUidRef(model({}), UIDS)));
+  }
+
+  // ======================================================================
+  // ז.9 — access.js ו-firestore.rules מדברים על אותה רשימה.
+  // ======================================================================
+  expectEq(
+    "ז.9 רשימת האוספים הקריאים לנהג היא בדיוק זו שנבדקה למעלה",
+    [...DRIVER_READABLE_COLLECTIONS].sort().join(","),
+    ["assignments", "driverPortal", "drivers", "fineScans", "fines", "odometerReadings"].sort().join(",")
+  );
+  for (const c of ["vehicles", "vehiclesPrivate", "finesPrivate", "incidentsPrivate", "leaseCompanies"]) {
+    expectTrue(`ז.9 ${c} אינו ברשימה הקריאה לנהג`, !DRIVER_READABLE_COLLECTIONS.includes(c));
+  }
+
+  // -- אנונימיזציה של המקטע, כדי שהבא אחריו יתחיל נקי --------------------
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    for (const c of ["drivers", "vehicles", "assignments", "fines", "fineScans", "odometerReadings", "driverPortal"]) {
+      const snap = await getDocs(collection(db, `orgs/${ORG}/${c}`));
+      for (const d of snap.docs) await deleteDoc(d.ref);
+    }
+  });
 }
 
 await testEnv.cleanup();

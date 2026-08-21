@@ -244,7 +244,25 @@ service cloud.firestore {
         && d.get('km', -1) > 0
         && d.get('km', -1) < 3000000
         && d.get('date', '') is string
-        && d.get('date', '').matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}
+        && d.get('date', '').matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.get('createdAt', '') == d.get('date', '')
+        && d.get('updatedAt', '') == d.get('date', '')
+        && d.get('photoRef', null) == null
+        && d.get('photoName', 'x') == ''
+        && d.get('photoStorageMode', '') == 'none'
+        && d.get('metadataStripped', true) == false
+        && d.get('notes', 'x') == ''
+        && d.get('retentionClass', '') == 'odometer'
+        && d.keys().hasOnly([
+             'id', 'orgId', 'createdAt', 'updatedAt', 'schemaVersion',
+             'vehicleId', 'driverId', 'driverUid', 'date', 'km', 'source',
+             'photoRef', 'photoName', 'photoStorageMode', 'metadataStripped',
+             'retentionClass', 'notes'
+           ]);
+    }
+
+    // ========================================================================
+    // adminListStaysValid — **ארגון בלי אף אדמין הוא ארגון אבוד.**
     //
     // אין ממנו דרך חזרה בלי גישת קונסולה ל-Firestore, וכאן מדובר בצי של 36
     // רכבים שאיש אינו יכול לנהל. מערך — בשונה ממפה — **כן** ניתן לספירה
@@ -311,7 +329,15 @@ service cloud.firestore {
           || (tokenEmailVerified()
               && tokenEmail() != ''
               && canonEmail(resource.data.get('email', '')) == canonEmail(tokenEmail())
-              && resource.data.get('userId', null) == null);
+              && resource.data.get('userId', null) == null
+              // ⚠️ **התנאי הזה נוסף אחרי שהאמולטור תפס את הפער.** בלעדיו,
+              // עובד שנותק ('revoked') המשיך לקרוא את רשומת הנהג שלו — שם,
+              // טלפון, מחלקה, מספר עובד, הערות ורשומת היידוע — כי `userId`
+              // חזר ל-null והמייל עדיין תואם. 3.3.1 בהכוונת עדי היא
+              // חד-משמעית: **בכל נתיב**. הקריאה לפי מייל מותרת רק על רשומה
+              // שבאמת ניתן לתבוע, כלומר בדיוק אותם תנאים כמו isSelfLinkClaim.
+              && resource.data.get('portalStatus', 'none') in ['none', 'invited']
+              && resource.data.get('status', 'active') != 'archived');
         allow create, delete: if isOrgAdmin(orgId);
         allow update: if isOrgAdmin(orgId) || isSelfLinkClaim();
       }
@@ -361,135 +387,6 @@ service cloud.firestore {
       // ⚠️ **אין כאן סעיף read לנהג — גם לא בפרוסה 2, וגם לא על הרכב שהוא
       // מחזיק עכשיו.** זו נקודת ה"חסום מוחלט" של האפיון, ומקטע (ז) של
       // scripts/rules-test.mjs בודק אותה פר-אוסף ולא כהצהרה.
-      match /vehiclesPrivate/{docId}   { allow read, write: if isOrgAdmin(orgId); }
-      match /finesPrivate/{docId}      { allow read, write: if isOrgAdmin(orgId); }
-      match /incidentsPrivate/{docId}  { allow read, write: if isOrgAdmin(orgId); }
-
-      // תת-מסמכי private תחת ישות (אם ייווצרו בעתיד) — אדמין בלבד, מפורשות.
-      match /vehicles/{docId}/private/{p}  { allow read, write: if isOrgAdmin(orgId); }
-      match /fines/{docId}/private/{p}     { allow read, write: if isOrgAdmin(orgId); }
-      match /incidents/{docId}/private/{p} { allow read, write: if isOrgAdmin(orgId); }
-      match /drivers/{docId}/private/{p}   { allow read, write: if isOrgAdmin(orgId); }
-
-      // כל תת-אוסף שלא נמנה במפורש — חסום.
-      match /{other=**} {
-        allow read, write: if false;
-      }
-    }
-
-    // ========================================================================
-    // memberships/{uid} — uid → { orgId, role }
-    //
-    // ⚠️ במודל ה-allowlist זה **מסמך תיעוד, לא מקור סמכות.** מזהה הארגון בא
-    // מדגל ה-build, והגישה מ-`org.adminEmails`; אף החלטת הרשאה אינה נשענת על
-    // הרשומה הזו. היא נשארת כי היא כבר נכתבת בפרודקשן ומתעדת מי נכנס לאיזה
-    // ארגון, ו-`ensureMembership` ממשיך לכתוב אותה.
-    //
-    // הכלל הקודם היה `request.resource.data.orgId == request.auth.uid`, כלומר
-    // אפשר היה להצהיר על חברות **רק בארגון של עצמך** — מה שגם חסם אדמין שני.
-    // ההכרעה החדשה: מותר לכתוב את הרשומה **רק אם אנחנו באמת אדמינים של אותו
-    // ארגון** (isOrgAdmin, שהוא כבר בדיקת ה-allowlist). כך אי אפשר להצהיר על
-    // ארגון של מישהו אחר, וגם אין צורך במיפוי מיוחד לאדמין השני.
-    // ========================================================================
-    match /memberships/{uid} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
-      allow create, update: if isSignedIn()
-        && request.auth.uid == uid
-        && request.resource.data.keys().hasAll(['orgId', 'role'])
-        && request.resource.data.orgId is string
-        && isOrgAdmin(request.resource.data.orgId);
-      allow delete: if isSignedIn() && request.auth.uid == uid;
-    }
-
-    // -- כל השאר: חסום מפורשות --------------------------------------------
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-)
-        && d.get('createdAt', '') == d.get('date', '')
-        && d.get('updatedAt', '') == d.get('date', '')
-        && d.get('photoRef', null) == null
-        && d.get('photoName', 'x') == ''
-        && d.get('photoStorageMode', '') == 'none'
-        && d.get('metadataStripped', true) == false
-        && d.get('notes', 'x') == ''
-        && d.get('retentionClass', '') == 'odometer'
-        && d.keys().hasOnly([
-             'id', 'orgId', 'createdAt', 'updatedAt', 'schemaVersion',
-             'vehicleId', 'driverId', 'driverUid', 'date', 'km', 'source',
-             'photoRef', 'photoName', 'photoStorageMode', 'metadataStripped',
-             'retentionClass', 'notes'
-           ]);
-    }
-
-    // ========================================================================
-    // adminListStaysValid — **ארגון בלי אף אדמין הוא ארגון אבוד.**
-    //
-    // אין ממנו דרך חזרה בלי גישת קונסולה ל-Firestore, וכאן מדובר בצי של 36
-    // רכבים שאיש אינו יכול לנהל. מערך — בשונה ממפה — **כן** ניתן לספירה
-    // ב-rules, ולכן זה נאכף כאן ולא רק ב-UI: הרשימה חייבת להישאר עם לפחות
-    // רשומה אחת, ולהיות מערך של מחרוזות.
-    //
-    // הסרת אדמין אחר, וגם הסרה עצמית כשיש עוד אדמין, מותרות — זו החלטה
-    // שהאדמין רשאי לקבל. מה שאסור הוא לרוקן את הרשימה.
-    // ========================================================================
-    // ⚠️ הכלל **חייב** להיות מותנה בכך שהכתיבה נוגעת ברשימה. אחרת, בזמן
-    // ההגירה — כשהמסמך בענן עדיין בלי `adminEmails` — כל שמירה רגילה של
-    // הגדרות הייתה נדחית על `size() >= 1`, והמשתמש היה מגלה שהאפליקציה
-    // הפסיקה לשמור. כתיבה שאינה נוגעת ברשימה אינה כפופה לתנאי.
-    function adminListUntouched() {
-      return !request.resource.data.org.diff(resource.data.org).affectedKeys().hasAny(['adminEmails']);
-    }
-
-    function adminListStaysValid() {
-      let list = request.resource.data.org.get('adminEmails', []);
-      return adminListUntouched()
-        || (list is list && list.size() >= 1 && list.size() <= 50);
-    }
-
-    // -- מסמך הארגון ---------------------------------------------------------
-    match /orgs/{orgId} {
-      // יצירה: רק המשתמש עצמו, ורק כשהוא רושם את עצמו כאדמין ו-orgId הוא ה-uid.
-      // ⚠️ orgId == uid נשאר גם עכשיו: אחרת כל אחד היה יכול "לתפוס" מזהה
-      // ארגון שהוגדר ב-build אצל מישהו אחר, לפני שהמסמך נוצר.
-      allow create: if isSignedIn()
-        && orgId == request.auth.uid
-        && (
-          request.resource.data.org.get('members', {}).get(request.auth.uid, '') == 'admin'
-          || emailIsAllowed(request.resource.data.org)
-        );
-
-      allow read: if isOrgAdmin(orgId);
-      allow update: if isOrgAdmin(orgId) && adminListStaysValid();
-      allow delete: if isOrgAdmin(orgId);
-
-      // -- תת-האוספים: פרוסה 1 = אדמין בלבד, על כל הישויות ------------------
-      // פרוסה 2 תוסיף כאן סעיפי read פרטניים לנהג, למשל:
-      //   allow read: if isDriverOfVehicle(orgId, resource.data.vehicleId);
-      // **לפי uid** (F1), לא לפי מייל. המבנה כבר תומך בזה.
-
-      match /vehicles/{docId}          { allow read, write: if isOrgAdmin(orgId); }
-      match /drivers/{docId}           { allow read, write: if isOrgAdmin(orgId); }
-      match /assignments/{docId}       { allow read, write: if isOrgAdmin(orgId); }
-      match /fines/{docId}             { allow read, write: if isOrgAdmin(orgId); }
-      match /odometerReadings/{docId}  { allow read, write: if isOrgAdmin(orgId); }
-      match /serviceRecords/{docId}    { allow read, write: if isOrgAdmin(orgId); }
-      match /documents/{docId}         { allow read, write: if isOrgAdmin(orgId); }
-      match /leaseCompanies/{docId}    { allow read, write: if isOrgAdmin(orgId); }
-      match /incidents/{docId}         { allow read, write: if isOrgAdmin(orgId); }
-
-      // -- D2: סריקות קנס — אוסף נפרד, מורשה לפי **הקנס** ולא לפי הרכב ------
-      // בפרוסה 2 ייפתח כאן read לנהג לפי `driverUid == request.auth.uid`
-      // (המפתח המדונרמל של D3) — ולא לפי הנהג הנוכחי של הרכב. זו בדיוק
-      // הדליפה שעדי תפסה: רכב עובר בין נהגים, סריקת קנס לא עוברת איתו.
-      match /fineScans/{docId}         { allow read, write: if isOrgAdmin(orgId); }
-
-      // -- D1: מסמכים אדמין-בלבד. **לעולם לא נפתחים לנהג** ------------------
-      // firestore.rules לא יודעים להסתיר שדה בודד, ולכן העלות החודשית,
-      // הערות האדמין על העובד והערכת האדמין לתקלה יושבות במסמכים נפרדים.
-      // אין כאן סעיף read לנהג — לא עכשיו ולא בפרוסה 2.
       match /vehiclesPrivate/{docId}   { allow read, write: if isOrgAdmin(orgId); }
       match /finesPrivate/{docId}      { allow read, write: if isOrgAdmin(orgId); }
       match /incidentsPrivate/{docId}  { allow read, write: if isOrgAdmin(orgId); }
