@@ -4,6 +4,7 @@ import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../uti
 import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { Select } from "./ui/Select";
+import { AddToCalendarButton } from "./AddToCalendarButton";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
@@ -128,6 +129,14 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
             />
           )}
           <Select value={day} onChange={setDay} options={DAYS.map((d) => ({ id: d, name: d }))} placeholder="כל הימים" className="max-w-xs" />
+          {/* The coach's own week, not the club's — whatever the filters above are
+              showing is what goes into their calendar. */}
+          <AddToCalendarButton
+            sessions={DAYS.flatMap((d) => myFor(d))}
+            data={data}
+            label={`אימונים — ${myName}`}
+            weekStart={weekStart}
+          />
         </div>
 
         {/* Player-facing weekly PDF report */}

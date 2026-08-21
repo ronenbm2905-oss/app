@@ -14,6 +14,7 @@ import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
+import { AddToCalendarButton } from "./AddToCalendarButton";
 import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
 import clubLogo from "../assets/club-logo.jpg";
 
@@ -309,6 +310,17 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 >
                   <IconDownload size={15} /> {shareBusy === "pdf" ? "מכין PDF…" : "שמירת PDF"}
                 </button>
+                {/* Every session on the board this week. The filters above narrow the
+                    board; this deliberately does not — a calendar with a coach filter
+                    silently applied is a calendar that is quietly wrong. */}
+                <AddToCalendarButton
+                  sessions={weekSessions}
+                  data={data}
+                  label={title}
+                  calendarName={`${title} · ${formatWeekRange(weekStart)}`}
+                  weekStart={weekStart}
+                  title="כל אימוני השבוע ליומן"
+                />
               </>
             )}
             {mode === "hall" && (
