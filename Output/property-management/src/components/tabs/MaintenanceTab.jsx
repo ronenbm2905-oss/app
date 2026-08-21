@@ -1,7 +1,9 @@
 import { useI18n } from "../../hooks/useI18n.jsx";
 import { Button, Pill } from "../ui/Button.jsx";
-import { IconPlus, IconEdit, IconDelete } from "../ui/icons.jsx";
-import { formatCurrency, formatDate } from "../../utils/format.js";
+import { IconPlus, IconEdit, IconDelete, IconWhatsapp } from "../ui/icons.jsx";
+import { formatCurrency, formatDate, whatsappLink } from "../../utils/format.js";
+import { addressLine } from "../../utils/display.js";
+import { ticketWaText } from "../../utils/waMessages.js";
 
 const STATUS_TONE = { open: "amber", inProgress: "blue", closed: "green" };
 
@@ -39,29 +41,58 @@ export function MaintenanceTab({ property, data, onNewTicket, onEditTicket, onDe
               </tr>
             </thead>
             <tbody>
-              {tickets.map((tk) => (
-                <tr key={tk.id} className="border-b border-border">
-                  <td className="px-2 py-2 text-ink-body">{formatDate(tk.openedDate, lang)}</td>
-                  <td className="px-2 py-2 text-ink-body">{t(`enum.ticketType.${tk.type}`)}</td>
-                  <td className="px-2 py-2 text-ink-body">{tk.handler?.name || "—"}</td>
-                  <td className="px-2 py-2 text-ink-body">{formatCurrency(tk.cost ?? tk.quote, c, lang)}</td>
-                  <td className="px-2 py-2">
-                    <Pill tone={STATUS_TONE[tk.status]}>{t(`enum.ticketStatus.${tk.status}`)}</Pill>
-                  </td>
-                  {canEdit && (
+              {tickets.map((tk) => {
+                // וואטסאפ לאיש התחזוקה — רק אם יש טלפון לגורם המטפל.
+                const waHref =
+                  tk.handler?.phone &&
+                  whatsappLink(
+                    tk.handler.phone,
+                    ticketWaText({
+                      hi: t("wa.hi"),
+                      handlerName: tk.handler?.name,
+                      subject: t("wa.ticketSubject"),
+                      address: addressLine(property),
+                      typeLabel: t(`enum.ticketType.${tk.type}`),
+                      description: tk.description,
+                      close: t("wa.ticketClose"),
+                    })
+                  );
+                return (
+                  <tr key={tk.id} className="border-b border-border">
+                    <td className="px-2 py-2 text-ink-body">{formatDate(tk.openedDate, lang)}</td>
+                    <td className="px-2 py-2 text-ink-body">{t(`enum.ticketType.${tk.type}`)}</td>
+                    <td className="px-2 py-2 text-ink-body">{tk.handler?.name || "—"}</td>
+                    <td className="px-2 py-2 text-ink-body">{formatCurrency(tk.cost ?? tk.quote, c, lang)}</td>
                     <td className="px-2 py-2">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => onEditTicket(tk.id)} aria-label={t("common.edit")} className="text-ink-faint hover:text-brand-600">
-                          <IconEdit size={16} />
-                        </button>
-                        <button onClick={() => onDelete(tk.id)} aria-label={t("common.delete")} className="text-ink-faint hover:text-red-600">
-                          <IconDelete size={16} />
-                        </button>
-                      </div>
+                      <Pill tone={STATUS_TONE[tk.status]}>{t(`enum.ticketStatus.${tk.status}`)}</Pill>
                     </td>
-                  )}
-                </tr>
-              ))}
+                    {canEdit && (
+                      <td className="px-2 py-2">
+                        <div className="flex justify-end gap-2">
+                          {waHref && (
+                            <a
+                              href={waHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              aria-label={t("wa.sendToHandler")}
+                              title={t("wa.sendToHandler")}
+                              className="text-green-600 hover:text-green-700"
+                            >
+                              <IconWhatsapp size={16} />
+                            </a>
+                          )}
+                          <button onClick={() => onEditTicket(tk.id)} aria-label={t("common.edit")} className="text-ink-faint hover:text-brand-600">
+                            <IconEdit size={16} />
+                          </button>
+                          <button onClick={() => onDelete(tk.id)} aria-label={t("common.delete")} className="text-ink-faint hover:text-red-600">
+                            <IconDelete size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

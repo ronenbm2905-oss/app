@@ -99,6 +99,20 @@
       "autoPort": true
     },
     {
+      "name": "coachtrack",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5188",
+        "--strictPort"
+      ],
+      "cwd": "Output/coachtrack",
+      "port": 5188
+    },
+    {
       "name": "run2dream",
       "runtimeExecutable": "npx",
       "runtimeArgs": [

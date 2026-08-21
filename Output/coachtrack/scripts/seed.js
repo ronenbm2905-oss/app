@@ -22,6 +22,7 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -44,11 +45,23 @@ const ORG = {
   weekStartDay: 0, // 0 = ראשון
 };
 
+// ⚠️ אין סיסמאות קשיחות בקובץ הזה. הריפו פאבליק.
+// ב-19–21.8.2026 היו כאן סיסמאות כתובות, והן נדחפו לגיטהאב. הן הוחלפו ב-21.8.
+// הסיסמה מוגרלת בכל הרצה ומודפסת פעם אחת בסוף. אם צריך ערך מסוים — להעביר
+// במשתנה סביבה (`COACH_PASSWORD=... node scripts/seed.js`), לא לכתוב כאן.
+function initialPassword(envVar) {
+  if (process.env[envVar]) return process.env[envVar];
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  let out = '';
+  for (const byte of crypto.randomBytes(12)) out += alphabet[byte % alphabet.length];
+  return `${out}!`;
+}
+
 // המאמן בפיילוט — לא רונן. רונן הוא ה-admin למטה.
 const COACH = {
   email: 'emanuel@coachtrack.local', // Firebase Auth דורש פורמט אימייל
   username: 'emanuel',
-  password: 'CoachTrack26!',
+  password: initialPassword('COACH_PASSWORD'),
   displayName: 'עמנואל ורדי',
 };
 
@@ -57,7 +70,7 @@ const COACH = {
 const ADMIN = {
   email: 'ronen@coachtrack.local',
   username: 'ronen',
-  password: 'CoachTrack26!',
+  password: initialPassword('ADMIN_PASSWORD'),
   displayName: 'רונן בן מאיר',
 };
 

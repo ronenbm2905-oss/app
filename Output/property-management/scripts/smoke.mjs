@@ -17,6 +17,7 @@ import { mockExtract, extractDocument, EXTRACTION_SCHEMA, AI_DOC_TYPES } from ".
 import { computeReminders, activeReminders, DEFAULT_LEAD_DAYS } from "../src/utils/reminders.js";
 import { removeTenantCascade } from "../src/utils/retention.js";
 import { AI_SCANNABLE_TYPES } from "../src/constants.js";
+import { ticketWaText } from "../src/utils/waMessages.js";
 
 let pass = 0;
 function ok(name, cond) {
@@ -328,6 +329,29 @@ ok("B-RET: other tenant's doc kept", afterDel.documents.some((x) => x.id === "d3
 ok("B-RET: tenant's reported ticket removed", !afterDel.tickets.some((x) => x.reportedByTenantId === "t1"));
 ok("B-RET: tenant's debt removed", !afterDel.debts.some((x) => x.tenantId === "t1"));
 ok("B-RET: other tenant's debt kept", afterDel.debts.some((x) => x.id === "db2"));
+
+// --- WhatsApp יוצא (תחזוקה/דייר, בלי התחברות) ---
+ok("WA link normalizes IL local phone", whatsappLink("050-123-4567") === "https://wa.me/972501234567");
+ok("WA link null when no phone", whatsappLink("") === null && whatsappLink(null) === null);
+ok("WA link without text has no query", whatsappLink("0501234567") === "https://wa.me/972501234567");
+const waWithText = whatsappLink("0501234567", "שלום עולם");
+ok(
+  "WA link with text appends encoded ?text=",
+  waWithText.startsWith("https://wa.me/972501234567?text=") && waWithText.includes(encodeURIComponent("שלום עולם"))
+);
+const waMsg = ticketWaText({
+  hi: "שלום", handlerName: "יוסי", subject: "יש תקלה בנכס",
+  address: "הרצל 1, תל אביב", typeLabel: "אינסטלציה", description: "נזילה במטבח", close: "תודה!",
+});
+ok("ticketWaText includes handler greeting", waMsg.includes("שלום יוסי,"));
+ok("ticketWaText includes address + type", waMsg.includes("הרצל 1, תל אביב") && waMsg.includes("אינסטלציה"));
+ok("ticketWaText includes description", waMsg.includes("נזילה במטבח"));
+const waMsgNoName = ticketWaText({
+  hi: "שלום", handlerName: "", subject: "יש תקלה בנכס",
+  address: "הרצל 1", typeLabel: "חשמל", description: "", close: "תודה!",
+});
+ok("ticketWaText handles empty name", waMsgNoName.startsWith("שלום,"));
+ok("ticketWaText drops empty description line", !waMsgNoName.includes("\n\n"));
 
 console.log(`\nALL ${pass} CHECKS PASSED`);
 

@@ -65,12 +65,14 @@ export function daysUntil(iso) {
   return Math.round((d - today) / (1000 * 60 * 60 * 24));
 }
 
-// קישור וואטסאפ מטלפון (מסיר תווים לא-ספרתיים; מוסיף קידומת ישראל אם מקומי)
-export function whatsappLink(phone) {
+// קישור וואטסאפ מטלפון (מסיר תווים לא-ספרתיים; מוסיף קידומת ישראל אם מקומי).
+// text אופציונלי → הודעה מוכנה מראש שנפתחת בוואטסאפ (הבעלים יכול לערוך לפני שליחה).
+export function whatsappLink(phone, text) {
   if (!phone) return null;
   let digits = String(phone).replace(/\D/g, "");
   if (digits.startsWith("0")) digits = "972" + digits.slice(1);
-  return `https://wa.me/${digits}`;
+  const base = `https://wa.me/${digits}`;
+  return text ? `${base}?text=${encodeURIComponent(text)}` : base;
 }
 
 export function telLink(phone) {

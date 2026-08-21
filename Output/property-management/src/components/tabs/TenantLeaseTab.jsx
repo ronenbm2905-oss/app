@@ -8,7 +8,8 @@ import { enumOptions } from "../../utils/options.js";
 import { LEASE_STATUSES, DEPOSIT_TYPES } from "../../constants.js";
 import { createTenant, createLease } from "../../schema.js";
 import { formatCurrency, formatDate, whatsappLink, telLink } from "../../utils/format.js";
-import { activeLeaseFor, tenantById } from "../../utils/display.js";
+import { activeLeaseFor, tenantById, addressLine } from "../../utils/display.js";
+import { simpleWaText } from "../../utils/waMessages.js";
 
 // טאב דייר וחוזה. בפרוסה 1: דייר יחיד + חוזה יחיד לנכס (המודל תומך ביותר).
 export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLease, onDeleteTenant, canEdit }) {
@@ -19,6 +20,25 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
   const lease = activeLeaseFor(property.id, data.leases) || data.leases.find((l) => l.propertyId === property.id);
   const tenant = lease ? tenantById(lease.tenantId, data.tenants) : null;
   const c = property.currency;
+
+  // יתרת תשלום פתוחה של הדייר (חובות לא-פתורים) — לתזכורת תשלום בוואטסאפ.
+  const openBalance = tenant
+    ? (data.debts || [])
+        .filter((db) => db.tenantId === tenant.id && !db.resolved)
+        .reduce((s, db) => s + (Number(db.amount) || 0), 0)
+    : 0;
+  const payHref =
+    tenant && tenant.phone && openBalance > 0
+      ? whatsappLink(
+          tenant.phone,
+          simpleWaText({
+            hi: t("wa.hi"),
+            name: tenant.fullName,
+            body: `${t("wa.debtIntro")} ${formatCurrency(openBalance, c, lang)} ${t("wa.debtFor")} ${addressLine(property)}.`,
+            close: t("wa.thanks"),
+          })
+        )
+      : null;
 
   return (
     <div className="space-y-5">
@@ -47,6 +67,7 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
           )}
         </div>
         {tenant ? (
+          <>
           <dl className="grid grid-cols-1 gap-y-2 sm:grid-cols-2">
             <Row label={t("tenant.fullName")} value={tenant.fullName} />
             <Row label={t("tenant.nationalId")} value={tenant.nationalId} />
@@ -56,7 +77,7 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
                 tenant.phone ? (
                   <span className="flex items-center gap-2">
                     {tenant.phone}
-                    <a href={whatsappLink(tenant.phone)} target="_blank" rel="noreferrer" className="text-green-600" aria-label={t("tenant.whatsapp")}>
+                    <a href={whatsappLink(tenant.phone, `${t("wa.hi")} ${tenant.fullName}`)} target="_blank" rel="noreferrer" className="text-green-600" aria-label={t("wa.msgTenant")} title={t("wa.msgTenant")}>
                       <IconWhatsapp size={16} />
                     </a>
                     <a href={telLink(tenant.phone)} className="text-brand-600" aria-label={t("tenant.call")}>
@@ -70,6 +91,24 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
             <Row label={t("tenant.moveIn")} value={tenant.moveInDate ? formatDate(tenant.moveInDate, lang) : "—"} />
             {tenant.hasManager && <Row label={t("tenant.manager")} value={tenant.manager.name} />}
           </dl>
+          {openBalance > 0 && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-sm bg-warning-fill px-3 py-2">
+              <span className="text-sm text-warning-text">
+                {t("wa.openBalance")}: <span className="font-semibold">{formatCurrency(openBalance, c, lang)}</span>
+              </span>
+              {payHref && (
+                <a
+                  href={payHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-green-600 hover:text-green-700"
+                >
+                  <IconWhatsapp size={16} /> {t("wa.paymentReminder")}
+                </a>
+              )}
+            </div>
+          )}
+          </>
         ) : (
           <p className="text-sm text-ink-muted">{t("tenant.none")}</p>
         )}
