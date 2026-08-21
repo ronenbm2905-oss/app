@@ -1,0 +1,19 @@
+{
+  /*
+   * פרויקט הטסטים.
+   *
+   * מופרד מ-tsconfig.app.json בגלל טיפוסי Node: שני טסטים קוראים קבצים אמיתיים
+   * מהדיסק — את data/exercise-catalog.json (כדי לבדוק מול 30 התרגילים שבמסד)
+   * ואת קיומו של scripts/reset-password.js (הפקודה שהמסך מציג למאמן).
+   *
+   * הוספת "node" ל-tsconfig.app.json הייתה מתירה לקוד האפליקציה עצמו להשתמש
+   * ב-API של Node — קוד שירוץ בדפדפן. עדיף פרויקט נפרד.
+   */
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "types": ["vite/client", "node"],
+    "resolveJsonModule": true
+  },
+  "include": ["src"]
+}

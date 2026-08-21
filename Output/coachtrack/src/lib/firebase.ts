@@ -55,6 +55,17 @@ function readConfig(): FirebaseOptions {
   };
 }
 
+/**
+ * הקונפיג עצמו, לשימוש חוזר.
+ *
+ * ה-**אינסטנס המשני** ב-`lib/adminClient.ts` צריך בדיוק את אותו אובייקט
+ * (`initializeApp(config, 'admin')`), ולכן הוא נחשף כפונקציה ולא כקבוע:
+ * כך הבדיקה של משתני הסביבה נשארת עצלה ורצה רק כשבאמת יוצרים אפליקציה.
+ */
+export function getFirebaseConfig(): FirebaseOptions {
+  return readConfig();
+}
+
 /** אינסטנס Firebase הראשי. (אינסטנס משני ליצירת משתמשים — שלב 2, `lib/adminClient.ts`.) */
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(readConfig());
 

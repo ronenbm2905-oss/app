@@ -1,14 +1,20 @@
 /**
- * מסגרת המסכים המחוברים: כותרת עליונה עם זהות המשתמש וכפתור התנתקות, ותוכן מתחתיה.
+ * מסגרת המסכים המחוברים: כותרת עליונה עם זהות המשתמש וכפתור התנתקות,
+ * תפריט ניווט לתפקיד שיש לו יותר ממסך אחד, ותוכן מתחתיהם.
  *
  * הכותרת מציגה את התפקיד כטקסט. זו לא הרשאה — ההרשאה נאכפת ב-`firestore.rules` —
  * אלא אמצעי כדי שרונן יראה בעין שהתפקיד נקרא נכון ממסמך `users/{uid}`.
+ *
+ * התפריט נבנה מ-`navItemsForRole` ולא מרשימה מקומית, כדי שלא ייווצר מצב שבו
+ * מופיע בו קישור לנתיב שלא רשום ב-`App.tsx`.
  */
 
 import type { ReactNode } from 'react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { t } from '../i18n/he';
 import type { TranslationKey } from '../i18n/he';
+import { navItemsForRole } from '../lib/routing';
 import { Button } from './ui/Button';
 
 interface AppShellProps {
@@ -19,6 +25,7 @@ interface AppShellProps {
 export function AppShell({ title, children }: AppShellProps) {
   const { profile, signOut } = useAuth();
   const roleKey = profile ? (`roles.${profile.role}` as TranslationKey) : null;
+  const navItems = profile ? navItemsForRole(profile.role) : [];
 
   return (
     <div className="min-h-screen">
@@ -35,6 +42,32 @@ export function AppShell({ title, children }: AppShellProps) {
             {t('common.signOut')}
           </Button>
         </div>
+
+        {/* תפריט רק כשיש לאן לנווט. גלילה אופקית כדי שלא יישבר ב-375px. */}
+        {navItems.length > 1 ? (
+          <nav className="mx-auto max-w-3xl overflow-x-auto px-2 pb-2">
+            <ul className="flex gap-1">
+              {navItems.map((item) => (
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    end
+                    className={({ isActive }) =>
+                      [
+                        'block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                      ].join(' ')
+                    }
+                  >
+                    {t(item.labelKey)}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : null}
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6">

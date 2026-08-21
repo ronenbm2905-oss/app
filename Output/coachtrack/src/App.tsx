@@ -23,17 +23,25 @@ import { ChangePasswordPage } from './features/auth/ChangePasswordPage';
 import { SignInPage } from './features/auth/SignInPage';
 import { AdminHomePage } from './features/admin/AdminHomePage';
 import { CoachDashboardPage } from './features/coach/CoachDashboardPage';
+import { TeamPage } from './features/coach/TeamPage';
+import { ExerciseLibraryPage } from './features/coach/ExerciseLibraryPage';
 import { MyWeekPage } from './features/player/MyWeekPage';
 import { useAuth } from './hooks/useAuth';
-import { ROUTES, landingPathForRole } from './lib/routing';
+import { ROUTES, landingPathForRole, navItemsForRole } from './lib/routing';
+import type { RoutePath } from './lib/routing';
 import { t } from './i18n/he';
-import type { Role } from './types/types';
 
-/** מסך הבית של כל תפקיד. המפתחות זהים ל-`landingPathForRole`. */
-const HOME_SCREENS: Record<Role, ComponentType> = {
-  coach: CoachDashboardPage,
-  player: MyWeekPage,
-  admin: AdminHomePage,
+/**
+ * הקומפוננטה של כל נתיב. המפתחות הם `ROUTES`, ורשימת הנתיבים לכל תפקיד מגיעה
+ * מ-`navItemsForRole` — כך שהוספת מסך היא שינוי במקום אחד (`lib/routing.ts`)
+ * ולא בשלושה.
+ */
+const SCREEN_BY_PATH: Partial<Record<RoutePath, ComponentType>> = {
+  [ROUTES.coach]: CoachDashboardPage,
+  [ROUTES.coachTeam]: TeamPage,
+  [ROUTES.coachExercises]: ExerciseLibraryPage,
+  [ROUTES.player]: MyWeekPage,
+  [ROUTES.admin]: AdminHomePage,
 };
 
 function App() {
@@ -94,11 +102,15 @@ function App() {
   }
 
   const home = landingPathForRole(profile.role);
-  const HomeScreen = HOME_SCREENS[profile.role];
 
+  // רק המסכים של התפקיד נרשמים. נתיב של תפקיד אחר אינו "נחסם" — הוא פשוט לא
+  // קיים בעץ, ולכן נופל ל-catch-all וחוזר הביתה. האכיפה היא ב-firestore.rules.
   return (
     <Routes>
-      <Route path={home} element={<HomeScreen />} />
+      {navItemsForRole(profile.role).map(({ path }) => {
+        const Screen = SCREEN_BY_PATH[path];
+        return Screen ? <Route key={path} path={path} element={<Screen />} /> : null;
+      })}
       <Route path="*" element={<Navigate to={home} replace />} />
     </Routes>
   );

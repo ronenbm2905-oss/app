@@ -85,6 +85,9 @@ export function authErrorKey(error: unknown): TranslationKey {
     case 'auth/user-not-found':
     case 'auth/invalid-email':
       return 'auth.errors.invalidCredentials';
+    case 'auth/email-already-in-use':
+      // שם משתמש תפוס — גם בארגון אחר, שהמאמן לא רשאי לראות ולכן לא יכול לבדוק מראש.
+      return 'auth.errors.usernameTaken';
     case 'auth/user-disabled':
       return 'auth.errors.userDisabled';
     case 'auth/too-many-requests':

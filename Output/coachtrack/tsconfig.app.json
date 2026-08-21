@@ -22,5 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /* הטסטים נבנים בפרויקט משלהם — ראה tsconfig.test.json */
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/testing"]
 }

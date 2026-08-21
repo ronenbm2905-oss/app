@@ -19,7 +19,8 @@ import { AuthContext } from './features/auth/authContext';
 import type { AuthContextValue, AuthStatus } from './features/auth/authContext';
 import { he, t } from './i18n/he';
 import { PASSWORD_MIN_LENGTH } from './lib/auth';
-import { landingPathForRole } from './lib/routing';
+import { ROUTES, landingPathForRole } from './lib/routing';
+import { dictionaryStrings, unknownHebrewText } from './testing/hebrewText';
 import type { Role, UserDoc } from './types/types';
 
 const fakeUser = { uid: 'uid_1' } as FirebaseUser;
@@ -132,6 +133,34 @@ describe('ניתוב לפי תפקיד — קריטריון הסיום של של
   });
 });
 
+describe('מסכי המאמן של שלב 2', () => {
+  it('כל נתיב בתפריט המאמן מגיע למסך שלו', () => {
+    const profile = fakeProfile('coach');
+    expect(render('ready', profile, ROUTES.coachTeam)).toContain(he.coach.team.title);
+    expect(render('ready', profile, ROUTES.coachExercises)).toContain(he.coach.exercises.title);
+  });
+
+  it('התפריט מוצג למאמן', () => {
+    const html = render('ready', fakeProfile('coach'), ROUTES.coach);
+    expect(html).toContain(he.coach.nav.team);
+    expect(html).toContain(he.coach.nav.exercises);
+  });
+
+  it('לשחקן אין תפריט — יש לו מסך אחד', () => {
+    const html = render('ready', fakeProfile('player'), ROUTES.player);
+    expect(html).not.toContain('<nav');
+    expect(html).not.toContain(he.coach.nav.team);
+  });
+
+  it('שחקן שמנסה נתיב של מאמן לא מקבל את המסך', () => {
+    // הנתיב פשוט לא רשום בעץ שלו, ולכן הוא נופל ל-catch-all שמנווט הביתה.
+    // הניווט עצמו לא מתרחש ברינדור סטטי (אין דפדפן), ולכן נבדק מה שכן ודאי:
+    // מסך המאמן אינו מוצג. זו ממילא נוחות — החסימה היא ב-firestore.rules.
+    const html = render('ready', fakeProfile('player'), ROUTES.coachTeam);
+    expect(html).not.toContain(he.coach.team.title);
+    expect(html).not.toContain(he.coach.team.add.toggle);
+  });
+});
 describe('החלפת סיסמה כפויה', () => {
   it('גוברת על מסך התפקיד', () => {
     const profile = fakeProfile('coach', { mustChangePassword: true });
@@ -173,16 +202,11 @@ describe('מצבים חוסמים', () => {
 
 describe('אין עברית שנשארה בקוד במקום במילון', () => {
   it('כל טקסט שמוצג במסכים של שלב 1 מגיע מ-i18n/he.ts', () => {
-    // אוסף את כל המחרוזות במילון, ובודק שכל רצף עברי ב-HTML מופיע באחת מהן.
-    const dictionaryStrings: string[] = [];
-    const collect = (node: unknown) => {
-      if (typeof node === 'string') dictionaryStrings.push(node);
-      else if (node && typeof node === 'object') Object.values(node).forEach(collect);
-    };
-    collect(he);
-    dictionaryStrings.push('בודק ב.'); // displayName מגיע מהמסד, לא מהמילון
-    dictionaryStrings.push(t('auth.session.signedInAs', { name: 'בודק ב.' }));
-    dictionaryStrings.push(t('auth.changePassword.hint', { min: PASSWORD_MIN_LENGTH }));
+    const known = dictionaryStrings([
+      'בודק ב.', // displayName מגיע מהמסד, לא מהמילון
+      t('auth.session.signedInAs', { name: 'בודק ב.' }),
+      t('auth.changePassword.hint', { min: PASSWORD_MIN_LENGTH }),
+    ]);
 
     const screens = [
       render('signedOut', null, '/login'),
@@ -192,26 +216,8 @@ describe('אין עברית שנשארה בקוד במקום במילון', () =
       render('noProfile', null),
     ];
 
-    const decode = (value: string) =>
-      value
-        .replace(/&quot;/g, '"')
-        .replace(/&#x27;/g, "'")
-        .replace(/&amp;/g, '&');
-
-    // מפריד שלא יופיע בטקסט אמיתי
-    const SEPARATOR = String.fromCharCode(0);
-
-    const containsHebrew = /[֐-׿]/;
-
     for (const html of screens) {
-      // כל תג הופך למפריד, כדי שכל צומת טקסט ייבדק בנפרד ולא ידבק לשכנו
-      const textNodes = html.replace(/<[^>]*>/g, SEPARATOR).split(SEPARATOR);
-      for (const node of textNodes) {
-        const text = decode(node).trim();
-        if (!text || !containsHebrew.test(text)) continue;
-        const known = dictionaryStrings.some((value) => value.includes(text));
-        expect(known, `טקסט עברי שלא נמצא במילון: "${text}"`).toBe(true);
-      }
+      expect(unknownHebrewText(html, known)).toEqual([]);
     }
   });
 });
