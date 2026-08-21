@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { isFirebaseConfigured, db } from "../firebase.js";
 import { EMPTY } from "../constants.js";
 import { startOrgSync, writeOrgDiff } from "../utils/firestoreSync.js";
+import { buildDriverPortal, normalizeDriverEmails } from "../utils/portal.js";
+import { todayIso } from "../utils/dates.js";
 
 const LOCAL_KEY = "fleet_data";
 
@@ -194,14 +196,33 @@ export function useData(user, orgId = null) {
     [user?.uid, activeOrgId]
   );
 
+  // ==========================================================================
+  // withDerived — הנגזרות שנכתבות **בכל** שמירה, ולא בכל מקום בנפרד.
+  //
+  //   1. `drivers[].email` מנורמל. השאילתה שהפורטל שולח היא התאמה מדויקת,
+  //      ורשומה שנשמרה "Hilda@…" פשוט לא תימצא — והעובד יראה "אין הרשאה"
+  //      בלי שאף אחד יבין למה.
+  //   2. `driverPortal` — ההיטל לכל נהג (utils/portal.js).
+  //
+  // למה כאן ולא ב-useActions: **כל** מסלול כתיבה עובר דרך `update` — טפסים,
+  // ייבוא, מסך הבדיקה, ארכוב, אנונימיזציה. נגזרת שמתוחזקת בכמה מקומות היא
+  // נגזרת שתישכח באחד מהם, וברגע שהיא נשכחת הנהג רואה רכב שכבר אינו שלו.
+  // `writeOrgDiff` כותב רק מסמכים שהשתנו, ולכן העלות היא אפס כשאין הפרש.
+  // ==========================================================================
+  const withDerived = useCallback((next) => {
+    const drivers = normalizeDriverEmails(next.drivers);
+    const base = drivers === next.drivers ? next : { ...next, drivers };
+    return { ...base, driverPortal: buildDriverPortal(base, todayIso()) };
+  }, []);
+
   // update(mutator) — מקבל טיוטה של המצב הנוכחי, משנה אותה, ושומר.
   const update = useCallback(
     (mutator) => {
       const draft = deepClone(dataRef.current);
       const result = mutator(draft);
-      return persist(result || draft);
+      return persist(withDerived(result || draft));
     },
-    [persist]
+    [persist, withDerived]
   );
 
   const resetLocal = useCallback(() => {

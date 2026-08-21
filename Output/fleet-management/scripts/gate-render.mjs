@@ -396,15 +396,16 @@ for (const lang of ["he", "en"]) {
   const t = (k, v) => translate(lang, k, v);
   const form = R.renderOdometerForm(data, vehicle, lang);
   ok(`${lang}: הצהרת המטרה הקיימת נשארה כלשונה`, has(form, t("odo.purposeNote")));
-  ok(`${lang}: והקישור לגרסת ההודעה נוסף מתחתיה`,
-    has(form, t("odo.purposeLink", { version: "0.1-draft" })));
+  ok(`${lang}: והשורה השנייה נוספה מתחתיה`, has(form, t("odo.purposeLink")));
 
-  // הגרסה נלקחת מה-settings ולכן מתעדכנת מעצמה — לא מחרוזת קשיחה.
+  // ⚠️ **הבדיקה התהפכה ב-21.8.** קודם היא אכפה שהגרסה מ-settings מוזרקת
+  // לטקסט. עדי חזרה בה (17.8, ס' 2.4.3): המסמך שאליו הטקסט הפנה אינו קיים
+  // בשם הזה אחרי הכרעת G1, ו"גרסה 0.1-draft" מול העובד היא אות שקיפות כוזב.
+  // עכשיו נבדק ההפך — **שהמספר לא מופיע**, בשום גרסת settings.
   const v2 = { ...data, settings: { ...data.settings, policyVersion: "1.0" } };
   const form2 = R.renderOdometerForm(v2, vehicle, lang);
-  ok(`${lang}: בעליית גרסה הטקסט מתעדכן מעצמו`,
-    has(form2, t("odo.purposeLink", { version: "1.0" })) &&
-    !has(form2, t("odo.purposeLink", { version: "0.1-draft" })));
+  ok(`${lang}: והוא זהה בכל גרסת settings — הטקסט כבר לא נשען עליה`,
+    has(form2, t("odo.purposeLink")) && !form2.includes("0.1-draft"));
 }
 
 // ============================================================================

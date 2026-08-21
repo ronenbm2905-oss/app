@@ -8,6 +8,7 @@ import {
 } from "../utils/cascade.js";
 import { archiveDriver, anonymizeDriver, collectVehicleStoragePaths } from "../utils/retention.js";
 import { closeOpenAssignments } from "../utils/assignments.js";
+import { unlinkFields, inviteFields } from "../utils/driverLink.js";
 import { buildReviewWrite } from "../utils/reviewBuild.js";
 import { buildImportAck } from "../utils/importBuild.js";
 import { applyDerivedDriver, fineStatusChange, noticeGateError } from "../utils/fines.js";
@@ -172,6 +173,35 @@ export function useActions(update, orgId, actor) {
         update((d) => {
           d.assignments = (d.assignments || []).map((a) =>
             a.id === assignmentId ? { ...a, toDate, updatedAt: nowIso() } : a
+          );
+        }),
+
+      // ====================================================================
+      // unlinkDriverPortal — **הכפתור שמחליף את כיבוי החשבון.**
+      //
+      // 3.3 בהכוונת עדי (17.8): לחברה אין חשבונות Google ארגוניים, ולכן אי
+      // אפשר לכבות את החשבון של עובד שעזב — הוא שלו, אצל Google, עם סשן
+      // תקף. **הדבר היחיד שבשליטתנו הוא לחסום אותו אצלנו**, וזה קורה כאן:
+      // `userId` מתאפס ו-`portalStatus` נצרב 'revoked', ומאותו רגע
+      // `isMyDriverId` ב-firestore.rules נכשל בכל נתיב.
+      //
+      // 'revoked' ולא 'none': רשומה ב-'none' **ניתנת לתביעה מחדש** ע"י בעל
+      // אותה כתובת. עובד שעזב היה מקשר את עצמו בחזרה בלחיצה אחת.
+      //
+      // ⚠️ זה גם כלי ההגירה ל-Microsoft: מעבר ספק = uid חדש לכל אחד, כלומר
+      // ניתוק + הזמנה מחדש. לכן שתי הפעולות קיימות כזוג.
+      // ====================================================================
+      unlinkDriverPortal: (driverId) =>
+        update((d) => {
+          d.drivers = (d.drivers || []).map((x) =>
+            x.id === driverId ? { ...x, ...unlinkFields(nowIso()) } : x
+          );
+        }),
+
+      inviteDriverPortal: (driverId) =>
+        update((d) => {
+          d.drivers = (d.drivers || []).map((x) =>
+            x.id === driverId ? { ...x, ...inviteFields(nowIso()) } : x
           );
         }),
 

@@ -271,14 +271,15 @@ export function ReadingForm({ vehicle, data, orgId, onClose, onSave }) {
           />
         </div>
         {/* שקיפות בנקודת האיסוף (עדי 6.3) — הצהרה שהנתון אינו כלי מעקב.
-            השורה השנייה (עדי 16.8, ס' 3) מצביעה לגרסת ההודעה מתוך
-            `settings.policyVersion`, ולכן היא מתעדכנת מעצמה בעליית גרסה
-            ולא הופכת לשקר שקט. הטקסט הראשון נשאר כלשונו — עדי אימתה אותו. */}
-        <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-600 sm:col-span-2">
+            ⚠️ A8 (עדי 17.8): הגודל עלה מ-`text-[11px] text-slate-600` לגודל
+            גוף רגיל. "הצהרת השקיפות המשפטית היא הטקסט הקטן ביותר ובעל
+            הניגודיות הנמוכה ביותר במסך" — גילוי שקשה לקרוא הוא גילוי חלש.
+            ⚠️ 2.4.3: השורה השנייה כבר **אינה** מצביעה ל"הודעה לעובד, גרסה
+            {version}" — אין מסמך בשם הזה אחרי הכרעת G1, והפניה לגרסה של מסמך
+            שאיש אינו יכול להשיג היא אות שקיפות כוזב. */}
+        <div className="rounded border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-800 sm:col-span-2">
           <p>{t("odo.purposeNote")}</p>
-          <p className="mt-1">
-            {t("odo.purposeLink", { version: data.settings?.policyVersion || "—" })}
-          </p>
+          <p className="mt-1">{t("odo.purposeLink")}</p>
         </div>
       </div>
     </Modal>

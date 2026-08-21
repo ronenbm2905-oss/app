@@ -1912,17 +1912,33 @@ ok("(ג) חיווי, לא חסימה — שניהם עוברים את השער",
 ok("(ג) נהג בלי רישום כלל אינו 'תיעוד חלש' אלא חסר",
   !isWeakNoticeEvidence(createDriver({ orgId: ORG })));
 
-// -- (ד) odo.purposeLink — מפתח **נוסף**, הקיים לא נגע ---------------------
+// -- (ד) odo.purposeLink ---------------------------------------------------
+// ⚠️ **הבדיקה הזו שונתה ב-21.8, ביודעין.** עד כה היא אכפה שהמחרוזת מכילה
+// {version}. עדי חזרה בה (2026-08-17, ס' 2.4.3): אחרי הכרעת G1 **אין מסמך
+// בשם "הודעה לעובד"** — יש נוהל רכב שהעובד חתם עליו — ולכן הפניה לגרסה של
+// מסמך שאיש אינו יכול להשיג היא "אות שקיפות כוזב": נראית כמו גילוי נאות
+// ואינה כזה. הבדיקה החדשה אוכפת את ההפך: **אין {version}, ואין "0.1-draft"
+// מול העובד.** בדיקה שנועלת נוסח שנפסל אינה בדיקה — היא הנצחה.
 for (const lang of LANGS) {
   ok(`(ד) odo.purposeLink קיים (${lang})`, Boolean(dict[lang]["odo.purposeLink"]));
-  ok(`(ד) והוא מצביע לגרסה דינמית (${lang})`, dict[lang]["odo.purposeLink"].includes("{version}"));
+  ok(
+    `(ד) והוא **אינו** מפנה עוד לגרסת "הודעה לעובד" (${lang})`,
+    !dict[lang]["odo.purposeLink"].includes("{version}")
+  );
   ok(`(ד) odo.purposeNote נשאר קיים (${lang})`, Boolean(dict[lang]["odo.purposeNote"]));
+  // 2.4(1)+(2) — שני המשפטים שנוספו לנקודת האיסוף מול העובד.
+  ok(`(ד) odo.whoSees קיים (${lang})`, Boolean(dict[lang]["odo.whoSees"]));
+  ok(`(ד) odo.correction קיים (${lang})`, Boolean(dict[lang]["odo.correction"]));
+}
+// ואף מחרוזת ממשק אינה מציגה את מספר גרסת הטיוטה לעובד.
+for (const lang of LANGS) {
+  const leaked = Object.entries(dict[lang]).filter(([, v]) => String(v).includes("0.1-draft"));
+  eq(`(ד) אין "0.1-draft" קשיח במילון (${lang})`, leaked.length, 0);
 }
 // עדי אימתה את הנוסח הקיים ופסקה שאין לשנותו — הבדיקה נועלת אותו מילה במילה.
 eq("(ד) הנוסח העברי הקיים לא שונה", dict.he["odo.purposeNote"],
   "הקריאה משמשת למעקב מכסת הק\"מ מול חברת הליסינג ולתזמון טיפולים בלבד. המערכת אינה אוספת מיקום ואינה עוקבת אחר נסיעות, והמידע אינו משמש לפיקוח על שעות עבודה או להערכת ביצועים.");
-eq("(ד) הגרסה מוזרקת לטקסט",
-  translate("he", "odo.purposeLink", { version: "0.1-draft" }).includes("0.1-draft"), true);
+// הצהרת המטרה עצמה נשארת נעולה מילה במילה — עדי אימתה אותה שוב ב-17.8.
 
 // -- i18n parity לכל המפתחות שהשער הזה הוסיף ------------------------------
 const g1Keys = [
@@ -1963,7 +1979,9 @@ ok("(ג) כרטיס הנהג מציג את חיווי התיעוד החלש", dr
 ok("(ב) והתאריך המוצג הוא תאריך המסירה", driverPageSrc.includes("noticeDeliveredAt"));
 const odoSrc = readFileSync(join(SRC, "components", "tabs", "OdometerTab.jsx"), "utf8");
 ok("(ד) הקישור מוצג בנקודת האיסוף", odoSrc.includes("odo.purposeLink"));
-ok("(ד) עם הגרסה מתוך settings", odoSrc.includes("data.settings?.policyVersion"));
+// ⚠️ התהפך ב-21.8 (עדי 17.8, ס' 2.4.3): הטקסט **לא** מצביע עוד לגרסת
+// "הודעה לעובד" — אין מסמך כזה, והמספר מול העובד הוא אות שקיפות כוזב.
+ok("(ד) והוא כבר לא מזריק מספר גרסה", !odoSrc.includes('odo.purposeLink", { version'));
 
 // -- מה שאסור שיחזור: POLICY_VERSION ומנגנון ניכוי -------------------------
 eq("POLICY_VERSION נשאר 0.1-draft — אין מסמך מוקפא, אין עו\"ד, אין רישום גרסאות",

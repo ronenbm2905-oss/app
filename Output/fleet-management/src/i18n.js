@@ -215,7 +215,8 @@ const dict = {
     "driver.portal.invited": "הוזמן",
     "driver.portal.active": "פעיל",
     "driver.portal.disabled": "מושבת",
-    "driver.portalSoon": "הזמנה לפורטל הנהג תיפתח בפרוסה 2.",
+    "driver.portalHint":
+      "הכתובת שכאן היא מפתח הכניסה של העובד לפורטל. אחרי שהוא נכנס בפעם הראשונה, שינוי הכתובת אינו מעביר את הגישה — לשם כך יש \"ניתוק קישור\" בכרטיס הנהג.",
     "driver.searchPh": "חיפוש לפי שם, מחלקה, מס' עובד…",
     "driver.status.archived": "אורכב",
     "driver.portal.revoked": "בוטל",
@@ -377,10 +378,66 @@ const dict = {
     "odo.chart": "מגמת ק\"מ",
     "odo.purposeNote":
       "הקריאה משמשת למעקב מכסת הק\"מ מול חברת הליסינג ולתזמון טיפולים בלבד. המערכת אינה אוספת מיקום ואינה עוקבת אחר נסיעות, והמידע אינו משמש לפיקוח על שעות עבודה או להערכת ביצועים.",
-    // הגרסה נלקחת מ-settings.policyVersion ולכן מתעדכנת מעצמה (עדי 16.8, ס' 3).
-    "odo.purposeLink":
-      "פירוט מלא של המידע שנשמר עליך ושל זכויותיך — בהודעה לעובד, גרסה {version}.",
+    // ⚠️ **שונה ב-21.8, ביודעין, אחרי שנעל אותו smoke.** הנוסח הקודם היה
+    // "…בהודעה לעובד, גרסה {version}". עדי (2026-08-17, ס' 2.4.3) קבעה שאחרי
+    // הכרעת G1 אין מסמך בשם "הודעה לעובד" — יש **נוהל רכב** שהעובד חתם עליו —
+    // ושהפניה לגרסה של מסמך שאיש אינו יכול להשיג היא **אות שקיפות כוזב**:
+    // היא נראית כמו גילוי נאות ואינה כזה. אין כאן עוד {version}, בכוונה.
+    "odo.purposeLink": "מה נשמר עליך ומה הזכויות שלך — בנוהל הרכב שעליו חתמת.",
+    // 2.4(1) — "מי רואה את זה". אדם שמקליד מספר עליו זכאי לדעת לאן הוא הולך.
+    "odo.whoSees": "הקריאה נשמרת בכרטיס הרכב ונראית למנהלי הצי בחברה.",
+    // 2.4(2) — "מה אם טעיתי". בלי זה, עובד שהקליד ספרה שגויה מניח שהזיק
+    // למשהו, או פשוט לא מדווח בפעם הבאה.
+    "odo.correction": "טעית במספר? אפשר לדווח על תיקון — הקריאה המקורית והתיקון נשמרים שניהם.",
     "assign.needsReview": "דורש בדיקה ידנית",
+
+    // ========================================================================
+    // פורטל הנהג (פרוסה 2) — שני מסכים, ולא יותר.
+    // ========================================================================
+    "portal.title": "הרכב שלי",
+    "portal.nav": "ניווט הפורטל",
+    "portal.myVehicle": "הרכב שלי",
+    "portal.reportKm": "דיווח ק\"מ",
+    "portal.lease": "חברת ליסינג",
+    "portal.contractEnd": "סיום חוזה",
+    "portal.identifiedAs": "אתה מזוהה במערכת כ{name}.",
+    "portal.noVehicleTitle": "לא רשום עליך רכב כרגע",
+    "portal.noVehicleBody": "אם קיבלת רכב ולא רואים אותו כאן, פנו למנהל הצי.",
+    "portal.contactFallback": "לשאלות או לתקלה בשימוש במסך — פנו למנהל הצי.",
+
+    "odoReport.title": "דיווח קריאת מד",
+    "odoReport.kmLabel": "קריאת המד היום (ק\"מ)",
+    "odoReport.kmHint": "המספר שמופיע במד האוץ' של הרכב, בלי ספרות אחרי הנקודה.",
+    "odoReport.submit": "שליחת הדיווח",
+    "odoReport.success": "הדיווח נשמר. תודה.",
+    "odoReport.history": "הדיווחים שלי",
+    "odoReport.empty": "עוד לא דיווחת קריאות",
+    "odoReport.lastReading": "הקריאה האחרונה שנרשמה: {km} ק\"מ · {date}",
+    "odoReport.dateNote": "הדיווח נרשם לתאריך {date}.",
+    "odoReport.noVehicleBody": "אי אפשר לדווח ק\"מ בלי רכב רשום. פנו למנהל הצי.",
+    "odoReport.err.km": "יש להזין מספר ק\"מ",
+    "odoReport.err.integer": "מספר שלם בלבד, בלי ספרות אחרי הנקודה",
+    "odoReport.err.tooBig": "המספר גבוה מדי — בדקו שוב את הקריאה",
+    "odoReport.err.noVehicle": "לא רשום עליך רכב",
+    "odoReport.err.failed": "השליחה נכשלה. בדקו חיבור לאינטרנט ונסו שוב.",
+    "odoReport.warn.lower": "הקריאה נמוכה מהקודמת. אם זו הקריאה שבמד — שלחו אותה, וגם היא וגם הקודמת יישמרו.",
+
+    // -- ניהול הקישור בכרטיס הנהג (צד האדמין) ------------------------------
+    "driverLink.title": "גישה לפורטל הנהג",
+    "driverLink.emailHint": "הכתובת שאיתה העובד יתחבר. הוא ייכנס בעצמו — המערכת אינה שולחת מייל.",
+    "driverLink.linked": "מקושר · נכנס עם {email}",
+    "driverLink.waiting": "ממתין לכניסה ראשונה של {email}",
+    "driverLink.noEmail": "לא הוזנה כתובת מייל — בלעדיה אין דרך לקשר חשבון.",
+    "driverLink.revoked": "הגישה נותקה. כדי להחזיר אותה — לחצו \"אפשר קישור מחדש\".",
+    "driverLink.unlink": "ניתוק קישור",
+    "driverLink.unlinkConfirm":
+      "לנתק את גישת העובד לפורטל? הגישה נשללת מיד, וכדי להחזיר אותה תידרש פעולה מפורשת.",
+    "driverLink.invite": "אפשר קישור מחדש",
+    "driverLink.note":
+      "הבידוד נאכף בשרת: מרגע הניתוק העובד אינו קורא דבר, גם אם החשבון שלו עדיין מחובר במכשיר.",
+    "driverLink.err.email": "כתובת מייל לא תקינה",
+    "driverLink.err.duplicate": "הכתובת הזו כבר משויכת לנהג אחר",
+
     "km.title": "מכסת ק\"מ",
     "km.allowance": "מכסה שנתית",
     "km.allowedToDate": "מותר עד היום",
@@ -935,7 +992,8 @@ const dict = {
     "driver.portal.invited": "Invited",
     "driver.portal.active": "Active",
     "driver.portal.disabled": "Disabled",
-    "driver.portalSoon": "Driver portal invitations arrive in slice 2.",
+    "driver.portalHint":
+      "This address is the employee's key to the portal. Once they have signed in, changing the address does not move their access — use \"Revoke access\" on the driver card for that.",
     "driver.searchPh": "Search by name, department, employee no.…",
     "driver.status.archived": "Archived",
     "driver.portal.revoked": "Revoked",
@@ -1095,9 +1153,56 @@ const dict = {
     "odo.chart": "Mileage trend",
     "odo.purposeNote":
       "This reading is used only to track the lease km allowance and to schedule servicing. The system does not collect location, does not track journeys, and this data is not used to monitor working hours or evaluate performance.",
-    "odo.purposeLink":
-      "Full details of the information kept about you and your rights are in the employee notice, version {version}.",
+    "odo.purposeLink": "What is kept about you and what your rights are — in the vehicle procedure you signed.",
+    "odo.whoSees": "The reading is stored on the vehicle record and is visible to the company fleet managers.",
+    "odo.correction":
+      "Entered the wrong number? You can report a correction — both the original reading and the correction are kept.",
     "assign.needsReview": "Needs manual review",
+
+    "portal.title": "My vehicle",
+    "portal.nav": "Portal navigation",
+    "portal.myVehicle": "My vehicle",
+    "portal.reportKm": "Report km",
+    "portal.lease": "Lease company",
+    "portal.contractEnd": "Contract end",
+    "portal.identifiedAs": "You are identified in the system as {name}.",
+    "portal.noVehicleTitle": "No vehicle is assigned to you right now",
+    "portal.noVehicleBody": "If you have been given a vehicle and it is not shown here, contact the fleet manager.",
+    "portal.contactFallback": "For questions, or if you cannot use this screen, contact the fleet manager.",
+
+    "odoReport.title": "Report odometer reading",
+    "odoReport.kmLabel": "Today's odometer reading (km)",
+    "odoReport.kmHint": "The number shown on the vehicle odometer, whole kilometres only.",
+    "odoReport.submit": "Send reading",
+    "odoReport.success": "Your reading was saved. Thank you.",
+    "odoReport.history": "My readings",
+    "odoReport.empty": "You have not reported any readings yet",
+    "odoReport.lastReading": "Last recorded reading: {km} km · {date}",
+    "odoReport.dateNote": "The reading is recorded for {date}.",
+    "odoReport.noVehicleBody": "Mileage cannot be reported without an assigned vehicle. Contact the fleet manager.",
+    "odoReport.err.km": "Enter an odometer reading",
+    "odoReport.err.integer": "Whole numbers only, no decimals",
+    "odoReport.err.tooBig": "That number is too high — please check the reading",
+    "odoReport.err.noVehicle": "No vehicle is assigned to you",
+    "odoReport.err.failed": "Sending failed. Check your connection and try again.",
+    "odoReport.warn.lower":
+      "This reading is lower than the previous one. If it is what the odometer shows, send it — both readings are kept.",
+
+    "driverLink.title": "Driver portal access",
+    "driverLink.emailHint": "The address the employee will sign in with. They sign in themselves — no email is sent.",
+    "driverLink.linked": "Linked · signed in with {email}",
+    "driverLink.waiting": "Waiting for the first sign-in by {email}",
+    "driverLink.noEmail": "No email address entered — an account cannot be linked without one.",
+    "driverLink.revoked": "Access was revoked. To restore it, press \"Allow linking again\".",
+    "driverLink.unlink": "Revoke access",
+    "driverLink.unlinkConfirm":
+      "Revoke this employee's portal access? Access is withdrawn immediately and restoring it requires an explicit action.",
+    "driverLink.invite": "Allow linking again",
+    "driverLink.note":
+      "Isolation is enforced on the server: once revoked, the employee can read nothing, even if their account is still signed in on the device.",
+    "driverLink.err.email": "Invalid email address",
+    "driverLink.err.duplicate": "This address is already assigned to another driver",
+
     "km.title": "Km allowance",
     "km.allowance": "Annual allowance",
     "km.allowedToDate": "Allowed to date",

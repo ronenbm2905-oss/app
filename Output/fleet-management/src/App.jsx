@@ -1,9 +1,10 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { useI18n } from "./hooks/useI18n.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import { useOrgAccess } from "./hooks/useOrgAccess.js";
 import { useData } from "./hooks/useData.js";
+import { useDriverPortal } from "./hooks/useDriverPortal.js";
 import { useActions } from "./hooks/useActions.js";
 import { useTeam } from "./hooks/useTeam.js";
 import { isFirebaseConfigured } from "./firebase.js";
@@ -20,11 +21,13 @@ import DriverPage from "./components/DriverPage.jsx";
 import Dashboard from "./components/Dashboard.jsx";
 import SettingsScreen from "./components/SettingsScreen.jsx";
 import ReviewScreen from "./components/review/ReviewScreen.jsx";
+import DriverPortal from "./components/portal/DriverPortal.jsx";
 
 // מסך הייבוא נטען בנפרד: הוא גורר את מנוע פרסור ה-xlsx, ומשתמשים בו פעם
 // בכמה חודשים. אין סיבה שהוא ישב ב-chunk הראשי של כל טעינת עמוד.
 const ImportScreen = lazy(() => import("./components/ImportScreen.jsx"));
 import { computeAlerts } from "./utils/alerts.js";
+import { portalPublishNeeded } from "./utils/portal.js";
 import { pendingReviewCount } from "./utils/review.js";
 import { todayIso } from "./utils/dates.js";
 
@@ -40,6 +43,42 @@ export default function App() {
   // actor — מי ביצע את הפעולה, נרשם בשרשרת הראיות של שיוך קנס (D5).
   const actions = useActions(update, orgId, user?.uid || null);
   const team = useTeam({ orgId, data, update });
+
+  // ==========================================================================
+  // מסלול הנהג — נבדק **רק** כשמסלול האדמין החזיר 'none'.
+  //
+  // אדמין שהוא גם נהג נשאר במסלול האדמין: הוא רואה שם ממילא הכל, ושני מסלולים
+  // פעילים בו-זמנית היו מייצרים שאלת "איזה מסך מוצג" שאין לה תשובה נכונה.
+  // ה-hook אינו נרשם לשום מאזין כשהוא כבוע — ראה useDriverPortal.
+  // ==========================================================================
+  const portalEnabled = isFirebaseConfigured && access.status === "none";
+  const portal = useDriverPortal(user, { enabled: portalEnabled });
+
+  // ==========================================================================
+  // publish — פרסום ההיטל של הנהגים, מהאדמין, כשיש הפרש.
+  //
+  // ⚠️ **בלי זה הפורטל ריק ב-27 נהגים אמיתיים.** ההיטל הוא נגזרת שנכתבת
+  // ב-`update`, כלומר הוא מתעדכן רק כשאדמין שומר משהו. הנתונים בפרודקשן
+  // נוצרו לפני שהאוסף היה קיים, ולכן בלי פרסום יזום העובד הראשון שייכנס
+  // יראה "לא רשום עליך רכב" — והמסקנה תהיה שהפיצ'ר שבור.
+  //
+  // ⚠️ הפרסום מותנה ב-`portalPublishNeeded`, שהיא השוואה עמוקה — אין הפרש,
+  // אין כתיבה, אין לולאה. ה-`today` בתוך החישוב זז פעם ביום, וזה **רצוי**:
+  // כך החזקה שהסתיימה אתמול מפסיקה להיות קריאה לנהג גם אם אף אדמין לא נגע
+  // בכלום. `publishedRef` מגביל לניסיון אחד לכל טעינה, כדי ששגיאת כתיבה
+  // לא תהפוך לניסיון חוזר בלולאה.
+  // ==========================================================================
+  const publishedRef = useRef(false);
+  useEffect(() => {
+    if (!isFirebaseConfigured || loading || !orgId) return;
+    if (!data?.settings?.onboarded || access.status !== "member") return;
+    if (publishedRef.current) return;
+    if (!portalPublishNeeded(data, todayIso())) return;
+    publishedRef.current = true;
+    // update() מחיל את הנגזרת בעצמו (useData:withDerived) — כאן רק מפעילים
+    // שמירה שאינה משנה דבר אחר.
+    update((d) => d).catch?.((err) => console.error("portal publish failed", err));
+  }, [loading, orgId, access.status, data, update]);
 
   // ניווט פשוט ב-state (בלי router — 6 מסכים, שני מסכי-עומק).
   const [view, setView] = useState("dashboard");
@@ -70,6 +109,28 @@ export default function App() {
   // מסך הקמה ראשונית, שאילו השלימה היה יוצר ארגון שני נפרד עם אפס רכבים.
   // ההקמה מגיעה **רק** ב-status 'bootstrap' — כשמזהה הארגון הוא ה-uid שלנו
   // והמסמך באמת אינו קיים, כלומר התקנה חדשה שאין למי לפנות בה.
+  // ==========================================================================
+  // ⚠️ **סדר שלושת המסכים כאן הוא כל ההבדל.**
+  //   ב-allowlist          → אדמין.
+  //   מקושר כנהג           → פורטל.
+  //   אף אחד מהם           → "אין הרשאה".
+  // **לעולם לא onboarding.** זה בדיוק הבאג של 17.8: מי שלא הייתה מורשית קיבלה
+  // מסך הקמה, ואילו השלימה אותו היה נוצר ארגון שני נפרד עם אפס רכבים. עכשיו
+  // יש עוד מצב באמצע (נהג), ולכן החוק הזה חשוב יותר, לא פחות.
+  // ==========================================================================
+  if (portalEnabled && portal.status === "loading") return <Splash text={t("common.loading")} />;
+  if (portalEnabled && portal.status === "linked")
+    return (
+      <DriverPortal
+        driver={portal.driver}
+        entry={portal.entry}
+        readings={portal.readings}
+        onSubmitReading={portal.submitReading}
+        onSignOut={signOut}
+        contact={t("portal.contactFallback")}
+      />
+    );
+
   if (access.status === "none" || access.status === "error")
     return (
       <NoAccessScreen

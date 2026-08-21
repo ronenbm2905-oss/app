@@ -8,6 +8,8 @@ import { EmptyState } from "./ui/Card.jsx";
 import Field, { TextInput, Select, TextArea } from "./ui/Field.jsx";
 import NoticeDeliveryModal from "./NoticeDeliveryModal.jsx";
 import { createDriver } from "../schema.js";
+import { validateDriverLinkEmail } from "../utils/driverLink.js";
+import { normalizeEmail } from "../utils/admins.js";
 import { driverStatusOptions, vehicleLabel, driverName, DRIVER_STATUS_TONE } from "../utils/options.js";
 import { currentVehicleIdForDriver } from "../utils/assignments.js";
 import { finesForDriver, isFineOpen } from "../utils/fines.js";
@@ -57,6 +59,7 @@ export function DriversScreen({ data, orgId, actions, onOpenDriver }) {
         {editing && (
           <DriverForm
             orgId={orgId}
+            drivers={data.drivers}
             driver={null}
             onClose={() => setEditing(null)}
             onSave={(d) => actions.upsert("drivers", d)}
@@ -142,6 +145,7 @@ export function DriversScreen({ data, orgId, actions, onOpenDriver }) {
       {editing && (
         <DriverForm
           orgId={orgId}
+          drivers={data.drivers}
           driver={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
           onSave={(d) => actions.upsert("drivers", d)}
@@ -160,10 +164,11 @@ export function DriversScreen({ data, orgId, actions, onOpenDriver }) {
   );
 }
 
-export function DriverForm({ orgId, driver, onClose, onSave }) {
+export function DriverForm({ orgId, driver, drivers = [], onClose, onSave }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState(() => driver || createDriver({ orgId }));
   const [err, setErr] = useState(false);
+  const [mailErr, setMailErr] = useState(null);
   const set = (k) => (e) => setDraft({ ...draft, [k]: e.target.value });
 
   return (
@@ -179,11 +184,20 @@ export function DriverForm({ orgId, driver, onClose, onSave }) {
           </Button>
           <Button
             onClick={() => {
-              if (!String(draft.fullName).trim()) {
-                setErr(true);
-                return;
-              }
-              onSave({ ...draft, fullName: draft.fullName.trim() });
+              const nameMissing = !String(draft.fullName).trim();
+              // ⚠️ הכתובת היא מפתח הקישור לפורטל, ולכן היא נשמרת **מנורמלת**
+              // ונבדקת מול נהגים אחרים. שתי רשומות עם אותה כתובת = שני עובדים
+              // שנלחמים על אותה תביעה, והראשון שנכנס זוכה. השוואה קנונית,
+              // כי אצל גימייל נקודות ו-+alias אינן מבדילות בין תיבות.
+              const mail = validateDriverLinkEmail(drivers, draft.id, draft.email);
+              setErr(nameMissing);
+              setMailErr(mail[0] || null);
+              if (nameMissing || mail.length) return;
+              onSave({
+                ...draft,
+                fullName: draft.fullName.trim(),
+                email: normalizeEmail(draft.email),
+              });
               onClose();
             }}
           >
@@ -202,8 +216,22 @@ export function DriverForm({ orgId, driver, onClose, onSave }) {
         <Field label={t("driver.phone")}>
           <TextInput dir="ltr" value={draft.phone} onChange={set("phone")} />
         </Field>
-        <Field label={t("driver.email")}>
-          <TextInput dir="ltr" type="email" value={draft.email} onChange={set("email")} />
+        {/* ⚠️ זו הכתובת שהעובד יתחבר איתה לפורטל. שינוי שלה כשהחשבון כבר
+            מקושר **אינו** מעביר את הקישור — הקישור לפי uid (F1), והחלפת
+            בעלים דורשת ניתוק מפורש בכרטיס הנהג. */}
+        <Field
+          label={t("driver.email")}
+          hint={t("driverLink.emailHint")}
+          error={mailErr ? t(mailErr) : null}
+        >
+          <TextInput
+            dir="ltr"
+            type="email"
+            inputMode="email"
+            autoComplete="off"
+            value={draft.email}
+            onChange={set("email")}
+          />
         </Field>
         <Field label={t("driver.employeeNumber")}>
           <TextInput dir="ltr" value={draft.employeeNumber} onChange={set("employeeNumber")} />
@@ -221,7 +249,7 @@ export function DriverForm({ orgId, driver, onClose, onSave }) {
           <TextArea value={draft.notes} onChange={set("notes")} />
         </Field>
         <p className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600 sm:col-span-2">
-          {t("driver.portalSoon")}
+          {t("driver.portalHint")}
         </p>
       </div>
     </Modal>

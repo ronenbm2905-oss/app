@@ -7,6 +7,7 @@ import Card from "./ui/Card.jsx";
 import FinesTable from "./FinesTable.jsx";
 import { DriverForm } from "./DriversScreen.jsx";
 import NoticeDeliveryModal from "./NoticeDeliveryModal.jsx";
+import DriverPortalCard from "./DriverPortalCard.jsx";
 import { assignmentsForDriver, currentVehicleIdForDriver } from "../utils/assignments.js";
 import { finesForDriver } from "../utils/fines.js";
 import {
@@ -189,6 +190,11 @@ export function DriverPage({ driverId, data, orgId, actions, onBack, onOpenVehic
         <p className="mt-2 text-[11px] text-slate-500">{t("driver.noticeHint")}</p>
       </Card>
 
+      {/* פרוסה 2 — הגישה של העובד לפורטל. יושב מתחת לכרטיס היידוע בכוונה:
+          שני הדברים נוגעים באותו אדם ולא ברכב, וסדר הקריאה הוא "מה מסרנו לו"
+          ואז "למה הוא יכול להיכנס". */}
+      <DriverPortalCard driver={driver} actions={actions} />
+
       <Card title={t("driver.vehicleHistory")} padded={false}>
         {history.length ? (
           <table className="min-w-full border-collapse">
@@ -252,6 +258,7 @@ export function DriverPage({ driverId, data, orgId, actions, onBack, onOpenVehic
       {editing && (
         <DriverForm
           orgId={orgId}
+          drivers={data.drivers}
           driver={driver}
           onClose={() => setEditing(false)}
           onSave={(d) => actions.upsert("drivers", d)}
