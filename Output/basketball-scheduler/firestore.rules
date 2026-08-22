@@ -104,8 +104,47 @@ service cloud.firestore {
         portalUser().clubId == clubId;
     }
 
+    // The join code this parent used for this specific team, or "" if they have none.
+    function storedCodeFor(teamId) {
+      return 'teams' in portalUser() && teamId in portalUser().teams
+        ? portalUser().teams[teamId]
+        : "";
+    }
+
+    // Whether that code is STILL a live code for that team.
+    //
+    // This is what makes rotating a leaked code an actual revocation. Membership used to
+    // be a permanent fact: `isPortalMemberOf` asked only which club the parent belonged
+    // to, so replacing a code stopped new joins and removed nobody. A manager who
+    // rotated a code after it spread through a WhatsApp group believed they had cut
+    // access off, and had not — while the settings screen told them the old code had
+    // stopped working.
+    //
+    // Checking the code on every read costs two extra document gets. That is the price
+    // of the manager's belief being true.
+    function codeStillLiveFor(clubId, teamId) {
+      return storedCodeFor(teamId) != "" &&
+        exists(/databases/$(database)/documents/clubs/$(clubId)/joinCodes/$(storedCodeFor(teamId))) &&
+        get(/databases/$(database)/documents/clubs/$(clubId)/joinCodes/$(storedCodeFor(teamId))).data.teamId == teamId;
+    }
+
+    // Club-level part of a published week: the club's name, its legal contact details,
+    // the holidays, and the team NAMES. No session, no game, no player — nothing that
+    // says who trains where. Any parent of the club may read it; it is what lets the
+    // portal name the club and show a team switcher.
     match /clubs/{clubId}/published/{weekOf} {
       allow read: if isClubStaff(clubId) || isPortalMemberOf(clubId);
+      allow write: if isClubAdmin(clubId);
+    }
+
+    // One team's week. The team id is a path segment rather than part of a composite
+    // document id precisely so this rule can name it: rules cannot split a string, so
+    // "{weekOf}__{teamId}" would have left the check no way to know which team it was
+    // looking at, and the boundary would have stayed where it was — in the portal's
+    // rendering, which is not a boundary at all.
+    match /clubs/{clubId}/published/{weekOf}/teams/{teamId} {
+      allow read: if isClubStaff(clubId) ||
+        (isPortalMemberOf(clubId) && codeStillLiveFor(clubId, teamId));
       allow write: if isClubAdmin(clubId);
     }
 
@@ -133,10 +172,19 @@ service cloud.firestore {
     function presentsValidCode() {
       return request.resource.data.clubId is string &&
         request.resource.data.joinCode is string &&
-        request.resource.data.teamIds is list &&
-        request.resource.data.teamIds.size() > 0 &&
-        request.resource.data.teamIds.size() <= 10 &&
-        exists(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)/joinCodes/$(request.resource.data.joinCode));
+        // `teams` maps teamId → the code that unlocked it. It replaced a `teamIds` list
+        // plus a single `joinCode`, which could not express "this team was unlocked by
+        // that code": a parent who joined twice stored only the LAST code, so rotating
+        // the first child's code revoked nothing. Access is per team, so the proof of
+        // access has to be per team too.
+        request.resource.data.teams is map &&
+        request.resource.data.teams.size() > 0 &&
+        request.resource.data.teams.size() <= 10 &&
+        exists(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)/joinCodes/$(request.resource.data.joinCode)) &&
+        // The entry being added must record the code actually presented — otherwise a
+        // parent could name a live code they do not hold and keep access to a team whose
+        // own code was replaced.
+        request.resource.data.teams[unlockedTeam()] == request.resource.data.joinCode;
     }
 
     match /portalUsers/{uid} {
@@ -146,10 +194,11 @@ service cloud.firestore {
       allow create: if signedIn() &&
         request.auth.uid == uid &&
         presentsValidCode() &&
-        request.resource.data.teamIds == [unlockedTeam()];
+        request.resource.data.teams.keys() == [unlockedTeam()];
 
       // A parent with a second child joins again. Within the same club they may add
-      // ONLY the team the newly presented code unlocks — not an arbitrary team id.
+      // ONLY the team the newly presented code unlocks — not an arbitrary team id — and
+      // may not silently rewrite the code recorded against a team they already hold.
       // Presenting a code for a different club resets the link to that club alone:
       // one account is linked to one club at a time.
       allow update: if signedIn() &&
@@ -157,13 +206,14 @@ service cloud.firestore {
         presentsValidCode() &&
         // Same existence-guard discipline as above: a link document written before these
         // rules existed may be missing a field, and reading it would error out into a
-        // denial the parent cannot act on. Treat "can't tell" as "start fresh".
-        ('clubId' in resource.data && 'teamIds' in resource.data &&
+        // denial the parent cannot act on. Treat "can't tell" as "start fresh" — which
+        // is also how a document still carrying the old teamIds shape is handled.
+        ('clubId' in resource.data && 'teams' in resource.data &&
          request.resource.data.clubId == resource.data.clubId
-          ? request.resource.data.teamIds.toSet()
-              .difference(resource.data.teamIds.toSet())
+          ? request.resource.data.teams.keys().toSet()
+              .difference(resource.data.teams.keys().toSet())
               .hasOnly([unlockedTeam()])
-          : request.resource.data.teamIds == [unlockedTeam()]);
+          : request.resource.data.teams.keys() == [unlockedTeam()]);
     }
   }
 }

@@ -72,21 +72,21 @@ export default function PortalApp() {
 
   const [membership, setMembership] = useState(() => loadMembership(clubId));
   const [weekStart, setWeekStart] = useState(todayWeekStart());
-  const { week, loading, error } = usePublishedWeek(clubId, weekStart);
+  const { shared, team, loading, error } = usePublishedWeek(clubId, weekStart, membership?.teamId);
 
   // The portal is branded like the club, but it cannot read the club's settings (that
   // document is closed to parents). The published week carries the name; colours fall
   // back to the defaults until a public branding document exists.
   useEffect(() => {
     applyTheme(DEFAULT_SETTINGS);
-    if (week?.clubName) document.title = `${week.clubName} — לו״ז`;
-  }, [week?.clubName]);
+    if (shared?.clubName) document.title = `${shared.clubName} — לו״ז`;
+  }, [shared?.clubName]);
 
   if (!membership) {
     return <PortalJoin clubId={clubId} onJoined={setMembership} />;
   }
 
-  const team = week?.teams?.[membership.teamId] || null;
+
   const isThisWeek = weekStart === todayWeekStart();
 
   return (
@@ -97,7 +97,7 @@ export default function PortalApp() {
 
       <div className="max-w-lg w-full mx-auto px-4 py-5 flex-1">
         <header className="mb-4">
-          <p className="text-xs text-stone-500">{week?.clubName || ""}</p>
+          <p className="text-xs text-stone-500">{shared?.clubName || ""}</p>
           <h1 className="text-2xl font-bold text-brand-700 tracking-tight">
             {membership.teamName || team?.name || "הקבוצה שלי"}
           </h1>
@@ -133,7 +133,7 @@ export default function PortalApp() {
 
         {loading ? (
           <p className="text-center text-stone-500 text-sm py-10">טוען...</p>
-        ) : !week ? (
+        ) : !shared ? (
           <div className="bg-white rounded-xl border border-stone-200 p-8 text-center">
             <p className="text-stone-700 font-medium">הלו״ז לשבוע הזה טרם פורסם</p>
             <p className="text-sm text-stone-500 mt-1">המאמן מפרסם את הלו״ז בדרך כלל לקראת תחילת השבוע.</p>
@@ -145,11 +145,11 @@ export default function PortalApp() {
           </div>
         ) : (
           <>
-            {week.holidays?.length > 0 && (
+            {shared.holidays?.length > 0 && (
               <div className="mb-4 bg-rose-50 border border-rose-200 rounded-xl p-3">
                 <p className="text-sm font-semibold text-rose-800 mb-1">🎉 ימים מיוחדים השבוע</p>
                 <ul className="text-sm text-rose-900 space-y-0.5">
-                  {week.holidays.map((h, i) => (
+                  {shared.holidays.map((h, i) => (
                     <li key={i}>{h.name} · <span className="text-xs">{formatHolidayRange(h)}</span></li>
                   ))}
                 </ul>
@@ -192,7 +192,7 @@ export default function PortalApp() {
             holds their child's data and where to write to have it corrected. */}
         <LegalFooter
           className="mt-8 pt-6 border-t border-stone-200"
-          data={week?.legal ? { settings: { legal: week.legal } } : undefined}
+          data={shared?.legal ? { settings: { legal: shared.legal } } : undefined}
         />
       </div>
     </div>

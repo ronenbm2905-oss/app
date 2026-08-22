@@ -109,23 +109,25 @@ export function PortalJoin({ clubId, onJoined }) {
       // Record the account↔team link so the security rules can grant this user read
       // access to the club's published weeks — and nothing else.
       //
-      // A parent with two children joins twice. `teamIds` must GROW: writing
-      // [teamId] would silently revoke access to the first child's team (merge
-      // replaces arrays, it does not append). Joining a different club starts a
-      // fresh list — one account is linked to one club at a time.
+      // A parent with two children joins twice, so the link must GROW rather than be
+      // replaced. It is a MAP of teamId → the code that unlocked it, not a list of team
+      // ids: with a list plus a single `joinCode` field, a parent who joined twice stored
+      // only the second code, and rotating the first child's code revoked nothing. The
+      // rules check the stored code per team on every read, so the code has to be kept
+      // per team. Joining a different club starts fresh — one account, one club.
       const meRef = doc(db, "portalUsers", user.uid);
       const mine = await getDoc(meRef);
       const prev =
-        mine.exists() && mine.data().clubId === clubId ? mine.data().teamIds || [] : [];
-      const teamIds = prev.includes(teamId) ? prev : [...prev, teamId];
-      if (teamIds.length > MAX_PORTAL_TEAMS) {
+        mine.exists() && mine.data().clubId === clubId ? mine.data().teams || {} : {};
+      const teams = { ...prev, [teamId]: normalized };
+      if (Object.keys(teams).length > MAX_PORTAL_TEAMS) {
         setMsg(`אפשר לקשר עד ${MAX_PORTAL_TEAMS} קבוצות לחשבון אחד. פנה למאמן.`);
         return;
       }
 
       await setDoc(meRef, {
         clubId,
-        teamIds,
+        teams,
         // The rules verify this code against clubs/{id}/joinCodes, which is what proves
         // this account is entitled to the team it just added.
         joinCode: normalized,

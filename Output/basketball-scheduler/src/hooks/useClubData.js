@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { doc, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { db, DEFAULT_CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY, DEFAULT_SETTINGS, PUBLISHED_STORAGE_KEY } from "../constants";
-import { buildPublicWeek, findLeakedKeys } from "../utils/publish";
+import { buildPublicWeek, buildSharedWeek, buildTeamWeek, publishableTeamIds, findLeakedKeys } from "../utils/publish";
 import {
   subscriptionState,
   subscriptionBlocksEditing,
@@ -181,14 +181,28 @@ function useCloudClubData(user, clubId) {
         setError("רק מנהל יכול לפרסם לו״ז.");
         return false;
       }
-      const publicDoc = buildPublicWeek(data, weekStart, new Date().toISOString());
-      const leaks = findLeakedKeys(publicDoc);
+      const at = new Date().toISOString();
+      // The leak check still runs against the WHOLE projection, not the split halves:
+      // the split decides who reads what, and must not become a way for a forbidden
+      // field to slip through by landing in the half nobody checked.
+      const leaks = findLeakedKeys(buildPublicWeek(data, weekStart, at));
       if (leaks.length) {
         setError(`הפרסום נחסם: נמצאו שדות שאסור לפרסם (${leaks.join(", ")}).`);
         return false;
       }
+      const shared = buildSharedWeek(data, weekStart, at);
+      const teamIds = publishableTeamIds(data);
       try {
-        await setDoc(doc(db, "clubs", clubId, "published", weekStart), publicDoc);
+        // One batch: a half-published week would show a parent a club header with no
+        // schedule under it, or a schedule with no way to tell whose it is.
+        const batch = writeBatch(db);
+        const weekRef = doc(db, "clubs", clubId, "published", weekStart);
+        batch.set(weekRef, shared);
+        for (const teamId of teamIds) {
+          const teamDoc = buildTeamWeek(data, weekStart, teamId, at);
+          if (teamDoc) batch.set(doc(weekRef, "teams", teamId), teamDoc);
+        }
+        await batch.commit();
         setError(null);
         return true;
       } catch {

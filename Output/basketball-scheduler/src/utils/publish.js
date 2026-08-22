@@ -95,6 +95,61 @@ export function buildPublicWeek(data, weekStart, publishedAt) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Split publication: one shared document, one document per team.
+//
+// The single document above carries EVERY team, and the rules could only ask "is this
+// person a member of this club" — so a parent of one team could read the whole file and
+// see every other team's week. The portal filtered it for display, which is not a
+// boundary; it is a rendering choice.
+//
+// Firestore rules cannot split a string, so a composite id like "{week}__{teamId}" is
+// unreadable to them. A subcollection puts the team id in the path, where a rule can
+// match it directly:
+//
+//   published/{weekOf}                 — club-level, any portal member of the club
+//   published/{weekOf}/teams/{teamId}  — that team only
+//
+// buildPublicWeek stays as the single source of what may be published at all; these two
+// functions only decide which half each field belongs to.
+// ---------------------------------------------------------------------------
+
+// Everything that is about the club rather than about any one team. A parent needs it
+// whichever team their child is in, and none of it says who plays where.
+export function buildSharedWeek(data, weekStart, publishedAt) {
+  const full = buildPublicWeek(data, weekStart, publishedAt);
+  return {
+    weekOf: full.weekOf,
+    publishedAt: full.publishedAt,
+    clubName: full.clubName,
+    legal: full.legal,
+    holidays: full.holidays,
+    // Names only, so the portal can offer a parent with two children a team switcher
+    // without having to read a week they may not open.
+    teamNames: Object.fromEntries(
+      Object.entries(full.teams).map(([id, t]) => [id, t.name])
+    ),
+  };
+}
+
+// One team's week. Returns null for a team that does not exist, so a caller cannot
+// publish an empty document under a made-up id.
+export function buildTeamWeek(data, weekStart, teamId, publishedAt) {
+  const full = buildPublicWeek(data, weekStart, publishedAt);
+  const team = full.teams[teamId];
+  if (!team) return null;
+  return {
+    weekOf: full.weekOf,
+    publishedAt: full.publishedAt,
+    teamId,
+    ...team,
+  };
+}
+
+// The team ids a publish should write. Kept here so the caller does not re-derive it.
+export const publishableTeamIds = (data) =>
+  (data.teams || []).map((t) => t.id).filter(Boolean);
+
 // Fields that must never appear anywhere in a published document. Used by the tests,
 // and cheap enough to keep as a runtime guard before writing.
 export const FORBIDDEN_KEYS = [
