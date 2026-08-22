@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { DEFAULT_SETTINGS, BASE_SESSION_TYPES, COLORS } from "../constants";
 import { customSessionTypes } from "../utils/sessionTypes";
 import { uid } from "../utils/dates";
+import { buildClubExport, csvSheets, exportFileName } from "../utils/exportClub";
 import { clubSettings } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
 import { applyTheme } from "../utils/theme";
@@ -127,6 +128,71 @@ function SubscriptionCard({ data, save, subscription, isAdmin }) {
           {msg && <span className="text-xs text-emerald-700 flex items-center gap-1"><IconCheck size={13} /> {msg}</span>}
         </div>
       )}
+    </Card>
+  );
+}
+
+// Taking the club's data out, in both formats it might be wanted in: JSON, which is the
+// faithful copy, and CSV, which is the one that opens.
+function ExportCard({ data, clubId }) {
+  const [msg, setMsg] = useState("");
+
+  const download = (content, filename, mime) => {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoked on the next tick rather than immediately: Safari has not always finished
+    // reading the blob by the time click() returns.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const at = new Date().toISOString();
+
+  const exportJson = () => {
+    download(
+      JSON.stringify(buildClubExport(data, { clubId, exportedAt: at }), null, 2),
+      exportFileName(clubId, at, "json"),
+      "application/json"
+    );
+    setMsg("הקובץ הורד.");
+  };
+
+  const exportCsv = () => {
+    const sheets = csvSheets(data);
+    Object.entries(sheets).forEach(([name, csv]) =>
+      download(csv, exportFileName(`${clubId}-${name}`, at, "csv"), "text/csv;charset=utf-8")
+    );
+    setMsg(`${Object.keys(sheets).length} קבצים הורדו.`);
+  };
+
+  return (
+    <Card
+      title="ייצוא הנתונים"
+      hint="כל נתוני המועדון, בכל רגע, בלי לפנות אלינו. הנתונים שלכם — גם אם תחליטו לעזוב."
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={exportJson} className="px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50">
+          ייצוא מלא (JSON)
+        </button>
+        <button onClick={exportCsv} className="px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50">
+          ייצוא לאקסל (CSV)
+        </button>
+        {msg && <span className="text-xs text-emerald-700 flex items-center gap-1"><IconCheck size={13} /> {msg}</span>}
+      </div>
+      <p className="text-xs text-stone-500 leading-relaxed">
+        <strong>JSON</strong> הוא העותק המלא והמדויק, כולל הגדרות והרשאות.{" "}
+        <strong>CSV</strong> מייצר קובץ לכל סוג נתונים (קבוצות, מאמנים, אולמות, שחקנים, אימונים,
+        משחקים) שנפתח באקסל. הלו״ז שפורסם להורים אינו נכלל — הוא נגזר מהנתונים האלה ונוצר מחדש
+        בפרסום.
+      </p>
+      <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 leading-relaxed">
+        ⚠ הקובץ מכיל פרטים אישיים של שחקנים, וחלקם קטינים. שמרו אותו במקום מוגן ואל תעבירו אותו
+        בדוא״ל או בוואטסאפ.
+      </p>
     </Card>
   );
 }
@@ -571,6 +637,13 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
       <PortalCard data={data} save={save} syncJoinCode={syncJoinCode} clubId={clubId} canEdit={canEdit} />
 
       <SubscriptionCard data={data} save={save} subscription={subscription} isAdmin={isAdmin} />
+
+      {/* Outside the locked fieldset, and deliberately so: a club whose subscription
+          lapsed must still be able to take its own data with it. Withholding the export
+          from a club in a billing dispute turns a payment reminder into leverage over
+          their records — including minors' — which is the opposite of what a data
+          return obligation is for. */}
+      <ExportCard data={data} clubId={clubId} />
 
       <Card title="מידע טכני" hint="כל נתוני המועדון נשמרים במסמך אחד, שמוגבל ל-1 MB.">
         <div className="flex items-center gap-3">
