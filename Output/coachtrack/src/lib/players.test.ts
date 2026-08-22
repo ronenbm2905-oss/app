@@ -23,6 +23,7 @@ import {
   searchPlayers,
   sortPlayers,
   validateNewPlayer,
+  validateParentConsent,
   visiblePlayers,
 } from './players';
 import type { NewPlayerFormValues } from './players';
@@ -204,5 +205,29 @@ describe('הפקודה לאיפוס סיסמה', () => {
   it('הסקריפט שהמסך מפנה אליו קיים בפרויקט', () => {
     // בלי זה המסך מציג הוראה שאי אפשר לבצע.
     expect(existsSync('scripts/reset-password.js')).toBe(true);
+  });
+});
+
+/**
+ * ⚖️ שער הסכמת ההורה — דרישת עדי (סקירת השער 21.8.2026, חלק ה'1).
+ *
+ * זה הצד שאי אפשר לבדוק ברינדור סטטי: הכיוון שבו המאמן **כן** מסמן את התיבה.
+ * הטסט של המצב החסום יושב ב-`features/coach/TeamView.render.test.tsx`.
+ */
+describe('אישור הסכמת הורה', () => {
+  it('בלי אישור — יש שגיאה, והיא ההודעה שעדי ניסחה', () => {
+    expect(validateParentConsent(false)).toBe('coach.team.add.consentRequired');
+    expect(t('coach.team.add.consentRequired')).not.toBe('coach.team.add.consentRequired');
+  });
+
+  it('עם אישור — אין מה שיחסום', () => {
+    expect(validateParentConsent(true)).toBeNull();
+  });
+
+  it('האישור אינו שדה בטופס שנשלח למסד', () => {
+    // אם מישהו יוסיף אותו ל-NewPlayerFormValues, הטסט הזה ייפול — וזו הכוונה:
+    // האישור הוא אישור של המאמן ברגע היצירה, לא נתון על הילד.
+    const values: NewPlayerFormValues = { displayName: 'יונתן ב.', username: 'yonatan', password: 'Aa123456!' };
+    expect(Object.keys(values).sort()).toEqual(['displayName', 'password', 'username']);
   });
 });

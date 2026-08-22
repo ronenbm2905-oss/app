@@ -8,9 +8,9 @@
  * תיקון 13, ומאמן הוא בדיוק גורם כזה. ההכרעה טרם נפלה, ולכן השדה נבנה כפי
  * שה-PRD מבקש — עם **אותו טיפול בדיוק שניתן לשדה ההערה של השחקן**:
  *
- * • **טקסט עזר עובדתי שמגביל מה נכתב** ("מה סוכם, מה נבדק... אין להזין מידע
- *   רפואי, מצב משפחתי או הערכת אופי"). זה מיתון אמיתי ולא כיסוי: מה שלא נכתב
- *   לא יכול לדלוף.
+ * • **טקסט עזר עובדתי שמגביל מה נכתב.** ⚖️ הניסוח הוא של עדי, מילה במילה
+ *   (`notesPrivacyHint`, חלק ה'4 בסקירה) — הוא החליף ניסוח שנועם כתב. זה מיתון
+ *   אמיתי ולא כיסוי: מה שלא נכתב לא יכול לדלוף. **אין לשפר ואין לרכך.**
  * • **אורך מוגבל** (`COACH_NOTE_MAX_LENGTH`), שנאכף גם ב-`firestore.rules`.
  *   400 תווים מספיקים לתזכורת מקצועית ולא מספיקים לתיק אישי.
  * • **שורת פרטיות מפורשת** — שהמאמן יידע, בכל פעם שהוא כותב, מי רואה את זה.
@@ -92,7 +92,14 @@ export function CoachNotePanel({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             error={validationKey ? t(validationKey, { max: COACH_NOTE_MAX_LENGTH }) : null}
-            hint={t('coach.player.note.hint', { max: COACH_NOTE_MAX_LENGTH })}
+            hint={
+              <>
+                <span className="block">{t('coach.player.note.notesPrivacyHint')}</span>
+                <span className="mt-1 block">
+                  {t('coach.player.note.writingHint', { max: COACH_NOTE_MAX_LENGTH })}
+                </span>
+              </>
+            }
           />
 
           <div className="flex items-center justify-between gap-2">

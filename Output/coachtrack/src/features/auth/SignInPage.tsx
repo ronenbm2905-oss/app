@@ -15,6 +15,7 @@ import { authErrorKey, isValidUsername, normalizeUsername } from '../../lib/auth
 import { t } from '../../i18n/he';
 import type { TranslationKey } from '../../i18n/he';
 import { AuthLayout } from './AuthLayout';
+import { SignInPrivacyNotice } from '../../legal/PrivacyNotice';
 
 export function SignInPage() {
   const { signIn } = useAuth();
@@ -61,7 +62,14 @@ export function SignInPage() {
     <AuthLayout
       title={t('auth.signIn.title')}
       subtitle={t('auth.signIn.subtitle')}
-      footer={t('auth.signIn.forgotHelp')}
+      // ⚖️ היידוע חייב להיות כאן, לפני הכניסה: זו הנקודה היחידה שבה הילד
+      // עומד מול המערכת לפני שהוא מוסר מידע. חוסם B3 בסקירת עדי.
+      footer={
+        <div className="space-y-3">
+          <p>{t('auth.signIn.forgotHelp')}</p>
+          <SignInPrivacyNotice />
+        </div>
+      }
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <TextField

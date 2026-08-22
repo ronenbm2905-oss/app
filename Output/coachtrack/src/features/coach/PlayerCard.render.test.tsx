@@ -216,12 +216,16 @@ describe('הערות מאמן — המיתון של דגל תיקון 13', () =>
     expect(html).toContain(t('coach.player.note.privacy'));
   });
 
-  it('טקסט עזר עובדתי שמגביל מה נכתב בשדה', () => {
-    const hint = t('coach.player.note.hint', { max: COACH_NOTE_MAX_LENGTH });
+  it('טקסט עזר עובדתי שמגביל מה נכתב בשדה — בניסוח של עדי', () => {
+    const hint = t('coach.player.note.notesPrivacyHint');
     expect(html).toContain(hint);
     // ההנחיה חייבת להישאר קונקרטית — לא "כתוב בזהירות".
     expect(hint).toContain('מידע רפואי');
-    expect(hint).toContain('הערכת אופי');
+    expect(hint).toContain('אישיותו');
+  });
+
+  it('לצד ההנחיה המשפטית — מה כן כותבים ומה האורך המרבי', () => {
+    expect(html).toContain(t('coach.player.note.writingHint', { max: COACH_NOTE_MAX_LENGTH }));
   });
 
   it('אורך השדה מוגבל בפועל, לא רק בהנחיה', () => {
@@ -258,7 +262,7 @@ describe('כלל 8 — אין עברית מחוץ למילון', () => {
       t('coach.player.streakOne', { threshold: 80 }),
       t('coach.player.log.playerNote', { note: 'עשיתי בבית' }),
       t('coach.player.log.shown', { shown: PAGE_SIZE, total: PAGE_SIZE + 5 }),
-      t('coach.player.note.hint', { max: COACH_NOTE_MAX_LENGTH }),
+      t('coach.player.note.writingHint', { max: COACH_NOTE_MAX_LENGTH }),
       t('coach.player.note.savedAt', { date: '20.08.2026' }),
       t('player.history.breakdownTotals', {
         total: 11,

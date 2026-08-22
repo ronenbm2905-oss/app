@@ -157,7 +157,12 @@ describe('טופס הוספת שחקן — כלל 7', () => {
   );
 
   it('שלושה שדות קלט בלבד: שם, שם משתמש, סיסמה', () => {
-    expect(formHtml.match(/<input/g) ?? []).toHaveLength(3);
+    const inputs = formHtml.match(/<input[^>]*>/g) ?? [];
+    const checkboxes = inputs.filter((tag) => tag.includes('type="checkbox"'));
+    // ארבעה תגי input: שלושה שדות נתונים + תיבת אישור ההסכמה, שאינה שדה
+    // נתונים ואינה נשמרת למסד (ראה `validateParentConsent` ב-lib/players.ts).
+    expect(inputs).toHaveLength(4);
+    expect(checkboxes).toHaveLength(1);
     expect(formHtml).toContain(he.coach.team.add.displayName);
     expect(formHtml).toContain(he.coach.team.add.username);
     expect(formHtml).toContain(he.coach.team.add.password);
@@ -180,6 +185,52 @@ describe('טופס הוספת שחקן — כלל 7', () => {
 
   it('אומר לאיזו קבוצה השחקן מצורף', () => {
     expect(formHtml).toContain(t('coach.team.add.teamNotice', { team: team.name }));
+  });
+});
+
+/**
+ * ⚖️ שער ההסכמה — דרישת עדי (סקירת השער 21.8.2026, חלק ה'1).
+ *
+ * הטסטים כאן שומרים על **הצד החוסם**: `renderToStaticMarkup` מרנדר את המצב
+ * ההתחלתי, שבו תיבת האישור אינה מסומנת, ולכן זה בדיוק המצב שבו אסור שכפתור
+ * היצירה יהיה לחיץ. הכיוון ההפוך (סימון → כפתור פתוח) נבדק ב-`lib/players.test.ts`
+ * על `validateParentConsent`, כי לחיצה דורשת DOM שאין בו כאן.
+ */
+describe('טופס הוספת שחקן — שער הסכמת ההורה', () => {
+  const formHtml = renderToStaticMarkup(
+    <AddPlayerForm
+      teamName={team.name}
+      takenUsernames={[]}
+      onSubmit={async () => true}
+      onClose={() => {}}
+    />,
+  );
+
+  /** תג הכפתור שמכיל את תווית היצירה. */
+  const submitButton = (() => {
+    const labelAt = formHtml.indexOf(he.coach.team.add.submit);
+    return formHtml.slice(formHtml.lastIndexOf('<button', labelAt), labelAt);
+  })();
+
+  it('יש תיבת סימון לאישור הסכמת ההורה, לא רק תזכורת', () => {
+    expect(formHtml).toContain('type="checkbox"');
+    expect(formHtml).toContain(he.coach.team.add.consentConfirm);
+  });
+
+  it('כפתור היצירה חסום כל עוד התיבה לא סומנה', () => {
+    // התכונה עצמה, לא המחרוזת 'disabled' שמופיעה גם במחלקות Tailwind
+    // (disabled:bg-slate-400). בלי הדיוק הזה הטסט היה עובר גם בלי החסימה.
+    expect(submitButton).toContain('disabled=""');
+  });
+
+  it('מוסבר למה הכפתור חסום', () => {
+    expect(formHtml).toContain(he.coach.team.add.consentRequired);
+  });
+
+  it('התיבה אינה שדה נתונים — היא לא מסומנת מראש ואין לה ערך שנשלח', () => {
+    const checkbox = (formHtml.match(/<input[^>]*type="checkbox"[^>]*>/) ?? [''])[0];
+    expect(checkbox).not.toContain('checked');
+    expect(checkbox).not.toContain('name=');
   });
 });
 

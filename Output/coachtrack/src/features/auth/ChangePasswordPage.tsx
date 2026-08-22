@@ -19,6 +19,7 @@ import { PASSWORD_MIN_LENGTH, authErrorKey, validateNewPassword } from '../../li
 import { t } from '../../i18n/he';
 import type { TranslationKey } from '../../i18n/he';
 import { AuthLayout } from './AuthLayout';
+import { LegalLink } from '../../legal/PrivacyNotice';
 
 export function ChangePasswordPage() {
   const { profile, changePassword, signOut } = useAuth();
@@ -55,7 +56,12 @@ export function ChangePasswordPage() {
       subtitle={
         profile ? t('auth.session.signedInAs', { name: profile.displayName }) : undefined
       }
-      footer={t('auth.changePassword.keepItSafe')}
+      footer={
+        <div className="space-y-3">
+          <p>{t('auth.changePassword.keepItSafe')}</p>
+          <LegalLink docId="privacy" />
+        </div>
+      }
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <Alert tone="info">{t('auth.changePassword.forcedNotice')}</Alert>

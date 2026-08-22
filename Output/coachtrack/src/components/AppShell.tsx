@@ -16,6 +16,7 @@ import { t } from '../i18n/he';
 import type { TranslationKey } from '../i18n/he';
 import { navItemsForRole } from '../lib/routing';
 import { Button } from './ui/Button';
+import { LegalFooter } from '../legal/PrivacyNotice';
 
 interface AppShellProps {
   title: string;
@@ -74,6 +75,9 @@ export function AppShell({ title, children }: AppShellProps) {
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
         <div className="mt-4">{children}</div>
       </main>
+
+      {/* מדיניות הפרטיות נגישה גם מתוך האפליקציה, לא רק ממסך ההתחברות. */}
+      <LegalFooter />
     </div>
   );
 }

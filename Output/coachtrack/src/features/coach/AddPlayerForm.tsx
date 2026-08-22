@@ -6,8 +6,20 @@
  * גם לא כשדה "אופציונלי". המשתמשים הם קטינים, ומה שלא נאסף לא יכול לדלוף.
  * מי שמוסיף כאן שדה — מפר כלל, לא מוסיף פיצ'ר.
  *
- * הטופס מציג גם תזכורת שנדרשת הסכמת הורה לפני צירוף שחקן. הנוהל עצמו טרם נסגר,
- * והניסוח המשפטי ייבדק לפני עלייה לאוויר — כאן זו שורת תזכורת עניינית למאמן.
+ * ## שער ההסכמה
+ *
+ * ⚖️ בסקירת השער של עדי (21.8.2026, חלק ה'1) נפסלה התזכורת הקודמת: "ודא
+ * שהתקבלה" הוא ניסוח רופף, ו**תזכורת שאיש אינו מתעד אינה ראיה להסכמה**. לכן יש
+ * כאן שני דברים שונים, ולא אחד:
+ *
+ * 1. **הודעה** (`consentReminder`) — מה הכלל: הסכמה מראש ובכתב, על טופס המועדון.
+ * 2. **תיבת סימון חוסמת** (`consentConfirm`) — אישור אקטיבי של המאמן ברגע
+ *    היצירה. בלעדיה **כפתור היצירה חסום**, וגם `handleSubmit` עוצר. שתי החסימות
+ *    מכוונות: הכפתור המושבת מונע גם submit בלחיצת Enter, והבדיקה בקוד היא הגבול
+ *    האמיתי.
+ *
+ * האישור **אינו נשמר למסד** (ראה `validateParentConsent` ב-`lib/players.ts`),
+ * והוא מתאפס אחרי כל יצירה — כל שחקן דורש אישור משלו.
  *
  * הקומפוננטה טהורה מבחינת נתונים: היא לא מכירה את Firestore ולא את Auth,
  * ומדווחת החוצה דרך `onSubmit` בלבד. לכן אפשר לרנדר אותה בטסט.
@@ -17,12 +29,14 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
+import { CheckboxField } from '../../components/ui/Checkbox';
 import { TextField } from '../../components/ui/TextField';
 import { PASSWORD_MIN_LENGTH } from '../../lib/auth';
 import {
   generateInitialPassword,
   isPlayerFormValid,
   validateNewPlayer,
+  validateParentConsent,
 } from '../../lib/players';
 import type { NewPlayerFormErrors, NewPlayerFormValues } from '../../lib/players';
 import { t } from '../../i18n/he';
@@ -48,6 +62,10 @@ export function AddPlayerForm({
   const [values, setValues] = useState<NewPlayerFormValues>(EMPTY_FORM);
   const [errors, setErrors] = useState<NewPlayerFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  /** אישור הסכמת ההורה. מצב מקומי בלבד — אינו נשלח ל-`onSubmit` ואינו נשמר. */
+  const [consentConfirmed, setConsentConfirmed] = useState(false);
+
+  const consentErrorKey = validateParentConsent(consentConfirmed);
 
   function update(field: keyof NewPlayerFormValues, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -56,6 +74,8 @@ export function AddPlayerForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
+    // הגבול האמיתי. הכפתור המושבת הוא נוחות, זו הבדיקה.
+    if (consentErrorKey) return;
 
     const nextErrors = validateNewPlayer(values, takenUsernames);
     setErrors(nextErrors);
@@ -68,6 +88,8 @@ export function AddPlayerForm({
     if (created) {
       setValues(EMPTY_FORM);
       setErrors({});
+      // כל שחקן דורש אישור הסכמה משלו.
+      setConsentConfirmed(false);
     }
   }
 
@@ -138,7 +160,19 @@ export function AddPlayerForm({
           {t('coach.team.add.teamNotice', { team: teamName })}
         </p>
 
-        <Button type="submit" busy={submitting}>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <CheckboxField
+            id="player-consent"
+            checked={consentConfirmed}
+            onChange={(event) => setConsentConfirmed(event.target.checked)}
+            label={t('coach.team.add.consentConfirm')}
+            // מוצג כל עוד התיבה לא סומנה — זה גם ההסבר למה הכפתור חסום.
+            hint={consentErrorKey ? t(consentErrorKey) : undefined}
+            required
+          />
+        </div>
+
+        <Button type="submit" busy={submitting} disabled={Boolean(consentErrorKey)}>
           {submitting ? t('coach.team.add.submitting') : t('coach.team.add.submit')}
         </Button>
       </form>

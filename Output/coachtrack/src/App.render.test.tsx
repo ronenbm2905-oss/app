@@ -92,6 +92,15 @@ describe('מנותק', () => {
     expect(html).toContain(he.auth.signIn.submit);
   });
 
+  it('מסך ההתחברות מיידע על פרטיות ומקשר למדיניות — חוסם B3', () => {
+    // ⚖️ זו הנקודה היחידה שבה הילד עומד מול המערכת לפני שהוא מוסר מידע.
+    const html = render('signedOut', null, '/login');
+    expect(html).toContain(he.auth.signIn.privacyNotice);
+    expect(html).toContain(he.auth.signIn.privacyLink);
+    // המסמך עצמו נפתח בלחיצה בלבד ואינו מוטמע בעמוד.
+    expect(html).not.toContain('role="dialog"');
+  });
+
   it('מסך ההתחברות לא מזכיר אימייל — המשתמש מתחבר בשם משתמש', () => {
     const html = render('signedOut', null, '/login');
     expect(html).not.toContain('coachtrack.local');
