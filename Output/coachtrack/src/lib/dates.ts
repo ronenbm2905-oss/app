@@ -174,6 +174,43 @@ export function formatIsraeliDate(value: DateInput): string {
   return formatInTimeZone(toDate(value), TIME_ZONE, 'dd.MM.yyyy');
 }
 
+/**
+ * טווח תאריכים קצר לשורת כותרת: `12–18.8`.
+ *
+ * הפורמט מגיע מ-PRD §7.3ה (`נוער א' | 12–18.8`) ונועד להודעת וואטסאפ, שבה כל
+ * תו נוסף עולה שורה במסך של טלפון. לכן: בלי אפסים מובילים, ובלי לחזור על מה
+ * שכבר נאמר —
+ *
+ * - אותו חודש ואותה שנה → `12–18.8`
+ * - חודשים שונים באותה שנה → `28.8–3.9`
+ * - שנים שונות → `28.12.26–3.1.27`
+ *
+ * **המקף הוא en-dash (–) ולא מקף רגיל**, כמו ב-PRD.
+ *
+ * ⚠️ הכל מחושב ב-`Asia/Jerusalem` דרך `formatInTimeZone`, ולא ב-`getDate()`
+ * של המכשיר: `weekEnd` הוא שבת 23:59:59.999 בישראל, שהוא עדיין יום שישי
+ * בשעון ניו-יורק. חישוב בשעון המכשיר היה מדפיס טווח קצר ביום.
+ */
+export function formatIsraeliDayRange(start: DateInput, end: DateInput): string {
+  const from = toDate(start);
+  const to = toDate(end);
+
+  const startDay = formatInTimeZone(from, TIME_ZONE, 'd');
+  const startMonth = formatInTimeZone(from, TIME_ZONE, 'M');
+  const startYear = formatInTimeZone(from, TIME_ZONE, 'yy');
+  const endDay = formatInTimeZone(to, TIME_ZONE, 'd');
+  const endMonth = formatInTimeZone(to, TIME_ZONE, 'M');
+  const endYear = formatInTimeZone(to, TIME_ZONE, 'yy');
+
+  if (startYear !== endYear) {
+    return `${startDay}.${startMonth}.${startYear}–${endDay}.${endMonth}.${endYear}`;
+  }
+  if (startMonth !== endMonth) {
+    return `${startDay}.${startMonth}–${endDay}.${endMonth}`;
+  }
+  return `${startDay}–${endDay}.${endMonth}`;
+}
+
 /** מספר הימים המלאים שנותרו עד סוף השבוע, כולל היום הנוכחי. */
 export function daysLeftInWeek(value: DateInput, weekStartDay: WeekStartDay = 0): number {
   const weekday = toIsraeliWeekday(value);

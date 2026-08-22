@@ -22,12 +22,13 @@ describe('פריטי הניווט', () => {
     }
   });
 
-  it('למאמן ארבעה מסכים: דשבורד, קבוצה, תוכנית, ספרייה', () => {
+  it('למאמן חמישה מסכים: דשבורד, קבוצה, תוכנית, ספרייה, דוחות', () => {
     expect(navItemsForRole('coach').map((item) => item.path)).toEqual([
       ROUTES.coach,
       ROUTES.coachTeam,
       ROUTES.coachPlan,
       ROUTES.coachExercises,
+      ROUTES.coachReports,
     ]);
   });
 

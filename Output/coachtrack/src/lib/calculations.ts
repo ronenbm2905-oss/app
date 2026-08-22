@@ -121,9 +121,20 @@ export function groupEntriesByExercise<T extends CountableEntry & { exerciseId: 
  */
 export type PctTone = 'low' | 'mid' | 'high';
 
+/**
+ * הסף התחתון של `mid` (כתום) ושל `high` (ירוק).
+ *
+ * הם מיוצאים ולא רק מוטמעים ב-`pctTone`, כי משלב 6 יש להם צרכן שני: הודעת
+ * הוואטסאפ מקבצת "מעל 80%" מול "צריך דחיפה" (`lib/report.ts`), והכותרת
+ * מדפיסה את המספר עצמו. 80 שנכתב שוב במילון היה יוצר את המצב שבו שחקן צבוע
+ * ירוק בטבלה ומופיע ב"צריך דחיפה" בהודעה.
+ */
+export const PCT_TONE_MID = 50;
+export const PCT_TONE_HIGH = 80;
+
 export function pctTone(pct: number): PctTone {
-  if (!Number.isFinite(pct) || pct < 50) return 'low';
-  if (pct < 80) return 'mid';
+  if (!Number.isFinite(pct) || pct < PCT_TONE_MID) return 'low';
+  if (pct < PCT_TONE_HIGH) return 'mid';
   return 'high';
 }
 

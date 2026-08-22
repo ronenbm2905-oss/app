@@ -247,6 +247,7 @@ export const he = {
       team: 'הקבוצה',
       plan: 'תוכנית',
       exercises: 'ספריית תרגילים',
+      reports: 'דוחות',
     },
 
     /** שלב 5 — דשבורד הקבוצה: KPI ומטריצת שחקנים × תרגילים (PRD §7.3א). */
@@ -621,6 +622,74 @@ export const he = {
         stopFailed: 'הפסקת התוכנית נכשלה. נסה שוב.',
         templateSaveFailed: 'שמירת התבנית נכשלה. נסה שוב.',
         templateDeleteFailed: 'מחיקת התבנית נכשלה. נסה שוב.',
+      },
+    },
+
+    /** שלב 6 — סיכום שבועי, דוחות והטקסטים להעתקה (PRD §7.3ה). */
+    reports: {
+      title: 'סיכום שבועי',
+      loading: 'טוען את הדוח…',
+      loadError: 'טעינת הדוח נכשלה. בדוק את החיבור לאינטרנט ונסה שוב.',
+      noTeam: 'אין לך עדיין קבוצה, ולכן אין על מה לדווח.',
+
+      rangeLabel: 'טווח הדוח',
+      rangeCurrent: 'השבוע הנוכחי',
+      rangePrevious: 'השבוע הקודם',
+      rangeCustom: 'טווח חופשי',
+      from: 'מתאריך',
+      to: 'עד תאריך',
+      /** הטווח נצמד לשבועות שלמים — מוצג כדי שלא תהיה הפתעה. */
+      snapNote: 'הדוח נמדד בשבועות שלמים: {start} עד {end}.',
+      weeksCount: '{count} שבועות בטווח.',
+
+      noPlanTitle: 'אין מול מה למדוד',
+      noPlanBody: 'לא נפתחה תוכנית באף שבוע בטווח שנבחר. זה לא 0% — פשוט לא הוגדרו יעדים.',
+      noPlayers: 'אין עדיין שחקנים פעילים בקבוצה.',
+
+      kpiAverage: 'ממוצע קבוצתי',
+      kpiAverageHint: 'ממוצע השחקנים, כל תרגיל חסום ב-100%',
+      kpiReported: 'דיווחו',
+      kpiReportedValue: '{count} מתוך {total}',
+      kpiReportedHint: 'לפחות דיווח אחד בטווח',
+      kpiZero: 'על אפס',
+      kpiZeroHint: 'לא נצבר דבר מול התוכנית',
+
+      exercisesTitle: 'לפי תרגיל',
+      exerciseTarget: 'יעד',
+      exerciseTotal: 'נצבר',
+      exerciseAverage: 'ממוצע',
+
+      playersTitle: 'לפי שחקן',
+      playersHint: 'ממוין מהגבוה לנמוך. הכפתור שליד כל שחקן מייצר הודעה עליו בלבד.',
+      playerNoData: 'אין נתון',
+      playerWeeks: '{count} שבועות נמדדו',
+
+      copyTeam: 'העתק לוואטסאפ',
+      copyPlayer: 'העתק סיכום אישי',
+      /** הטקסט על הכפתור עצמו — התווית המלאה לא נכנסת לשורה ב-375px. */
+      copyPlayerShort: 'העתק',
+      /** aria-label — שלושה כפתורים עם אותו טקסט אינם מובחנים בקורא מסך. */
+      copyPlayerFor: 'העתק סיכום אישי של {name}',
+      copied: 'הטקסט הועתק ללוח.',
+      copyFailed: 'ההעתקה נכשלה. סמן את הטקסט למטה והעתק ידנית.',
+      previewLabel: 'הטקסט שנוצר',
+      previewHint: 'אפשר לערוך כאן לפני ההדבקה — שינוי בטקסט לא משנה שום נתון במערכת.',
+
+      /** מחרוזות ההודעה עצמה. הפורמט מגיע מ-PRD §7.3ה, כולל האימוג`ים. */
+      text: {
+        header: '🏀 סיכום שבועי — {team} | {dates}',
+        headerRange: '🏀 סיכום {weeks} שבועות — {team} | {dates}',
+        plan: '🎯 התוכנית: {items}',
+        done: '✅ השלימו 100%:',
+        strong: '💪 מעל {threshold}%:',
+        push: '⚡ צריך דחיפה:',
+        average: '📊 ממוצע קבוצתי: {pct}%',
+        previous: '(שבוע שעבר: {pct}%)',
+        noPlan: 'לא הייתה תוכנית פעילה בטווח הזה.',
+        noPlayers: 'אין עדיין שחקנים פעילים בקבוצה.',
+        playerHeader: '🏀 סיכום שבועי — {player} | {team} | {dates}',
+        playerOverall: '🎯 השלמה כללית: {pct}%',
+        of: '{total} מתוך {target}',
       },
     },
   },

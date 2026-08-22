@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { FatalScreen } from './components/FatalScreen';
+import { registerServiceWorker } from './lib/pwa';
 
 /**
  * נקודת הכניסה.
@@ -14,6 +15,10 @@ import { FatalScreen } from './components/FatalScreen';
  * (זה בדיוק המצב שנוצר כשבונים בלי .env.local — הקונפיג נצרב ל-build,
  *  ולכן build אחד שגוי נראה כמו אובדן נתונים.)
  */
+
+// נרשם לפני רינדור העץ ובלי await: הוא מאזין ל-`load` בעצמו, ואין שום
+// דבר במסך שתלוי בו. גם אם הוא ייכשל — האפליקציה עולה כרגיל.
+registerServiceWorker();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('לא נמצא אלמנט #root ב-index.html');
