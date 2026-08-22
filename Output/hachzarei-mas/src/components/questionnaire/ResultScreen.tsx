@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { QuestionnaireConfig, ScoreResult } from '@shared/types/questionnaire';
 import { WhatsAppButton, PhoneLink } from '@/components/ui/WhatsAppButton';
+import { feeDisclosure } from '@shared/config/site';
 import { Button } from '@/components/ui/Button';
 
 interface Props {
@@ -46,6 +47,9 @@ export const ResultScreen = forwardRef<HTMLHeadingElement, Props>(function Resul
             label={tier.ctaLabel ?? 'דבר איתנו בוואטסאפ'}
           />
           {tier.ctaNote && <p className="text-sm leading-relaxed text-muted">{tier.ctaNote}</p>}
+
+          {/* גילוי שכר הטרחה — גלוי, לא מאחורי אקורדיון. ח-3 בשער המשפטי */}
+          <p className="text-sm leading-relaxed text-muted">{feeDisclosure}</p>
         </div>
       )}
 

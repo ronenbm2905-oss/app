@@ -41,7 +41,13 @@ export function HeroSection({ config, heroQuestions, answers, onSelect }: Props)
         <TrustBar />
       </div>
 
-      <div className="mt-10 space-y-10">
+      {/* WCAG 3.2.2 — האזהרה הנראית. הגרסה לקורא מסך יושבת ב-QuestionCard */}
+      <p className="mt-10 text-sm text-muted">
+        השאלון קצר, ובחירת תשובה מעבירה אוטומטית לשאלה הבאה. אפשר לחזור לשאלה
+        קודמת בכל שלב, ולא נבקש ממך פרטים אישיים עד סוף השאלון.
+      </p>
+
+      <div className="mt-6 space-y-10">
         {heroQuestions.map((question, index) => (
           <div
             key={question.id}

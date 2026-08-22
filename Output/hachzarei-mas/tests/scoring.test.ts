@@ -302,10 +302,65 @@ describe('שלמות הקונפיגים — כללים שאסור להפר', () 
     ].join(' ');
 
     // סכום בשקלים בן 4 ספרות ומעלה, עם או בלי פסיק
-    expect(visible).not.toMatch(/\d{1,3},\d{3}\s*₪/);
-    expect(visible).not.toMatch(/\b\d{4,}\s*₪/);
-    for (const word of ['מובטח', 'בוודאות']) {
-      expect(visible, `המילה "${word}" אסורה — §8.4`).not.toContain(word);
+    expect(visible).not.toMatch(/d{1,3},d{3}s*₪/);
+    expect(visible).not.toMatch(/d{4,}s*₪/);
+  });
+
+  /**
+   * §9.2 נאכף עד היום על **ספרות** בלבד, ולכן היה אפשר לעקוף אותו במילים:
+   * "קיימת סבירות גבוהה שאתה זכאי להחזר" עבר את הבדיקה בלי בעיה.
+   * שער משפטי 22.8.2026 הפך אותו לכלל שנאכף.
+   */
+  const BANNED_EVERYWHERE = ['מובטח', 'בוודאות', 'תקבל החזר', 'מגיע לך בוודאות'];
+
+  /**
+   * אסורים בטקסט המדרגים בלבד.
+   *
+   * ההבחנה מכוונת: בכותרת ה-Hero "בדוק אם **מגיע לך** החזר" זו שאלה
+   * שמזמינה בדיקה — וזו כל הצעת הערך של הדף. באותן מילים במסך התוצאה,
+   * **אחרי** שהגולש מסר נתונים, זו כבר קביעה לגביו אישית לפני שנראה מסמך.
+   */
+  const BANNED_IN_TIERS = ['סבירות גבוהה', 'ההחזר הצפוי', 'מגיע לך', 'אתה זכאי', 'את זכאית'];
+
+  it.each(configs)('$slug: אין הבטחת זכאות בשום טקסט לגולש', (config) => {
+    const everywhere = [
+      config.heroHeadline,
+      config.heroSubline,
+      config.pageTitle,
+      config.metaDescription,
+      ...config.tiers.flatMap((t) => [t.headline, t.body, t.ctaNote ?? '', t.consentNote ?? '']),
+      ...config.faq.flatMap((f) => [f.question, f.answer]),
+    ].join(' ');
+
+    for (const phrase of BANNED_EVERYWHERE) {
+      expect(everywhere, `"${phrase}" אסור בכל טקסט לגולש — §8.4`).not.toContain(phrase);
+    }
+
+    const tierText = config.tiers
+      .flatMap((t) => [t.headline, t.body, t.ctaNote ?? '', t.consentNote ?? ''])
+      .join(' ');
+
+    for (const phrase of BANNED_IN_TIERS) {
+      expect(
+        tierText,
+        `"${phrase}" במסך התוצאה הוא קביעת זכאות אישית לפני בדיקת מסמכים — §9.2`
+      ).not.toContain(phrase);
     }
   });
+
+  it.each(configs)('$slug: מודל התמחור מגולה — לא רק "חינם"', (config) => {
+    // ח-3 בשער המשפטי: האתר אמר "חינם" ארבע פעמים ומעולם לא אמר
+    // שהטיפול הוא שירות בתשלום. חוק הגנת הצרכן §2(א) ו-§4.
+    const faq = config.faq.map((f) => f.question + ' ' + f.answer).join(' ');
+    expect(faq, 'חסר גילוי שהטיפול עצמו בתשלום').toMatch(/בתשלום|שכר טרחה|שכר הטרחה/);
+  });
+
+  it.each(configs)('$slug: לכל מדרג יש מסלול פנייה', (config) => {
+    // ח-5: מדרג C היה `ctaType: 'none'` — מסך ללא שום מסלול — בזמן
+    // ששורת האמון הבטיחה מענה לכל גולש. משה הכריע: מי שפונה מקבל מענה.
+    for (const tier of config.tiers) {
+      expect(tier.ctaType, `מדרג ${tier.id} בלי מסלול פנייה`).not.toBe('none');
+    }
+  });
+
 });

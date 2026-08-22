@@ -30,9 +30,22 @@ export const QuestionCard = forwardRef<HTMLHeadingElement, Props>(function Quest
 
       {question.subtitle && <p className="mt-2 text-muted">{question.subtitle}</p>}
 
+      {/*
+        WCAG 3.2.2 (On Input): מעבר אוטומטי הוא שינוי הקשר, והקריטריון
+        מתקיים באחת משתיים — או שאין שינוי, או **שהמשתמש הוזהר לפניו**.
+        ההשהיה, הפוקוס וכפתור החזרה מפחיתים נזק אבל לא מקיימים את הקריטריון;
+        השורה הזו כן. היא מוקראת כחלק מתיאור קבוצת האפשרויות, ולכן קורא
+        מסך שומע אותה **לפני** כל בחירה — גם למי שנחת ישר על מסך שאלה.
+        הגרסה הנראית לעין יושבת ב-Hero, פעם אחת.
+      */}
+      <p id={`${question.id}-advance`} className="sr-only">
+        בחירת תשובה מעבירה אוטומטית לשאלה הבאה. אפשר לחזור לשאלה הקודמת בכל שלב.
+      </p>
+
       <div
         role="group"
         aria-label={question.title}
+        aria-describedby={`${question.id}-advance`}
         className="mt-5 grid gap-3"
       >
         {question.options.map((option) => (

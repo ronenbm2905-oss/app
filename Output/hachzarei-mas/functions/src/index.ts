@@ -1,4 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -121,10 +122,17 @@ function deviceFrom(userAgent: string): 'mobile' | 'tablet' | 'desktop' {
 }
 
 async function queueNotification(subject: string, text: string): Promise<void> {
-  // תוסף Firebase "Trigger Email from Firestore" קורא מהאוסף הזה
+  // תוסף Firebase "Trigger Email from Firestore" קורא מהאוסף הזה.
+  //
+  // ⚠️ המסמך הזה הוא **עותק שני מלא של הליד** — שם, טלפון, דוא"ל וכל
+  // התשובות בטקסט חופשי, כולל תשובות בעלות רגישות מיוחדת לפי תיקון 13
+  // (אחוזי נכות, נתוני שכר). התוסף לא מוחק אותו אחרי המסירה, ולכן בלי
+  // `purgeAfter` הוא נשאר לנצח — גם אחרי שהליד עצמו נמחק.
+  // `purgeExpiredData` מנקה אותו. ראה §9.1 באפיון.
   await db.collection('mail').add({
     to: [site.notificationEmail],
     message: { subject, text },
+    purgeAfter: Timestamp.fromMillis(Date.now() + site.mailRetentionDays * 86_400_000),
   });
 }
 
@@ -217,7 +225,6 @@ export const submitLead = onRequest({ cors: false }, async (req, res) => {
     // תיקון 13 — תקופת שמירה מוגדרת מראש על כל מסמך
     retentionClass: lead.consent ? 'consented' : 'inquiry-only',
     purgeAfter,
-    purgedAt: null,
 
     status: 'new',
     contactAttempts: 0,
@@ -285,3 +292,70 @@ export const submitLead = onRequest({ cors: false }, async (req, res) => {
 
   res.json({ ok: true, tier: result.tier.id, submissionId });
 });
+
+
+// ─────────────────────────────────────────────
+// מחיקה אוטומטית
+// ─────────────────────────────────────────────
+
+/**
+ * מוחקת מסמכים שעבר מועד ה-`purgeAfter` שלהם.
+ *
+ * ⚠️ **הפונקציה הזו היא מה שהופך את מדיניות הפרטיות לנכונה.**
+ * עד 22.8.2026 `purgeAfter` רק **נכתב** על כל ליד ואף אחד לא קרא אותו:
+ * אין TTL policy על `leads`, ולא הייתה שום משימה מתוזמנת. כלומר
+ * `privacy.html` §4 הצהיר "המחיקה מתבצעת אוטומטית במועד זה" בזמן
+ * שהמועד נרשם והמחיקה לא קרתה. זה נתפס בשער המשפטי של עדי (ח-1).
+ *
+ * מחיקה **קשה**, לא סימון: המדיניות מבטיחה מחיקה, לא דגל.
+ *
+ * למה לא TTL policy של Firestore על `leads`: TTL עובד, אבל הוא הגדרה
+ * בקונסולה שלא נראית בקוד ולא נוסעת עם ה-repo — ומדיניות שמירה שאי אפשר
+ * לקרוא ב-code review היא מדיניות שתישכח בפרויקט הבא. TTL כן מוגדר על
+ * `rateLimits`, שם אין PII ואין הצהרה במדיניות.
+ */
+/**
+ * הלוגיקה עצמה, מיוצאת בנפרד מהעטיפה המתוזמנת — כדי שאפשר יהיה
+ * להריץ עליה בדיקה מול האמולטור. פונקציה מתוזמנת דורשת אמולטור pubsub
+ * ואי אפשר לקרוא לה ישירות, וזו בדיוק הלוגיקה שאסור שתישאר לא-נבדקת:
+ * היא מה שהופך את ההצהרה במדיניות הפרטיות לנכונה.
+ */
+export async function purgeExpired(
+  now = Timestamp.now()
+): Promise<Record<string, number>> {
+  const summary: Record<string, number> = {};
+
+  for (const name of ['leads', 'mail'] as const) {
+    let deleted = 0;
+
+    // בלולאה, כי `limit` על השאילתה ו-500 פעולות ל-batch הן תקרות של Firestore
+    for (;;) {
+      const expired = await db
+        .collection(name)
+        .where('purgeAfter', '<=', now)
+        .limit(400)
+        .get();
+
+      if (expired.empty) break;
+
+      const batch = db.batch();
+      expired.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+      deleted += expired.size;
+
+      if (expired.size < 400) break;
+    }
+
+    summary[name] = deleted;
+  }
+
+  return summary;
+}
+
+export const purgeExpiredData = onSchedule(
+  { schedule: 'every day 03:15', timeZone: 'Asia/Jerusalem', region: 'me-west1' },
+  async () => {
+    const summary = await purgeExpired();
+    console.log('purgeExpiredData', JSON.stringify(summary));
+  }
+);
