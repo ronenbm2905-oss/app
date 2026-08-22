@@ -53,10 +53,22 @@ describe('רנדרר ה-Markdown — נאמנות לניסוח', () => {
 });
 
 describe('מדיניות הפרטיות — המסמך שנטען', () => {
-  it('נטען מקובץ ה-md ואינו ריק', () => {
-    // ⚠️ היום זה placeholder. כשעדי תמסור את הנוסח — מחליפים את הקובץ בלבד.
+  it('נטען מקובץ ה-md, אינו ריק, ומתחיל בכותרת', () => {
+    // ⚠️ בכוונה **לא** נועלים את נוסח הכותרת. עדי היא הבעלים של הניסוח, וטסט
+    // שמקבע מילים שלה יישבר בכל סבב עריכה משפטית ויידחוף מישהו "לתקן" את
+    // המסמך כדי לרצות את הטסט. מה שכן חייב להישמר: שהקובץ נטען ושיש בו מבנה.
     expect(LEGAL_DOCS.privacy.source.trim().length).toBeGreaterThan(0);
-    expect(LEGAL_DOCS.privacy.source).toContain('# מדיניות פרטיות');
+    expect(LEGAL_DOCS.privacy.source.trimStart()).toMatch(/^# .+/);
+  });
+
+  it('המסמך מרונדר במלואו ובזמן סביר — שומר מפני לולאה אינסופית', () => {
+    // הרנדרר נתקע בפועל על כותרת '### ' והפיל worker עם 4GB heap. המסמך
+    // האמיתי מכיל כותרות כאלה; ה-placeholder לא הכיל, ולכן הבאג היה נסתר
+    // עד שהוחלף התוכן. הטסט מרנדר את המסמך **האמיתי** ולא דוגמה מומצאת.
+    const started = Date.now();
+    const html = renderToStaticMarkup(<Markdown source={LEGAL_DOCS.privacy.source} />);
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(html.length).toBeGreaterThan(1000);
   });
 
   it('המודאל מציג את תוכן המסמך, עם כותרת ותפקיד dialog', () => {

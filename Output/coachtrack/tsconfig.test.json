@@ -15,5 +15,16 @@
     "types": ["vite/client", "node"],
     "resolveJsonModule": true
   },
-  "include": ["src", "rules-tests"]
+  "include": ["src", "rules-tests"],
+
+  /*
+   * חובה. extends יורש גם את ה-exclude של tsconfig.app.json, שמחריג במפורש את
+   * קבצי ה-test שב-src. בלי לאפס אותו כאן, פרויקט הטסטים לא בדק את הטסטים:
+   * מפתח תרגום שבור עבר typecheck נקי ונפל רק ב-vitest.
+   * הרשימה ריקה בכוונה — כאן דווקא רוצים את קבצי הטסט.
+   *
+   * הערה על הפורמט: אין להשתמש כאן בתו backtick. הפרסר של TypeScript מפרש
+   * אותו כתחילת template literal ומקריס את קריאת הקובץ.
+   */
+  "exclude": []
 }

@@ -102,6 +102,20 @@ export function Markdown({ source }: { source: string }) {
       continue;
     }
 
+    // כותרת רמה 3. חייבת להיבדק לפני '## ': בלעדיה שורת '### ' לא תאמה לאף
+    // ענף כותרת (התו השלישי הוא '#' ולא רווח), נפלה לענף הפסקה, ושם השומר
+    // `!startsWith('#')` חסם גם את הלולאה הפנימית — כך ש-i לא גדל והרנדרר
+    // נתקע. ראה גם השומר בסוף הלולאה, שמונע את התרחיש הזה מכל קלט עתידי.
+    if (line.startsWith('### ')) {
+      blocks.push(
+        <h4 key={nextKey()} className="mt-4 mb-1 text-sm font-bold text-slate-900">
+          {renderInline(line.slice(4))}
+        </h4>,
+      );
+      i += 1;
+      continue;
+    }
+
     if (line.startsWith('## ')) {
       blocks.push(
         <h3 key={nextKey()} className="mt-5 mb-1.5 text-base font-bold text-slate-900">
@@ -170,6 +184,16 @@ export function Markdown({ source }: { source: string }) {
       paragraph.push(lines[i]);
       i += 1;
     }
+
+    // 🔒 שומר נגד לולאה אינסופית. אם השורה לא תאמה לאף ענף למעלה **וגם** נחסמה
+    // ע"י אחד השומרים של לולאת הפסקה, היא לא נצרכה ו-i לא גדל — והרנדרר תוקע
+    // את הדפדפן עד קריסה. זה קרה בפועל עם כותרת '### ' לפני שנוסף לה ענף.
+    // כאן השורה נצרכת כטקסט רגיל: עדיף מסמך משפטי שנראה פחות טוב מדפדפן תקוע.
+    if (paragraph.length === 0) {
+      paragraph.push(line);
+      i += 1;
+    }
+
     blocks.push(
       <p key={nextKey()} className="my-2 text-sm leading-relaxed text-slate-700">
         {renderInline(paragraph.join(' '))}
