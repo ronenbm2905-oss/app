@@ -1,0 +1,36 @@
+/* עמודי המשפט הם טקסט בלבד — אין להם bundle ואין להם JavaScript. */
+:root {
+  --ink: #1a1d24;
+  --muted: #5b6270;
+  --brand: #0e5fd8;
+  --line: #e3e6ec;
+  --surface: #f7f8fa;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 0 1.25rem 4rem;
+  font-family: Assistant, system-ui, Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--ink);
+  background: #fff;
+}
+main { max-width: 42rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.25; margin: 2.5rem 0 0.5rem; }
+h2 { font-size: 1.25rem; margin: 2.25rem 0 0.5rem; }
+p, li { color: var(--muted); }
+ul { padding-inline-start: 1.25rem; }
+li { margin-bottom: 0.4rem; }
+a { color: var(--brand); }
+.updated { font-size: 0.9rem; color: var(--muted); margin-top: 0; }
+.draft {
+  border: 2px solid var(--line);
+  background: var(--surface);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+}
+.draft strong { color: var(--ink); }
+nav.back { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.95rem; }

@@ -146,7 +146,8 @@ export function TenantLeaseTab({ property, data, ownerId, onSaveTenant, onSaveLe
           initial={tenant || createTenant({ ownerId })}
           onClose={() => setTenantModal(false)}
           onSave={(tn) => {
-            onSaveTenant(tn, lease);
+            // מעבירים את מזהה הנכס — כדי שהשמירה תקשר דייר↔נכס (חוזה-טיוטה אם אין).
+            onSaveTenant(tn, property.id);
             setTenantModal(false);
           }}
         />

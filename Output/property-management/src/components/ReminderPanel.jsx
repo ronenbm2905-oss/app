@@ -3,13 +3,14 @@ import { useI18n } from "../hooks/useI18n.jsx";
 import { Button, Pill } from "./ui/Button.jsx";
 import { Modal } from "./ui/Modal.jsx";
 import { Field, Select } from "./ui/Field.jsx";
-import { IconPlus, IconCalendar, IconCheck, IconClose } from "./ui/icons.jsx";
+import { IconPlus, IconCalendar, IconCheck, IconClose, IconWhatsapp } from "./ui/icons.jsx";
 import { enumOptions } from "../utils/options.js";
 import { REMINDER_TYPES } from "../constants.js";
 import { createReminder } from "../schema.js";
 import { computeReminders, DEFAULT_LEAD_DAYS } from "../utils/reminders.js";
-import { addressLine } from "../utils/display.js";
-import { formatDate } from "../utils/format.js";
+import { addressLine, tenantById } from "../utils/display.js";
+import { formatDate, whatsappLink } from "../utils/format.js";
+import { simpleWaText } from "../utils/waMessages.js";
 
 // מסך תזכורות (פרוסה 3). מציג תזכורות נגזרות (חידוש חוזה) + שמורות (ביטוח/מס/בדיקה),
 // ממויינות לפי דחיפות, עם הדגשה של מה שבתוך חלון ההתראה. בלי push/מייל — תצוגה בלבד.
@@ -42,6 +43,24 @@ export function ReminderPanel({ data, ownerId, onOpenProperty, onAddReminder, on
         <ul className="space-y-2">
           {reminders.map((r) => {
             const prop = r.propertyId ? propById[r.propertyId] : null;
+            // הגעה לדייר דרך החוזה (אם התזכורת קשורה לחוזה/נכס עם חוזה פעיל).
+            const lease = r.leaseId
+              ? data.leases.find((l) => l.id === r.leaseId)
+              : r.propertyId
+              ? data.leases.find((l) => l.propertyId === r.propertyId && l.status === "active")
+              : null;
+            const tenant = lease ? tenantById(lease.tenantId, data.tenants) : null;
+            const remHref = tenant?.phone
+              ? whatsappLink(
+                  tenant.phone,
+                  simpleWaText({
+                    hi: t("wa.hi"),
+                    name: tenant.fullName,
+                    body: `${t("wa.reminderIntro")} ${t(`enum.reminderType.${r.type}`)} — ${formatDate(r.dueDate, lang)}${prop ? `, ${addressLine(prop)}` : ""}.`,
+                    close: t("wa.thanks"),
+                  })
+                )
+              : null;
             return (
               <li
                 key={r.id}
@@ -79,6 +98,18 @@ export function ReminderPanel({ data, ownerId, onOpenProperty, onAddReminder, on
                       ? t("rem.overdueDays", { days: Math.abs(r.daysUntil) })
                       : t("rem.inDays", { days: r.daysUntil })}
                   </span>
+                  {remHref && (
+                    <a
+                      href={remHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={t("wa.reminderMsg")}
+                      title={t("wa.reminderMsg")}
+                      className="rounded p-1 text-green-600 hover:text-green-700"
+                    >
+                      <IconWhatsapp size={16} />
+                    </a>
+                  )}
                   {canEdit && r.source === "stored" && (
                     <div className="flex gap-1">
                       <button onClick={() => onSetStatus(r.id, "done")} aria-label={t("rem.done")} className="rounded p-1 text-ink-faint hover:text-green-600">

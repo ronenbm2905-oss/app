@@ -17,7 +17,7 @@ import { mockExtract, extractDocument, EXTRACTION_SCHEMA, AI_DOC_TYPES } from ".
 import { computeReminders, activeReminders, DEFAULT_LEAD_DAYS } from "../src/utils/reminders.js";
 import { removeTenantCascade } from "../src/utils/retention.js";
 import { AI_SCANNABLE_TYPES } from "../src/constants.js";
-import { ticketWaText } from "../src/utils/waMessages.js";
+import { ticketWaText, simpleWaText } from "../src/utils/waMessages.js";
 
 let pass = 0;
 function ok(name, cond) {
@@ -352,6 +352,12 @@ const waMsgNoName = ticketWaText({
 });
 ok("ticketWaText handles empty name", waMsgNoName.startsWith("שלום,"));
 ok("ticketWaText drops empty description line", !waMsgNoName.includes("\n\n"));
+const simpleMsg = simpleWaText({ hi: "שלום", name: "דנה", body: "נותרה יתרת תשלום של 1,200 ₪ עבור הרצל 1.", close: "תודה!" });
+ok(
+  "simpleWaText = greeting + body + close",
+  simpleMsg.split("\n").length === 3 && simpleMsg.startsWith("שלום דנה,") && simpleMsg.includes("1,200 ₪") && simpleMsg.endsWith("תודה!")
+);
+ok("simpleWaText bare greeting when no name", simpleWaText({ hi: "שלום", name: "", body: "גוף", close: "תודה!" }).startsWith("שלום,"));
 
 console.log(`\nALL ${pass} CHECKS PASSED`);
 

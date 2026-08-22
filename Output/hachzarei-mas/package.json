@@ -1,0 +1,39 @@
+{
+  "name": "hachzarei-mas",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "description": "שני דפי נחיתה לייצור לידים — החזר מס הכנסה והחזר מס שבח. מנוע שאלון גנרי מונע-קונפיג.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --exclude tests/rules.test.ts --exclude \"**/node_modules/**\"",
+    "test:watch": "vitest",
+    "sync:shared": "node scripts/sync-shared.mjs",
+    "build:functions": "npm run sync:shared && npm --prefix functions run build",
+    "emulate": "npm run build:functions && firebase emulators:start",
+    "test:rules": "vitest run tests/rules.test.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.54.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "@types/node": "^22.20.1",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "firebase": "^11.10.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}

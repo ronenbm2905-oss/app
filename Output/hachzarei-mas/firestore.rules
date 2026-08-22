@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// כלל אחד חשוב כאן: **הלקוח לא נוגע בלידים.**
+//
+// אין קריאה, אין כתיבה, אין עדכון — לא מהדף ולא מהקונסולה בלי אימות.
+// כל כתיבה עוברת דרך Cloud Function שרצה ב-Admin SDK ועוקפת את הכללים,
+// ולכן אין כאן שום חוק "מותר ללקוח לכתוב אם...". חוק כזה היה מאפשר
+// לכל מי שיש לו את מפתח ה-Web להזריק לידים ולעקוף את חישוב הציון.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /leads/{leadId} {
+      allow read, write: if false;
+    }
+
+    match /rateLimits/{bucketId} {
+      allow read, write: if false;
+    }
+
+    // אוסף התוסף "Trigger Email" — נכתב ע"י ה-Admin SDK בלבד
+    match /mail/{mailId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

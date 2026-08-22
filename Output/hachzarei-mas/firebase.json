@@ -1,0 +1,41 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs20",
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR/..\" run build:functions"]
+    }
+  ],
+  "hosting": {
+    "public": "dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      { "source": "/api/submit-lead", "function": "submitLead", "region": "me-west1" },
+      { "source": "/mas-shevach", "destination": "/mas-shevach.html" },
+      { "source": "/takanon", "destination": "/takanon.html" },
+      { "source": "/privacy", "destination": "/privacy.html" },
+      { "source": "/accessibility", "destination": "/accessibility.html" }
+    ],
+    "headers": [
+      {
+        "//": "index.html לעולם לא נשמר במטמון — אחרת הטלפון מציג גרסה ישנה אחרי deploy",
+        "source": "/**/*.@(html)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      {
+        "//": "נכסים עם hash בשם — אפשר לשמור לנצח",
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      }
+    ]
+  },
+  "emulators": {
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "ui": { "enabled": true }
+  }
+}

@@ -21,7 +21,10 @@
       "Bash(git switch *)",
       "Bash(node theme-test.mjs)",
       "Bash(npm run *)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(npm install *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

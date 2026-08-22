@@ -17,7 +17,7 @@ import { DevRoleSwitcher } from "./components/DevRoleSwitcher.jsx";
 import { ReminderPanel } from "./components/ReminderPanel.jsx";
 import { Modal } from "./components/ui/Modal.jsx";
 import { PropertyForm } from "./components/PropertyForm.jsx";
-import { createProperty, createTicket } from "./schema.js";
+import { createProperty, createTicket, createLease } from "./schema.js";
 import { removeTenantCascade } from "./utils/retention.js";
 import { isFirebaseConfigured } from "./firebase.js";
 
@@ -57,13 +57,17 @@ export default function App() {
         if (i >= 0) d.properties[i] = { ...p, ownerId: p.ownerId || ownerId };
         else d.properties.push({ ...p, ownerId });
       }),
-    saveTenant: (tenant, lease) =>
+    saveTenant: (tenant, propertyId) =>
       update((d) => {
         const i = d.tenants.findIndex((x) => x.id === tenant.id);
         const withOwner = { ...tenant, ownerId: tenant.ownerId || ownerId };
         if (i >= 0) d.tenants[i] = withOwner;
         else d.tenants.push(withOwner);
-        // אם אין חוזה עדיין — לא יוצרים אוטומטית; החוזה נוצר בטופס החוזה.
+        // מקשרים דייר↔נכס דרך חוזה: אם לנכס אין עדיין חוזה — יוצרים חוזה-טיוטה
+        // (אחרת הדייר "יתום", לא מוצג בטאב, וגם טופס החוזה נשאר חסום). פעולה אטומית אחת.
+        if (propertyId && !d.leases.some((l) => l.propertyId === propertyId)) {
+          d.leases.push(createLease({ ownerId, propertyId, tenantId: tenant.id }));
+        }
       }),
     saveLease: (lease) =>
       update((d) => {
