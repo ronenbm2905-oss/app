@@ -78,9 +78,15 @@ export function PortalJoin({ clubId, onJoined }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  // The screen has always SAID the account is for a parent, and nothing checked. A
+  // fifteen-year-old with a Google account could join, at which point the service is
+  // collecting a minor's email address — which is exactly what tying the portal to a
+  // team rather than to a player was meant to avoid. An affirmation is not proof, but it
+  // moves the claim from our text to their action.
+  const [isGuardian, setIsGuardian] = useState(false);
 
   const normalized = normalizeJoinCode(code);
-  const ready = normalized.length === JOIN_CODE_LENGTH;
+  const ready = normalized.length === JOIN_CODE_LENGTH && isGuardian;
 
   async function submit(e) {
     e.preventDefault();
@@ -203,6 +209,18 @@ export function PortalJoin({ clubId, onJoined }) {
             <p id="join-help" className="text-xs text-stone-500">
               קוד בן {JOIN_CODE_LENGTH} תווים. אפשר להקליד באותיות קטנות ועם מקף.
             </p>
+            <label className="flex items-start gap-2 text-xs text-stone-700 bg-stone-50 border border-stone-200 rounded-lg p-2.5 leading-relaxed">
+              <input
+                type="checkbox"
+                checked={isGuardian}
+                onChange={(e) => setIsGuardian(e.target.checked)}
+                className="mt-0.5 rounded border-stone-300 shrink-0"
+              />
+              <span>
+                אני <strong>הורה או אפוטרופוס</strong> של שחקן/ית בקבוצה. החשבון הזה שייך לי,
+                ולא לילד/ה.
+              </span>
+            </label>
             <button
               type="submit"
               disabled={!ready || busy}

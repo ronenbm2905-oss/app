@@ -60,13 +60,24 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {field("שם", "name", "text", { autoFocus: true, placeholder: "שם מלא" })}
-        {field("טלפון", "phone", "text", { placeholder: "050-0000000", inputMode: "tel" })}
+        {/* "טלפון" said nothing about whose. For a minor it should be the parent's, and
+            an unlabelled field on a child's record invites the child's own number —
+            which is more personal data about a minor than the club needs. */}
+        {field("טלפון הורה/אפוטרופוס", "phone", "text", { placeholder: "050-0000000", inputMode: "tel" })}
         {field("תאריך לידה", "birthDate", "date")}
         {field("מידת חולצה", "shirtSize", "text", { placeholder: "10 / M" })}
         {field("מידת מכנס", "pantsSize", "text", { placeholder: "10 / M" })}
         {field("מידת פוטר", "sweaterSize", "text", { placeholder: "10 / M" })}
         {field("מספר גופייה", "jerseyNumber", "text", { inputMode: "numeric", placeholder: "7" })}
       </div>
+      {/* Nothing in the app computes from a player's date of birth — it is stored and
+          displayed. The club may still need it for federation registration, which is why
+          it is here at all; saying so makes leaving it blank a real option rather than a
+          field someone fills because it exists. */}
+      <p className="text-xs text-stone-500 leading-relaxed">
+        מלאו רק מה שהמועדון באמת צריך. תאריך הלידה נדרש בדרך כלל לרישום לאיגוד ולשיוך לקטגוריית
+        גיל — אם אין בו צורך, אפשר להשאיר ריק. הפרטים כאן הם מידע אישי, ולעיתים של קטינים.
+      </p>
       {dup && (
         <p className="text-xs text-red-600 flex items-center gap-1">
           <IconAlert size={13} /> מספר גופייה {jersey} כבר תפוס בקבוצה הזו.

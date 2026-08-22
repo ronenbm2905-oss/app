@@ -5,7 +5,7 @@ import { uid } from "../utils/dates";
 import { buildClubExport, csvSheets, exportFileName } from "../utils/exportClub";
 import { clubSettings } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
-import { applyTheme } from "../utils/theme";
+import { applyTheme, brandContrast } from "../utils/theme";
 import { legalDetailsComplete, LEGAL_FIELD_LABELS } from "../legal/fillTemplate";
 import { fileToLogoDataUrl, dataUrlBytes, LOGO_MAX_BYTES } from "../utils/imageResize";
 import { generateJoinCode, formatJoinCode } from "../utils/joinCode";
@@ -363,6 +363,7 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
 
   // Custom session types, read through the same normaliser the rest of the app uses so
   // a hand-edited club document shows here exactly as it behaves everywhere else.
+  const contrast = brandContrast(draft.primaryColor || DEFAULT_SETTINGS.primaryColor);
   const customTypes = customSessionTypes({ settings: draft });
   const writeCustomTypes = (list) => set({ sessionTypes: list });
   const setCustomType = (i, patch) =>
@@ -469,6 +470,24 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
                 onChange={(e) => set({ primaryColor: e.target.value })}
               />
             </div>
+            {/* Measured, not guessed. This colour is the background of every primary
+                button under white text, and the club's own accessibility statement
+                promises a contrast ratio — so a light choice makes the club publish a
+                claim about itself that is not true. */}
+            {contrast && !contrast.passesLargeText && (
+              <p className="text-xs text-red-800 bg-red-50 border border-red-300 rounded-lg p-2 mt-2 leading-relaxed">
+                <strong>⚠ הצבע בהיר מדי לכפתורים.</strong> יחס הניגודיות מול טקסט לבן הוא{" "}
+                <strong>{contrast.ratio.toFixed(1)}:1</strong>, והתקן דורש לפחות 3:1 לטקסט גדול.
+                טקסט לבן על הצבע הזה יהיה קשה לקריאה, ו<strong>הצהרת הנגישות של המועדון שלכם
+                מבטיחה אחרת</strong>. בחרו גוון כהה יותר.
+              </p>
+            )}
+            {contrast && contrast.passesLargeText && !contrast.passesBodyText && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2 leading-relaxed">
+                יחס הניגודיות הוא <strong>{contrast.ratio.toFixed(1)}:1</strong> — מספיק לכפתורים
+                ולכותרות (3:1), אך מתחת ל-4.5:1 הנדרש לטקסט רגיל. תקין, אך גוון כהה יותר יהיה נוח יותר.
+              </p>
+            )}
           </Field>
           <Field label="צבע משני (אקסנט)" hint="נגיעת צבע בלבד — לא לכפתורים.">
             <div className="flex items-center gap-2">

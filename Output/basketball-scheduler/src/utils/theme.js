@@ -103,3 +103,51 @@ export function primaryHex(settings) {
   const hex = (settings && settings.primaryColor) || DEFAULT_SETTINGS.primaryColor;
   return hexToRgb(hex) ? hex : DEFAULT_SETTINGS.primaryColor;
 }
+
+// ---------------------------------------------------------------------------
+// Contrast.
+//
+// `brand-600` is the base colour exactly as the club picked it, and it is the
+// background of every primary button in the app and the portal, under white text. A
+// club that chooses a light brand colour therefore breaks the contrast promise its OWN
+// accessibility statement makes — the statement is per club, so the club publishes a
+// claim the club has just falsified, and nothing anywhere says so.
+//
+// Measuring it does not stop anyone choosing the colour they want. It stops them doing
+// it without being told.
+// ---------------------------------------------------------------------------
+
+// WCAG relative luminance. Takes the [r, g, b] triple hexToRgb returns.
+function luminance([r, g, b]) {
+  const channel = (v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+// Contrast ratio between two hex colours, 1–21. Returns null if either is unparseable,
+// so a bad value reports "unknown" rather than a confident wrong number.
+export function contrastRatio(hexA, hexB) {
+  const a = hexToRgb(hexA);
+  const b = hexToRgb(hexB);
+  if (!a || !b) return null;
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// What a brand colour does to the two combinations that actually appear: white text on
+// the colour (every primary button) and the colour as text on white (headings, links).
+//
+// 4.5 is the AA threshold for body text and 3.0 for large text; buttons and headings
+// are large, so 3.0 is the floor that matters and 4.5 is the comfortable target.
+export function brandContrast(hex) {
+  const onWhite = contrastRatio(hex, "#FFFFFF");
+  if (onWhite === null) return null;
+  return {
+    ratio: onWhite,
+    // Same number both ways — white-on-colour and colour-on-white are the same pair.
+    passesLargeText: onWhite >= 3,
+    passesBodyText: onWhite >= 4.5,
+  };
+}
