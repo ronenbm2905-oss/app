@@ -6,3 +6,9 @@ dist
 .DS_Store
 .firebase
 fb-*.bat
+
+# מסמכי דוגמה לסריקת AI — מכילים PII אמיתי, לא נכנסים ל-git
+samples/
+
+# קונפיג Firebase לסביבת cloudaside — קובץ סביבה, לא נכנס ל-git
+.env.cloudaside

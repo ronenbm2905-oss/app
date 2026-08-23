@@ -118,7 +118,7 @@ describe('מודל הניקוד — דף מס שבח', () => {
     const onlyHighTax = calculateScore(
       {
         sold_property: 'yes',
-        shevach_paid: 'above_30k',
+        shevach_paid: 'above_20k',
         age_at_sale: 'no',
         monthly_income: 'above_6k',
         capital_market: 'no',
@@ -131,7 +131,7 @@ describe('מודל הניקוד — דף מס שבח', () => {
     const withAge = calculateScore(
       {
         sold_property: 'yes',
-        shevach_paid: 'above_30k',
+        shevach_paid: 'above_20k',
         age_at_sale: 'yes',
         monthly_income: 'above_6k',
         capital_market: 'no',
@@ -194,7 +194,7 @@ describe('assertComplete — הרגרסיה של חור האימות בשרת', 
 
   it('תשובה שנשלחה אחרי השער נדחית', () => {
     expect(() =>
-      assertComplete({ sold_property: 'no', shevach_paid: 'above_30k' }, masShevachConfig)
+      assertComplete({ sold_property: 'no', shevach_paid: 'above_20k' }, masShevachConfig)
     ).toThrow(/after hard gate/);
   });
 
@@ -231,11 +231,11 @@ describe('שלמות הקונפיגים — כללים שאסור להפר', () 
    * ותוקן. במס שבח נשאר מקרה אחד שהוא **כנראה** מכוון — אבל טרם אושר.
    */
   const ACKNOWLEDGED_DE_FACTO_GATES: Record<string, string> = {
-    'mas-shevach/shevach_paid/below_30k':
-      'מקסימום 0.806 מול רצפת B של 1.0 — כלומר מי ששילם פחות מ-30K הוא תמיד C. ' +
+    'mas-shevach/shevach_paid/below_20k':
+      'מקסימום 0.806 מול רצפת B של 1.0 — כלומר מי ששילם פחות מ-20K הוא תמיד C. ' +
       'ככל הנראה מכוון (הדף כולו נועד לסנן לטובת מס שבח משמעותי), אבל אז עדיף שער ' +
       'מפורש: הוא חוסך לגולש שלוש שאלות ומייצר hard_gate_exit שמלמד על איכות הטירגוט. ' +
-      'החלטה פתוחה — ראה §11.8 באפיון.',
+      'אושר במפורש ע"י משה 22.8.2026: המטרה היא לידים איכותיים בלבד.',
   };
 
   it.each(configs)('$slug: אין מקדם שהוא שער בפועל', (config) => {
@@ -302,8 +302,30 @@ describe('שלמות הקונפיגים — כללים שאסור להפר', () 
     ].join(' ');
 
     // סכום בשקלים בן 4 ספרות ומעלה, עם או בלי פסיק
-    expect(visible).not.toMatch(/d{1,3},d{3}s*₪/);
-    expect(visible).not.toMatch(/d{4,}s*₪/);
+    expect(visible).not.toMatch(/\d{1,3},\d{3}\s*₪/);
+    expect(visible).not.toMatch(/\d{4,}\s*₪/);
+  });
+
+  /**
+   * הבדיקה למעלה נשענת על ביטוי רגולרי, וביטוי רגולרי שגוי **עובר, לא נכשל**.
+   *
+   * זה לא היפותטי. במשך חלק מ-22.8.2026 שתי השורות למעלה היו
+   * `/d{1,3},d{3}s*₪/` — בלי לוכסנים, כלומר "האות d". הבדיקה הייתה
+   * ירוקה, האפיון הציג אותה כאכיפה של §9.2, ובפועל לא הייתה שום בקרה.
+   * היא נתפסה בסבב השני של השער המשפטי — באותו יום שבו הגיעה בקשה
+   * להוסיף לדף צילומי מסך של החזרים בני מאות אלפי שקלים.
+   *
+   * לכן יש כאן בדיקה לבדיקה. אם היא נופלת, הרגקס למעלה מת.
+   */
+  it('הבדיקה של סכומי ההחזר באמת תופסת סכום', () => {
+    const withAmounts = 'קיבלנו עבורו החזר של 22,366 ₪ ועוד 4629 ₪';
+    expect(withAmounts).toMatch(/\d{1,3},\d{3}\s*₪/);
+    expect(withAmounts).toMatch(/\d{4,}\s*₪/);
+
+    // ומנגד — טקסט תקין לא נתפס בטעות
+    const clean = 'הבדיקה הראשונית ללא עלות. שכר הטרחה נקבע מולך בשיחה.';
+    expect(clean).not.toMatch(/\d{1,3},\d{3}\s*₪/);
+    expect(clean).not.toMatch(/\d{4,}\s*₪/);
   });
 
   /**

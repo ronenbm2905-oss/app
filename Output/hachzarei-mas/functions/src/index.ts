@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { getConfig } from './shared/config';
 import { site } from './shared/config/site';
+import { internal } from './shared/config/internal';
 import {
   assertComplete,
   calculateScore,
@@ -130,7 +131,7 @@ async function queueNotification(subject: string, text: string): Promise<void> {
   // `purgeAfter` הוא נשאר לנצח — גם אחרי שהליד עצמו נמחק.
   // `purgeExpiredData` מנקה אותו. ראה §9.1 באפיון.
   await db.collection('mail').add({
-    to: [site.notificationEmail],
+    to: [internal.notificationEmail],
     message: { subject, text },
     purgeAfter: Timestamp.fromMillis(Date.now() + site.mailRetentionDays * 86_400_000),
   });

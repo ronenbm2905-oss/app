@@ -172,7 +172,8 @@ export function createTicket(partial = {}) {
     ownerId: partial.ownerId || null, // B1
     propertyId: partial.propertyId || null,
     openedDate: partial.openedDate || new Date().toISOString().slice(0, 10),
-    type: partial.type || "other", // מתוך TICKET_TYPES
+    type: partial.type || "other", // מתוך TICKET_TYPES (תחום)
+    issueKey: partial.issueKey || null, // מזהה מתוך MAINTENANCE_CATALOG (סוג תקלה ספציפי)
     description: "",
     handler: { name: "", phone: "" }, // גורם מטפל + פרטי קשר
     quote: null, // הצעת מחיר (פיננסי — לא נחשף לאיש התחזוקה)
@@ -208,6 +209,8 @@ export function createDocument(partial = {}) {
     fileName: "",
     uploadDate: partial.uploadDate || new Date().toISOString().slice(0, 10),
     autoTagged: false, // תיוג אוטומטי ב-AI — לא בפרוסה 1 (שדה מוכן)
+    // מטא-דאטה שחולצה בסריקת AI (סכום/תקופה/מספרי זיהוי) — נשמרת לתיעוד.
+    extracted: partial.extracted || null,
     createdAt: new Date().toISOString(),
     ...partial,
   };

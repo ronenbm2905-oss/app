@@ -5,7 +5,8 @@
 // קלט (onCall, מהאפליקציה): { base64, mediaType, fileName }
 //   - PDF  → block מסוג document (base64) לפני ה-text block.
 //   - תמונה → block מסוג image.
-// פלט: { docType, amount, date, address, name } (structured output, JSON תקין).
+// פלט (structured output, JSON תקין): { docType, amount, date, dueDate, periodStart,
+//   periodEnd, address, name, supplier, accountNumber, propertyNumber, meterNumber }.
 //
 // פרטיות (שער עדי): הפונקציה מקבלת PII ושולחת ל-Anthropic. deploy חסום עד סקירת
 // עדי (ראה README). opt-in פר-מסמך נאכף בקליינט; כאן מאמתים משתמש מחובר בלבד.
@@ -18,10 +19,16 @@ import { CONFIG, EXTRACTION_SCHEMA } from "./config.js";
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
 const PROMPT =
-  "חלץ מהמסמך המצורף את השדות הבאים בלבד והחזר אותם לפי הסכימה: " +
-  "docType (סוג המסמך), amount (סכום מספרי אם קיים, אחרת null), " +
-  "date (תאריך בפורמט YYYY-MM-DD אם קיים, אחרת null), address (כתובת הנכס), " +
-  "name (שם בעל החשבון/הצדדים). אל תמציא ערכים — אם שדה חסר החזר מחרוזת ריקה או null.";
+  "חלץ מהמסמך המצורף את השדות לפי הסכימה: " +
+  "docType (סוג המסמך: ארנונה=municipalTax, חשמל=electricity, מים=water, חוזה שכירות=leaseContract, חוזה מכר=saleContract, נסח טאבו/רישום מקרקעין=landRegistry, אחרת unknown), " +
+  "amount (סכום לתשלום כולל מע\"מ, מספר, אחרת null), " +
+  "date (תאריך המסמך YYYY-MM-DD), dueDate (מועד תשלום אחרון YYYY-MM-DD), " +
+  "periodStart + periodEnd (תקופת החיוב, YYYY-MM-DD), address (כתובת הנכס), " +
+  "name (שם המחזיק/הצדדים), supplier (הספק/המנפיק — עירייה/חב' מים/חב' חשמל), " +
+  "accountNumber (מספר חשבון לקוח או מספר חוזה), propertyNumber (מספר נכס — בארנונה), " +
+  "meterNumber (מספר מונה — במים/חשמל), " +
+  "block (גוש), parcel (חלקה), area (שטח במ\"ר, מספר) — בנסח טאבו. " +
+  "אל תמציא ערכים — אם שדה חסר החזר מחרוזת ריקה או null.";
 
 export const extractDocument = onCall(
   { secrets: [ANTHROPIC_API_KEY], region: "me-west1", cors: true },

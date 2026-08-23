@@ -1,7 +1,8 @@
 # Cloud Functions — חילוץ מסמכים ב-Claude
 
 פונקציית `extractDocument` (onCall, region `me-west1`) מקבלת מסמך (PDF/תמונה כ-base64),
-שולחת ל-Claude עם **structured output**, ומחזירה `{ docType, amount, date, address, name }`.
+שולחת ל-Claude עם **structured output**, ומחזירה שדות מובנים: `docType, amount, date,
+dueDate, periodStart, periodEnd, address, name, supplier, accountNumber, propertyNumber, meterNumber`.
 
 ## עקרון אבטחה
 - **המפתח `ANTHROPIC_API_KEY` הוא secret בצד השרת בלבד** — לעולם לא בקליינט/בקוד/ב-git.

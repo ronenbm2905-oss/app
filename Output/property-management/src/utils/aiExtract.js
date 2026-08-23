@@ -23,22 +23,41 @@ export const AI_DOC_TYPES = [
   "municipalTax",
   "electricity",
   "water",
+  "landRegistry",
   "unknown",
 ];
 
-// סכימת הפלט המובנה — זהה לזו שה-Cloud Function מכתיב ל-Claude (structured output).
+// סכימת הפלט המובנה — **זהה** לזו שב-`functions/config.js` (חייבות להישאר מסונכרנות).
+// מספרים nullable; מחרוזות מוחזרות ריקות אם השדה חסר.
 export const EXTRACTION_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
     docType: { type: "string", enum: AI_DOC_TYPES },
-    amount: { type: ["number", "null"] },
-    date: { type: ["string", "null"] },
-    address: { type: "string" },
-    name: { type: "string" },
+    amount: { type: ["number", "null"] }, // סכום לתשלום (כולל מע"מ)
+    date: { type: ["string", "null"] }, // תאריך המסמך YYYY-MM-DD
+    dueDate: { type: ["string", "null"] }, // מועד תשלום אחרון
+    periodStart: { type: ["string", "null"] }, // תחילת תקופת חיוב
+    periodEnd: { type: ["string", "null"] }, // סוף תקופת חיוב
+    address: { type: "string" }, // כתובת הנכס
+    name: { type: "string" }, // שם המחזיק / הצדדים
+    supplier: { type: "string" }, // ספק / מנפיק (עירייה / חב' מים / חב' חשמל)
+    accountNumber: { type: "string" }, // מספר חשבון לקוח / חוזה
+    propertyNumber: { type: "string" }, // מספר נכס (ארנונה)
+    meterNumber: { type: "string" }, // מספר מונה (מים/חשמל)
+    block: { type: "string" }, // גוש (נסח טאבו)
+    parcel: { type: "string" }, // חלקה (נסח טאבו)
+    area: { type: ["number", "null"] }, // שטח במ"ר (נסח טאבו)
   },
-  required: ["docType", "amount", "date", "address", "name"],
+  required: [
+    "docType", "amount", "date", "dueDate", "periodStart", "periodEnd",
+    "address", "name", "supplier", "accountNumber", "propertyNumber", "meterNumber",
+    "block", "parcel", "area",
+  ],
 };
+
+// שדות שהם "חשבון" (בעלי תקופת חיוב/מונה) — לתצוגה מותנית וליצירת הוצאה.
+export const BILL_DOC_TYPES = ["municipalTax", "electricity", "water"];
 
 // חילוץ פרטי מסמך. input: { base64, mediaType, fileName }.
 // מחזיר { docType, amount, date, address, name, mock } או זורק שגיאה עם code.
@@ -76,21 +95,37 @@ export function mockExtract(fileName = "") {
   else if (f.includes("מים") || f.includes("water")) docType = "water";
   else if (f.includes("מכר") || f.includes("sale")) docType = "saleContract";
   else if (f.includes("שכיר") || f.includes("lease") || f.includes("rent")) docType = "leaseContract";
+  else if (f.includes("טאבו") || f.includes("tabo") || f.includes("נסח") || f.includes("registry") || f.includes("זכויות")) docType = "landRegistry";
 
-  const amountByType = {
-    municipalTax: 640,
-    electricity: 320,
-    water: 145,
-    saleContract: 1250000,
-    leaseContract: 5200,
-    unknown: null,
+  const today = new Date().toISOString().slice(0, 10);
+  // ערכי דמו לפי סוג (משקפים את השדות האמיתיים שראינו במסמכים).
+  const byType = {
+    municipalTax: { amount: 413.6, supplier: "עיריית תל אביב-יפו", accountNumber: "10107538", propertyNumber: "2000151461", meterNumber: "", block: "", parcel: "", area: null },
+    electricity: { amount: 959.02, supplier: "חברת חשמל", accountNumber: "346655344", propertyNumber: "", meterNumber: "0-31761", block: "", parcel: "", area: null },
+    water: { amount: 103.83, supplier: "מי אביבים", accountNumber: "10107538", propertyNumber: "", meterNumber: "2064526", block: "", parcel: "", area: null },
+    saleContract: { amount: 1250000, supplier: "", accountNumber: "", propertyNumber: "", meterNumber: "", block: "", parcel: "", area: null },
+    leaseContract: { amount: 5200, supplier: "", accountNumber: "", propertyNumber: "", meterNumber: "", block: "", parcel: "", area: null },
+    landRegistry: { amount: null, supplier: "לשכת רישום המקרקעין (טאבו)", accountNumber: "", propertyNumber: "", meterNumber: "", block: "6368", parcel: "362", area: 2291 },
+    unknown: { amount: null, supplier: "", accountNumber: "", propertyNumber: "", meterNumber: "", block: "", parcel: "", area: null },
   };
+  const v = byType[docType];
+  const isBill = docType === "municipalTax" || docType === "electricity" || docType === "water";
 
   return {
     docType,
-    amount: amountByType[docType],
-    date: new Date().toISOString().slice(0, 10),
+    amount: v.amount,
+    date: today,
+    dueDate: isBill ? today : null,
+    periodStart: isBill ? "2026-07-01" : null,
+    periodEnd: isBill ? "2026-08-31" : null,
     address: "רחוב הדוגמה 12, תל אביב",
     name: "ישראל ישראלי",
+    supplier: v.supplier,
+    accountNumber: v.accountNumber,
+    propertyNumber: v.propertyNumber,
+    meterNumber: v.meterNumber,
+    block: v.block,
+    parcel: v.parcel,
+    area: v.area,
   };
 }

@@ -13,11 +13,12 @@ import {
   maintenanceSafeTicket,
   isMaintenanceUpdateAllowed,
 } from "../src/utils/access.js";
-import { mockExtract, extractDocument, EXTRACTION_SCHEMA, AI_DOC_TYPES } from "../src/utils/aiExtract.js";
+import { mockExtract, extractDocument, EXTRACTION_SCHEMA, AI_DOC_TYPES, BILL_DOC_TYPES } from "../src/utils/aiExtract.js";
 import { computeReminders, activeReminders, DEFAULT_LEAD_DAYS } from "../src/utils/reminders.js";
 import { removeTenantCascade } from "../src/utils/retention.js";
-import { AI_SCANNABLE_TYPES } from "../src/constants.js";
+import { AI_SCANNABLE_TYPES, TICKET_TYPES, DOC_TYPE_TO_EXPENSE_CATEGORY, TRANSACTION_CATEGORIES } from "../src/constants.js";
 import { ticketWaText, simpleWaText } from "../src/utils/waMessages.js";
+import { MAINTENANCE_CATALOG, issuesForDomain, catalogById, midCost } from "../src/data/maintenanceCatalog.js";
 
 let pass = 0;
 function ok(name, cond) {
@@ -243,7 +244,28 @@ ok("extractDocument local → mock flag true", localExtract.mock === true);
 ok("extractDocument local → schema-shaped", schemaKeys.every((k) => k in localExtract));
 // הסכימה נעולה: additionalProperties:false + required מלא
 ok("EXTRACTION_SCHEMA additionalProperties false", EXTRACTION_SCHEMA.additionalProperties === false);
-ok("EXTRACTION_SCHEMA required = 5 fields", EXTRACTION_SCHEMA.required.length === 5);
+ok("EXTRACTION_SCHEMA required = 15 fields (enriched)", EXTRACTION_SCHEMA.required.length === 15);
+// --- נסח טאבו → גוש/חלקה/שטח ---
+ok("mock landRegistry detection", mockExtract("נסח טאבו.pdf").docType === "landRegistry");
+const tabu = mockExtract("טאבו גוש חלקה.pdf");
+ok("landRegistry has block+parcel", tabu.block === "6368" && tabu.parcel === "362");
+ok("landRegistry has numeric area", typeof tabu.area === "number" && tabu.area > 0);
+ok("landRegistry is AI-scannable", AI_SCANNABLE_TYPES.includes("landRegistry"));
+ok("bill has empty block (registry-only fields)", mockExtract("ארנונה.pdf").block === "");
+// --- חילוץ מורחב (שלב א'): שדות עשירים פר-סוג ---
+const arnona = mockExtract("חשבון ארנונה.pdf");
+ok("arnona has propertyNumber", arnona.propertyNumber.length > 0);
+ok("arnona has billing period", /^\d{4}-\d{2}-\d{2}$/.test(arnona.periodStart) && /^\d{4}-\d{2}-\d{2}$/.test(arnona.periodEnd));
+ok("arnona has dueDate + supplier", arnona.dueDate && arnona.supplier.length > 0);
+ok("electricity has meterNumber", mockExtract("חשבון חשמל.pdf").meterNumber.length > 0);
+ok("lease has no billing period (null)", mockExtract("חוזה שכירות.pdf").periodStart === null);
+ok("every schema key present in enriched mock", EXTRACTION_SCHEMA.required.every((k) => k in arnona));
+ok("mock has no keys beyond schema", Object.keys(arnona).every((k) => EXTRACTION_SCHEMA.required.includes(k)));
+// --- מיפוי חשבון→קטגוריית הוצאה ---
+ok("BILL_DOC_TYPES covers arnona/electricity/water", ["municipalTax", "electricity", "water"].every((tp) => BILL_DOC_TYPES.includes(tp)));
+ok("municipalTax → taxes", DOC_TYPE_TO_EXPENSE_CATEGORY.municipalTax === "taxes");
+ok("electricity → utilities", DOC_TYPE_TO_EXPENSE_CATEGORY.electricity === "utilities");
+ok("expense categories are valid TRANSACTION_CATEGORIES", Object.values(DOC_TYPE_TO_EXPENSE_CATEGORY).every((c) => TRANSACTION_CATEGORIES.includes(c)));
 
 // --- 11. מנוע תזכורות (פרוסה 3) ---
 const remToday = "2026-08-04";
@@ -358,6 +380,18 @@ ok(
   simpleMsg.split("\n").length === 3 && simpleMsg.startsWith("שלום דנה,") && simpleMsg.includes("1,200 ₪") && simpleMsg.endsWith("תודה!")
 );
 ok("simpleWaText bare greeting when no name", simpleWaText({ hi: "שלום", name: "", body: "גוף", close: "תודה!" }).startsWith("שלום,"));
+
+// --- מאגר התקלות (maintenance catalog) ---
+ok("catalog not empty", MAINTENANCE_CATALOG.length >= 20);
+ok("catalog ids unique", new Set(MAINTENANCE_CATALOG.map((i) => i.id)).size === MAINTENANCE_CATALOG.length);
+ok("catalog domains are valid TICKET_TYPES", MAINTENANCE_CATALOG.every((i) => TICKET_TYPES.includes(i.domain)));
+ok("catalog cost ranges valid (min<=max, positive)", MAINTENANCE_CATALOG.every((i) => i.costMin > 0 && i.costMin <= i.costMax));
+ok("catalog every item has a label", MAINTENANCE_CATALOG.every((i) => typeof i.label === "string" && i.label.length > 0));
+ok("issuesForDomain(plumbing) returns only plumbing", issuesForDomain("plumbing").every((i) => i.domain === "plumbing") && issuesForDomain("plumbing").length > 0);
+ok("issuesForDomain(unknown) empty", issuesForDomain("nope").length === 0);
+ok("catalogById round-trips", catalogById(MAINTENANCE_CATALOG[0].id)?.id === MAINTENANCE_CATALOG[0].id);
+ok("catalogById(null) is null", catalogById(null) === null);
+ok("midCost is between min and max", (() => { const i = MAINTENANCE_CATALOG[0]; const m = midCost(i); return m >= i.costMin && m <= i.costMax; })());
 
 console.log(`\nALL ${pass} CHECKS PASSED`);
 

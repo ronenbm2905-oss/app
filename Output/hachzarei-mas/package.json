@@ -6,7 +6,7 @@
   "description": "שני דפי נחיתה לייצור לידים — החזר מס הכנסה והחזר מס שבח. מנוע שאלון גנרי מונע-קונפיג.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/verify-bundle.mjs",
     "preview": "vite preview",
     "test": "vitest run --exclude tests/rules.test.ts --exclude \"**/node_modules/**\"",
     "test:watch": "vitest",

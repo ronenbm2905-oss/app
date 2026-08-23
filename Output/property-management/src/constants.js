@@ -52,11 +52,20 @@ export const TRANSACTION_CATEGORIES = [
   "rent", // שכ"ד
   "committee", // ועד בית
   "insurance", // ביטוח
-  "taxes", // מיסים
+  "taxes", // מיסים (כולל ארנונה)
+  "utilities", // חשבונות שוטפים (חשמל/מים/גז)
   "maintenance", // תחזוקה
   "financing", // מימון
   "other", // אחר
 ];
+
+// מיפוי סוג-מסמך (מחשבון סרוק) לקטגוריית הוצאה — ליצירת הוצאה אוטומטית.
+export const DOC_TYPE_TO_EXPENSE_CATEGORY = {
+  municipalTax: "taxes",
+  electricity: "utilities",
+  water: "utilities",
+  gas: "utilities",
+};
 
 // מקור עדכון התנועה — שדה מוכן מהיום ל-v2 (Open Banking). ברירת מחדל: manual.
 export const TRANSACTION_SOURCES = ["manual", "bank"];
@@ -64,6 +73,7 @@ export const TRANSACTION_SOURCES = ["manual", "bank"];
 export const TICKET_TYPES = [
   "plumbing", // אינסטלציה
   "electricity", // חשמל
+  "hvac", // מיזוג אוויר
   "appliance", // מכשיר/מוצר חשמלי
   "structural", // מבנה
   "pest", // מזיקים
@@ -82,6 +92,7 @@ export const DOCUMENT_TYPES = [
   "municipalTax", // ארנונה
   "electricity", // חשבון חשמל
   "water", // חשבון מים
+  "landRegistry", // נסח טאבו / רישום מקרקעין
   "other",
 ];
 
@@ -94,6 +105,7 @@ export const AI_SCANNABLE_TYPES = [
   "municipalTax", // ארנונה
   "electricity", // חשבון חשמל
   "water", // חשבון מים
+  "landRegistry", // נסח טאבו
 ];
 
 export const REMINDER_TYPES = [

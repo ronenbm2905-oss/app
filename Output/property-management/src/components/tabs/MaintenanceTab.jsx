@@ -4,6 +4,7 @@ import { IconPlus, IconEdit, IconDelete, IconWhatsapp } from "../ui/icons.jsx";
 import { formatCurrency, formatDate, whatsappLink } from "../../utils/format.js";
 import { addressLine } from "../../utils/display.js";
 import { ticketWaText } from "../../utils/waMessages.js";
+import { catalogById } from "../../data/maintenanceCatalog.js";
 
 const STATUS_TONE = { open: "amber", inProgress: "blue", closed: "green" };
 
@@ -60,7 +61,7 @@ export function MaintenanceTab({ property, data, onNewTicket, onEditTicket, onDe
                 return (
                   <tr key={tk.id} className="border-b border-border">
                     <td className="px-2 py-2 text-ink-body">{formatDate(tk.openedDate, lang)}</td>
-                    <td className="px-2 py-2 text-ink-body">{t(`enum.ticketType.${tk.type}`)}</td>
+                    <td className="px-2 py-2 text-ink-body">{catalogById(tk.issueKey)?.label || t(`enum.ticketType.${tk.type}`)}</td>
                     <td className="px-2 py-2 text-ink-body">{tk.handler?.name || "—"}</td>
                     <td className="px-2 py-2 text-ink-body">{formatCurrency(tk.cost ?? tk.quote, c, lang)}</td>
                     <td className="px-2 py-2">

@@ -11,18 +11,33 @@ export const CONFIG = {
 };
 
 // סכימת הפלט המובנה (structured output) — מבטיחה JSON תקין במקום פרסינג טקסט.
+// **חייבת להישאר זהה** ל-EXTRACTION_SCHEMA ב-`src/utils/aiExtract.js`.
 export const EXTRACTION_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
     docType: {
       type: "string",
-      enum: ["saleContract", "leaseContract", "municipalTax", "electricity", "water", "unknown"],
+      enum: ["saleContract", "leaseContract", "municipalTax", "electricity", "water", "landRegistry", "unknown"],
     },
-    amount: { type: ["number", "null"] },
-    date: { type: ["string", "null"] },
-    address: { type: "string" },
-    name: { type: "string" },
+    amount: { type: ["number", "null"] }, // סכום לתשלום (כולל מע"מ)
+    date: { type: ["string", "null"] }, // תאריך המסמך YYYY-MM-DD
+    dueDate: { type: ["string", "null"] }, // מועד תשלום אחרון
+    periodStart: { type: ["string", "null"] }, // תחילת תקופת חיוב
+    periodEnd: { type: ["string", "null"] }, // סוף תקופת חיוב
+    address: { type: "string" }, // כתובת הנכס
+    name: { type: "string" }, // שם המחזיק / הצדדים
+    supplier: { type: "string" }, // ספק / מנפיק
+    accountNumber: { type: "string" }, // מספר חשבון לקוח / חוזה
+    propertyNumber: { type: "string" }, // מספר נכס (ארנונה)
+    meterNumber: { type: "string" }, // מספר מונה (מים/חשמל)
+    block: { type: "string" }, // גוש (נסח טאבו)
+    parcel: { type: "string" }, // חלקה (נסח טאבו)
+    area: { type: ["number", "null"] }, // שטח במ"ר (נסח טאבו)
   },
-  required: ["docType", "amount", "date", "address", "name"],
+  required: [
+    "docType", "amount", "date", "dueDate", "periodStart", "periodEnd",
+    "address", "name", "supplier", "accountNumber", "propertyNumber", "meterNumber",
+    "block", "parcel", "area",
+  ],
 };

@@ -6,6 +6,7 @@ import { Field, Select, Checkbox, Textarea } from "./ui/Field.jsx";
 import { enumOptions } from "../utils/options.js";
 import { TICKET_TYPES, TICKET_STATUSES, MEMBER_STATUSES } from "../constants.js";
 import { addressLine } from "../utils/display.js";
+import { issuesForDomain, catalogById, midCost, MAINTENANCE_NOTES } from "../data/maintenanceCatalog.js";
 
 // מסך 5 — פתיחת/עריכת תקלה. זרימה: סוג → תיאור → מטפל → סטטוס → הצעת מחיר →
 // עלות סופית → ביטוח. מוצג כמודאל מעל דף הנכס או הדשבורד.
@@ -17,6 +18,16 @@ export function TicketForm({ initial, property, onSave, onClose }) {
   const setInsurance = (k, v) => setTk({ ...tk, insurance: { ...tk.insurance, [k]: v } });
   const num = (v) => (v === "" ? null : Number(v));
   const isEdit = Boolean(initial.description || initial.handler?.name);
+
+  // מאגר התקלות: סוגי תקלה לפי התחום שנבחר + פרטי התקלה שנבחרה.
+  const issues = issuesForDomain(tk.type);
+  const selectedIssue = catalogById(tk.issueKey);
+  const setType = (v) => setTk({ ...tk, type: v, issueKey: null }); // תחום חדש → אפס סוג תקלה
+  const selectIssue = (id) => {
+    const item = catalogById(id);
+    // אם עוד לא הוזנה הצעת מחיר — ממלאים אוטומטית באמצע הטווח המקובל.
+    setTk({ ...tk, issueKey: id || null, quote: tk.quote ?? midCost(item) });
+  };
 
   return (
     <Modal
@@ -37,9 +48,30 @@ export function TicketForm({ initial, property, onSave, onClose }) {
           </div>
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Select label={t("tkt.type")} value={tk.type} onChange={(v) => set("type", v)} options={enumOptions(TICKET_TYPES, "ticketType", t)} />
+          <Select label={t("tkt.type")} value={tk.type} onChange={setType} options={enumOptions(TICKET_TYPES, "ticketType", t)} />
           <Field label={t("tkt.opened")} type="date" value={tk.openedDate} onChange={(v) => set("openedDate", v)} />
         </div>
+
+        {/* סוג התקלה מתוך מאגר התקלות (לפי התחום) — עם טווח עלות והערה מקצועית */}
+        {issues.length > 0 && (
+          <div>
+            <Select
+              label={t("tkt.issue")}
+              value={tk.issueKey || ""}
+              onChange={selectIssue}
+              options={[{ value: "", label: t("tkt.issueGeneral") }, ...issues.map((i) => ({ value: i.id, label: i.label }))]}
+            />
+            {selectedIssue && (
+              <div className="mt-2 rounded-lg bg-info-fill px-3 py-2 text-xs">
+                <span className="font-semibold text-info-text">
+                  {t("tkt.estCost")}: {selectedIssue.costMin.toLocaleString("he-IL")}–{selectedIssue.costMax.toLocaleString("he-IL")} ₪
+                </span>
+                {selectedIssue.note && <span className="mt-0.5 block text-ink-body">{selectedIssue.note}</span>}
+              </div>
+            )}
+          </div>
+        )}
+
         <Textarea label={t("tkt.description")} value={tk.description} onChange={(v) => set("description", v)} rows={3} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label={t("tkt.handlerName")} value={tk.handler.name} onChange={(v) => setHandler("name", v)} />
@@ -72,6 +104,13 @@ export function TicketForm({ initial, property, onSave, onClose }) {
             />
           </div>
         </fieldset>
+
+        {/* הערות כלליות ממאגר התקלות */}
+        <div className="rounded-lg bg-surface-alt px-3 py-2 text-xs text-ink-muted">
+          {MAINTENANCE_NOTES.map((n, i) => (
+            <div key={i}>• {n}</div>
+          ))}
+        </div>
       </div>
     </Modal>
   );
