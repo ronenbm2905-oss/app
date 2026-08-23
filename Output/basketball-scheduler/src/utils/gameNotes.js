@@ -46,16 +46,26 @@ export function gamesWithUnread(notes, games) {
     .sort((a, b) => String(b.note.updatedAt || "").localeCompare(String(a.note.updatedAt || "")));
 }
 
+// The owner of a record, and the only field the security rules can act on.
+//
+// Lower-cased because rules compare strings exactly while the rest of the app compares
+// e-mail case-insensitively; a capital letter in a coach's address would otherwise lock
+// them out of their own writing with no visible cause. `author` beside it is a display
+// name — useful to read, useless to a rule.
+export function normalizeEmail(email) {
+  return str(email).toLowerCase();
+}
 // The stored shape. `updatedAt` moves on every save; `readAt` only when a manager marks it.
 // `updatedAt` marks when the CONTENT last changed, not when save was last pressed. If it
 // moved on every save, re-saving an unchanged note would push it back into the manager's
 // unread queue — the note would keep asking to be read again without anyone writing a word.
-export function buildNote(previous, { text, author, now }) {
+export function buildNote(previous, { text, author, authorEmail, now }) {
   const body = str(text);
   const unchanged = previous && body === str(previous.text);
   return {
     text: body,
     author: str(author) || str(previous?.author),
+    authorEmail: normalizeEmail(authorEmail) || str(previous?.authorEmail),
     createdAt: previous?.createdAt || now,
     updatedAt: unchanged ? previous.updatedAt || now : now,
     // A real edit puts it back in front of the manager; an identical save does not.

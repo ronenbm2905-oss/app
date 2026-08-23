@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { collection, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 
 // Training plans live one document per session, under clubs/{id}/trainingPlans/{sessionId}.
@@ -33,7 +33,7 @@ function useLocalPlans() {
   return { plans, savePlan, plansReady: true };
 }
 
-function useCloudPlans(user) {
+function useCloudPlans(user, isAdmin, email) {
   const [plans, setPlans] = useState({});
   const [plansReady, setReady] = useState(false);
 
@@ -42,8 +42,15 @@ function useCloudPlans(user) {
     // The rules require a signed-in reader, so subscribing before sign-in is a guaranteed
     // permission error rather than an empty result.
     if (!user) { setReady(false); return; }
+    // A coach may only read their own records, so the query has to say so.
+    //
+    // Firestore does not filter a collection listen down to what you are allowed to see — it
+    // refuses the whole listen unless the query itself is provably within the rule. So the
+    // manager listens to the collection and a coach listens to `authorEmail == me`. Get this
+    // wrong and the symptom is not a missing note, it is an empty screen.
+    const scoped = (ref) => (isAdmin ? ref : query(ref, where("authorEmail", "==", String(email || "").toLowerCase())));
     const unsub = onSnapshot(
-      collection(db, "clubs", CLUB_ID, "trainingPlans"),
+      scoped(collection(db, "clubs", CLUB_ID, "trainingPlans")),
       (snap) => {
         const next = {};
         snap.forEach((d) => { next[d.id] = d.data(); });
@@ -57,7 +64,7 @@ function useCloudPlans(user) {
       }
     );
     return unsub;
-  }, [user?.uid]);
+  }, [user?.uid, isAdmin, email]);
 
   const savePlan = useCallback(async (key, plan) => {
     if (!key) return;
@@ -67,8 +74,8 @@ function useCloudPlans(user) {
   return { plans, savePlan, plansReady };
 }
 
-export function useTrainingPlans(user) {
+export function useTrainingPlans(user, isAdmin, email) {
   const local = useLocalPlans();
-  const cloud = useCloudPlans(user);
+  const cloud = useCloudPlans(user, isAdmin, email);
   return isFirebaseConfigured ? cloud : local;
 }

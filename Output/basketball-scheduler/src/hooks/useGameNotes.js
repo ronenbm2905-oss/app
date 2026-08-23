@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { collection, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 
 // Game notes live one document per game, under clubs/{id}/gameNotes/{gameKey}.
@@ -34,7 +34,7 @@ function useLocalGameNotes() {
   return { notes, saveNote, notesReady: true };
 }
 
-function useCloudGameNotes(user) {
+function useCloudGameNotes(user, isAdmin, email) {
   const [notes, setNotes] = useState({});
   const [notesReady, setReady] = useState(false);
 
@@ -43,8 +43,15 @@ function useCloudGameNotes(user) {
     // The rules require a signed-in reader, so subscribing before sign-in is a guaranteed
     // permission error rather than an empty result.
     if (!user) { setReady(false); return; }
+    // A coach may only read their own records, so the query has to say so.
+    //
+    // Firestore does not filter a collection listen down to what you are allowed to see — it
+    // refuses the whole listen unless the query itself is provably within the rule. So the
+    // manager listens to the collection and a coach listens to `authorEmail == me`. Get this
+    // wrong and the symptom is not a missing note, it is an empty screen.
+    const scoped = (ref) => (isAdmin ? ref : query(ref, where("authorEmail", "==", String(email || "").toLowerCase())));
     const unsub = onSnapshot(
-      collection(db, "clubs", CLUB_ID, "gameNotes"),
+      scoped(collection(db, "clubs", CLUB_ID, "gameNotes")),
       (snap) => {
         const next = {};
         snap.forEach((d) => { next[d.id] = d.data(); });
@@ -58,7 +65,7 @@ function useCloudGameNotes(user) {
       }
     );
     return unsub;
-  }, [user?.uid]);
+  }, [user?.uid, isAdmin, email]);
 
   const saveNote = useCallback(async (key, note) => {
     if (!key) return;
@@ -68,8 +75,8 @@ function useCloudGameNotes(user) {
   return { notes, saveNote, notesReady };
 }
 
-export function useGameNotes(user) {
+export function useGameNotes(user, isAdmin, email) {
   const local = useLocalGameNotes();
-  const cloud = useCloudGameNotes(user);
+  const cloud = useCloudGameNotes(user, isAdmin, email);
   return isFirebaseConfigured ? cloud : local;
 }

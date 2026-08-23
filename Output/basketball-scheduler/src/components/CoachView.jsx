@@ -14,7 +14,7 @@ import clubLogo from "../assets/club-logo.jpg";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
 
-export function CoachView({ data, fixedCoachId, weekStart, setWeekStart, plans, savePlan, authorName }) {
+export function CoachView({ data, fixedCoachId, weekStart, setWeekStart, plans, savePlan, authorName, authorEmail }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
   const [teamId, setTeamId] = useState(""); // team filter / report scope
@@ -213,6 +213,7 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart, plans, 
                                 plans={plans}
                                 savePlan={savePlan}
                                 authorName={authorName}
+                                authorEmail={authorEmail}
                               />
                             </div>
                           );

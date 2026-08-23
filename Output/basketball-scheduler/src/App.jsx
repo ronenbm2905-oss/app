@@ -73,8 +73,11 @@ function Loading() {
 export default function App() {
   const { user, authLoading, authError, signIn, signOut, isFirebaseConfigured } = useAuth();
   const { data, save, loaded, error, isAdmin, mode } = useClubData(user);
-  const { notes, saveNote } = useGameNotes(user);
-  const { plans, savePlan } = useTrainingPlans(user);
+  // The listeners are scoped by role: a manager listens to every record, a coach only to
+  // their own. This is not cosmetic — a coach's unscoped listen is refused outright.
+  const myEmail = user?.email || "";
+  const { notes, saveNote } = useGameNotes(user, isAdmin, myEmail);
+  const { plans, savePlan } = useTrainingPlans(user, isAdmin, myEmail);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -238,6 +241,8 @@ export default function App() {
             notes={notes}
             saveNote={saveNote}
             authorName={user?.displayName || user?.email || ""}
+            authorEmail={myEmail}
+            myCoachId={myCoachId}
           />
         ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} myCoachId={myCoachId} />
@@ -250,6 +255,7 @@ export default function App() {
             plans={plans}
             savePlan={savePlan}
             authorName={user?.displayName || user?.email || ""}
+            authorEmail={myEmail}
           />
         ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />

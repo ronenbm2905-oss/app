@@ -13,7 +13,7 @@ const when = (iso) => {
 // Open by default when there is something unread, closed otherwise — a manager scanning
 // the list should see what is waiting without opening a dozen panels, and a coach adding
 // a note should not have to hunt for the box.
-export function GameNote({ game, notes, saveNote, canEdit, authorName }) {
+export function GameNote({ game, notes, saveNote, canEdit, authorName, authorEmail }) {
   const key = gameKey(game);
   const note = noteFor(notes, game);
   const unread = isUnread(note);
@@ -33,7 +33,11 @@ export function GameNote({ game, notes, saveNote, canEdit, authorName }) {
   const dirty = text.trim() !== (note?.text || "").trim();
 
   const persist = () => {
-    saveNote(key, buildNote(note, { text, author: authorName, now: new Date().toISOString() }));
+    // A refused write rejects and does nothing else — which on screen is indistinguishable
+    // from a save. Say so rather than closing the panel over the coach's text.
+    Promise.resolve(
+      saveNote(key, buildNote(note, { text, author: authorName, authorEmail, now: new Date().toISOString() }))
+    ).catch(() => alert("לא ניתן לשמור: הרשומה הזו שייכת למישהו אחר. פנה למנהל המקצועי."));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -83,7 +87,11 @@ export function GameNote({ game, notes, saveNote, canEdit, authorName }) {
               {/* Only a manager marks a note read, and only one that is actually waiting. */}
               {canEdit && unread && (
                 <button
-                  onClick={() => saveNote(key, markRead(note, new Date().toISOString()))}
+                  onClick={() =>
+                    Promise.resolve(saveNote(key, markRead(note, new Date().toISOString()))).catch(() =>
+                      alert("לא ניתן לסמן כנקרא. נסה שוב.")
+                    )
+                  }
                   className="px-3 min-h-11 text-xs rounded-lg border border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50"
                 >
                   סמן כנקרא

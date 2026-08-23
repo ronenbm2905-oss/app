@@ -27,7 +27,7 @@ const withBlankRow = (plan) => {
 // Closed by default: a coach opens the form for the training they are about to run, not
 // for all four on the screen. The header line the paper form asks for — team, date, hall —
 // is filled from the schedule instead of being typed again.
-export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans, savePlan, authorName }) {
+export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans, savePlan, authorName, authorEmail }) {
   const key = planKey(session);
   const saved = plans?.[key];
   const [open, setOpen] = useState(false);
@@ -55,9 +55,14 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
 
   const onSave = () => {
     const now = new Date().toISOString();
-    savePlan(key, buildPlan(saved, { plan: draft, author: authorName, now }));
-    setSavedAt(now);
-    setOpen(false);
+    // Closing on a write that the rules refused would throw the coach's form away and
+    // look like it saved. Only close once it is actually stored.
+    Promise.resolve(savePlan(key, buildPlan(saved, { plan: draft, author: authorName, authorEmail, now })))
+      .then(() => {
+        setSavedAt(now);
+        setOpen(false);
+      })
+      .catch(() => alert("לא ניתן לשמור: הרשומה הזו שייכת למישהו אחר. פנה למנהל המקצועי."));
   };
 
   if (!open) {

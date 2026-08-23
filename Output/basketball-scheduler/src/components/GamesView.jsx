@@ -192,7 +192,7 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
   );
 }
 
-export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes, saveNote, authorName }) {
+export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes, saveNote, authorName, authorEmail, myCoachId }) {
   const [subTab, setSubTab] = useState("games"); // "games" | "mapping"
   const [importMsg, setImportMsg] = useState(null);
   const [filterTeam, setFilterTeam] = useState("");
@@ -206,6 +206,12 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
 
   const codesFor = (teamId) => mapping.find((m) => m.teamId === teamId)?.federationCodes || [];
   const teamName = (id) => data.teams.find((t) => t.id === id)?.name || id;
+  // A note lives at one document per game, so two coaches writing about the same fixture
+  // would be writing over each other — and the rules would reject the second one with
+  // nothing on screen to explain it. The box therefore belongs to whoever coaches that
+  // team. A manager sees it everywhere; a coach only on their own games.
+  const isMyGame = (g) =>
+    canEdit || (Boolean(myCoachId) && data.teams.find((t) => t.id === g.teamId)?.coachId === myCoachId);
   const coachNameOf = (id) => data.coaches.find((c) => c.id === id)?.name || "";
 
   const [editingTeamId, setEditingTeamId] = useState(null);
@@ -537,13 +543,16 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                       {/* Written by the coach after the game, read by the professional manager.
                           Sits with the game rather than on a screen of its own — a report nobody
                           walks past is a report nobody writes. */}
-                      <GameNote
-                        game={g}
-                        notes={notes}
-                        saveNote={saveNote}
-                        canEdit={canEdit}
-                        authorName={authorName}
-                      />
+                      {isMyGame(g) && (
+                        <GameNote
+                          game={g}
+                          notes={notes}
+                          saveNote={saveNote}
+                          canEdit={canEdit}
+                          authorName={authorName}
+                          authorEmail={authorEmail}
+                        />
+                      )}
                     </div>
                   );
                 })}

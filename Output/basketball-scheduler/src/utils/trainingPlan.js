@@ -99,7 +99,10 @@ export function isFilled(plan) {
   return UNIT_GROUPS.some((g) => [...p.units[g].quads, ...p.units[g].fives].some(Boolean));
 }
 
-export function buildPlan(previous, { plan, author, now }) {
+// `authorEmail` is lower-cased and written on every save: it is the only field the
+// security rules can match against a signed-in user, and a capital letter would lock a
+// coach out of their own plan.
+export function buildPlan(previous, { plan, author, authorEmail, now }) {
   const p = normalizePlan(plan);
   const rows = trimRows(p.rows);
   return {
@@ -109,6 +112,7 @@ export function buildPlan(previous, { plan, author, now }) {
     units: p.units,
     summary: p.summary,
     author: str(author) || str(previous?.author),
+    authorEmail: str(authorEmail).toLowerCase() || str(previous?.authorEmail),
     createdAt: previous?.createdAt || now,
     updatedAt: now,
   };

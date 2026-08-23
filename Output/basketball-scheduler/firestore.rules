@@ -50,17 +50,57 @@ service cloud.firestore {
         request.auth.token.email in clubOf(clubId).members;
     }
 
-    // The club's training-plan form, one document per session. Same allowlist as the notes
-    // above: coaches fill these in, so writing cannot be admin-only.
-    match /clubs/{clubId}/trainingPlans/{sessionId} {
-      allow read, write: if isClubAdmin(clubId) || isClubMember(clubId);
+    // ---- Ownership of a coach's own writing ----
+    // Every note and plan carries `authorEmail`, lower-cased, and it is the only thing a
+    // rule can match a signed-in person against — `author` is a display name. Lower-casing
+    // matters: rules compare strings exactly, so a capital letter in a coach's address
+    // would lock them out of their own writing with nothing on screen to explain why.
+    function myEmail() {
+      return request.auth != null && 'email' in request.auth.token
+        ? request.auth.token.email.lower()
+        : '';
+    }
+    function ownsExisting() {
+      return myEmail() != '' &&
+        'authorEmail' in resource.data &&
+        resource.data.authorEmail == myEmail();
+    }
+    function ownsIncoming() {
+      return myEmail() != '' &&
+        'authorEmail' in request.resource.data &&
+        request.resource.data.authorEmail == myEmail();
     }
 
+    // A coach reads and writes only their own records; the professional manager reads all
+    // of them, and may update one without owning it — marking a note as read is his job,
+    // not the author's.
+    //
+    // A collection listen is refused outright unless the QUERY is provably inside the rule,
+    // so the client has to filter by authorEmail for a coach. See hooks/useGameNotes.js.
+    function canRead(clubId) {
+      return isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
+    }
+    function canCreate(clubId) {
+      return isClubAdmin(clubId) || (isClubMember(clubId) && ownsIncoming());
+    }
+    function canChange(clubId) {
+      return isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting() && ownsIncoming());
+    }
+
+    // The club's training-plan form, one document per session.
+    match /clubs/{clubId}/trainingPlans/{sessionId} {
+      allow read: if canRead(clubId);
+      allow create: if canCreate(clubId);
+      allow update: if canChange(clubId);
+      allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
+    }
+
+    // Notes a coach writes after a game.
     match /clubs/{clubId}/gameNotes/{gameKey} {
-      // Coaches write the notes, so writing cannot be admin-only the way the club
-      // document is. Anyone on the club's allowlist may read and write a note; nobody
-      // outside it can reach them at all.
-      allow read, write: if isClubAdmin(clubId) || isClubMember(clubId);
+      allow read: if canRead(clubId);
+      allow create: if canCreate(clubId);
+      allow update: if canChange(clubId);
+      allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
     }
   }
 }
