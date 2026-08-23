@@ -5,6 +5,7 @@ import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { Select } from "./ui/Select";
 import { AddToCalendarButton } from "./AddToCalendarButton";
+import { TrainingPlanForm } from "./TrainingPlanForm";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
@@ -13,7 +14,7 @@ import clubLogo from "../assets/club-logo.jpg";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
 
-export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
+export function CoachView({ data, fixedCoachId, weekStart, setWeekStart, plans, savePlan, authorName }) {
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
   const [teamId, setTeamId] = useState(""); // team filter / report scope
@@ -202,6 +203,17 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
                                 )}
                               </div>
                               {s.notes && <div className="text-xs text-stone-500 pr-1">{s.notes}</div>}
+                              {/* The paper form the club already uses, filled here instead. It sits
+                                  on the training it belongs to, so nothing is looked up twice. */}
+                              <TrainingPlanForm
+                                session={s}
+                                teamName={nameOf(data.teams, s.teamId)}
+                                hallName={nameOf(data.halls, s.hallId)}
+                                dateLabel={formatDate(weekDates[s.day])}
+                                plans={plans}
+                                savePlan={savePlan}
+                                authorName={authorName}
+                              />
                             </div>
                           );
                         })}

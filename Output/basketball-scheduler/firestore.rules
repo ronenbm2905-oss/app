@@ -50,6 +50,12 @@ service cloud.firestore {
         request.auth.token.email in clubOf(clubId).members;
     }
 
+    // The club's training-plan form, one document per session. Same allowlist as the notes
+    // above: coaches fill these in, so writing cannot be admin-only.
+    match /clubs/{clubId}/trainingPlans/{sessionId} {
+      allow read, write: if isClubAdmin(clubId) || isClubMember(clubId);
+    }
+
     match /clubs/{clubId}/gameNotes/{gameKey} {
       // Coaches write the notes, so writing cannot be admin-only the way the club
       // document is. Anyone on the club's allowlist may read and write a note; nobody

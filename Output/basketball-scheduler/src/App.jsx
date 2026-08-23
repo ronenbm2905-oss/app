@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
 import { useGameNotes } from "./hooks/useGameNotes";
+import { useTrainingPlans } from "./hooks/useTrainingPlans";
 import { todayWeekStart } from "./utils/dates";
 import { coachForUser } from "./utils/coachIdentity";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
@@ -73,6 +74,7 @@ export default function App() {
   const { user, authLoading, authError, signIn, signOut, isFirebaseConfigured } = useAuth();
   const { data, save, loaded, error, isAdmin, mode } = useClubData(user);
   const { notes, saveNote } = useGameNotes(user);
+  const { plans, savePlan } = useTrainingPlans(user);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -240,7 +242,14 @@ export default function App() {
         ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "coach" ? (
-          <CoachView data={data} weekStart={weekStart} setWeekStart={setWeekStart} />
+          <CoachView
+            data={data}
+            weekStart={weekStart}
+            setWeekStart={setWeekStart}
+            plans={plans}
+            savePlan={savePlan}
+            authorName={user?.displayName || user?.email || ""}
+          />
         ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />
         ) : (
