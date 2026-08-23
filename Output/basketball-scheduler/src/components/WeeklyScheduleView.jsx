@@ -18,7 +18,7 @@ import { AddToCalendarButton } from "./AddToCalendarButton";
 import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
 import clubLogo from "../assets/club-logo.jpg";
 
-export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart }) {
+export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart, myCoachId }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
   const [title, setTitle] = useState("לוח אימונים שבועי");
@@ -310,16 +310,18 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 >
                   <IconDownload size={15} /> {shareBusy === "pdf" ? "מכין PDF…" : "שמירת PDF"}
                 </button>
-                {/* Every session on the board this week. The filters above narrow the
-                    board; this deliberately does not — a calendar with a coach filter
-                    silently applied is a calendar that is quietly wrong. */}
+                {/* The board's own filters deliberately do NOT narrow this — a calendar with
+                    a filter silently applied is a calendar that is quietly wrong. What does
+                    narrow it is who is asking: a manager exports the club's week, a coach
+                    exports their own. A coach pressing this wanted their trainings, not all
+                    ninety of the club's. */}
                 <AddToCalendarButton
-                  sessions={weekSessions}
+                  sessions={myCoachId ? weekSessions.filter((s) => s.coachId === myCoachId) : weekSessions}
                   data={data}
-                  label={title}
+                  label={myCoachId ? `${title} — האימונים שלי` : title}
                   calendarName={`${title} · ${formatWeekRange(weekStart)}`}
                   weekStart={weekStart}
-                  title="כל אימוני השבוע ליומן"
+                  title={myCoachId ? "האימונים שלך ליומן" : "כל אימוני השבוע ליומן"}
                 />
               </>
             )}

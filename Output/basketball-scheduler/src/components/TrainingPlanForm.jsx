@@ -107,6 +107,9 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
               value={draft.missing}
               onChange={(e) => setField("missing", e.target.value)}
             />
+            {/* A name is roster data; a name with a reason beside it is health data about
+                a minor. The line below is the whole difference. */}
+            <span className="text-[11px] text-stone-500">מספר או שמות בלבד — בלי סיבת ההיעדרות</span>
           </label>
         </div>
 
@@ -145,7 +148,7 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
                       <button
                         type="button"
                         onClick={() => setDraft((d) => ({ ...d, rows: d.rows.filter((_, j) => j !== i) }))}
-                        className="p-1.5 text-stone-400 hover:text-red-600"
+                        className="p-1.5 text-stone-500 hover:text-red-600"
                         aria-label={`מחק שורה ${i + 1}`}
                       >
                         <IconTrash size={13} />

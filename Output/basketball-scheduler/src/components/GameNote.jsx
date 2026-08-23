@@ -57,16 +57,20 @@ export function GameNote({ game, notes, saveNote, canEdit, authorName }) {
       ) : (
         <div className={`rounded-lg border p-3 space-y-2 ${unread ? "border-amber-300 bg-amber-50/60" : "border-stone-200 bg-stone-50"}`}>
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-stone-700">הערות מהמשחק</span>
+            <span id={`note-label-${key}`} className="text-xs font-semibold text-stone-700">הערות מהמשחק</span>
             <button onClick={() => setOpen(false)} className="text-xs text-stone-500 underline">סגור</button>
           </div>
 
+          {/* The placeholder used to end in "פציעות…", which asked coaches to record health
+              details about minors. It steers away from that now: a field that invites
+              sensitive data is the reason it ends up there. */}
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={4}
             dir="rtl"
-            placeholder="איך שיחקנו, מה עבד, מה לשפר, מי בלט, פציעות…"
+            aria-labelledby={`note-label-${key}`}
+            placeholder="איך שיחקנו, מה עבד, מה לשפר. בלי פרטים רפואיים או אבחנות — רק מה שנדרש לאימון הבא."
             className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y"
           />
 

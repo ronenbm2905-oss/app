@@ -240,10 +240,11 @@ export default function App() {
             authorName={user?.displayName || user?.email || ""}
           />
         ) : activeTab === "weekly" ? (
-          <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
+          <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} myCoachId={myCoachId} />
         ) : activeTab === "coach" ? (
           <CoachView
             data={data}
+            fixedCoachId={myCoachId}
             weekStart={weekStart}
             setWeekStart={setWeekStart}
             plans={plans}
