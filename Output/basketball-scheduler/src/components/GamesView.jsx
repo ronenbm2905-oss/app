@@ -5,6 +5,7 @@ import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/
 import { TransportExport } from "./TransportExport";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
+import { GameNote } from "./GameNote";
 import { Pill } from "./ui/Pill";
 import {
   IconPlus, IconTrash, IconX, IconCheck, IconRefresh,
@@ -191,7 +192,7 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
   );
 }
 
-export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
+export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes, saveNote, authorName }) {
   const [subTab, setSubTab] = useState("games"); // "games" | "mapping"
   const [importMsg, setImportMsg] = useState(null);
   const [filterTeam, setFilterTeam] = useState("");
@@ -468,69 +469,81 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                     );
                   }
                   return (
-                    <div key={g.federationCode || i} className="flex items-center gap-3 px-4 py-3 flex-wrap">
-                      <div className="w-28 shrink-0">
-                        <div className="text-xs font-medium text-stone-700">{formatDateHe(g.date)}</div>
-                        <div className="text-xs text-stone-600">{g.time}</div>
-                      </div>
-                      <Pill color={colorFor(g.teamId, data.teams.map((t) => t.id))}>{teamName(g.teamId)}</Pill>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${g.isHome ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
-                        {g.isHome ? (<><IconHome size={11} /> בית</>) : (<><IconArrowRight size={11} /> חוץ</>)}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-stone-700 truncate">נגד: {g.opponent}</div>
-                        <div className="text-xs text-stone-600 truncate">
-                          {g.addressOverride || g.venue}
-                          {g.addressOverride && <span className="text-stone-400"> (כתובת ידנית)</span>}
+                    <div key={g.federationCode || i} className="px-4 py-3">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="w-28 shrink-0">
+                          <div className="text-xs font-medium text-stone-700">{formatDateHe(g.date)}</div>
+                          <div className="text-xs text-stone-600">{g.time}</div>
                         </div>
-                      </div>
-                      <div className="hidden sm:block text-right shrink-0">
-                        <div className="text-xs text-stone-500 truncate max-w-32">{g.league}</div>
-                        {g.round !== "" && g.round !== 0 && <div className="text-xs text-stone-600">מחזור {g.round}</div>}
-                      </div>
-                      {result !== null ? (
-                        <div className="shrink-0 text-right">
-                          <div className="text-sm font-bold tabular-nums" style={{ color: resultColor }}>
-                            {g.ourScore}:{g.theirScore}
-                          </div>
-                          <div className="text-xs font-medium" style={{ color: resultColor }}>
-                            {result === "win" ? "ניצחון" : result === "loss" ? "הפסד" : "תיקו"}
+                        <Pill color={colorFor(g.teamId, data.teams.map((t) => t.id))}>{teamName(g.teamId)}</Pill>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${g.isHome ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
+                          {g.isHome ? (<><IconHome size={11} /> בית</>) : (<><IconArrowRight size={11} /> חוץ</>)}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-stone-700 truncate">נגד: {g.opponent}</div>
+                          <div className="text-xs text-stone-600 truncate">
+                            {g.addressOverride || g.venue}
+                            {g.addressOverride && <span className="text-stone-400"> (כתובת ידנית)</span>}
                           </div>
                         </div>
-                      ) : (
-                        <div className="shrink-0 text-xs text-stone-500">טרם נקבע</div>
-                      )}
-                      {canEdit && g.manual && (
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="hidden sm:block text-right shrink-0">
+                          <div className="text-xs text-stone-500 truncate max-w-32">{g.league}</div>
+                          {g.round !== "" && g.round !== 0 && <div className="text-xs text-stone-600">מחזור {g.round}</div>}
+                        </div>
+                        {result !== null ? (
+                          <div className="shrink-0 text-right">
+                            <div className="text-sm font-bold tabular-nums" style={{ color: resultColor }}>
+                              {g.ourScore}:{g.theirScore}
+                            </div>
+                            <div className="text-xs font-medium" style={{ color: resultColor }}>
+                              {result === "win" ? "ניצחון" : result === "loss" ? "הפסד" : "תיקו"}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="shrink-0 text-xs text-stone-500">טרם נקבע</div>
+                        )}
+                        {canEdit && g.manual && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => setEditingCode(g.federationCode)}
+                              className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500"
+                              aria-label="ערוך משחק"
+                            >
+                              <IconPencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const nextGames = games.filter((_, j) => j !== games.indexOf(g));
+                                save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, data) });
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-stone-500 hover:text-red-600"
+                              aria-label="מחק משחק"
+                            >
+                              <IconTrash size={14} />
+                            </button>
+                          </div>
+                        )}
+                        {canEdit && !g.manual && !g.isHome && (
                           <button
                             onClick={() => setEditingCode(g.federationCode)}
-                            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500"
-                            aria-label="ערוך משחק"
+                            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0"
+                            aria-label="ערוך כתובת"
+                            title="ערוך כתובת (להסעות)"
                           >
                             <IconPencil size={14} />
                           </button>
-                          <button
-                            onClick={() => {
-                              const nextGames = games.filter((_, j) => j !== games.indexOf(g));
-                              save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, data) });
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-stone-500 hover:text-red-600"
-                            aria-label="מחק משחק"
-                          >
-                            <IconTrash size={14} />
-                          </button>
-                        </div>
-                      )}
-                      {canEdit && !g.manual && !g.isHome && (
-                        <button
-                          onClick={() => setEditingCode(g.federationCode)}
-                          className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0"
-                          aria-label="ערוך כתובת"
-                          title="ערוך כתובת (להסעות)"
-                        >
-                          <IconPencil size={14} />
-                        </button>
-                      )}
+                        )}
+                      </div>
+                      {/* Written by the coach after the game, read by the professional manager.
+                          Sits with the game rather than on a screen of its own — a report nobody
+                          walks past is a report nobody writes. */}
+                      <GameNote
+                        game={g}
+                        notes={notes}
+                        saveNote={saveNote}
+                        canEdit={canEdit}
+                        authorName={authorName}
+                      />
                     </div>
                   );
                 })}

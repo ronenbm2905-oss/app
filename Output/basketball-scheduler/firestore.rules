@@ -28,5 +28,33 @@ service cloud.firestore {
       // Write limited to admins only.
       allow write: if isAdmin();
     }
+
+    // Notes a coach writes after a game, one document per game.
+    //
+    // The helpers above cannot be reused here: they read `resource.data`, which inside a
+    // subcollection is the NOTE, not the club — a difference that reads as correct and
+    // fails only at runtime. These fetch the club document explicitly, and guard every
+    // field for existence, because reading a field that is not there is an ERROR in rules
+    // rather than false, and an error denies the whole request.
+    function clubOf(clubId) {
+      return get(/databases/$(database)/documents/clubs/$(clubId)).data;
+    }
+    function isClubAdmin(clubId) {
+      return request.auth != null &&
+        'admins' in clubOf(clubId) &&
+        request.auth.token.email in clubOf(clubId).admins;
+    }
+    function isClubMember(clubId) {
+      return request.auth != null &&
+        'members' in clubOf(clubId) &&
+        request.auth.token.email in clubOf(clubId).members;
+    }
+
+    match /clubs/{clubId}/gameNotes/{gameKey} {
+      // Coaches write the notes, so writing cannot be admin-only the way the club
+      // document is. Anyone on the club's allowlist may read and write a note; nobody
+      // outside it can reach them at all.
+      allow read, write: if isClubAdmin(clubId) || isClubMember(clubId);
+    }
   }
 }

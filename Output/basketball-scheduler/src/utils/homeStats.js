@@ -1,4 +1,5 @@
 import { weekStartOfDMY } from "./dates";
+import { unreadCount } from "./gameNotes";
 
 // One live line per tile on the home screen.
 //
@@ -20,9 +21,10 @@ function plural(n, one, many) {
   return `${n} ${many}`;
 }
 
-// `canEdit` is here for one line only: a coach's roster screen has no halls on it, so
-// counting them on the tile would describe a screen they are not going to get.
-export function homeStats(data, weekStart, canEdit = true) {
+// `canEdit` shapes two lines: a coach's roster screen has no halls on it, so counting
+// them would describe a screen they are not going to get, and unread game notes are the
+// professional manager's inbox — the coach who wrote one is not waiting to read it.
+export function homeStats(data, weekStart, canEdit = true, notes) {
   const d = data || {};
   const sessions = arr(d.sessions).filter((s) => s && (s.weekOf || "") === weekStart);
   const games = arr(d.games).filter((g) => g && g.date && weekStartOfDMY(g.date) === weekStart);
@@ -37,7 +39,15 @@ export function homeStats(data, weekStart, canEdit = true) {
       : `${plural(count(d.teams), "קבוצה אחת", "קבוצות")} · ${plural(count(d.coaches), "מאמן אחד", "מאמנים")}`,
     manager: plural(sessions.length, "אימון אחד השבוע", "אימונים השבוע"),
     constraints: plural(count(d.constraints), "אילוץ אחד", "אילוצים"),
-    games: plural(games.length, "משחק אחד השבוע", "משחקים השבוע"),
+    games: (() => {
+      const waiting = canEdit ? unreadCount(notes) : 0;
+      const fixtures = plural(games.length, "משחק אחד השבוע", "משחקים השבוע");
+      // A manager with reports waiting is being asked to do something; the fixture
+      // count is only background, so it steps aside rather than sharing the line.
+      return waiting
+        ? `${waiting === 1 ? "הערה אחת חדשה" : `${waiting} הערות חדשות`} · ${fixtures}`
+        : fixtures;
+    })(),
     weekly: d.schedulePublished?.weekOf === weekStart ? "הלו״ז פורסם" : "טרם פורסם",
     coach: "הלו״ז שלך, לשליחה בוואטסאפ",
     players: plural(count(d.players), "שחקן אחד", "שחקנים"),
