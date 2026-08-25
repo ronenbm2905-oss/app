@@ -15,7 +15,8 @@
     "seed:org": "node scripts/seed.js --with-org",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:rules": "node ./node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only firestore --project coachtrack-rules-test \"npx vitest run --config vitest.rules.config.mts\""
+    "test:rules": "node ./node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only firestore --project coachtrack-rules-test \"npx vitest run --config vitest.rules.config.mts\"",
+    "qa:overrides": "node ./node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only firestore --project coachtrack-qa-overrides \"node scripts/qa-exercise-overrides.mjs\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",

@@ -502,22 +502,32 @@ export const he = {
       categoryLabel: 'קטגוריה',
       allCategories: 'כל הקטגוריות',
       globalBadge: 'קטלוג',
-      orgBadge: 'של המועדון',
+      mineBadge: 'שלי',
+      /** תרגיל קטלוג שיש לו עותק פרטי — מה שמוצג בפועל הוא הגרסה של המאמן. */
+      editedBadge: 'נערך',
       inactiveBadge: 'מושבת',
       targetSuggestion: 'יעד שבועי מוצע: {target} {unit}',
       noDescription: 'אין עדיין הנחיות ביצוע.',
-      globalReadOnly: 'תרגילי הקטלוג פתוחים לקריאה בלבד. כדי להנחות אחרת, צור תרגיל של המועדון.',
+      /** ההסבר בראש הרשימה — למה עריכה של תרגיל קטלוג לא משנה אותו לכולם. */
+      privateEdits:
+        'עריכה של תרגיל מהקטלוג שומרת גרסה פרטית שלך ומחליפה אותו ברשימה. הקטלוג עצמו לא משתנה, ומאמנים אחרים ממשיכים לראות את המקור.',
+      editedNote: 'זו הגרסה שלך. מאמנים אחרים רואים את תרגיל הקטלוג המקורי.',
 
       actions: {
         create: 'תרגיל חדש',
         edit: 'עריכה',
+        revert: 'חזרה למקור',
         deactivate: 'השבתה',
         activate: 'הפעלה מחדש',
       },
 
       form: {
-        createTitle: 'תרגיל חדש של המועדון',
+        createTitle: 'תרגיל חדש שלך',
         editTitle: 'עריכת תרגיל',
+        overrideTitle: 'עריכת תרגיל מהקטלוג',
+        overrideHint:
+          'השמירה תיצור גרסה פרטית שלך ותציג אותה במקום תרגיל הקטלוג. אפשר לחזור למקור בכל רגע.',
+        submitOverride: 'שמירת הגרסה שלי',
         name: 'שם התרגיל',
         category: 'קטגוריה',
         categoryHint: 'בחר קטגוריה קיימת מהרשימה או הקלד חדשה.',
@@ -531,6 +541,8 @@ export const he = {
         submitting: 'שומר…',
         createSuccess: 'התרגיל {name} נוסף לספרייה.',
         editSuccess: 'התרגיל {name} עודכן.',
+        overrideSuccess: 'התרגיל {name} נשמר כגרסה שלך. הקטלוג לא השתנה.',
+        revertSuccess: 'התרגיל {name} חזר לגרסת הקטלוג.',
       },
 
       errors: {
@@ -541,6 +553,7 @@ export const he = {
         descriptionTooLong: 'ההנחיות ארוכות מדי.',
         targetInvalid: 'היעד חייב להיות מספר גדול מאפס.',
         saveFailed: 'שמירת התרגיל נכשלה. נסה שוב.',
+        revertFailed: 'החזרה לגרסת הקטלוג נכשלה. נסה שוב.',
       },
     },
 

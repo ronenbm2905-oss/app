@@ -5,9 +5,16 @@
  * 30 תרגילים) ולא נתוני דמה — כי מה שצריך להיבדק הוא שהמסך מציג את מה שיושב
  * במסד: 30 תרגילים, כל הקטגוריות, וההנחיות בעברית.
  *
- * הבדיקה החשובה כאן היא **מי מקבל כפתור עריכה**: `firestore.rules` מתירים למאמן
- * לעדכן תרגילים של הארגון בלבד. אם כפתור עריכה יופיע על תרגיל קטלוג, המאמן ימלא
- * טופס שלם ויקבל PERMISSION_DENIED.
+ * הבדיקה החשובה כאן היא **אילו כפתורים מקבל כל סוג כרטיס**:
+ *
+ * | הכרטיס | עריכה | חזרה למקור | השבתה |
+ * |---|---|---|---|
+ * | קטלוג  | ✅ (תיצור עותק) | — | — |
+ * | נערך   | ✅ | ✅ | — |
+ * | שלי    | ✅ | — | ✅ |
+ *
+ * "השבתה" על תרגיל קטלוג הייתה מובילה ישר ל-PERMISSION_DENIED: המסמך אינו של
+ * המאמן. "חזרה למקור" על תרגיל שהמאמן יצר בעצמו היא חסרת משמעות — אין מקור.
  *
  * מה שלא נבדק כאן ודורש עין אנושית: הקלדה בשדה החיפוש ובחירה בסינון (תלויות
  * באינטראקציה) — הלוגיקה עצמה נבדקת ב-`lib/exercises.test.ts` מול אותו קטלוג.
@@ -19,13 +26,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ExerciseLibraryView } from './ExerciseLibraryView';
 import type { ExerciseLibraryViewProps } from './ExerciseLibraryView';
 import { ExerciseForm } from './ExerciseForm';
-import { mergeExerciseSources, suggestedTarget } from '../../lib/exercises';
+import { buildExerciseLibrary, suggestedTarget } from '../../lib/exercises';
 import { he, t } from '../../i18n/he';
 import type { TranslationKey } from '../../i18n/he';
 import { dictionaryStrings, unknownHebrewText } from '../../testing/hebrewText';
 import type { Exercise, ExerciseDoc } from '../../types/types';
 
 const ORG_ID = 'org_kiryat_ono';
+const COACH = 'uid_emanuel';
 
 const catalog = JSON.parse(readFileSync('data/exercise-catalog.json', 'utf8')) as {
   exercises: (Exercise & { id: string })[];
@@ -33,12 +41,14 @@ const catalog = JSON.parse(readFileSync('data/exercise-catalog.json', 'utf8')) a
 
 const globalCatalog: ExerciseDoc[] = catalog.exercises.map((exercise) => ({ ...exercise }));
 
-function orgExercise(id: string, overrides: Partial<ExerciseDoc> = {}): ExerciseDoc {
+function coachExercise(id: string, overrides: Partial<ExerciseDoc> = {}): ExerciseDoc {
   return {
     id,
-    scope: 'org',
+    scope: 'coach',
     orgId: ORG_ID,
-    name: 'תרגיל של המועדון',
+    coachUid: COACH,
+    sourceExerciseId: null,
+    name: 'תרגיל של המאמן',
     category: 'כושר',
     unit: 'minutes',
     description: 'הנחיות של המאמן',
@@ -51,13 +61,23 @@ function orgExercise(id: string, overrides: Partial<ExerciseDoc> = {}): Exercise
   };
 }
 
+function overrideOf(source: ExerciseDoc, overrides: Partial<ExerciseDoc> = {}): ExerciseDoc {
+  return coachExercise(`copy_${source.id}`, {
+    sourceExerciseId: source.id,
+    name: 'זריקות בגרסה שלי',
+    category: source.category,
+    unit: source.unit,
+    ...overrides,
+  });
+}
+
 function render(overrides: Partial<ExerciseLibraryViewProps> = {}): string {
   const props: ExerciseLibraryViewProps = {
     status: 'ready',
-    exercises: globalCatalog,
-    orgId: ORG_ID,
+    entries: buildExerciseLibrary(globalCatalog, []),
     onCreate: async () => true,
-    onUpdate: async () => true,
+    onSave: async () => true,
+    onRevert: async () => true,
     onSetActive: async () => true,
     busyId: null,
     feedback: null,
@@ -67,8 +87,19 @@ function render(overrides: Partial<ExerciseLibraryViewProps> = {}): string {
   return renderToStaticMarkup(<ExerciseLibraryView {...props} />);
 }
 
-function countOccurrences(haystack: string, needle: string): number {
-  return haystack.split(needle).length - 1;
+function withMine(mine: ExerciseDoc[]): Partial<ExerciseLibraryViewProps> {
+  return { entries: buildExerciseLibrary(globalCatalog, mine) };
+}
+
+/**
+ * כמה **כפתורים** עם התווית הזו יש במסך.
+ *
+ * לא `split(label)` על כל ה-HTML: התווית "עריכה" מופיעה גם בתוך פסקת ההסבר
+ * ("עריכה של תרגיל מהקטלוג שומרת גרסה פרטית שלך..."), והספירה הייתה מקבלת 31
+ * במקום 30 בלי שאף כפתור נוסף.
+ */
+function countButtons(html: string, label: string): number {
+  return html.split(`>${label}</button>`).length - 1;
 }
 
 describe('מצבי המסך', () => {
@@ -83,7 +114,7 @@ describe('מצבי המסך', () => {
   });
 
   it('ספרייה ריקה', () => {
-    expect(render({ exercises: [] })).toContain(he.coach.exercises.empty);
+    expect(render({ entries: [] })).toContain(he.coach.exercises.empty);
   });
 });
 
@@ -118,37 +149,54 @@ describe('הקטלוג על המסך', () => {
     );
   });
 
-  it('תרגילי הקטלוג מסומנים ככאלה', () => {
+  it('תרגילי הקטלוג מסומנים ככאלה, ומוסבר שהעריכה פרטית', () => {
     expect(html).toContain(he.coach.exercises.globalBadge);
+    expect(html).toContain(he.coach.exercises.privateEdits);
   });
 });
 
-describe('מי ניתן לעריכה — מראה של firestore.rules', () => {
-  it('בקטלוג בלבד אין אף כפתור עריכה, ויש הסבר למה', () => {
+describe('אילו כפתורים מקבל כל כרטיס', () => {
+  it('כל 30 תרגילי הקטלוג ניתנים לעריכה — אבל אין עליהם השבתה ואין חזרה למקור', () => {
     const html = render();
-    expect(countOccurrences(html, he.coach.exercises.actions.edit)).toBe(0);
-    expect(html).toContain(he.coach.exercises.globalReadOnly);
+    expect(countButtons(html, he.coach.exercises.actions.edit)).toBe(30);
+    expect(countButtons(html, he.coach.exercises.actions.deactivate)).toBe(0);
+    expect(countButtons(html, he.coach.exercises.actions.revert)).toBe(0);
+    expect(html).not.toContain(he.coach.exercises.editedBadge);
   });
 
-  it('תרגיל של המועדון מקבל עריכה והשבתה — ורק הוא', () => {
-    const html = render({
-      exercises: mergeExerciseSources(globalCatalog, [orgExercise('org_1')]),
-    });
-
-    expect(countOccurrences(html, he.coach.exercises.actions.edit)).toBe(1);
-    expect(countOccurrences(html, he.coach.exercises.actions.deactivate)).toBe(1);
-    expect(html).toContain(he.coach.exercises.orgBadge);
+  it('תרגיל שהמאמן יצר מקבל השבתה ותג "שלי" — ולא חזרה למקור', () => {
+    const html = render(withMine([coachExercise('mine_1')]));
+    expect(countButtons(html, he.coach.exercises.actions.deactivate)).toBe(1);
+    expect(countButtons(html, he.coach.exercises.actions.revert)).toBe(0);
+    expect(html).toContain(he.coach.exercises.mineBadge);
   });
 
-  it('תרגיל של ארגון אחר אינו ניתן לעריכה', () => {
-    const html = render({
-      exercises: [orgExercise('org_other', { orgId: 'org_zzz' })],
-    });
-    expect(countOccurrences(html, he.coach.exercises.actions.edit)).toBe(0);
+  it('עותק פרטי מוצג במקום המקור, עם תג "נערך" וכפתור חזרה למקור', () => {
+    const source = globalCatalog[0];
+    const html = render(withMine([overrideOf(source)]));
+
+    expect(html).toContain(he.coach.exercises.editedBadge);
+    expect(html).toContain(he.coach.exercises.editedNote);
+    expect(countButtons(html, he.coach.exercises.actions.revert)).toBe(1);
+    // עדיין 30 — העותק החליף את המקור, לא נוסף לו.
+    expect(html).toContain(t('coach.exercises.count', { shown: 30, total: 30 }));
+    expect(html).toContain('זריקות בגרסה שלי');
+    expect(html).not.toContain(`>${source.name}</p>`);
   });
 
-  it('תרגיל מושבת מסומן ומוצע להפעלה מחדש — אין מחיקה', () => {
-    const html = render({ exercises: [orgExercise('org_1', { active: false })] });
+  it('עותק שבוטל — המקור חוזר למסך, בלי תג "נערך" ובלי כפתור חזרה', () => {
+    const source = globalCatalog[0];
+    const html = render(withMine([overrideOf(source, { active: false })]));
+
+    expect(html).toContain(source.name);
+    expect(html).not.toContain('זריקות בגרסה שלי');
+    expect(html).not.toContain(he.coach.exercises.editedBadge);
+    expect(countButtons(html, he.coach.exercises.actions.revert)).toBe(0);
+    expect(html).toContain(t('coach.exercises.count', { shown: 30, total: 30 }));
+  });
+
+  it('תרגיל שלי שהושבת מסומן ומוצע להפעלה מחדש — אין מחיקה', () => {
+    const html = render(withMine([coachExercise('mine_off', { active: false })]));
     expect(html).toContain(he.coach.exercises.inactiveBadge);
     expect(html).toContain(he.coach.exercises.actions.activate);
     expect(html).not.toContain(he.common.delete);
@@ -182,6 +230,24 @@ describe('טופס תרגיל', () => {
     expect(formHtml).toContain(he.coach.exercises.form.description);
     expect(formHtml).toContain('<textarea');
   });
+
+  it('עריכת תרגיל קטלוג אומרת מראש שנשמרת גרסה פרטית', () => {
+    // אחרת המאמן יניח שהוא ערך תרגיל שכל האגודה רואה.
+    const overrideHtml = renderToStaticMarkup(
+      <ExerciseForm
+        mode="override"
+        idPrefix="exercise-edit"
+        categories={['זריקה']}
+        takenNames={[]}
+        onSubmit={async () => true}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(overrideHtml).toContain(he.coach.exercises.form.overrideTitle);
+    expect(overrideHtml).toContain(he.coach.exercises.form.overrideHint);
+    expect(overrideHtml).toContain(he.coach.exercises.form.submitOverride);
+  });
 });
 
 describe('אין עברית שנשארה בקוד במקום במילון', () => {
@@ -202,22 +268,35 @@ describe('אין עברית שנשארה בקוד במקום במילון', () =
     const known = dictionaryStrings([
       ...fromDatabase,
       ...targets,
-      'תרגיל של המועדון',
+      'תרגיל של המאמן',
       'הנחיות של המאמן',
+      'זריקות בגרסה שלי',
       t('coach.exercises.count', { shown: 30, total: 30 }),
+      t('coach.exercises.count', { shown: 31, total: 31 }),
       t('coach.exercises.count', { shown: 1, total: 1 }),
       t('coach.exercises.count', { shown: 0, total: 0 }),
     ]);
 
     const screens = [
       render(),
-      render({ exercises: [] }),
+      render({ entries: [] }),
       render({ status: 'error' }),
-      render({ exercises: [orgExercise('org_1', { active: false })] }),
+      render(withMine([coachExercise('mine_off', { active: false })])),
+      render(withMine([overrideOf(globalCatalog[0])])),
       renderToStaticMarkup(
         <ExerciseForm
           mode="create"
           idPrefix="exercise-new"
+          categories={['זריקה']}
+          takenNames={[]}
+          onSubmit={async () => true}
+          onClose={() => {}}
+        />,
+      ),
+      renderToStaticMarkup(
+        <ExerciseForm
+          mode="override"
+          idPrefix="exercise-edit"
           categories={['זריקה']}
           takenNames={[]}
           onSubmit={async () => true}

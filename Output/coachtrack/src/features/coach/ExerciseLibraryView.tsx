@@ -1,10 +1,14 @@
 /**
  * ספריית התרגילים — התצוגה בלבד.
  *
- * החיפוש והסינון לפי קטגוריה נעשים **בצד הלקוח** על הרשימה הממוזגת. זה לא קיצור
- * דרך: הספרייה מורכבת משתי שאילתות נפרדות (גלובלי + של הארגון, ראה
- * hooks/useExerciseLibrary.ts), ושאילתת חיפוש שלישית הייתה גם דורשת אינדקסים
- * וגם לא יודעת לחפש טקסט חופשי בעברית. 30 תרגילים בזיכרון הם כלום.
+ * הרשימה מגיעה כ-`LibraryEntry[]`: הקטלוג אחרי שהעותקים הפרטיים של המאמן
+ * הוחלפו בו (ראה `lib/exercises.ts` → `buildExerciseLibrary`). המסך לא מחשב
+ * מי מסתיר את מי — הוא רק מציג `origin` ומרכיב לפיו את הכפתורים.
+ *
+ * החיפוש והסינון לפי קטגוריה נעשים **בצד הלקוח** על הרשימה הממוזגת. זה לא
+ * קיצור דרך: הספרייה מורכבת משתי שאילתות נפרדות (קטלוג + התרגילים של המאמן,
+ * ראה `hooks/useExerciseLibrary.ts`), ושאילתת חיפוש שלישית הייתה גם דורשת
+ * אינדקסים וגם לא יודעת לחפש טקסט חופשי בעברית. 30 תרגילים בזיכרון הם כלום.
  */
 
 import { useMemo, useState } from 'react';
@@ -13,36 +17,39 @@ import { Button } from '../../components/ui/Button';
 import { SelectField } from '../../components/ui/Select';
 import { TextField } from '../../components/ui/TextField';
 import {
-  canCoachEditExercise,
   exerciseCategories,
   exerciseToFormValues,
-  filterExercises,
+  libraryExercises,
+  matchesExerciseFilter,
 } from '../../lib/exercises';
-import type { ExerciseFormValues } from '../../lib/exercises';
+import type { ExerciseFormValues, LibraryEntry } from '../../lib/exercises';
 import type { Feedback } from '../../lib/feedback';
 import type { LoadStatus } from '../../hooks/loadStatus';
 import { t } from '../../i18n/he';
-import type { ExerciseDoc } from '../../types/types';
 import { ExerciseCard } from './ExerciseCard';
 import { ExerciseForm } from './ExerciseForm';
 
 export interface ExerciseLibraryViewProps {
   status: LoadStatus;
-  exercises: ExerciseDoc[];
-  orgId: string;
+  entries: LibraryEntry[];
   onCreate: (values: ExerciseFormValues) => Promise<boolean>;
-  onUpdate: (exerciseId: string, values: ExerciseFormValues) => Promise<boolean>;
-  onSetActive: (exercise: ExerciseDoc, active: boolean) => Promise<boolean>;
+  /**
+   * שמירת עריכה. מקבלת את הכרטיס כדי שהשכבה שמעל תדע אם זה עדכון של מסמך קיים
+   * (`mine` / `edited`) או יצירת עותק פרטי חדש (`catalog`).
+   */
+  onSave: (entry: LibraryEntry, values: ExerciseFormValues) => Promise<boolean>;
+  onRevert: (entry: LibraryEntry) => Promise<boolean>;
+  onSetActive: (entry: LibraryEntry, active: boolean) => Promise<boolean>;
   busyId: string | null;
   feedback: Feedback | null;
 }
 
 export function ExerciseLibraryView({
   status,
-  exercises,
-  orgId,
+  entries,
   onCreate,
-  onUpdate,
+  onSave,
+  onRevert,
   onSetActive,
   busyId,
   feedback,
@@ -52,10 +59,17 @@ export function ExerciseLibraryView({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const exercises = useMemo(() => libraryExercises(entries), [entries]);
   const categories = useMemo(() => exerciseCategories(exercises), [exercises]);
   const shown = useMemo(
-    () => filterExercises(exercises, { term: searchTerm, category: category || null }),
-    [exercises, searchTerm, category],
+    () =>
+      entries.filter((entry) =>
+        matchesExerciseFilter(entry.exercise, {
+          term: searchTerm,
+          category: category || null,
+        }),
+      ),
+    [entries, searchTerm, category],
   );
   const names = useMemo(() => exercises.map((exercise) => exercise.name), [exercises]);
 
@@ -111,13 +125,13 @@ export function ExerciseLibraryView({
         </SelectField>
 
         <p className="text-sm text-slate-500">
-          {t('coach.exercises.count', { shown: shown.length, total: exercises.length })}
+          {t('coach.exercises.count', { shown: shown.length, total: entries.length })}
         </p>
       </div>
 
-      <p className="text-xs text-slate-500">{t('coach.exercises.globalReadOnly')}</p>
+      <p className="text-xs text-slate-500">{t('coach.exercises.privateEdits')}</p>
 
-      {exercises.length === 0 ? (
+      {entries.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
           {t('coach.exercises.empty')}
         </p>
@@ -125,17 +139,17 @@ export function ExerciseLibraryView({
         <p className="text-sm text-slate-500">{t('coach.exercises.noResults')}</p>
       ) : (
         <ul className="space-y-3">
-          {shown.map((exercise) =>
-            editingId === exercise.id ? (
-              <li key={exercise.id}>
+          {shown.map((entry) =>
+            editingId === entry.exercise.id ? (
+              <li key={entry.exercise.id}>
                 <ExerciseForm
-                  mode="edit"
-                  idPrefix={`exercise-edit-${exercise.id}`}
-                  initialValues={exerciseToFormValues(exercise)}
+                  mode={entry.origin === 'catalog' ? 'override' : 'edit'}
+                  idPrefix={`exercise-edit-${entry.exercise.id}`}
+                  initialValues={exerciseToFormValues(entry.exercise)}
                   categories={categories}
-                  takenNames={names.filter((name) => name !== exercise.name)}
+                  takenNames={names.filter((name) => name !== entry.exercise.name)}
                   onSubmit={async (values) => {
-                    const saved = await onUpdate(exercise.id, values);
+                    const saved = await onSave(entry, values);
                     if (saved) setEditingId(null);
                     return saved;
                   }}
@@ -144,12 +158,12 @@ export function ExerciseLibraryView({
               </li>
             ) : (
               <ExerciseCard
-                key={exercise.id}
-                exercise={exercise}
-                canEdit={canCoachEditExercise(exercise, orgId)}
-                onEdit={() => setEditingId(exercise.id)}
+                key={entry.exercise.id}
+                entry={entry}
+                onEdit={() => setEditingId(entry.exercise.id)}
+                onRevert={onRevert}
                 onSetActive={onSetActive}
-                busy={busyId === exercise.id}
+                busy={busyId === entry.exercise.id}
               />
             ),
           )}

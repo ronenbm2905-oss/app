@@ -58,7 +58,9 @@ export function PlanPage() {
   const [now] = useState(() => nowInstant());
 
   const { status: teamsStatus, teams } = useCoachTeams(orgId, profile?.uid);
-  const { status: libraryStatus, exercises } = useExerciseLibrary(orgId);
+  // בורר התרגילים מקבל את הספרייה **של המאמן הזה**: תרגיל קטלוג שהוא ערך מגיע
+  // הנה כגרסה הפרטית שלו, ולא כמקור. ראה hooks/useExerciseLibrary.ts.
+  const { status: libraryStatus, exercises } = useExerciseLibrary(orgId, profile?.uid);
   const { status: templatesStatus, templates } = usePlanTemplates(orgId);
 
   const [requestedTeamId, setRequestedTeamId] = useState<string | null>(null);

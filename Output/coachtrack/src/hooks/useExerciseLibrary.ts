@@ -2,48 +2,71 @@
  * ספריית התרגילים — **שתי שאילתות, לא אחת.**
  *
  * ```ts
- * query(collection(db, 'exercises'), where('scope', '==', 'global'))
- * query(collection(db, 'exercises'), where('orgId', '==', orgId))
+ * query(collection(db, 'exercises'), where('scope',    '==', 'global'))
+ * query(collection(db, 'exercises'), where('coachUid', '==', uid))
  * ```
  *
- * כלל הקריאה על exercises הוא:
- * resource.data.scope == 'global' || sameOrg(resource.data.orgId) — **או** לוגי.
- * שאילתה אחת שתכסה את שני הצדדים לא קיימת, ושאילתה בלי where נחסמת כולה
- * (אומת מול המסד החי, 20.8.2026: collection('exercises') מוחזרת כ-PERMISSION_DENIED,
- * ואילו .where('scope','==','global') עובדת).
+ * ## למה שתיים
  *
- * or() של Firestore לא היה עוזר: הערכת ההרשאות נעשית מול כל מסמך שהשאילתה
+ * כלל הקריאה על exercises הוא **"או" לוגי**: גלובלי לכולם, תרגיל של מאמן
+ * לבעליו בלבד. שאילתה אחת שתכסה את שני הצדדים לא קיימת, ושאילתה בלי `where`
+ * נחסמת כולה (אומת מול המסד החי, 20.8.2026: `collection('exercises')` מוחזרת
+ * כ-PERMISSION_DENIED, ואילו `.where('scope','==','global')` עובדת).
+ *
+ * `or()` של Firestore לא היה עוזר: הערכת ההרשאות נעשית מול כל מסמך שהשאילתה
  * *עלולה* להחזיר. שני מאזינים נפרדים + מיזוג בלקוח הם הפתרון הפשוט והבטוח —
  * ובנפח הזה (30 + קומץ) גם הזול.
  *
- * שים לב שאין where('active', '==', true): שוויון שני היה דורש אינדקס מורכב,
- * ופריסת אינדקסים חסומה לסוכן. תרגילים מושבתים מסומנים בממשק במקום להיעלם —
- * ממילא אין מחיקה קשיחה, והמאמן צריך דרך להפעיל אותם מחדש.
+ * ## שוויון בודד בכל שאילתה — בכוונה
+ *
+ * בשתיהן יש **תנאי שוויון אחד בלבד**, ולכן אף אחת מהן לא דורשת אינדקס מורכב.
+ * זה אילוץ מבצעי ולא העדפה: פריסת אינדקסים (`firebase deploy`) חסומה לסוכן.
+ * מכאן גם שאין `where('active','==',true)` — שוויון שני. הסינון של תרגילים
+ * מושבתים נעשה בלקוח.
+ *
+ * ## למה נעלם המאזין על orgId
+ *
+ * עד 25.8.2026 המאזין השני היה `where('orgId','==',orgId)`. מרגע שלכל מאמן יש
+ * עותקים פרטיים — כולם נושאים את ה-`orgId` של האגודה — אותה שאילתה הייתה סוחפת
+ * את **העותקים הפרטיים של המאמנים האחרים** באותה אגודה. היא לא רק הייתה מציגה
+ * למאמן דברים שאינם שלו: מרגע שהכלל אוסר עליו לקרוא אותם, **כל השאילתה נופלת**
+ * ב-PERMISSION_DENIED. יש על כך בדיקת rules ייעודית.
+ *
+ * תרגילי `scope: 'org'` (משותפים לארגון) אינם נטענים יותר. במסד היו 0 כאלה
+ * ברגע השינוי, והאפליקציה כבר לא יוצרת אותם.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { mergeExerciseSources } from '../lib/exercises';
+import { buildExerciseLibrary, libraryExercises } from '../lib/exercises';
+import type { LibraryEntry } from '../lib/exercises';
 import type { Exercise, ExerciseDoc } from '../types/types';
 import type { LoadStatus } from './loadStatus';
 
 export interface ExerciseLibraryState {
   status: LoadStatus;
-  /** הקטלוג הגלובלי והתרגילים של הארגון, ממוזגים וממוינים. */
+  /** הרשימה שעל המסך: קטלוג + תרגילי המאמן, אחרי הסתרה ומיון. */
+  entries: LibraryEntry[];
+  /** אותה רשימה בלי סיווג — הקלט של בורר התרגילים בתוכנית. */
   exercises: ExerciseDoc[];
-  /** כמה מתוכם גלובליים — הנתון שמאמת "30 תרגילים בספרייה". */
+  /**
+   * כל התרגילים של המאמן, **כולל עותקים מבוטלים**.
+   * דרוש כדי למצוא עותק קיים לפני יצירת אחד חדש (`findOverrideFor`).
+   */
+  mine: ExerciseDoc[];
+  /** כמה תרגילי קטלוג חזרו — הנתון שמאמת "30 תרגילים בספרייה". */
   globalCount: number;
 }
 
 /**
  * מצב שני המאזינים יחד. `null` באחד המקורות = עוד לא חזר.
- * ה-orgId נשמר כדי שתוצאה של ארגון קודם לא תיחשב.
+ * ה-key נשמר כדי שתוצאה של משתמש או ארגון קודם לא תיחשב.
  */
 interface LibrarySnapshot {
-  orgId: string;
+  key: string;
   global: ExerciseDoc[] | null;
-  org: ExerciseDoc[] | null;
+  mine: ExerciseDoc[] | null;
   failed: boolean;
 }
 
@@ -53,23 +76,27 @@ function toDocs(docs: { id: string; data: () => unknown }[]): ExerciseDoc[] {
   return docs.map((document) => ({ ...(document.data() as Exercise), id: document.id }));
 }
 
-export function useExerciseLibrary(orgId: string | undefined): ExerciseLibraryState {
+export function useExerciseLibrary(
+  orgId: string | undefined,
+  coachUid: string | undefined,
+): ExerciseLibraryState {
   const [snapshotState, setSnapshotState] = useState<LibrarySnapshot | null>(null);
+  const key = `${orgId ?? ''}|${coachUid ?? ''}`;
 
   useEffect(() => {
-    if (!orgId) return;
+    if (!orgId || !coachUid) return;
 
-    /** עדכון חלקי שמאפס מעצמו כשמדובר בארגון אחר. */
-    const patch = (changes: Partial<Omit<LibrarySnapshot, 'orgId'>>) => {
+    /** עדכון חלקי שמאפס מעצמו כשמדובר במשתמש אחר. */
+    const patch = (changes: Partial<Omit<LibrarySnapshot, 'key'>>) => {
       setSnapshotState((previous) =>
-        previous && previous.orgId === orgId
+        previous && previous.key === key
           ? { ...previous, ...changes }
-          : { orgId, global: null, org: null, failed: false, ...changes },
+          : { key, global: null, mine: null, failed: false, ...changes },
       );
     };
 
     const globalQuery = query(collection(db, 'exercises'), where('scope', '==', 'global'));
-    const orgQuery = query(collection(db, 'exercises'), where('orgId', '==', orgId));
+    const mineQuery = query(collection(db, 'exercises'), where('coachUid', '==', coachUid));
 
     const unsubscribeGlobal = onSnapshot(
       globalQuery,
@@ -80,38 +107,39 @@ export function useExerciseLibrary(orgId: string | undefined): ExerciseLibrarySt
       },
     );
 
-    const unsubscribeOrg = onSnapshot(
-      orgQuery,
-      (snapshot) => patch({ org: toDocs(snapshot.docs) }),
+    const unsubscribeMine = onSnapshot(
+      mineQuery,
+      (snapshot) => patch({ mine: toDocs(snapshot.docs) }),
       (error) => {
-        console.error('[CoachTrack] טעינת תרגילי הארגון נכשלה', error);
+        console.error('[CoachTrack] טעינת התרגילים של המאמן נכשלה', error);
         patch({ failed: true });
       },
     );
 
     return () => {
       unsubscribeGlobal();
-      unsubscribeOrg();
+      unsubscribeMine();
     };
-  }, [orgId]);
+  }, [orgId, coachUid, key]);
 
-  const fresh = orgId && snapshotState?.orgId === orgId ? snapshotState : null;
+  const fresh = orgId && coachUid && snapshotState?.key === key ? snapshotState : null;
   const globalExercises = fresh?.global ?? NO_EXERCISES;
-  const orgExercises = fresh?.org ?? NO_EXERCISES;
+  const mine = fresh?.mine ?? NO_EXERCISES;
 
-  const exercises = useMemo(
-    () => mergeExerciseSources(globalExercises, orgExercises),
-    [globalExercises, orgExercises],
+  const entries = useMemo(
+    () => buildExerciseLibrary(globalExercises, mine),
+    [globalExercises, mine],
   );
+  const exercises = useMemo(() => libraryExercises(entries), [entries]);
 
   // "מוכן" רק כששני המאזינים חזרו — אחרת הרשימה מהבהבת מ-30 ל-31 ולהיפך.
   const status: LoadStatus = !fresh
     ? 'loading'
     : fresh.failed
       ? 'error'
-      : fresh.global && fresh.org
+      : fresh.global && fresh.mine
         ? 'ready'
         : 'loading';
 
-  return { status, exercises, globalCount: globalExercises.length };
+  return { status, entries, exercises, mine, globalCount: globalExercises.length };
 }

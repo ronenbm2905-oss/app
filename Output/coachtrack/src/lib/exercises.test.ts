@@ -6,8 +6,16 @@
  * (`data/exercise-catalog.json`) ולא מול נתוני דמה: שיש בו 30 תרגילים, ושחיפוש
  * וסינון עובדים על הטקסט העברי שבו — כי זה מה שהמאמן יראה בפועל.
  *
- * בנוסף נבדק `canCoachEditExercise`, שהוא תמונת-מראה של `firestore.rules`:
- * אם הוא יטעה, המאמן יקבל כפתור עריכה שמוביל ל-PERMISSION_DENIED.
+ * ## מה חשוב כאן יותר מהכול
+ *
+ * `buildExerciseLibrary` הוא המקום שבו "כל מאמן מתקן לעצמו" הופך לרשימה על
+ * המסך, ויש בו תרחיש אחד שנכשל בשקט אם סדר הפעולות מתהפך: **עותק שבוטל
+ * (`active: false`) חייב להפסיק להסתיר את המקור.** אם ההסתרה מחושבת לפני סינון
+ * העותקים המבוטלים, התרגיל נעלם משני הצדדים — לא המקור ולא העותק — והמאמן רואה
+ * 29 תרגילים בלי להבין למה. זה הטסט שלא מוחקים.
+ *
+ * בנוסף נבדק `isOwnExercise`, שהוא תמונת-מראה של `firestore.rules`:
+ * אם הוא יטעה, המאמן יקבל כפתור שמוביל ל-PERMISSION_DENIED.
  */
 
 import { readFileSync } from 'node:fs';
@@ -15,14 +23,18 @@ import { describe, it, expect } from 'vitest';
 import {
   EXERCISE_NAME_MAX_LENGTH,
   UNITS,
-  buildOrgExercise,
-  canCoachEditExercise,
+  buildCoachExercise,
+  buildExerciseLibrary,
+  buildExerciseOverride,
   exerciseCategories,
   exerciseToFormValues,
   exerciseUpdateFromForm,
   filterExercises,
+  findOverrideFor,
   isExerciseFormValid,
-  mergeExerciseSources,
+  isOwnExercise,
+  libraryExercises,
+  overrideRevivalFromForm,
   suggestedTarget,
   validateExerciseForm,
 } from './exercises';
@@ -31,6 +43,8 @@ import { t } from '../i18n/he';
 import type { Exercise, ExerciseDoc } from '../types/types';
 
 const ORG_ID = 'org_kiryat_ono';
+const COACH = 'uid_emanuel';
+const OTHER_COACH = 'uid_other_coach';
 
 /** הקטלוג האמיתי שנטען למסד ב-seed — אותו קובץ ש-scripts/seed.js קורא. */
 const catalog = JSON.parse(readFileSync('data/exercise-catalog.json', 'utf8')) as {
@@ -39,12 +53,15 @@ const catalog = JSON.parse(readFileSync('data/exercise-catalog.json', 'utf8')) a
 
 const globalCatalog: ExerciseDoc[] = catalog.exercises.map((exercise) => ({ ...exercise }));
 
-function orgExercise(id: string, overrides: Partial<ExerciseDoc> = {}): ExerciseDoc {
+/** תרגיל שהמאמן יצר בעצמו — לא עותק של דבר. */
+function coachExercise(id: string, overrides: Partial<ExerciseDoc> = {}): ExerciseDoc {
   return {
     id,
-    scope: 'org',
+    scope: 'coach',
     orgId: ORG_ID,
-    name: 'תרגיל מועדון',
+    coachUid: COACH,
+    sourceExerciseId: null,
+    name: 'תרגיל של המאמן',
     category: 'כושר',
     unit: 'minutes',
     description: 'הנחיות',
@@ -57,11 +74,28 @@ function orgExercise(id: string, overrides: Partial<ExerciseDoc> = {}): Exercise
   };
 }
 
+/** עותק פרטי של תרגיל קטלוג. */
+function overrideOf(source: ExerciseDoc, overrides: Partial<ExerciseDoc> = {}): ExerciseDoc {
+  return coachExercise(`copy_${source.id}`, {
+    sourceExerciseId: source.id,
+    name: `${source.name} — הגרסה שלי`,
+    category: source.category,
+    unit: source.unit,
+    ...overrides,
+  });
+}
+
 describe('הקטלוג האמיתי', () => {
   it('מכיל 30 תרגילים גלובליים — מה שאמור להיות במסד', () => {
     expect(globalCatalog).toHaveLength(30);
     expect(globalCatalog.every((exercise) => exercise.scope === 'global')).toBe(true);
     expect(globalCatalog.every((exercise) => exercise.orgId === null)).toBe(true);
+  });
+
+  it('אין בו שדה coachUid — הקטלוג נשאר בדיוק כפי שהוא, בלי מיגרציה', () => {
+    // זה מה שמאפשר ל-where('coachUid','==',uid) פשוט לא להתאים לו.
+    expect(globalCatalog.every((exercise) => exercise.coachUid === undefined)).toBe(true);
+    expect(globalCatalog.every((exercise) => exercise.sourceExerciseId === undefined)).toBe(true);
   });
 
   it('כל יחידת מדידה בקטלוג היא אחת מארבע המותרות', () => {
@@ -71,24 +105,133 @@ describe('הקטלוג האמיתי', () => {
   });
 });
 
-describe('מיזוג שני המקורות', () => {
-  it('מחזיר את שני המקורות יחד', () => {
-    const merged = mergeExerciseSources(globalCatalog, [orgExercise('org_1')]);
-    expect(merged).toHaveLength(31);
+describe('בניית הספרייה — עותק פרטי מחליף את המקור', () => {
+  const source = globalCatalog[0];
+
+  it('בלי תרגילים משלי — הספרייה היא הקטלוג', () => {
+    const entries = buildExerciseLibrary(globalCatalog, []);
+    expect(entries).toHaveLength(30);
+    expect(entries.every((entry) => entry.origin === 'catalog')).toBe(true);
   });
 
-  it('לא מכפיל מסמך שהופיע בשני המאזינים', () => {
-    const duplicated = orgExercise(globalCatalog[0].id, { name: 'גרסת המועדון' });
-    const merged = mergeExerciseSources(globalCatalog, [duplicated]);
+  it('עותק פעיל מחליף את המקור — עדיין 30 תרגילים, לא 31', () => {
+    const copy = overrideOf(source);
+    const entries = buildExerciseLibrary(globalCatalog, [copy]);
 
-    expect(merged).toHaveLength(30);
-    expect(merged.find((exercise) => exercise.id === duplicated.id)?.name).toBe('גרסת המועדון');
+    expect(entries).toHaveLength(30);
+
+    const names = entries.map((entry) => entry.exercise.name);
+    expect(names).toContain(copy.name);
+    expect(names).not.toContain(source.name);
+
+    const edited = entries.find((entry) => entry.exercise.id === copy.id);
+    expect(edited?.origin).toBe('edited');
+    expect(edited?.sourceId).toBe(source.id);
+  });
+
+  it('⚠️ עותק שבוטל מפסיק להסתיר — המקור חוזר, והתרגיל לא נעלם', () => {
+    // התרחיש שנכשל בשקט אם ההסתרה מחושבת לפני סינון העותקים המבוטלים:
+    // לא המקור ולא העותק, והמאמן רואה 29 תרגילים.
+    const reverted = overrideOf(source, { active: false });
+    const entries = buildExerciseLibrary(globalCatalog, [reverted]);
+
+    expect(entries).toHaveLength(30);
+
+    const names = entries.map((entry) => entry.exercise.name);
+    expect(names).toContain(source.name);
+    expect(names).not.toContain(reverted.name);
+
+    const restored = entries.find((entry) => entry.exercise.id === source.id);
+    expect(restored?.origin).toBe('catalog');
+  });
+
+  it('ביטול והחייאה — הרשימה חוזרת לעותק בלי שנוצר מסמך שני', () => {
+    const copy = overrideOf(source, { active: false });
+    expect(
+      buildExerciseLibrary(globalCatalog, [copy]).find((e) => e.exercise.id === source.id)?.origin,
+    ).toBe('catalog');
+
+    const revived = { ...copy, active: true };
+    const entries = buildExerciseLibrary(globalCatalog, [revived]);
+    expect(entries).toHaveLength(30);
+    expect(entries.find((e) => e.exercise.id === copy.id)?.origin).toBe('edited');
+  });
+
+  it('שני עותקים לאותו מקור — הפעיל מנצח, והרשימה לא מתארכת', () => {
+    // לא אמור לקרות (findOverrideFor מונע יצירת שני), אבל רשימה כפולה על המסך
+    // היא באג שקשה לאתר, ולכן המיזוג עמיד לזה.
+    const stale = overrideOf(source, { active: false });
+    const live = overrideOf(source, { active: true });
+    live.id = 'copy_live';
+
+    const entries = buildExerciseLibrary(globalCatalog, [stale, live]);
+    expect(entries).toHaveLength(30);
+    expect(entries.find((e) => e.sourceId === source.id)?.exercise.id).toBe('copy_live');
+  });
+
+  it('תרגיל שהמאמן יצר בעצמו מתווסף לרשימה — 31', () => {
+    const entries = buildExerciseLibrary(globalCatalog, [coachExercise('mine_1')]);
+    expect(entries).toHaveLength(31);
+    expect(entries.find((e) => e.exercise.id === 'mine_1')?.origin).toBe('mine');
+  });
+
+  it('תרגיל שלי שהושבת נשאר ברשימה — שם active:false פירושו השבתה, לא ביטול', () => {
+    // אותו שדה, שתי משמעויות. ההבחנה נשענת על sourceExerciseId:
+    // עותק מבוטל נעלם והמקור חוזר; תרגיל מקורי מושבת נשאר כדי שאפשר יהיה
+    // להפעיל אותו מחדש. אין מחיקה קשיחה בשום מסלול.
+    const entries = buildExerciseLibrary(globalCatalog, [
+      coachExercise('mine_off', { active: false }),
+    ]);
+    expect(entries).toHaveLength(31);
+    expect(entries.find((e) => e.exercise.id === 'mine_off')?.origin).toBe('mine');
+  });
+
+  it('עותק יתום — המקור לא ברשימה — מוצג ולא נבלע', () => {
+    const orphan = coachExercise('orphan', { sourceExerciseId: 'ex_that_vanished' });
+    const entries = buildExerciseLibrary(globalCatalog, [orphan]);
+    expect(entries).toHaveLength(31);
+    expect(entries.find((e) => e.exercise.id === 'orphan')?.origin).toBe('edited');
+  });
+
+  it('עותק יתום שבוטל — לא מוצג, ואין מה להחזיר במקומו', () => {
+    const orphan = coachExercise('orphan', {
+      sourceExerciseId: 'ex_that_vanished',
+      active: false,
+    });
+    expect(buildExerciseLibrary(globalCatalog, [orphan])).toHaveLength(30);
   });
 
   it('ממוין לפי קטגוריה ואז לפי שם', () => {
-    const merged = mergeExerciseSources(globalCatalog, []);
-    const categories = merged.map((exercise) => exercise.category);
+    const categories = buildExerciseLibrary(globalCatalog, [coachExercise('mine_1')]).map(
+      (entry) => entry.exercise.category,
+    );
     expect([...categories]).toEqual([...categories].sort((a, b) => a.localeCompare(b, 'he')));
+  });
+
+  it('libraryExercises מחזיר את המסמכים שמוצגים בפועל — כולל העותק', () => {
+    const copy = overrideOf(source);
+    const shown = libraryExercises(buildExerciseLibrary(globalCatalog, [copy]));
+    expect(shown.map((exercise) => exercise.id)).toContain(copy.id);
+    expect(shown.map((exercise) => exercise.id)).not.toContain(source.id);
+  });
+});
+
+describe('איתור עותק קיים — כדי לא ליצור שני', () => {
+  const source = globalCatalog[0];
+
+  it('אין עותק — null', () => {
+    expect(findOverrideFor([coachExercise('mine_1')], source.id)).toBeNull();
+  });
+
+  it('מוצא גם עותק מבוטל — זה מה שמחיה אותו במקום ליצור חדש', () => {
+    const reverted = overrideOf(source, { active: false });
+    expect(findOverrideFor([reverted], source.id)?.id).toBe(reverted.id);
+  });
+
+  it('כשיש גם פעיל וגם מבוטל — הפעיל מנצח', () => {
+    const stale = overrideOf(source, { active: false });
+    const live = { ...overrideOf(source), id: 'copy_live' };
+    expect(findOverrideFor([stale, live], source.id)?.id).toBe('copy_live');
   });
 });
 
@@ -101,10 +244,10 @@ describe('קטגוריות', () => {
   });
 
   it('כוללות קטגוריה חדשה שהמאמן יצר', () => {
-    const merged = mergeExerciseSources(globalCatalog, [
-      orgExercise('org_1', { category: 'מנטלי' }),
-    ]);
-    expect(exerciseCategories(merged)).toContain('מנטלי');
+    const shown = libraryExercises(
+      buildExerciseLibrary(globalCatalog, [coachExercise('mine_1', { category: 'מנטלי' })]),
+    );
+    expect(exerciseCategories(shown)).toContain('מנטלי');
   });
 });
 
@@ -146,17 +289,19 @@ describe('חיפוש וסינון על הקטלוג האמיתי', () => {
   });
 });
 
-describe('מי רשאי לערוך — מראה של firestore.rules', () => {
-  it('תרגיל גלובלי אינו ניתן לעריכה בידי מאמן', () => {
-    expect(canCoachEditExercise(globalCatalog[0], ORG_ID)).toBe(false);
+describe('על מי updateDoc יעבור — מראה של firestore.rules', () => {
+  it('תרגיל גלובלי אינו נכתב בידי מאמן — גם לא אחרי שיש לו עותק', () => {
+    expect(isOwnExercise(globalCatalog[0], COACH)).toBe(false);
   });
 
-  it('תרגיל של הארגון כן', () => {
-    expect(canCoachEditExercise(orgExercise('org_1'), ORG_ID)).toBe(true);
+  it('תרגיל של המאמן עצמו — כן', () => {
+    expect(isOwnExercise(coachExercise('mine_1'), COACH)).toBe(true);
+    expect(isOwnExercise(overrideOf(globalCatalog[0]), COACH)).toBe(true);
   });
 
-  it('תרגיל של ארגון אחר — לא', () => {
-    expect(canCoachEditExercise(orgExercise('org_1', { orgId: 'org_other' }), ORG_ID)).toBe(false);
+  it('העותק של מאמן אחר — לא, גם באותו ארגון', () => {
+    const theirs = coachExercise('theirs', { coachUid: OTHER_COACH });
+    expect(isOwnExercise(theirs, COACH)).toBe(false);
   });
 });
 
@@ -231,14 +376,16 @@ describe('בניית מסמך תרגיל', () => {
     target: '200',
   };
 
-  it('קובעת scope ו-orgId בעצמה — הם מה שה-rules בודקים', () => {
-    const built = buildOrgExercise(values, ORG_ID);
-    expect(built.scope).toBe('org');
+  it('קובעת scope, orgId ו-coachUid בעצמה — הם מה שה-rules בודקים', () => {
+    const built = buildCoachExercise(values, ORG_ID, COACH);
+    expect(built.scope).toBe('coach');
     expect(built.orgId).toBe(ORG_ID);
+    expect(built.coachUid).toBe(COACH);
+    expect(built.sourceExerciseId).toBeNull();
   });
 
   it('מנקה רווחים ושומרת את היעד תחת שכבת הגיל של ה-MVP', () => {
-    const built = buildOrgExercise(values, ORG_ID);
+    const built = buildCoachExercise(values, ORG_ID, COACH);
     expect(built.name).toBe('זריקות מהפינה');
     expect(built.category).toBe('זריקה');
     expect(built.description).toBe('עשר סדרות.');
@@ -246,21 +393,51 @@ describe('בניית מסמך תרגיל', () => {
   });
 
   it('בלי יעד — אין הצעת יעד בכלל', () => {
-    expect(buildOrgExercise({ ...values, target: '' }, ORG_ID).defaultTargets).toEqual({});
+    expect(buildCoachExercise({ ...values, target: '' }, ORG_ID, COACH).defaultTargets).toEqual({});
   });
 
   it('שדות התשתית נשארים על ברירת המחדל של ה-MVP', () => {
-    const built = buildOrgExercise(values, ORG_ID);
+    const built = buildCoachExercise(values, ORG_ID, COACH);
     expect(built.tracksSuccess).toBe(false);
     expect(built.videoUrl).toBeNull();
     expect(built.active).toBe(true);
   });
 
-  it('עדכון לא נוגע ב-scope, ב-orgId ובמצב הפעיל', () => {
+  it('עותק פרטי נושא את המקור, ולא מאפס שדות שאין להם שדה בטופס', () => {
+    const source: ExerciseDoc = {
+      ...globalCatalog[0],
+      videoUrl: 'https://example.com/clip',
+      successCapable: true,
+    };
+    const built = buildExerciseOverride(source, values, ORG_ID, COACH);
+
+    expect(built.scope).toBe('coach');
+    expect(built.coachUid).toBe(COACH);
+    expect(built.sourceExerciseId).toBe(source.id);
+    // אחרת עריכת ניסוח של הנחיה הייתה מוחקת בשקט וידאו הדגמה.
+    expect(built.videoUrl).toBe('https://example.com/clip');
+    expect(built.successCapable).toBe(true);
+  });
+
+  it('עדכון לא נוגע בשדות הזהות ולא במצב הפעיל', () => {
     const update = exerciseUpdateFromForm(values);
     expect(Object.keys(update).sort()).toEqual(
       ['category', 'defaultTargets', 'description', 'name', 'unit'].sort(),
     );
+  });
+
+  it('החייאת עותק מבוטל מוסיפה active:true — ורק אותו', () => {
+    // בלי זה העותק היה נשמר מעודכן אבל ממשיך להיות מוסתר, והמאמן היה רואה
+    // שוב את גרסת הקטלוג אחרי שערך.
+    const update = overrideRevivalFromForm(values);
+    expect(update.active).toBe(true);
+    expect(Object.keys(update).sort()).toEqual(
+      ['active', 'category', 'defaultTargets', 'description', 'name', 'unit'].sort(),
+    );
+    expect(update.scope).toBeUndefined();
+    expect(update.orgId).toBeUndefined();
+    expect(update.coachUid).toBeUndefined();
+    expect(update.sourceExerciseId).toBeUndefined();
   });
 });
 
@@ -275,7 +452,7 @@ describe('המרה לערכי טופס והצעת יעד', () => {
   });
 
   it('תרגיל בלי הצעת יעד מחזיר שדה ריק', () => {
-    expect(exerciseToFormValues(orgExercise('org_1')).target).toBe('');
-    expect(suggestedTarget(orgExercise('org_1'))).toBeNull();
+    expect(exerciseToFormValues(coachExercise('mine_1')).target).toBe('');
+    expect(suggestedTarget(coachExercise('mine_1'))).toBeNull();
   });
 });

@@ -36,7 +36,11 @@ import {
   ENTRY_ANCIENT,
   ENTRY_FRESH,
   ENTRY_OLD,
+  EX_COACH_A,
+  EX_COPY_A,
+  EX_COPY_A2,
   EX_GLOBAL,
+  EX_GLOBAL_2,
   EX_ORG_A,
   EX_ORG_B,
   ORG_A,
@@ -55,6 +59,7 @@ import {
   createTestEnv,
   daysAgo,
   daysAhead,
+  coachExerciseData,
   entryData,
   exerciseData,
   seed,
@@ -458,10 +463,30 @@ describe('exercises — כללים הם לא מסננים', () => {
     await assertSucceeds(getDoc(doc(db, 'exercises', EX_GLOBAL)));
   });
 
-  it('שאילתת תרגילי הארגון עוברת; של ארגון אחר — נחסמת', async () => {
-    const db = as(U.coachA);
-    await assertSucceeds(getDocs(query(collection(db, 'exercises'), where('orgId', '==', ORG_A))));
-    await assertFails(getDocs(query(collection(db, 'exercises'), where('orgId', '==', ORG_B))));
+  it('המאזין השני של הספרייה — where(coachUid) — עובר למאמן על עצמו', async () => {
+    await assertSucceeds(
+      getDocs(query(collection(as(U.coachA), 'exercises'), where('coachUid', '==', U.coachA))),
+    );
+  });
+
+  it('מאמן לא שולף את העותקים של עמיתו דרך where(coachUid)', async () => {
+    await assertFails(
+      getDocs(query(collection(as(U.coachA), 'exercises'), where('coachUid', '==', U.coachA2))),
+    );
+  });
+
+  it('where(orgId) נחסמת עכשיו — זו הסיבה שהמאזין הזה ירד מהאפליקציה', async () => {
+    // עד 25.8.2026 זו הייתה השאילתה השנייה של הספרייה. היא נחסמת עכשיו, וזו
+    // הסיבה שהמאזין הזה ירד מהאפליקציה.
+    //
+    // ⚠️ הסיבה מדויקת יותר ממה שנראה: בשאילתת list הכלל מוערך מול "מסמך
+    // וירטואלי" שנבנה מתנאי השאילתה בלבד. כאן יש בו רק orgId — אין scope ואין
+    // coachUid — ולכן אף סעיף בכלל הקריאה אינו מתקיים. השאילתה אינה ניתנת
+    // להוכחה מתנאיה, ולכן היא נופלת עוד לפני שנגעו במסמך אמיתי כלשהו.
+    // ההרחבה המלאה לעיקרון "כללים הם לא מסננים" יושבת ב-firestore.rules.
+    await assertFails(
+      getDocs(query(collection(as(U.coachA), 'exercises'), where('orgId', '==', ORG_A))),
+    );
   });
 
   it('שחקן קורא את הקטלוג הגלובלי', async () => {
@@ -473,10 +498,58 @@ describe('exercises — כללים הם לא מסננים', () => {
   });
 });
 
-describe('exercises — כתיבה', () => {
-  it('מאמן יוצר תרגיל של הארגון שלו', async () => {
+describe('exercises — הבעלות היא של המאמן, לא של הארגון', () => {
+  it('מאמן קורא את התרגילים שלו; את של עמיתו באותו ארגון — לא', async () => {
+    const db = as(U.coachA);
+    await assertSucceeds(getDoc(doc(db, 'exercises', EX_COACH_A)));
+    await assertSucceeds(getDoc(doc(db, 'exercises', EX_COPY_A)));
+    await assertFails(getDoc(doc(db, 'exercises', EX_COPY_A2)));
+  });
+
+  it('גם בכיוון ההפוך — מאמן א2 קורא את שלו ולא את של מאמן א', async () => {
+    const db = as(U.coachA2);
+    await assertSucceeds(getDoc(doc(db, 'exercises', EX_COPY_A2)));
+    await assertFails(getDoc(doc(db, 'exercises', EX_COPY_A)));
+  });
+
+  it('שחקן לא קורא עותק פרטי של המאמן שלו', async () => {
+    await assertFails(getDoc(doc(as(U.playerA1), 'exercises', EX_COPY_A)));
+  });
+
+  it('admin כן קורא עותק פרטי של מאמן', async () => {
+    await assertSucceeds(getDoc(doc(as(U.adminA), 'exercises', EX_COPY_A)));
+  });
+});
+
+describe('exercises — יצירה', () => {
+  it('מאמן יוצר תרגיל משלו', async () => {
     await assertSucceeds(
-      setDoc(doc(as(U.coachA), 'exercises', 'new_org_ex'), exerciseData({ orgId: ORG_A })),
+      setDoc(doc(as(U.coachA), 'exercises', 'new_mine'), coachExerciseData(U.coachA)),
+    );
+  });
+
+  it('מאמן יוצר עותק פרטי של תרגיל קטלוג — וזה מה שמחליף את העריכה', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(as(U.coachA), 'exercises', 'new_copy'),
+        coachExerciseData(U.coachA, { sourceExerciseId: EX_GLOBAL, name: 'הגרסה שלי' }),
+      ),
+    );
+  });
+
+  it('מאמן לא יוצר תרגיל על שם מאמן אחר', async () => {
+    // אחרת אפשר היה לשתול תרגיל בספרייה של עמית, או להסתיר לו תרגיל קטלוג.
+    await assertFails(
+      setDoc(doc(as(U.coachA), 'exercises', 'planted'), coachExerciseData(U.coachA2)),
+    );
+  });
+
+  it('מאמן לא יוצר תרגיל פרטי על שם ארגון אחר', async () => {
+    await assertFails(
+      setDoc(
+        doc(as(U.coachA), 'exercises', 'foreign_copy'),
+        coachExerciseData(U.coachA, { orgId: ORG_B }),
+      ),
     );
   });
 
@@ -498,58 +571,146 @@ describe('exercises — כתיבה', () => {
     );
   });
 
-  it('מאמן לא יוצר תרגיל לארגון אחר', async () => {
+  it('מאמן לא יוצר יותר תרגיל של הארגון; admin כן', async () => {
+    // הידוק מכוון (25.8.2026): הבעלות על תרגיל היא של המאמן. אילו מאמן היה
+    // ממשיך ליצור scope org עם orgId של האגודה, הוא היה יוצר בדיוק את
+    // ההתנגשות שהשינוי הזה בא לפתור — תרגיל משותף שאיש לא יכול לתקן לעצמו.
     await assertFails(
-      setDoc(doc(as(U.coachA), 'exercises', 'foreign_ex'), exerciseData({ orgId: ORG_B })),
+      setDoc(doc(as(U.coachA), 'exercises', 'new_org_ex'), exerciseData({ orgId: ORG_A })),
+    );
+    await assertSucceeds(
+      setDoc(doc(as(U.adminA), 'exercises', 'new_org_ex'), exerciseData({ orgId: ORG_A })),
     );
   });
 
-  it('מאמן עורך תרגיל של הארגון; תרגיל קטלוג — נחסם', async () => {
-    await assertSucceeds(
-      updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), { description: 'הנחיות חדשות' }),
+  it('שחקן לא יוצר תרגילים בכלל', async () => {
+    await assertFails(
+      setDoc(doc(as(U.playerA1), 'exercises', 'player_ex'), coachExerciseData(U.playerA1)),
     );
+  });
+});
+
+describe('exercises — עריכה: כל מאמן מתקן לעצמו', () => {
+  it('מאמן עורך את התרגיל שלו ואת העותק שלו', async () => {
+    const db = as(U.coachA);
+    await assertSucceeds(
+      updateDoc(doc(db, 'exercises', EX_COACH_A), { description: 'הנחיות חדשות' }),
+    );
+    await assertSucceeds(
+      updateDoc(doc(db, 'exercises', EX_COPY_A), {
+        name: 'זריקות — נוסח מעודכן',
+        category: 'זריקה',
+        defaultTargets: { cadets_13_15: 250 },
+      }),
+    );
+  });
+
+  it('מאמן א לא עורך את העותק של מאמן ב — אותו ארגון, אותו תרגיל מקור', async () => {
+    // ההכרעה של רונן במשפט אחד: הבעלות היא של המאמן, לא של הארגון.
+    await assertFails(
+      updateDoc(doc(as(U.coachA), 'exercises', EX_COPY_A2), { description: 'שלי עכשיו' }),
+    );
+    await assertFails(
+      updateDoc(doc(as(U.coachA2), 'exercises', EX_COPY_A), { description: 'שלי עכשיו' }),
+    );
+  });
+
+  it('אף מאמן לא עורך תרגיל גלובלי — גם לא אחרי שיש לו עותק', async () => {
+    // זו הנעילה שלא נפתחה. תרגיל global נקרא בידי כל ארגון במערכת, ועריכה
+    // שלו הייתה משנה את הספרייה של כל אגודה אחרת.
     await assertFails(
       updateDoc(doc(as(U.coachA), 'exercises', EX_GLOBAL), { description: 'הנחיות חדשות' }),
     );
+    await assertFails(updateDoc(doc(as(U.coachA), 'exercises', EX_GLOBAL), { active: false }));
   });
 
-  it('מאמן משנה scope של תרגיל מועדון ל-global — נחסם', async () => {
-    // הזליגה החוצת-ארגונים: תרגיל עם scope גלובלי נקרא בידי **כל** מחובר,
-    // בכל ארגון. זה היה הופך תרגיל פנימי של מועדון לחלק מהקטלוג של כולם.
+  it('מאמן לא עורך יותר תרגיל של הארגון; admin כן', async () => {
     await assertFails(
-      updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), { scope: 'global' }),
+      updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), { description: 'הנחיות חדשות' }),
     );
-  });
-
-  it('מאמן מעביר תרגיל לארגון אחר — נחסם', async () => {
-    await assertFails(updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), { orgId: ORG_B }));
-  });
-
-  it('גם admin לא משנה scope — קידום לקטלוג נעשה ב-seed, לא מהאפליקציה', async () => {
-    await assertFails(
-      updateDoc(doc(as(U.adminA), 'exercises', EX_ORG_A), { scope: 'global', orgId: null }),
-    );
-  });
-
-  it('אבל עריכת תוכן התרגיל ממשיכה לעבוד — שם, קטגוריה, יעד והשבתה', async () => {
     await assertSucceeds(
-      updateDoc(doc(as(U.coachA), 'exercises', EX_ORG_A), {
-        name: 'תרגיל בשם חדש',
-        category: 'זריקה',
-        defaultTargets: { cadets_13_15: 250 },
-        active: false,
-      }),
+      updateDoc(doc(as(U.adminA), 'exercises', EX_ORG_A), { description: 'הנחיות חדשות' }),
     );
   });
 
   it('שחקן לא עורך תרגילים', async () => {
     await assertFails(
-      updateDoc(doc(as(U.playerA1), 'exercises', EX_ORG_A), { description: 'שלי' }),
+      updateDoc(doc(as(U.playerA1), 'exercises', EX_COPY_A), { description: 'שלי' }),
+    );
+  });
+});
+
+describe('exercises — ארבעת שדות הזהות נעולים', () => {
+  it('מאמן משנה scope של העותק שלו ל-global — נחסם', async () => {
+    // הזליגה החוצת-ארגונים: תרגיל עם scope גלובלי נקרא בידי כל מחובר, בכל
+    // ארגון. זה היה הופך עותק פרטי לחלק מהקטלוג של כולם.
+    await assertFails(updateDoc(doc(as(U.coachA), 'exercises', EX_COPY_A), { scope: 'global' }));
+  });
+
+  it('מאמן מעביר את העותק שלו לארגון אחר — נחסם', async () => {
+    await assertFails(updateDoc(doc(as(U.coachA), 'exercises', EX_COPY_A), { orgId: ORG_B }));
+  });
+
+  it('מאמן מוסר את העותק שלו למאמן אחר — נחסם', async () => {
+    await assertFails(
+      updateDoc(doc(as(U.coachA), 'exercises', EX_COPY_A), { coachUid: U.coachA2 }),
     );
   });
 
-  it('אין מחיקת תרגיל', async () => {
-    await assertFails(deleteDoc(doc(as(U.coachA), 'exercises', EX_ORG_A)));
+  it('מאמן מפנה עותק קיים לתרגיל קטלוג אחר — נחסם', async () => {
+    // sourceExerciseId קובע את מי העותק מסתיר. בלי הנעילה, מאמן היה יכול
+    // להפנות עותק קיים לתרגיל קטלוג אחר ולהעלים אותו מהרשימה שלו.
+    await assertFails(
+      updateDoc(doc(as(U.coachA), 'exercises', EX_COPY_A), { sourceExerciseId: EX_GLOBAL_2 }),
+    );
+    await assertFails(
+      updateDoc(doc(as(U.coachA), 'exercises', EX_COACH_A), { sourceExerciseId: EX_GLOBAL }),
+    );
+  });
+
+  it('גם admin לא משנה את שדות הזהות', async () => {
+    const db = as(U.adminA);
+    await assertFails(updateDoc(doc(db, 'exercises', EX_ORG_A), { scope: 'global', orgId: null }));
+    await assertFails(updateDoc(doc(db, 'exercises', EX_COPY_A), { coachUid: U.coachA2 }));
+    await assertFails(
+      updateDoc(doc(db, 'exercises', EX_GLOBAL), { coachUid: U.coachA, scope: 'coach' }),
+    );
+  });
+
+  it('אבל עריכת תוכן ממשיכה לעבוד — שם, קטגוריה, יחידה, יעד והנחיות', async () => {
+    await assertSucceeds(
+      updateDoc(doc(as(U.coachA), 'exercises', EX_COACH_A), {
+        name: 'תרגיל בשם חדש',
+        category: 'זריקה',
+        unit: 'count',
+        description: 'הנחיות חדשות',
+        defaultTargets: { cadets_13_15: 250 },
+      }),
+    );
+  });
+});
+
+describe('exercises — חזרה למקור אינה מחיקה', () => {
+  it('הביטול הוא update ל-active:false על העותק, וההפעלה מחדש עוברת גם היא', async () => {
+    const db = as(U.coachA);
+    await assertSucceeds(updateDoc(doc(db, 'exercises', EX_COPY_A), { active: false }));
+    // עריכה חוזרת מחזירה את אותו מסמך לחיים, במקום ליצור עותק שני.
+    await assertSucceeds(
+      updateDoc(doc(db, 'exercises', EX_COPY_A), { active: true, name: 'שוב שלי' }),
+    );
+  });
+
+  it('השבתה של תרגיל שהמאמן יצר בעצמו עוברת', async () => {
+    await assertSucceeds(updateDoc(doc(as(U.coachA), 'exercises', EX_COACH_A), { active: false }));
+  });
+
+  it('מאמן לא מבטל את העותק של עמיתו', async () => {
+    await assertFails(updateDoc(doc(as(U.coachA), 'exercises', EX_COPY_A2), { active: false }));
+  });
+
+  it('אין מחיקה קשיחה של אף תרגיל — כלל 5', async () => {
+    await assertFails(deleteDoc(doc(as(U.coachA), 'exercises', EX_COPY_A)));
+    await assertFails(deleteDoc(doc(as(U.coachA), 'exercises', EX_COACH_A)));
     await assertFails(deleteDoc(doc(as(U.adminA), 'exercises', EX_GLOBAL)));
   });
 });

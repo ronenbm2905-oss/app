@@ -51,8 +51,20 @@ export const PLAN_A1_TWO = 'plan_a1_two';
 export const PLAN_A1_ARCHIVED = 'plan_a1_archived';
 export const CYCLE_A1 = 'cycle_a1';
 export const EX_GLOBAL = 'ex_global';
+/** תרגיל קטלוג שני — כדי שאפשר יהיה לבדוק העברת עותק ממקור למקור. */
+export const EX_GLOBAL_2 = 'ex_global_2';
 export const EX_ORG_A = 'ex_org_a';
 export const EX_ORG_B = 'ex_org_b';
+/** תרגיל שמאמן א יצר לעצמו — לא עותק של דבר. */
+export const EX_COACH_A = 'ex_coach_a';
+/** העותק הפרטי של מאמן א לתרגיל הקטלוג. */
+export const EX_COPY_A = 'ex_copy_a';
+/**
+ * העותק של **מאמן א2 לאותו תרגיל קטלוג בדיוק**, באותו ארגון.
+ * זה הזוג שמוכיח את ההכרעה: שני מאמנים באותה אגודה עורכים את אותו תרגיל
+ * בלי לדרוך זה על זה, ואף אחד מהם לא נוגע בעותק של השני.
+ */
+export const EX_COPY_A2 = 'ex_copy_a2';
 export const ENTRY_FRESH = 'entry_fresh';
 export const ENTRY_OLD = 'entry_old';
 export const ENTRY_A2 = 'entry_a2';
@@ -173,6 +185,27 @@ export function exerciseData(overrides: Record<string, unknown> = {}) {
 }
 
 /**
+ * מסמך תרגיל **בבעלות מאמן**.
+ *
+ * נפרד מ-`exerciseData` ולא ברירת מחדל שלו, כדי שמסמכי הקטלוג בזריעה יישארו
+ * בדיוק כמו במסד האמיתי: **בלי שדה `coachUid` בכלל**. זה מה שמאפשר לשאילתת
+ * `where('coachUid','==',uid)` פשוט לא להתאים להם, בלי שום מיגרציה על 30
+ * תרגילי הקטלוג.
+ */
+export function coachExerciseData(
+  coachUid: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return exerciseData({
+    scope: 'coach',
+    orgId: ORG_A,
+    coachUid,
+    sourceExerciseId: null,
+    ...overrides,
+  });
+}
+
+/**
  * מאפס את המסד וזורע מצב התחלתי זהה לכל בדיקה.
  * הזריעה עוקפת את הכללים (withSecurityRulesDisabled) — אחרת אי אפשר היה
  * ליצור את המצב שהכללים אמורים להגן עליו.
@@ -242,8 +275,31 @@ export async function seed(env: RulesTestEnvironment): Promise<void> {
       }),
 
       put(`exercises/${EX_GLOBAL}`, exerciseData({ scope: 'global', orgId: null, name: 'זריקות' })),
+      put(
+        `exercises/${EX_GLOBAL_2}`,
+        exerciseData({ scope: 'global', orgId: null, name: 'כדרור' }),
+      ),
       put(`exercises/${EX_ORG_A}`, exerciseData({ orgId: ORG_A })),
       put(`exercises/${EX_ORG_B}`, exerciseData({ orgId: ORG_B })),
+
+      // תרגיל שמאמן א יצר לעצמו.
+      put(`exercises/${EX_COACH_A}`, coachExerciseData(U.coachA, { name: 'חיזוק ליבה' })),
+
+      // שני עותקים פרטיים **לאותו תרגיל קטלוג**, של שני מאמנים באותו ארגון.
+      put(
+        `exercises/${EX_COPY_A}`,
+        coachExerciseData(U.coachA, {
+          sourceExerciseId: EX_GLOBAL,
+          name: 'זריקות — הגרסה של מאמן א',
+        }),
+      ),
+      put(
+        `exercises/${EX_COPY_A2}`,
+        coachExerciseData(U.coachA2, {
+          sourceExerciseId: EX_GLOBAL,
+          name: 'זריקות — הגרסה של מאמן א2',
+        }),
+      ),
 
       put(`plans/${PLAN_A1}`, {
         teamId: TEAM_A1,

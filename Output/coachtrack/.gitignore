@@ -30,3 +30,4 @@ Thumbs.db
 
 # חבילת ה-ESM הזמנית ש-scripts/qa-stage6.mjs אורז מקוד הייצור
 scripts/.qa-bundle/
+scripts/.qa-overrides-bundle/

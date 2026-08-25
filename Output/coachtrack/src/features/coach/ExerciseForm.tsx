@@ -27,8 +27,17 @@ import { t } from '../../i18n/he';
 import type { TranslationKey } from '../../i18n/he';
 import type { Unit } from '../../types/types';
 
+/**
+ * שלושת מצבי הטופס.
+ *
+ * `override` הוא עריכה של תרגיל **קטלוג**: אותם שדות בדיוק, אבל הכותרת, ההסבר
+ * ותווית הכפתור אומרים מראש שהשמירה תיצור גרסה פרטית ולא תשנה את המקור. אם
+ * המסך לא יגיד את זה, המאמן יניח שהוא ערך תרגיל שכולם רואים.
+ */
+export type ExerciseFormMode = 'create' | 'edit' | 'override';
+
 interface ExerciseFormProps {
-  mode: 'create' | 'edit';
+  mode: ExerciseFormMode;
   /** ערכי פתיחה — בעריכה, התרגיל הקיים. */
   initialValues?: ExerciseFormValues;
   /** קטגוריות קיימות, להשלמה אוטומטית. */
@@ -55,6 +64,7 @@ export function ExerciseForm({
   const [submitting, setSubmitting] = useState(false);
 
   const listId = `${idPrefix}-categories`;
+  const isOverride = mode === 'override';
 
   function update<K extends keyof ExerciseFormValues>(field: K, value: ExerciseFormValues[K]) {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -84,12 +94,20 @@ export function ExerciseForm({
         <h2 className="text-lg font-semibold text-slate-900">
           {mode === 'create'
             ? t('coach.exercises.form.createTitle')
-            : t('coach.exercises.form.editTitle')}
+            : isOverride
+              ? t('coach.exercises.form.overrideTitle')
+              : t('coach.exercises.form.editTitle')}
         </h2>
         <Button variant="ghost" fullWidth={false} onClick={onClose}>
           {t('common.cancel')}
         </Button>
       </div>
+
+      {isOverride ? (
+        <p className="mb-3 rounded-xl bg-sky-50 p-3 text-sm text-sky-900">
+          {t('coach.exercises.form.overrideHint')}
+        </p>
+      ) : null}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <TextField
@@ -157,7 +175,9 @@ export function ExerciseForm({
             ? t('coach.exercises.form.submitting')
             : mode === 'create'
               ? t('coach.exercises.form.submitCreate')
-              : t('coach.exercises.form.submitEdit')}
+              : isOverride
+                ? t('coach.exercises.form.submitOverride')
+                : t('coach.exercises.form.submitEdit')}
         </Button>
       </form>
     </section>

@@ -21,8 +21,19 @@ export type Role = 'admin' | 'coach' | 'player';
 /** יחידת מדידה של תרגיל. הערכים המותרים היחידים. */
 export type Unit = 'count' | 'minutes' | 'sessions' | 'distance_km';
 
-/** תרגיל גלובלי (קטלוג) מול תרגיל שהארגון יצר לעצמו. */
-export type ExerciseScope = 'global' | 'org';
+/**
+ * למי שייך התרגיל.
+ *
+ * - `global` — הקטלוג. 30 תרגילים, נכתבים ב-`scripts/seed.js`, **לקריאה בלבד**
+ *   לכל מי שאינו admin. תרגיל גלובלי נקרא בידי כל מחובר בכל ארגון, ולכן שינוי
+ *   שלו הוא זליגה חוצת-ארגונים (ראה `firestore.rules`).
+ * - `coach` — תרגיל של מאמן יחיד: או שיצר אותו בעצמו, או **עותק פרטי** שמחליף
+ *   עבורו תרגיל קטלוג (`sourceExerciseId`). רק הבעלים קורא וכותב אותו.
+ * - `org` — תרגיל משותף לארגון. נשאר בסכמה ובכללים לתאימות אחורה, אבל
+ *   **האפליקציה אינה יוצרת אותו יותר**: מ-25.8.2026 הבעלות על תרגיל היא של
+ *   המאמן ולא של הארגון, כדי ששני מאמנים באותה אגודה לא ידרכו זה על זה.
+ */
+export type ExerciseScope = 'global' | 'org' | 'coach';
 
 /** מצב תוכנית מתמשכת. */
 export type PlanStatus = 'active' | 'archived';
@@ -115,9 +126,28 @@ export type TeamDoc = Team & WithId;
 export type DefaultTargets = Partial<Record<Cohort, number>>;
 
 export interface Exercise {
+  /** 🔒 נעול בעדכון ב-firestore.rules — שדה זהות, לא שדה תוכן. */
   scope: ExerciseScope;
-  /** null כשה-scope הוא global. */
+  /** null כשה-scope הוא global. 🔒 נעול בעדכון. */
   orgId: string | null;
+  /**
+   * בעל התרגיל כש-`scope === 'coach'`. 🔒 נעול בעדכון.
+   *
+   * לא קיים כלל במסמכי הקטלוג שבמסד — ובכוונה: הקטלוג נשאר בדיוק כפי שהוא,
+   * בלי מיגרציה. שאילתת `where('coachUid','==',uid)` פשוט לא מתאימה למסמך
+   * שאין בו את השדה.
+   */
+  coachUid?: string | null;
+  /**
+   * המזהה של התרגיל שהעותק הזה **מחליף** בספרייה של המאמן. 🔒 נעול בעדכון.
+   *
+   * `null` (או חסר) = תרגיל מקורי, לא עותק. כשיש ערך, הספרייה מציגה את העותק
+   * במקום המקור — עדיין 30 תרגילים, לא 60.
+   *
+   * ⚠️ עותק עם `active: false` הוא עותק ש**בוטל** ("חזרה למקור"), והמקור חוזר
+   * להופיע. ראה `lib/exercises.ts` → `buildExerciseLibrary`.
+   */
+  sourceExerciseId?: string | null;
   name: string;
   /** קטגוריה בעברית מהקטלוג: זריקה, כדרור, מסירה, כושר, הגנה, טכניקה, למידה. */
   category: string;
