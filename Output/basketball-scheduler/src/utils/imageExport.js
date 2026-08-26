@@ -21,21 +21,41 @@ export async function loadImageDataUrl(src) {
   }
 }
 
+// Load an image and wait until it is actually usable.
+//
+// `decode()` looks like the clean way to do this, and it is what this file used to rely
+// on — but Chrome can leave that promise pending forever on a detached image that has
+// already finished loading (observed here: `complete` true, `naturalWidth` 2400, decode
+// still unsettled after three seconds). Every caller downstream then waits for a resolve
+// that never comes. So wait on whichever of load / error / decode arrives first, and
+// treat a failed image as an image with no pixels rather than as a reason to hang.
+async function readyImage(src) {
+  const img = new Image();
+  img.src = src;
+  if (img.complete && img.naturalWidth) return img;
+  await new Promise((resolve) => {
+    img.onload = resolve;
+    img.onerror = resolve;
+    img.decode().then(resolve, resolve);
+  });
+  return img;
+}
+
 // Draw the club logo (and optional title) centered above an already-captured canvas
 // and return a new, taller canvas. We composite ourselves because html2canvas does
 // not reliably paint <img> on mobile.
-export async function withLogoHeader(baseCanvas, logoSrc, title = "") {
+export async function withLogoHeader(baseCanvas, logoSrc, title = "", subtitle = "") {
   try {
-    const logo = new Image();
-    logo.src = logoSrc;
-    try { await logo.decode(); } catch { await new Promise((r) => { logo.onload = r; logo.onerror = r; }); }
+    const logo = await readyImage(logoSrc);
     const hasLogo = !!logo.naturalWidth;
     const pad = 28;
     const logoH = hasLogo ? Math.min(170, logo.naturalHeight) : 0;
     const logoW = hasLogo ? Math.round(logoH * (logo.naturalWidth / logo.naturalHeight)) : 0;
     const fontSize = 44;
+    const subFontSize = 30;
     const titleH = title ? fontSize + 20 : 0;
-    const headerH = logoH + titleH + pad * 2;
+    const subH = subtitle ? subFontSize + 14 : 0;
+    const headerH = logoH + titleH + subH + pad * 2;
     if (!headerH) return baseCanvas;
     const out = document.createElement("canvas");
     out.width = baseCanvas.width;
@@ -44,13 +64,20 @@ export async function withLogoHeader(baseCanvas, logoSrc, title = "") {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, out.width, out.height);
     if (hasLogo) ctx.drawImage(logo, Math.round((out.width - logoW) / 2), pad, logoW, logoH);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.direction = "rtl";
     if (title) {
       ctx.fillStyle = "#292524";
       ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.direction = "rtl";
       ctx.fillText(title, out.width / 2, pad + logoH + titleH / 2);
+    }
+    // The second line carries the context the title has no room for — team and date —
+    // so a diagram arriving on its own in a chat still says what it belongs to.
+    if (subtitle) {
+      ctx.fillStyle = "#57534e";
+      ctx.font = `${subFontSize}px Arial, sans-serif`;
+      ctx.fillText(subtitle, out.width / 2, pad + logoH + titleH + subH / 2);
     }
     ctx.drawImage(baseCanvas, 0, headerH);
     return out;
@@ -84,6 +111,38 @@ export async function canvasToPdfBlob(canvas) {
   // the canvas has a white background so there's no transparency to lose.
   pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, pw, ph);
   return pdf.output("blob");
+}
+
+// Rasterise an inline <svg> node directly, without html2canvas.
+//
+// html2canvas re-implements a renderer; the browser already has one that draws SVG
+// perfectly. Serialising and drawing the element gives a sharper image at any size and
+// skips the mobile <img> painting problems the helpers above exist to work around. The
+// data URI is same-origin by definition, so the canvas is never tainted and toBlob works.
+export async function svgToCanvas(svgEl, targetWidth = 1200) {
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  const box = (clone.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
+  const ratio = box.length === 4 && box[2] ? box[3] / box[2] : 1;
+  const w = Math.round(targetWidth);
+  const h = Math.round(targetWidth * ratio) || w;
+  clone.setAttribute("width", w);
+  clone.setAttribute("height", h);
+  // A serialised SVG carries no page stylesheet, so any text in it has to name a font
+  // itself or the shirt numbers come out in whatever the renderer defaults to.
+  clone.setAttribute("font-family", "Arial, sans-serif");
+
+  const img = await readyImage(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(clone))}`
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas;
 }
 
 // Capture a DOM node to a PNG blob, compositing logo + optional title on top.
