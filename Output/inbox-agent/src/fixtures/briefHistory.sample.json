@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "whatIsThis": "היסטוריית הופעות בדוח הבוקר — הקלט של חלון ההשהיה (כלל 4 ב-archivePolicy).",
+    "whyItExists": "בלי הקובץ הזה, בהרצה ראשונה של ההדגמה שום פריט לא הופיע עדיין באף דוח בוקר, ולכן מסך 'מה עומד לקרות' היה ריק לגמרי ולא היה מה לבדוק בעין. הקובץ מייצג תיבה שכבר קיבלה דוח בוקר אתמול — כלומר את המצב הרגיל, לא את הרגע הראשון.",
+    "whatIsDeliberatelyMissing": "m-036 עד m-042 ו-inv-013 **לא** מופיעים כאן בכוונה. הם הגיעו היום, ולכן הם מדגימים את הצד השני של אותו כלל: 'הגיע היום — אני אף פעם לא מארכב לפני שהראיתי לך אותו בדוח בוקר אחד'. בלי כמה פריטים כאלה, המסך היה מראה רק את ההצלחה ולא את הבלימה.",
+    "seededAt": "התאריכים כאן הם 24.8.2026 בבוקר — יום לפני ה-receivedAt של המיילים החדשים ב-fixture."
+  },
+  "entries": {
+    "m-013": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 3 },
+    "m-014": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 3 },
+    "m-015": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 2 },
+    "m-016": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 2 },
+    "m-017": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 4 },
+    "m-018": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 4 },
+    "m-019": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 2 },
+    "m-020": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 2 },
+    "m-021": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 5 },
+    "m-022": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 5 },
+    "m-023": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 3 },
+    "m-024": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 3 },
+    "m-025": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 2 },
+    "m-026": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 1 },
+    "m-027": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 1 },
+    "m-028": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 1 },
+    "m-029": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 6 },
+    "m-030": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 1 },
+    "m-031": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 1 },
+    "m-032": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 2 },
+    "m-033": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 2 },
+    "m-034": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 4 },
+    "m-035": { "firstSeenInBriefAt": "2026-08-24T05:30:00+03:00", "briefAppearances": 4 }
+  }
+}

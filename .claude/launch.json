@@ -137,6 +137,34 @@
       ],
       "cwd": "Output/hachzarei-mas",
       "port": 5190
+    },
+    {
+      "name": "inbox-agent",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5191",
+        "--strictPort"
+      ],
+      "cwd": "Output/inbox-agent",
+      "port": 5191
+    },
+    {
+      "name": "project-budget",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5192",
+        "--strictPort"
+      ],
+      "cwd": "Output/project-budget",
+      "port": 5192
     }
   ]
 }

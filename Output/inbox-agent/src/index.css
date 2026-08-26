@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* מוגדר גם ב-`index.html`; חוזר כאן כדי שגם רינדור חלקי יישאר RTL. */
+    direction: rtl;
+  }
+
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+  }
+
+  /* מצב מיקוד גלוי בכל אלמנט אינטראקטיבי — דרישת נגישות בסיסית (ת"י 5568),
+     ולא משהו שמוסיפים "אחר כך". */
+  :where(a, button, input, select, textarea):focus-visible {
+    @apply outline-none ring-2 ring-slate-800 ring-offset-2;
+  }
+}

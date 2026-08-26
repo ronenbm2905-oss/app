@@ -1,0 +1,205 @@
+{
+  "meta": {
+    "version": 1,
+    "generatedFor": "מודול ההזמנות — מקומי בלבד, בלי Google ובלי מודל",
+    "synthetic": "כל ההודעות כאן מסונתזות במלואן. אין כאן שם אמיתי אחד, כתובת אמיתית אחת, מספר טלפון אמיתי אחד או כתובת מייל אמיתית אחת. הריפו ציבורי, ואלה כתובות מגורים — זה תנאי, לא זהירות יתר.",
+    "names": "השמות הומצאו לצורך הקובץ הזה ואינם לקוחות של אף אחד.",
+    "cities": "שמות היישובים והרחובות בדויים ומסומנים ככאלה ('דוגמה', 'משל') כדי שאי אפשר יהיה לטעות ולחשוב שמדובר בכתובת אמיתית.",
+    "phones": "כל הטלפונים בטווח 555-01xx, השמור לבדיון ואינו מוקצה לאף מנוי.",
+    "emails": "כל הכתובות משתמשות ב-TLD ‎.example, ששמור לדוגמאות ב-RFC 2606.",
+    "sender": "כתובת הסליקה pay@tranzila.com היא כתובת שירות של ספק סליקה ואינה של אדם. היא מופיעה כאן כי היא מה שהפרסר מאמת מולו.",
+    "coverage": "18 הודעות: הזמנה פשוטה · הזמנה בכמות 4 · שורת הטבה במחיר 0 · מכפלה שלא מסתדרת · זיוף מדומיין דומה · זיוף עם שולח ונושא נכונים ומבנה שונה · שדות לא-חובה חסרים · עיר ריקה · הזמנה שנשלחה לפני 70 יום (מבחן המחיקה) · הזמנה שנשלחה לפני 5 ימים · הזמנה מרובת פריטים · כמות שכתובה במילים · מייל שיווקי שאינו הזמנה כלל · הזמנה לחו\"ל עם סדר עמודות הפוך · שורת קופון בסכום שלילי · תווית כפולה · חתימה דיגיטלית שנכשלה · הודעה בלי חתימה בכלל.",
+    "hostile": "msg-105 (דומיין שמכיל את הדומיין האמיתי כתת-מחרוזת, חתום בדומיין של התוקף), msg-106 (שולח ונושא נכונים, מבנה חופשי), msg-116 (תווית כפולה), msg-117 (dkim=fail — הודעה מזויפת שנראית מושלמת), msg-118 (בלי Authentication-Results בכלל).",
+    "dkim": "כותרת Authentication-Results נוספה לכל הודעה. היא מדמה את מה שגוגל מחשבת בעצמה לפני שההודעה נכנסת לתיבה, ובפרוסה 1 היא תגיע משם ולא מכאן."
+  },
+  "seededShipments": {
+    "msg-109": {
+      "shippedAt": "2026-06-12T18:20:00+03:00"
+    },
+    "msg-110": {
+      "shippedAt": "2026-08-21T17:05:00+03:00"
+    }
+  },
+  "messages": [
+    {
+      "messageId": "msg-101",
+      "threadId": "t-msg-101",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T08:12:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>רונית שדה</td></tr><tr><td>כתובת מייל</td><td>ronit.s@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0101</td></tr><tr><td>כתובת</td><td>רחוב הדוגמה 14, דירה 3</td></tr><tr><td>עיר</td><td>תל דוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>6100200</td></tr><tr><td>סכום ששולם</td><td>42.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות פרחי בר</td><td>1</td><td>42.00</td></tr></table><p>תודה שבחרת בנו.</p>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-102",
+      "threadId": "t-msg-102",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T08:41:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>מיכל אלמוג</td></tr><tr><td>כתובת מייל</td><td>michal.a@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0102</td></tr><tr><td>כתובת</td><td>שדרות המשל 8</td></tr><tr><td>עיר</td><td>כפר משל</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>4250310</td></tr><tr><td>סכום ששולם</td><td>168.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות פרחי בר</td><td>4</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-103",
+      "threadId": "t-msg-103",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T09:03:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>יעל ברק</td></tr><tr><td>כתובת מייל</td><td>yael.b@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0103</td></tr><tr><td>כתובת</td><td>סמטת הדוגמית 2</td></tr><tr><td>עיר</td><td>גבעת הדוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>7010500</td></tr><tr><td>סכום ששולם</td><td>84.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חיות ים</td><td>2</td><td>42.00</td></tr><tr><td>הטבת משלוח חינם</td><td>1</td><td>0.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-104",
+      "threadId": "t-msg-104",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T09:30:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>נועה גלעד</td></tr><tr><td>כתובת מייל</td><td>noa.g@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0104</td></tr><tr><td>כתובת</td><td>רחוב המשל 21</td></tr><tr><td>עיר</td><td>נווה משל</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>5320900</td></tr><tr><td>סכום ששולם</td><td>84.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חלל</td><td>3</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-105",
+      "threadId": "t-msg-105",
+      "fromAddress": "pay@tranzila.com.billing-secure.example",
+      "fromName": "טרנזילה סליקה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T09:44:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>דנה כהנא</td></tr><tr><td>כתובת מייל</td><td>dana.k@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0105</td></tr><tr><td>כתובת</td><td>רחוב הזיוף 9</td></tr><tr><td>עיר</td><td>רמת דוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>3300100</td></tr><tr><td>סכום ששולם</td><td>126.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות פרחי בר</td><td>3</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=billing-secure.example header.b=Zz9; spf=pass smtp.mailfrom=billing-secure.example; dmarc=none"
+    },
+    {
+      "messageId": "msg-106",
+      "threadId": "t-msg-106",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T09:52:00+03:00",
+      "bodyHtml": "<p>שלום, שילמתי עכשיו ואשמח שתשלחי את החבילה לכתובת רחוב הזיוף 4, מעלה הדוגמה. אם יש בעיה עם התשלום אפשר לעדכן את פרטי הכרטיס בקישור המצורף. תודה!</p>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-107",
+      "threadId": "t-msg-107",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T10:05:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>אורלי בן חיים</td></tr><tr><td>כתובת מייל</td><td>orly.bh@lakoach.example</td></tr><tr><td>כתובת</td><td>רחוב הדוגמה 3</td></tr><tr><td>עיר</td><td>אשדות משל</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>סכום ששולם</td><td>42.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חיות ים</td><td>1</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-108",
+      "threadId": "t-msg-108",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T10:18:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>שירן מור</td></tr><tr><td>כתובת מייל</td><td>shiran.m@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0108</td></tr><tr><td>כתובת</td><td>רחוב המשל 5</td></tr><tr><td>עיר</td><td>&nbsp;</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>9070300</td></tr><tr><td>סכום ששולם</td><td>84.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חלל</td><td>2</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-109",
+      "threadId": "t-msg-109",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-06-11T14:22:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>הילה נחום</td></tr><tr><td>כתובת מייל</td><td>hila.n@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0109</td></tr><tr><td>כתובת</td><td>שדרות הדוגמה 30</td></tr><tr><td>עיר</td><td>בית דוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>2440700</td></tr><tr><td>סכום ששולם</td><td>126.00 ₪</td></tr><tr><td>תשלומים</td><td>3</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות פרחי בר</td><td>3</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-110",
+      "threadId": "t-msg-110",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-20T11:40:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>תמר לביא</td></tr><tr><td>כתובת מייל</td><td>tamar.l@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0110</td></tr><tr><td>כתובת</td><td>רחוב הדוגמית 17</td></tr><tr><td>עיר</td><td>תל דוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>6100200</td></tr><tr><td>סכום ששולם</td><td>84.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חיות ים</td><td>2</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-111",
+      "threadId": "t-msg-111",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T10:47:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>ליאת אשל</td></tr><tr><td>כתובת מייל</td><td>liat.e@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0111</td></tr><tr><td>כתובת</td><td>רחוב המשל 44, כניסה ב</td></tr><tr><td>עיר</td><td>כפר משל</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>4250310</td></tr><tr><td>סכום ששולם</td><td>612.00 ₪</td></tr><tr><td>תשלומים</td><td>2</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חלל</td><td>12</td><td>42.00</td></tr><tr><td>מדבקות פרחי בר</td><td>2</td><td>54.00</td></tr><tr><td>הטבת משלוח חינם</td><td>1</td><td>0.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-112",
+      "threadId": "t-msg-112",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T11:02:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>גלית ארז</td></tr><tr><td>כתובת מייל</td><td>galit.e@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0112</td></tr><tr><td>כתובת</td><td>רחוב הדוגמה 61</td></tr><tr><td>עיר</td><td>נווה משל</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>5320900</td></tr><tr><td>סכום ששולם</td><td>84.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חיות ים</td><td>שתיים</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-113",
+      "threadId": "t-msg-113",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עדכון מערכת: תחזוקה מתוכננת בסוף השבוע",
+      "receivedAt": "2026-08-25T16:10:00+03:00",
+      "bodyHtml": "<p>שלום, בסוף השבוע תתבצע תחזוקה מתוכננת במערכת הסליקה. אין צורך בפעולה מצדך.</p>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-114",
+      "threadId": "t-msg-114",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T11:25:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>Sara Doe</td></tr><tr><td>כתובת מייל</td><td>sara.d@lakoach.example</td></tr><tr><td>טלפון</td><td>+1-555-0114</td></tr><tr><td>כתובת</td><td>12 Example Lane</td></tr><tr><td>עיר</td><td>Sampleton</td></tr><tr><td>מדינה</td><td>US</td></tr><tr><td>מיקוד</td><td>90210</td></tr><tr><td>סכום ששולם</td><td>252.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>מחיר ליחידה</th><th>כמות</th></tr><tr><td>מדבקות פרחי בר</td><td>42.00</td><td>6</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-115",
+      "threadId": "t-msg-115",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T11:48:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>עדי שחר</td></tr><tr><td>כתובת מייל</td><td>adi.sh@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0115</td></tr><tr><td>כתובת</td><td>סמטת המשל 7</td></tr><tr><td>עיר</td><td>גבעת הדוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>7010500</td></tr><tr><td>סכום ששולם</td><td>64.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חלל</td><td>2</td><td>42.00</td></tr><tr><td>הנחת קופון</td><td>1</td><td>-20.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-116",
+      "threadId": "t-msg-116",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T12:04:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>נטע רימון</td></tr><tr><td>כתובת מייל</td><td>neta.r@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0116</td></tr><tr><td>כתובת</td><td>רחוב הדוגמה 12</td></tr><tr><td>עיר</td><td>רמת דוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>3300100</td></tr><tr><td>כתובת</td><td>רחוב הזיוף 88</td></tr><tr><td>סכום ששולם</td><td>42.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות חיות ים</td><td>1</td><td>42.00</td></tr></table>",
+      "authenticationResults": "mx.google.com; dkim=pass header.d=tranzila.com header.b=Ab3dEf; spf=pass smtp.mailfrom=tranzila.com; dmarc=pass header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-117",
+      "threadId": "t-msg-117",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T12:20:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>חן דגן</td></tr><tr><td>כתובת מייל</td><td>chen.d@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0117</td></tr><tr><td>כתובת</td><td>רחוב הזיוף 21</td></tr><tr><td>עיר</td><td>תל דוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>6100200</td></tr><tr><td>סכום ששולם</td><td>42.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות פרחי בר</td><td>1</td><td>42.00</td></tr></table><p>תודה שבחרת בנו.</p>",
+      "authenticationResults": "mx.google.com; dkim=fail header.d=tranzila.com header.b=Qq1; spf=softfail smtp.mailfrom=relay.evil.example; dmarc=fail header.from=tranzila.com"
+    },
+    {
+      "messageId": "msg-118",
+      "threadId": "t-msg-118",
+      "fromAddress": "pay@tranzila.com",
+      "fromName": "טרנזילה",
+      "subject": "עסקה חדשה מדף סליקה טרנזילה",
+      "receivedAt": "2026-08-26T12:35:00+03:00",
+      "bodyHtml": "<p>התקבלה עסקה חדשה.</p><table><tr><td>שם לקוח</td><td>אורית פלד</td></tr><tr><td>כתובת מייל</td><td>orit.p@lakoach.example</td></tr><tr><td>טלפון</td><td>050-555-0118</td></tr><tr><td>כתובת</td><td>רחוב הזיוף 5</td></tr><tr><td>עיר</td><td>תל דוגמה</td></tr><tr><td>מדינה</td><td>IL</td></tr><tr><td>מיקוד</td><td>6100200</td></tr><tr><td>סכום ששולם</td><td>42.00 ₪</td></tr><tr><td>תשלומים</td><td>1</td></tr></table><table><tr><th>שם מוצר</th><th>כמות</th><th>מחיר ליחידה</th></tr><tr><td>מדבקות פרחי בר</td><td>1</td><td>42.00</td></tr></table><p>תודה שבחרת בנו.</p>",
+      "authenticationResults": null
+    }
+  ]
+}

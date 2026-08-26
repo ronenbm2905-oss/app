@@ -1,0 +1,112 @@
+rules_version = '2';
+
+// ============================================================================
+// firestore.rules — ניהול תקציב פרויקט
+//
+// עקרונות:
+//  1. deny-by-default. כל מה שלא נכתב כאן במפורש — חסום.
+//  2. **הבידוד הוא בנתיב**: כל ישות יושבת תחת `projects/{pid}/...`. לכן שאילתה
+//     על תת-אוסף לא צריכה `where` שהכללים יאמתו — ההרשאה נגזרת מההורה.
+//     (המלכודת ההפוכה, "כללים אינם מסננים", נשארת רלוונטית ל`projects` עצמו:
+//     שאילתה על אוסף הפרויקטים **חייבת** לשאת array-contains על המייל.)
+//  3. זיהוי לפי **מייל** ולא uid — הבעלים מזמין לפי מייל, בלי מנגנון claim.
+//  4. המודל כאן חייב להישאר תואם ל-`src/utils/access.js`.
+//
+// תפקידים:
+//  owner   — הכול, כולל הגדרות הפרויקט, התקציב, המנות ורשימת החברים.
+//  manager — קריאה מלאה; כתיבה רק על invoices/payments/vendors/documents,
+//            ובלי לגעת בשדות הדרישה מול הרשות.
+//  viewer  — קריאה בלבד. (המממן זכאי לראות; לא לשנות.)
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function email() {
+      return request.auth.token.email.lower();
+    }
+
+    function projectDoc(pid) {
+      return get(/databases/$(database)/documents/projects/$(pid)).data;
+    }
+
+    // ⚠ `exists()` לפני `get()`: קריאת `.data` על מסמך שאינו קיים נכשלת ומפילה
+    // את כל ההערכה, כך שגם הכללים שאחריה לא נבדקים. זה בדיוק אופן הכישלון
+    // שנצרב בפרויקט קודם — כלל שנראה תקין ונחסם על מסמך חסר.
+    function roleIn(pid) {
+      return exists(/databases/$(database)/documents/projects/$(pid))
+        && projectDoc(pid).memberRoles is map
+        && projectDoc(pid).memberRoles[email()] is string
+        ? projectDoc(pid).memberRoles[email()]
+        : '';
+    }
+
+    function isMember(pid)  { return signedIn() && roleIn(pid) != ''; }
+    function isOwner(pid)   { return signedIn() && roleIn(pid) == 'owner'; }
+    function isManager(pid) { return signedIn() && roleIn(pid) == 'manager'; }
+
+    // רשימת החברים על מסמך הפרויקט חייבת להישאר עקבית עם מפת התפקידים,
+    // אחרת אפשר "להיעלם" מהשאילתה תוך שמירת הרשאות, או ההפך.
+    function memberListsAgree() {
+      return request.resource.data.memberEmails is list
+        && request.resource.data.memberRoles is map
+        && request.resource.data.memberEmails.toSet()
+             == request.resource.data.memberRoles.keys().toSet();
+    }
+
+    // הבעלים חייב להישאר בעלים של עצמו — אחרת אפשר לנעול את עצמך החוצה
+    // מפרויקט שרק אתה יכול לתקן.
+    function keepsAnOwner() {
+      return request.resource.data.memberRoles.values().hasAny(['owner']);
+    }
+
+    match /projects/{pid} {
+      // קריאת מסמך בודד: לפי החברוּת. קריאת רשימה: השאילתה חייבת לשאת
+      // array-contains על המייל, אחרת היא נחסמת — כללים אינם מסננים.
+      allow get: if isMember(pid);
+      // `list` נבדק **פר-מסמך שהשאילתה מחזירה**. התנאי כאן הוא שהמסמך מכיל את
+      // המייל שלי; שאילתה בלי `where` תואם תיגע במסמך של מישהו אחר, תיכשל עליו,
+      // וכל השאילתה תיחסם. זה בדיוק האכיפה שאנחנו רוצים.
+      // (הימנעות מ-`request.query.limit`: כשהשאילתה לא מציינת limit הערך אינו
+      // מובטח, ותנאי עליו חוסם גם שאילתות לגיטימיות.)
+      allow list: if signedIn() && email() in resource.data.memberEmails;
+
+      // יצירה: רק מי שמציב את עצמו כבעלים, ורשימות עקביות.
+      allow create: if signedIn()
+                    && request.resource.data.memberRoles[email()] == 'owner'
+                    && memberListsAgree()
+                    && keepsAnOwner();
+
+      allow update: if isOwner(pid) && memberListsAgree() && keepsAnOwner();
+      allow delete: if isOwner(pid);
+
+      // --- תת-אוספים ------------------------------------------------------
+      // כתיבה רחבה: הבעלים בלבד. אלה התקציב עצמו והדרישה מול הרשות.
+      match /{col}/{docId} {
+        allow read: if isMember(pid);
+        allow write: if isOwner(pid);
+      }
+
+      // חברת הניהול מדווחת ביצוע: ספקים, מסמכים ותשלומים.
+      match /vendors/{docId}   { allow write: if isManager(pid); }
+      match /documents/{docId} { allow write: if isManager(pid); }
+      match /payments/{docId}  { allow write: if isManager(pid); }
+
+      // חשבוניות: חברת הניהול יוצרת ומעדכנת, אך **לא** נוגעת בשדות הדרישה.
+      // ביצירה — החשבונית חייבת להיוולד מחוץ לכל מנה.
+      match /invoices/{docId} {
+        allow create: if isManager(pid)
+                      && request.resource.data.claimBatchId == null
+                      && request.resource.data.claimStatus in ['eligible', 'notEligible'];
+        allow update: if isManager(pid)
+                      && !request.resource.data.diff(resource.data).affectedKeys()
+                            .hasAny(['claimBatchId', 'claimStatus', 'claimedAmount', 'taxApprovedAmount']);
+        allow delete: if isManager(pid) && resource.data.claimBatchId == null;
+      }
+    }
+  }
+}

@@ -5,3 +5,8 @@ dist/
 .env.*.local
 *.log
 .firebase/
+
+# Internal client details (licence number, contact email). The repo is public and the
+# file says so itself at the top — it stays on this machine only.
+# To reverse: git add -f shared/config/internal.ts
+shared/config/internal.ts
