@@ -14,6 +14,8 @@ import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
+import { GameTimeAdjuster } from "./GameTimeAdjuster";
+import { syncGamesToSessions, defaultGameTimes } from "../utils/games";
 import { AddToCalendarButton } from "./AddToCalendarButton";
 import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
 import clubLogo from "../assets/club-logo.jpg";
@@ -22,6 +24,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
   const [title, setTitle] = useState("לוח אימונים שבועי");
+  const [adjustingGame, setAdjustingGame] = useState(null); // an imported game whose hall slot is being nudged
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
   const [printTotals, setPrintTotals] = useState(false); // editors only; keep the totals column out of print by default
@@ -559,6 +562,20 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                       >
                                         {inner}
                                       </button>
+                                    ) : canEdit && s.fromGame ? (
+                                      // An imported game is not editable the way a training is — team,
+                                      // opponent and tip-off all come from the federation. The one thing
+                                      // that is ours is how much of the hall it takes, so that is the
+                                      // only thing this opens.
+                                      <button
+                                        key={s.id}
+                                        onClick={() => setAdjustingGame(s)}
+                                        title="לחץ לשינוי הזמן שהמשחק תופס בלוח"
+                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
+                                        style={cellStyle}
+                                      >
+                                        {inner}
+                                      </button>
                                     ) : (
                                       <div key={s.id} className={`rounded px-1.5 py-1 text-xs leading-tight ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`} style={cellStyle}>
                                         {inner}
@@ -779,6 +796,37 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
           </div>
         </div>
       )}
+
+      {adjustingGame && (() => {
+        const game = (data.games || []).find((g) => String(g.federationCode) === String(adjustingGame.federationCode));
+        // The session is drawn from the game, so a session without one is a leftover from
+        // a game that has since been removed. Nothing to adjust, and nowhere to save it.
+        if (!game) return null;
+        return (
+          <GameTimeAdjuster
+            session={adjustingGame}
+            game={game}
+            teamName={nameOf(data.teams, adjustingGame.teamId)}
+            dateLabel={game.date}
+            defaultTimes={defaultGameTimes(game)}
+            onClose={() => setAdjustingGame(null)}
+            onSave={(times) => {
+              const games = data.games.map((g) =>
+                String(g.federationCode) === String(game.federationCode)
+                  ? (() => {
+                      const { timeOverride, ...rest } = g;
+                      return times ? { ...rest, timeOverride: times } : rest;
+                    })()
+                  : g
+              );
+              // Rebuilt rather than patched in place: the session is a projection of the
+              // games list, and letting the two drift is how they stop agreeing.
+              save({ ...data, games, sessions: syncGamesToSessions(games, { ...data, games }) });
+              setAdjustingGame(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

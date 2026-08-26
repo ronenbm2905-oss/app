@@ -6,6 +6,7 @@ import { TransportExport } from "./TransportExport";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
 import { GameNote } from "./GameNote";
+import { noteFor, scoreFor } from "../utils/gameNotes";
 import { Pill } from "./ui/Pill";
 import {
   IconPlus, IconTrash, IconX, IconCheck, IconRefresh,
@@ -267,10 +268,16 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
       (!filterType || (filterType === "home" ? g.isHome : !g.isHome))
   );
 
+  // The score shown is the federation's when it has published one, and the coach's until
+  // then — this club's file lags the final whistle by most of a week, and a board saying
+  // "טרם נקבע" about a game everyone watched is the app being the last to know.
+  const gameScore = (g) => scoreFor(g, noteFor(notes, g));
+
   const gameResult = (g) => {
-    if (g.ourScore === null || g.theirScore === null) return null;
-    if (g.ourScore > g.theirScore) return "win";
-    if (g.ourScore < g.theirScore) return "loss";
+    const s = gameScore(g);
+    if (!s) return null;
+    if (s.ourScore > s.theirScore) return "win";
+    if (s.ourScore < s.theirScore) return "loss";
     return "draw";
   };
 
@@ -300,9 +307,19 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
       {canEdit && subTab === "mapping" && (
         <div className="space-y-3">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-            <strong>הסבר:</strong> לכל קבוצה פנימית שלך יש <strong>מספר קבוצה</strong> — המספר שמופיע בעמודה הראשונה ("מספר קבוצה") בקובץ האקסל מהאיגוד. אם לאותה קבוצה יש כמה מספרים (ליגות שונות), הפרד אותם בפסיקים.
+            <strong>הסבר:</strong> לכל קבוצה פנימית שלך יש <strong>מספר קבוצה</strong> באיגוד. אם לאותה קבוצה יש כמה מספרים (ליגות שונות), הפרד אותם בפסיקים.
             <br />
             לדוגמה: קטסל ב בנות = <strong>11758</strong> | נוער ארצית = <strong>3368</strong>
+            {/* The federation ships two different layouts and the number sits in a
+                different column in each, so naming only one of them sends half the
+                users looking for a column their file does not have. */}
+            <br />
+            <strong>איפה המספר בקובץ:</strong> בקובץ עם כותרות באנגלית — בעמודות{" "}
+            <span dir="ltr">Home Team Code</span> / <span dir="ltr">Away Team Code</span>, לפי הצד שבו הקבוצה שלך מופיעה.
+            בקובץ עם כותרות בעברית — בעמודה "מספר קבוצה".
+            <br />
+            שים לב: האיגוד קוטם שמות קבוצה, ולכמה קבוצות שלך יופיע <strong>אותו שם בדיוק</strong> עם מספרים שונים.
+            אל תזהה לפי השם — רק לפי המספר.
           </div>
           <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
             {data.teams.length === 0 ? (
@@ -499,11 +516,16 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                         {result !== null ? (
                           <div className="shrink-0 text-right">
                             <div className="text-sm font-bold tabular-nums" style={{ color: resultColor }}>
-                              {g.ourScore}:{g.theirScore}
+                              {gameScore(g).ourScore}:{gameScore(g).theirScore}
                             </div>
                             <div className="text-xs font-medium" style={{ color: resultColor }}>
                               {result === "win" ? "ניצחון" : result === "loss" ? "הפסד" : "תיקו"}
                             </div>
+                            {/* Said plainly, because the two numbers can differ: one is the
+                                official record, the other is what the coach saw. */}
+                            {gameScore(g).source === "coach" && (
+                              <div className="text-[10px] text-stone-500">לפי המאמן</div>
+                            )}
                           </div>
                         ) : (
                           <div className="shrink-0 text-xs text-stone-500">טרם נקבע</div>
