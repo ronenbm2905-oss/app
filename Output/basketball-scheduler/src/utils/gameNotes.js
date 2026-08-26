@@ -20,8 +20,43 @@ export function noteFor(notes, game) {
   return k ? notes?.[k] || null : null;
 }
 
+// A score the coach typed. Kept on the note rather than on the game, because the import
+// refreshes `ourScore`/`theirScore` from the federation file on every run — a number
+// written onto the game would survive exactly until the next nightly sync.
+export function toScore(value) {
+  const s = str(value);
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 && n <= 300 ? Math.round(n) : null;
+}
+
+export function noteScore(note) {
+  const ours = toScore(note?.ourScore);
+  const theirs = toScore(note?.theirScore);
+  return ours === null || theirs === null ? null : { ourScore: ours, theirScore: theirs };
+}
+
+// The score to show for a game, and where it came from.
+//
+// The federation's own number is the official record and wins whenever it exists. The
+// coach's fills the days between the final whistle and the federation publishing — which
+// on this club's file is most of a week.
+export function scoreFor(game, note) {
+  if (game && game.ourScore !== null && game.ourScore !== undefined && game.theirScore !== null && game.theirScore !== undefined) {
+    return { ourScore: game.ourScore, theirScore: game.theirScore, source: "federation" };
+  }
+  const s = noteScore(note);
+  return s ? { ...s, source: "coach" } : null;
+}
+
+// A note counts as written if it carries either a report or a score — a coach who only
+// had time to type the result has still told the manager something.
+export function hasContent(note) {
+  return Boolean(str(note?.text)) || noteScore(note) !== null;
+}
+
 export function hasNote(notes, game) {
-  return Boolean(str(noteFor(notes, game)?.text));
+  return hasContent(noteFor(notes, game));
 }
 
 // Unread means: a coach has written something, and it changed after the last time a
@@ -29,7 +64,7 @@ export function hasNote(notes, game) {
 // to a note the manager already read makes it unread again — which is the behaviour you
 // want from something that is meant to be a conversation.
 export function isUnread(note) {
-  if (!note || !str(note.text)) return false;
+  if (!hasContent(note)) return false;
   if (!note.readAt) return true;
   return String(note.updatedAt || "") > String(note.readAt);
 }
@@ -59,11 +94,22 @@ export function normalizeEmail(email) {
 // `updatedAt` marks when the CONTENT last changed, not when save was last pressed. If it
 // moved on every save, re-saving an unchanged note would push it back into the manager's
 // unread queue — the note would keep asking to be read again without anyone writing a word.
-export function buildNote(previous, { text, author, authorEmail, now }) {
+export function buildNote(previous, { text, ourScore, theirScore, author, authorEmail, now }) {
   const body = str(text);
-  const unchanged = previous && body === str(previous.text);
+  const ours = toScore(ourScore);
+  const theirs = toScore(theirScore);
+  // "Unchanged" has to cover the score too. A coach who corrects 50 to 51 and saves has
+  // changed the note, and the manager should see it again — comparing only the text would
+  // leave that correction sitting silently behind a note already marked read.
+  const unchanged =
+    previous &&
+    body === str(previous.text) &&
+    ours === toScore(previous.ourScore) &&
+    theirs === toScore(previous.theirScore);
   return {
     text: body,
+    ourScore: ours,
+    theirScore: theirs,
     author: str(author) || str(previous?.author),
     authorEmail: normalizeEmail(authorEmail) || str(previous?.authorEmail),
     createdAt: previous?.createdAt || now,
