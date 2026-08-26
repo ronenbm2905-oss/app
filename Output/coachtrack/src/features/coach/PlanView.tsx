@@ -21,7 +21,8 @@ import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { SelectField } from '../../components/ui/Select';
 import { formatIsraeliDate, getNextWeekBounds } from '../../lib/dates';
-import { suggestedTarget } from '../../lib/exercises';
+import { canonicalExerciseId, exerciseAliasMap, suggestedTarget } from '../../lib/exercises';
+import type { LibraryEntry } from '../../lib/exercises';
 import {
   MAX_PLAN_ITEMS,
   draftFromExercise,
@@ -58,6 +59,10 @@ export interface PlanViewProps {
   selectedTeamId: string | null;
   onSelectTeam: (teamId: string) => void;
   exercises: ExerciseDoc[];
+  /** הספרייה כפי שהיא מוצגת — נדרשת למיפוי מזהה קטלוג ↔ מזהה עותק פרטי. */
+  libraryEntries: LibraryEntry[];
+  /** כל תרגילי המאמן, **כולל מבוטלים** — תוכנית עשויה להצביע על עותק שבוטל מאז. */
+  myExercises: ExerciseDoc[];
   activePlan: PlanDoc | null;
   currentCycle: PlanCycleDoc | null;
   cycleError: boolean;
@@ -90,6 +95,8 @@ export function PlanView({
   selectedTeamId,
   onSelectTeam,
   exercises,
+  libraryEntries,
+  myExercises,
   activePlan,
   currentCycle,
   cycleError,
@@ -129,18 +136,53 @@ export function PlanView({
   );
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedDraft);
 
+  // מזהה קטלוג ↔ מזהה העותק הפרטי שהחליף אותו. שלושת ה-memo שאחריו נשענים עליו
+  // כדי שתוכנית שנשמרה עם מזהה ישן תמשיך להתייחס לאותו תרגיל.
+  const aliases = useMemo(
+    () => exerciseAliasMap(libraryEntries, myExercises),
+    [libraryEntries, myExercises],
+  );
+
   const suggestions = useMemo(() => {
     const byId = new Map<string, number | null>();
-    for (const exercise of exercises) byId.set(exercise.id, suggestedTarget(exercise));
+    for (const exercise of exercises) {
+      const target = suggestedTarget(exercise);
+      byId.set(exercise.id, target);
+      // גם תחת מזהה המקור, כדי שפריט ותיק שמצביע על תרגיל קטלוג שנערך מאז
+      // ימשיך לקבל את הצעת היעד במקום שהיא תיעלם משורת העורך שלו.
+      byId.set(canonicalExerciseId(aliases, exercise.id), target);
+    }
     return byId;
-  }, [exercises]);
+  }, [exercises, aliases]);
 
-  const availableIds = useMemo(() => exercises.map((exercise) => exercise.id), [exercises]);
-  const chosenIds = draft.map((item) => item.exerciseId);
+  // גם המזהה המוצג וגם מזהה המקור. בלי זה תבנית ששמורה עם מזהה קטלוג מאבדת את
+  // הפריט אחרי שהתרגיל נערך, והמאמן מקבל "N תרגילים הושמטו" — בזמן שהתרגיל שם.
+  const availableIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const exercise of exercises) {
+      ids.add(exercise.id);
+      ids.add(canonicalExerciseId(aliases, exercise.id));
+    }
+    return [...ids];
+  }, [exercises, aliases]);
+
+  // אותו היגיון בכיוון ההפוך: פריט שנשמר תחת מזהה קטלוג חייב לסמן "כבר בתוכנית"
+  // גם על העותק הפרטי שמוצג במקומו, אחרת המאמן מוסיף אותו פעם שנייה.
+  const chosenIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of draft) {
+      ids.add(item.exerciseId);
+      ids.add(canonicalExerciseId(aliases, item.exerciseId));
+    }
+    for (const exercise of exercises) {
+      if (ids.has(canonicalExerciseId(aliases, exercise.id))) ids.add(exercise.id);
+    }
+    return [...ids];
+  }, [draft, exercises, aliases]);
 
   /** מאמת, ואם הכל תקין מריץ את הפעולה עם הפריטים המוכנים. */
   async function submit(action: (items: PlanItem[]) => Promise<boolean>) {
-    const found = validatePlanDraft(draft);
+    const found = validatePlanDraft(draft, aliases);
     setErrors(found);
     if (!isPlanDraftValid(found)) return;
     await action(toPlanItems(draft));
@@ -167,7 +209,7 @@ export function PlanView({
   }
 
   const nextWeekLabel = formatIsraeliDate(getNextWeekBounds(now).weekStart);
-  const draftValid = isPlanDraftValid(validatePlanDraft(draft));
+  const draftValid = isPlanDraftValid(validatePlanDraft(draft, aliases));
 
   return (
     <div className="space-y-4">

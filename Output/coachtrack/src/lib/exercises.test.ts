@@ -26,6 +26,8 @@ import {
   buildCoachExercise,
   buildExerciseLibrary,
   buildExerciseOverride,
+  canonicalExerciseId,
+  exerciseAliasMap,
   exerciseCategories,
   exerciseToFormValues,
   exerciseUpdateFromForm,
@@ -39,6 +41,7 @@ import {
   validateExerciseForm,
 } from './exercises';
 import type { ExerciseFormValues } from './exercises';
+import { validatePlanDraft } from './plans';
 import { t } from '../i18n/he';
 import type { Exercise, ExerciseDoc } from '../types/types';
 
@@ -454,5 +457,67 @@ describe('המרה לערכי טופס והצעת יעד', () => {
   it('תרגיל בלי הצעת יעד מחזיר שדה ריק', () => {
     expect(exerciseToFormValues(coachExercise('mine_1')).target).toBe('');
     expect(suggestedTarget(coachExercise('mine_1'))).toBeNull();
+  });
+});
+
+describe('מיפוי מזהים — מה שמונע פריט כפול בתוכנית', () => {
+  const source = globalCatalog[0];
+  const copy = overrideOf(source);
+  const mine = [copy];
+  const aliases = exerciseAliasMap(buildExerciseLibrary(globalCatalog, mine), mine);
+
+  it('מזהה העותק מתורגם למזהה הקטלוג שמאחוריו', () => {
+    expect(canonicalExerciseId(aliases, copy.id)).toBe(source.id);
+  });
+
+  it('מזהה קטלוג שנערך נשאר קנוני לעצמו', () => {
+    expect(canonicalExerciseId(aliases, source.id)).toBe(source.id);
+  });
+
+  it('מזהה שהספרייה לא מכירה חוזר כמו שהוא — לא נופל ולא ממציא', () => {
+    expect(canonicalExerciseId(aliases, 'לא_קיים')).toBe('לא_קיים');
+  });
+
+  it('גם עותק שבוטל מתורגם — תוכנית עשויה להצביע עליו', () => {
+    // המסלול הזה חוזר מהכיוון ההפוך: העותק כבר לא מוצג בספרייה, אבל התוכנית
+    // עדיין מצביעה עליו. בלי הרשימה המלאה של תרגילי המאמן המזהה לא היה מתורגם,
+    // והכפילות הייתה נוצרת שוב — הפעם מול תרגיל הקטלוג שחזר להופיע.
+    const cancelled = overrideOf(source, { active: false });
+    const withCancelled = [cancelled];
+    const map = exerciseAliasMap(buildExerciseLibrary(globalCatalog, withCancelled), withCancelled);
+    expect(canonicalExerciseId(map, cancelled.id)).toBe(source.id);
+  });
+});
+
+describe('כפילות בתוכנית דרך העותק — הבאג שהעריכה יצרה', () => {
+  const source = globalCatalog[0];
+  const copy = overrideOf(source);
+  const mine = [copy];
+  const aliases = exerciseAliasMap(buildExerciseLibrary(globalCatalog, mine), mine);
+
+  const item = (exerciseId: string) => ({
+    exerciseId,
+    exerciseName: 'x',
+    unit: 'count' as const,
+    target: '10',
+    notes: '',
+  });
+
+  it('בלי המיפוי — שני מזהים שונים נראים כשני תרגילים שונים', () => {
+    expect(validatePlanDraft([item(source.id), item(copy.id)]).form).not.toBe(
+      'coach.plan.errors.duplicate',
+    );
+  });
+
+  it('עם המיפוי — נתפס ככפילות', () => {
+    expect(validatePlanDraft([item(source.id), item(copy.id)], aliases).form).toBe(
+      'coach.plan.errors.duplicate',
+    );
+  });
+
+  it('שני תרגילים שונים באמת עוברים — המיפוי לא חוסם יתר על המידה', () => {
+    expect(
+      validatePlanDraft([item(globalCatalog[0].id), item(globalCatalog[1].id)], aliases).form,
+    ).not.toBe('coach.plan.errors.duplicate');
   });
 });

@@ -131,6 +131,67 @@ export function buildExerciseLibrary(
   return entries.sort(byCategoryThenName);
 }
 
+/**
+ * מיפוי "מזהה כלשהו של תרגיל" -> "המזהה הקנוני שלו".
+ *
+ * ## למה זה קיים בכלל
+ *
+ * תוכנית שומרת ב-`items` את ה-`exerciseId` שהיה בזמן הפרסום, ואת השם והיחידה
+ * מוקפאים לצידו. **זה נכון ולא נוגעים בזה** — היסטוריה לא משוכתבת. אבל מרגע
+ * שמאמן עורך תרגיל קטלוג, אותו תרגיל מיוצג בספרייה שלו במזהה **אחר** (מזהה
+ * העותק), בעוד התוכנית ממשיכה להצביע על מזהה הקטלוג.
+ *
+ * בלי המיפוי הזה נוצרים שני פגמים גלויים, ושניהם בשכבת הבחירה בלבד:
+ *
+ * 1. **פריט כפול בתוכנית.** בורר התרגילים סימן "כבר בתוכנית" לפי השוואת מזהים,
+ *    ולכן העותק לא סומן — המאמן היה מוסיף אותו שוב, `validatePlanDraft` לא
+ *    תופסת (המזהים באמת שונים), והשחקן מקבל שני כרטיסים כמעט זהים.
+ * 2. **תבנית שמשמיטה בשקט.** `templateToDraft` מוותרת על פריט שהמזהה שלו אינו
+ *    בספרייה, והמאמן מקבל "N תרגילים הושמטו" בזמן שהתרגיל דווקא שם — רק תחת
+ *    מזהה חדש.
+ *
+ * הקנוני הוא תמיד **מזהה המקור** (`entry.sourceId`): לתרגיל קטלוג ולתרגיל של
+ * המאמן זה המזהה של עצמם, ולעותק פרטי זה מזהה הקטלוג שמאחוריו.
+ *
+ * @param mine כל התרגילים של המאמן, **כולל עותקים מבוטלים**. הם נדרשים כי
+ *             תוכנית עשויה להצביע על עותק שבוטל מאז; בלעדיהם המזהה הזה לא היה
+ *             מתורגם בחזרה לתרגיל הקטלוג, והכפילות הייתה חוזרת מהכיוון ההפוך.
+ */
+export function exerciseAliasMap(
+  entries: LibraryEntry[],
+  mine: ExerciseDoc[] = [],
+): Map<string, string> {
+  const aliases = new Map<string, string>();
+
+  for (const exercise of mine) {
+    if (exercise.sourceExerciseId) aliases.set(exercise.id, exercise.sourceExerciseId);
+  }
+
+  for (const entry of entries) {
+    aliases.set(entry.sourceId, entry.sourceId);
+    aliases.set(entry.exercise.id, entry.sourceId);
+  }
+
+  return aliases;
+}
+
+/** המזהה הקנוני, או המזהה עצמו כשהספרייה לא מכירה אותו. */
+export function canonicalExerciseId(aliases: ReadonlyMap<string, string>, id: string): string {
+  return aliases.get(id) ?? id;
+}
+
+/**
+ * האם התרגיל כבר בתוכנית — תחת המזהה שלו או תחת מזהה המקור שהוא מחליף.
+ * זה מה שמונע פריט כפול אחרי שהמאמן ערך תרגיל שכבר היה בתוכנית.
+ */
+export function isEntryChosen(
+  entry: LibraryEntry,
+  chosenIds: readonly string[],
+  aliases: ReadonlyMap<string, string>,
+): boolean {
+  const canonical = canonicalExerciseId(aliases, entry.exercise.id);
+  return chosenIds.some((id) => canonicalExerciseId(aliases, id) === canonical);
+}
 /** התרגילים כפי שהם מוצגים — הקלט של בורר התרגילים בתוכנית ושל החיפוש. */
 export function libraryExercises(entries: LibraryEntry[]): ExerciseDoc[] {
   return entries.map((entry) => entry.exercise);

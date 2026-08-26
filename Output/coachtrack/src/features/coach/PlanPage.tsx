@@ -60,7 +60,15 @@ export function PlanPage() {
   const { status: teamsStatus, teams } = useCoachTeams(orgId, profile?.uid);
   // בורר התרגילים מקבל את הספרייה **של המאמן הזה**: תרגיל קטלוג שהוא ערך מגיע
   // הנה כגרסה הפרטית שלו, ולא כמקור. ראה hooks/useExerciseLibrary.ts.
-  const { status: libraryStatus, exercises } = useExerciseLibrary(orgId, profile?.uid);
+  // `entries` ו-`mine` נדרשים כדי לתרגם מזהה קטלוג למזהה העותק הפרטי שהחליף
+  // אותו, ולהפך. בלעדיהם תרגיל שנערך אחרי שכבר נכנס לתוכנית נראה לבורר כתרגיל
+  // חדש — והמאמן יכול להוסיף אותו פעמיים.
+  const {
+    status: libraryStatus,
+    exercises,
+    entries: libraryEntries,
+    mine: myExercises,
+  } = useExerciseLibrary(orgId, profile?.uid);
   const { status: templatesStatus, templates } = usePlanTemplates(orgId);
 
   const [requestedTeamId, setRequestedTeamId] = useState<string | null>(null);
@@ -219,6 +227,8 @@ export function PlanPage() {
         selectedTeamId={selectedTeamId}
         onSelectTeam={setRequestedTeamId}
         exercises={exercises}
+        libraryEntries={libraryEntries}
+        myExercises={myExercises}
         activePlan={activePlan}
         currentCycle={currentCycle}
         cycleError={cycleError}

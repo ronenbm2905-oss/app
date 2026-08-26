@@ -114,6 +114,10 @@ function render(overrides: Partial<PlanViewProps> = {}): string {
     selectedTeamId: TEAM,
     onSelectTeam: () => {},
     exercises: [exercise],
+    // ברירת המחדל היא ספרייה בלי עותקים פרטיים — התרגיל מייצג את עצמו.
+    // טסט שבודק את מסלול העריכה דורס אותם ב-overrides.
+    libraryEntries: [{ exercise, sourceId: exercise.id, origin: 'catalog' }],
+    myExercises: [],
     activePlan: null,
     currentCycle: null,
     cycleError: false,

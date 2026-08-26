@@ -172,7 +172,17 @@ export interface PlanDraftErrors {
   items: Record<string, TranslationKey>;
 }
 
-export function validatePlanDraft(draft: readonly PlanDraftItem[]): PlanDraftErrors {
+/**
+ * @param aliases מיפוי מזהה→מזהה קנוני מ-`exerciseAliasMap`. אופציונלי: בלעדיו
+ *   הבדיקה משווה מזהים כפי שהם, וזו ההתנהגות שהייתה נכונה עד שהמאמן יכול היה
+ *   לערוך תרגילי קטלוג. **מרגע שיש עותקים פרטיים היא כבר לא מספיקה:** תרגיל
+ *   קטלוג שכבר בתוכנית ונערך אחר כך מיוצג בספרייה במזהה חדש, ושתי הרשומות
+ *   ייראו לוולידציה כשני תרגילים שונים — בעוד השחקן יקבל שני כרטיסים זהים.
+ */
+export function validatePlanDraft(
+  draft: readonly PlanDraftItem[],
+  aliases?: ReadonlyMap<string, string>,
+): PlanDraftErrors {
   const errors: PlanDraftErrors = { items: {} };
 
   if (draft.length === 0) {
@@ -181,12 +191,13 @@ export function validatePlanDraft(draft: readonly PlanDraftItem[]): PlanDraftErr
     errors.form = 'coach.plan.errors.tooManyItems';
   }
 
+  const canonical = (id: string) => aliases?.get(id) ?? id;
   const seen = new Set<string>();
   for (const item of draft) {
-    if (seen.has(item.exerciseId)) {
+    if (seen.has(canonical(item.exerciseId))) {
       errors.form = 'coach.plan.errors.duplicate';
     }
-    seen.add(item.exerciseId);
+    seen.add(canonical(item.exerciseId));
 
     const target = Number(item.target);
     if (!item.target.trim() || !Number.isFinite(target) || target <= 0) {
