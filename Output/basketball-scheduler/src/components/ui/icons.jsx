@@ -37,4 +37,7 @@ export {
   CalendarDays as IconCalendarDays,
   User as IconUser,
   Clock as IconClock,
+  Eraser as IconEraser,
+  Undo2 as IconUndo,
+  Share2 as IconShare,
 } from "lucide-react";

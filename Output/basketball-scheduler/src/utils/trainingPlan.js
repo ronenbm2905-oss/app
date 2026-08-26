@@ -4,6 +4,8 @@
 // closing summary — because coaches already know it. What the app adds is the header:
 // team, date and hall are already in the schedule, so the coach never writes them again.
 
+import { normalizeSketch, isEmptySketch } from "./courtSketch";
+
 // The exercise table, right to left exactly as printed.
 export const PLAN_COLUMNS = [
   { id: "drill", label: "תרגיל" },
@@ -62,7 +64,11 @@ export function normalizePlan(plan) {
   const units = p.units && typeof p.units === "object" ? p.units : {};
   const rows = arr(p.rows).map((r) => {
     const row = r && typeof r === "object" ? r : {};
-    return Object.fromEntries(PLAN_COLUMNS.map((c) => [c.id, str(row[c.id])]));
+    const cells = Object.fromEntries(PLAN_COLUMNS.map((c) => [c.id, str(row[c.id])]));
+    // The key is omitted rather than set to null when there is no diagram: a plan with
+    // four blank rows should cost four blank rows, not four empty sketch objects.
+    const sketch = normalizeSketch(row.sketch);
+    return sketch ? { ...cells, sketch } : cells;
   });
   return {
     players: str(p.players),
@@ -84,10 +90,20 @@ export function normalizePlan(plan) {
 
 // Trailing blank rows are what a coach leaves behind, not what they wrote. Dropping them
 // on save keeps a half-used form from counting as filled and from being stored in full.
+export function rowIsBlank(row) {
+  return PLAN_COLUMNS.every((c) => !str(row?.[c.id])) && isEmptySketch(row?.sketch);
+}
+
 export function trimRows(rows) {
-  const clean = arr(rows).map((r) => Object.fromEntries(PLAN_COLUMNS.map((c) => [c.id, str(r?.[c.id])])));
+  const clean = arr(rows).map((r) => {
+    const cells = Object.fromEntries(PLAN_COLUMNS.map((c) => [c.id, str(r?.[c.id])]));
+    const sketch = normalizeSketch(r?.sketch);
+    return sketch ? { ...cells, sketch } : cells;
+  });
   let end = clean.length;
-  while (end > 0 && PLAN_COLUMNS.every((c) => !clean[end - 1][c.id])) end--;
+  // A row that holds only a diagram is a written row. Dropping it would delete the drawing
+  // the coach just made because they had not typed a name for it yet.
+  while (end > 0 && rowIsBlank(clean[end - 1])) end--;
   return clean.slice(0, end);
 }
 

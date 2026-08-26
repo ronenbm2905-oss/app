@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import {
   PLAN_COLUMNS, UNIT_GROUPS, planKey, emptyPlan, normalizePlan,
-  emptyRow, isFilled, buildPlan, planSummary,
+  emptyRow, isFilled, buildPlan, planSummary, rowIsBlank,
 } from "../utils/trainingPlan";
+import { isEmptySketch, sketchLabel } from "../utils/courtSketch";
+import { CourtSketchView, CourtGlyph } from "./CourtSketch";
+import { CourtSketchEditor } from "./CourtSketchEditor";
 import { IconClipboard, IconPlus, IconTrash, IconCheck } from "./ui/icons";
 
 const when = (iso) => {
@@ -19,8 +22,7 @@ const cell =
 const withBlankRow = (plan) => {
   const p = normalizePlan(plan);
   const last = p.rows[p.rows.length - 1];
-  const spent = last && PLAN_COLUMNS.some((c) => last[c.id]);
-  return spent ? { ...p, rows: [...p.rows, emptyRow()] } : p;
+  return last && !rowIsBlank(last) ? { ...p, rows: [...p.rows, emptyRow()] } : p;
 };
 // The training-plan form the club fills on paper, for one session.
 //
@@ -33,6 +35,7 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => withBlankRow(saved || emptyPlan()));
   const [savedAt, setSavedAt] = useState("");
+  const [sketchRow, setSketchRow] = useState(-1);
 
   // Follow the stored plan when it changes underneath us — another device, or a first
   // load that arrived after this row rendered — but never while the form is open, which
@@ -47,6 +50,22 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
   const setField = (field, value) => setDraft((d) => ({ ...d, [field]: value }));
   const setCell = (i, col, value) =>
     setDraft((d) => ({ ...d, rows: d.rows.map((r, j) => (j === i ? { ...r, [col]: value } : r)) }));
+  // Takes an updater rather than a value, so the editor never has to reason about how
+  // fresh its copy of the sketch is — two taps landing in one React batch would otherwise
+  // both build on the same stale sketch and the second mark would vanish.
+  //
+  // Clearing removes the key rather than storing an empty sketch: everywhere else in the
+  // model "no diagram" means an absent field, and an empty object would not read as one.
+  const setSketch = (i, update) =>
+    setDraft((d) => ({
+      ...d,
+      rows: d.rows.map((r, j) => {
+        if (j !== i) return r;
+        const sketch = typeof update === "function" ? update(r.sketch) : update;
+        const { sketch: dropped, ...rest } = r;
+        return sketch ? { ...rest, sketch } : rest;
+      }),
+    }));
   const setUnit = (group, kind, i, value) =>
     setDraft((d) => ({
       ...d,
@@ -133,12 +152,16 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
                       {c.label}
                     </th>
                   ))}
+                  <th className="w-8">
+                    <span className="sr-only">שרטוט</span>
+                  </th>
                   <th className="w-8" />
                 </tr>
               </thead>
               <tbody>
                 {draft.rows.map((row, i) => (
-                  <tr key={i}>
+                  <Fragment key={i}>
+                  <tr>
                     {PLAN_COLUMNS.map((c) => (
                       <td key={c.id} className="p-0.5 align-top">
                         <input
@@ -152,6 +175,19 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
                     <td className="p-0.5 align-top">
                       <button
                         type="button"
+                        onClick={() => setSketchRow(i)}
+                        className={`p-1.5 rounded ${
+                          isEmptySketch(row.sketch) ? "text-stone-400 hover:text-brand-700" : "text-brand-700 bg-brand-100"
+                        }`}
+                        aria-label={`${sketchLabel(row.sketch)}, שורה ${i + 1}`}
+                        title="שרטוט על המגרש"
+                      >
+                        <CourtGlyph size={14} />
+                      </button>
+                    </td>
+                    <td className="p-0.5 align-top">
+                      <button
+                        type="button"
                         onClick={() => setDraft((d) => ({ ...d, rows: d.rows.filter((_, j) => j !== i) }))}
                         className="p-1.5 text-stone-500 hover:text-red-600"
                         aria-label={`מחק שורה ${i + 1}`}
@@ -160,6 +196,22 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
                       </button>
                     </td>
                   </tr>
+                  {!isEmptySketch(row.sketch) && (
+                    <tr>
+                      {/* The diagram gets a row of its own rather than a cell: four columns
+                          of text plus a court would squeeze every one of them. */}
+                      <td colSpan={PLAN_COLUMNS.length + 2} className="px-0.5 pb-2">
+                        <button type="button" onClick={() => setSketchRow(i)} className="block" title="ערוך שרטוט">
+                          <CourtSketchView
+                            sketch={row.sketch}
+                            className="h-28 w-auto border border-stone-200 rounded"
+                            title={`שרטוט לשורה ${i + 1}`}
+                          />
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -228,6 +280,18 @@ export function TrainingPlanForm({ session, teamName, hallName, dateLabel, plans
           )}
         </div>
       </div>
+
+      {/* Guarded on the row still existing: deleting a row while its court is open would
+          otherwise leave the editor pointed at nothing. */}
+      {sketchRow >= 0 && sketchRow < draft.rows.length && (
+        <CourtSketchEditor
+          sketch={draft.rows[sketchRow].sketch}
+          onChange={(next) => setSketch(sketchRow, next)}
+          onClose={() => setSketchRow(-1)}
+          heading={draft.rows[sketchRow].drill || `תרגיל ${sketchRow + 1}`}
+          subheading={[teamName, dateLabel].filter(Boolean).join(" · ")}
+        />
+      )}
     </div>
   );
 }

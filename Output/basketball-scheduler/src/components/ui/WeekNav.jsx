@@ -6,7 +6,10 @@ import { IconChevronRight, IconChevronLeft, IconCalendar } from "./icons";
 export function WeekNav({ value, onChange, className = "" }) {
   const isCurrentWeek = value === todayWeekStart();
   return (
-    <div className={`flex items-center gap-1.5 ${className}`} dir="rtl">
+    // Wraps rather than overflowing: five controls do not fit a phone in one line, and a
+    // row that pushes past the screen stretches the whole document — which then throws off
+    // anything positioned against the viewport, a full-screen dialog included.
+    <div className={`flex flex-wrap items-center gap-1.5 ${className}`} dir="rtl">
       <button
         onClick={() => onChange(shiftWeek(value, -1))}
         className="flex items-center gap-1 px-2.5 py-1.5 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
