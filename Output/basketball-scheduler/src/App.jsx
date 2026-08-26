@@ -3,6 +3,7 @@ import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
 import { useGameNotes } from "./hooks/useGameNotes";
 import { useTrainingPlans } from "./hooks/useTrainingPlans";
+import { usePendingImport } from "./hooks/usePendingImport";
 import { todayWeekStart } from "./utils/dates";
 import { coachForUser } from "./utils/coachIdentity";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
@@ -17,6 +18,7 @@ import { PlayersView } from "./components/PlayersView";
 import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
+import { PendingImportBanner } from "./components/PendingImportBanner";
 import { BirthdayReminder } from "./components/BirthdayReminder";
 import { LegalFooter } from "./legal/LegalFooter";
 import { TodayStrip } from "./components/TodayStrip";
@@ -78,6 +80,9 @@ export default function App() {
   const myEmail = user?.email || "";
   const { notes, saveNote } = useGameNotes(user, isAdmin, myEmail);
   const { plans, savePlan } = useTrainingPlans(user, isAdmin, myEmail);
+  // Only a manager is offered the nightly federation proposal — a coach has nothing to
+  // decide about an import, and the listener is not even opened for them.
+  const { pending, resolvePending } = usePendingImport(user, isAdmin);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -195,6 +200,12 @@ export default function App() {
         {activeTab !== "announcements" && (
           <div className="mb-4 empty:hidden">
             <AnnouncementBanner data={data} onOpen={() => setTab("announcements")} />
+          </div>
+        )}
+
+        {isAdmin && pending && (
+          <div className="mb-4">
+            <PendingImportBanner pending={pending} data={data} save={save} resolvePending={resolvePending} />
           </div>
         )}
 

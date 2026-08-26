@@ -19,3 +19,19 @@ firebase-debug.log
 # editor / OS
 .DS_Store
 *.local
+
+# local test fixture: served by the dev server from the project root, never by a build
+seed-test*.json
+
+# nightly downloads from the federation — data, not source
+federation-inbox/
+
+# Credentials — never, under any circumstances, in a public repo.
+# Broad on purpose: a key that lands here under an unexpected name is unrecoverable once pushed.
+serviceAccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+
+# A --data dump of the club document contains players[]: names, phone numbers and birth
+# dates of children. Name such a file seed-test-*.json or club-dump-*.json, never anything else.
+club-dump*.json

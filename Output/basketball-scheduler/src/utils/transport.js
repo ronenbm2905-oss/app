@@ -8,7 +8,9 @@ import { parseDateDMY, weekStartOfDMY } from "./dates";
 export function awayGamesForWeek(games, weekStart) {
   if (!weekStart) return [];
   return (games || [])
-    .filter((g) => !g.isHome && weekStartOfDMY(g.date) === weekStart)
+    // A called-off game needs no bus. Ordering one would be a real cost, so this filter
+    // matters more than the visual ones.
+    .filter((g) => !g.isHome && !g.cancelled && weekStartOfDMY(g.date) === weekStart)
     .sort((a, b) => {
       const da = parseDateDMY(a.date),
         db = parseDateDMY(b.date);

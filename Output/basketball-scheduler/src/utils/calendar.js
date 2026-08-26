@@ -97,6 +97,9 @@ export function buildIcs(sessions, data, { now = new Date(), calendarName = "××
 
   const events = (Array.isArray(sessions) ? sessions : [])
     .filter(Boolean)
+    // A cancelled fixture is left out rather than exported: a phone calendar has no way to
+    // show it as struck through, so it would just look like a game that is still on.
+    .filter((s) => !s.cancelled)
     .map((s) => sessionEvent(s, data, { dtstamp }))
     .filter(Boolean)
     .flat();
