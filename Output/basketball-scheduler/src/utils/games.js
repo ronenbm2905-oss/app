@@ -64,6 +64,19 @@ export function rowsToObjects(rows, headerIdx) {
 
 // Full import + sync computation. Pure: takes raw rows + current data, returns the
 // next games list, next sessions list, and counters. Caller persists via save().
+// A fixture whose date is more than `graceDays` behind `now`. The grace window is there so
+// a manager who wants to look up "who drove us on Thursday" still can on Friday.
+//
+// `now` is a parameter, not a call to the clock, so the rule stays testable — the same
+// reason `applyProposal` takes one.
+export function isPastGame(game, now = new Date(), graceDays = 14) {
+  const d = parseDateDMY(game && game.date);
+  if (!d) return false; // a game with no readable date is not "past", it is unknown
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - graceDays);
+  return d < cutoff;
+}
+
 export function importGamesFile(rawRows, data) {
   const games = data.games || [];
   const mapping = data.gameMapping || [];
@@ -204,13 +217,19 @@ export function importGamesFile(rawRows, data) {
           // The driver belongs on this list for the same reason the address does: the bus
           // company tells us who is driving, the federation file knows nothing about it,
           // and a routine re-import would erase it the same night it was entered.
+          //
+          // But only while the trip is still ahead. An address has no expiry; a driver's
+          // phone number does — it is for one journey. Carried unconditionally, the nightly
+          // sync would copy it onto a finished game every night for ever, on a record
+          // nobody ever opens again.
           const { addressOverride, timeOverride, driverName, driverPhone } = nextGames[idx];
+          const keepDriver = !isPastGame(game);
           nextGames[idx] = {
             ...game,
             ...(addressOverride ? { addressOverride } : {}),
             ...(timeOverride ? { timeOverride } : {}),
-            ...(driverName ? { driverName } : {}),
-            ...(driverPhone ? { driverPhone } : {}),
+            ...(keepDriver && driverName ? { driverName } : {}),
+            ...(keepDriver && driverPhone ? { driverPhone } : {}),
           };
           updated++;
         }
