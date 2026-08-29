@@ -3,6 +3,7 @@ import { uid, formatDateHe } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/games";
 import { TransportExport } from "./TransportExport";
+import { driverLine } from "../utils/transport";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
 import { GameNote } from "./GameNote";
@@ -219,8 +220,12 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
       {!game.isHome && (
         <div className="border-t border-stone-200 pt-3 space-y-3">
           <p className="text-xs text-stone-600">
-            <span className="font-medium text-stone-700">נהג ההסעה</span> — נכנס לגיליון ולתמונת ההסעות.
-            אופציונלי, ונשמר גם אחרי סנכרון מחדש מהאיגוד.
+            <span className="font-medium text-stone-700">נהג ההסעה</span> — למאמן/ת של הקבוצה, כדי להתקשר בבוקר המשחק.
+            <span className="block">
+              אופציונלי, ונשמר גם אחרי סנכרון מחדש מהאיגוד.{" "}
+              <span className="font-medium text-stone-700">אינו נכנס לגיליון ההסעות</span> שנשלח לחברה,
+              ומוצג רק לך ולמאמן/ת של אותה קבוצה.
+            </span>
           </p>
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[9rem]">
@@ -581,11 +586,13 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                             {g.addressOverride || g.venue}
                             {g.addressOverride && <span className="text-stone-500"> (כתובת ידנית)</span>}
                           </div>
-                          {!g.isHome && (g.driverName || g.driverPhone) && (
-                            <div className="text-xs text-stone-600 truncate">
-                              🚌 נהג: {[g.driverName, g.driverPhone].filter(Boolean).join(" · ")}
-                            </div>
-                          )}
+                          {/* The number only for a manager or for the coach travelling with
+                              that team. Everyone else sees the name, which is all they need
+                              to know a bus is arranged. */}
+                          {(() => {
+                            const line = driverLine(g, isMyGame(g));
+                            return line ? <div className="text-xs text-stone-600 truncate">🚌 נהג: {line}</div> : null;
+                          })()}
                         </div>
                         <div className="hidden sm:block text-right shrink-0">
                           <div className="text-xs text-stone-500 truncate max-w-32">{g.league}</div>
