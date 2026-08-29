@@ -9,6 +9,19 @@ export function timeToMinutes(t) {
   return h * 60 + m;
 }
 
+// Subtract minutes from an "HH:MM" time, wrapping around midnight. Returns "HH:MM" (or "").
+export function timeMinus(hm, minutes) {
+  if (!hm) return "";
+  const [h, m] = hm.split(":").map(Number);
+  const total = (((h * 60 + (m || 0) - minutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+// Add minutes to an "HH:MM" time (wraps around midnight).
+export function timePlus(hm, minutes) {
+  return timeMinus(hm, -minutes);
+}
+
 export function overlaps(aStart, aEnd, bStart, bEnd) {
   return (
     timeToMinutes(aStart) < timeToMinutes(bEnd) &&

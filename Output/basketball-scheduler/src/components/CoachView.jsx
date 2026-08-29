@@ -5,6 +5,7 @@ import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { absencesOn, absenceLabel, absenceCoversSession } from "../utils/availability";
 import { secretaryDutiesFor, secretaryLabel, secretaryWhen, shortDate } from "../utils/secretary";
+import { driverLine } from "../utils/transport";
 import { Select } from "./ui/Select";
 import { AddToCalendarButton } from "./AddToCalendarButton";
 import { TrainingPlanForm } from "./TrainingPlanForm";
@@ -54,6 +55,23 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
     }));
 
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
+
+  // Is this screen the viewer's own board? A coach whose sign-in address the club has
+  // filled in gets `fixedCoachId` and cannot switch away from it; a manager sees everyone.
+  // Anyone else — a viewer with no coach record — can pick any coach from the list, so they
+  // get the schedule and none of the personal detail attached to it.
+  const isOwnBoard = canEdit || (Boolean(fixedCoachId) && coachId === fixedCoachId);
+
+  // The driver of the bus to an away game, for the coach travelling on it.
+  //
+  // The games tab already carries this, but that tab is the club's whole fixture list — not
+  // the screen anyone opens on the morning of a match. This is: it is the coach's own week.
+  // The number is shown on the same rule as everywhere else — own board only.
+  const driverForSession = (s) => {
+    if (!s || !s.fromGame) return "";
+    const game = (data.games || []).find((g) => String(g.federationCode) === String(s.federationCode));
+    return driverLine(game, isOwnBoard);
+  };
 
   if (!coachId) {
     return (
@@ -294,6 +312,14 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                                 )}
                               </div>
                               {s.notes && <div className="text-xs text-stone-500 pr-1">{s.notes}</div>}
+                              {/* On the away game itself, where a coach looks on the morning
+                                  of the match — not buried in the club's full fixture list. */}
+                              {(() => {
+                                const driver = driverForSession(s);
+                                return driver ? (
+                                  <div className="text-xs font-medium text-stone-700 pr-1">🚌 נהג: {driver}</div>
+                                ) : null;
+                              })()}
                               {/* The paper form the club already uses, filled here instead. It sits
                                   on the training it belongs to, so nothing is looked up twice. */}
                               <TrainingPlanForm

@@ -13,7 +13,12 @@
 // The one thing the model cannot tell us is WHEN: the key holds a week, never a date or a
 // game. The time is recovered from the host team's home game that week.
 
-import { weekStartOfDMY } from "./dates.js";
+import { weekStartOfDMY, timeMinus } from "./dates.js";
+
+// The table crew is asked for a quarter of an hour before the first whistle — the scoresheet
+// has to be filled in and the clock set before anyone jumps. Named rather than inlined
+// because it is a club rule, not a fact about time.
+export const SECRETARY_LEAD_MIN = 15;
 
 const arr = (list) => (Array.isArray(list) ? list : []);
 
@@ -74,7 +79,7 @@ export function secretaryDutiesFor(data, teamId, weekStart) {
 
     const games = homeGamesFor(d.games, hostTeamId, weekStart);
     if (games.length === 0) {
-      duties.push({ hostTeamId, hostTeamName: teamName(hostTeamId), date: "", day: "", time: "", venue: "", gameKey: "" });
+      duties.push({ hostTeamId, hostTeamName: teamName(hostTeamId), date: "", day: "", time: "", gameTime: "", venue: "", gameKey: "" });
       return;
     }
     games.forEach((g) => {
@@ -83,7 +88,11 @@ export function secretaryDutiesFor(data, teamId, weekStart) {
         hostTeamName: teamName(hostTeamId),
         date: g.date || "",
         day: dayOf(g.date),
-        time: g.time || "",
+        // `time` is when the crew is due, not when the ball goes up. Both are carried: the
+        // coach needs to know when to be there, and the tip-off is what tells them the row
+        // is about the game they already have in their head.
+        time: timeMinus(g.time, SECRETARY_LEAD_MIN),
+        gameTime: g.time || "",
         venue: g.addressOverride || g.venue || "",
         gameKey: String(g.federationCode || ""),
       });
@@ -97,12 +106,18 @@ export function secretaryDutiesFor(data, teamId, weekStart) {
   });
 }
 
+// "מזכירות — משחק של נוער על · שריקה 20:30".
+//
+// The tip-off is named explicitly because the time next to it is fifteen minutes earlier.
+// Without it the row reads as a game at 20:15 and someone eventually shows up late to the
+// real thing, or early to the wrong one.
 export function secretaryLabel(duty) {
   if (!duty) return "";
-  return duty.hostTeamName ? `מזכירות — משחק של ${duty.hostTeamName}` : "מזכירות";
+  const who = duty.hostTeamName ? `מזכירות — משחק של ${duty.hostTeamName}` : "מזכירות";
+  return duty.gameTime ? `${who} · שריקה ${duty.gameTime}` : who;
 }
 
-// "יום שני 07/09 · 20:30", or "" when the fixture is not on record yet.
+// "יום שני 07/09 · 20:15" — when the crew is due, or "" when the fixture is not on record.
 export function secretaryWhen(duty) {
   if (!duty || !duty.date) return "";
   const parts = [duty.day ? `יום ${duty.day}` : "", shortDate(duty.date)].filter(Boolean).join(" ");

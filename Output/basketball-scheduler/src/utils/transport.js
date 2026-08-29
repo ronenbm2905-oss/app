@@ -1,6 +1,12 @@
 import * as XLSX from "xlsx";
 import { DAYS } from "../constants.js";
-import { parseDateDMY, weekStartOfDMY } from "./dates.js";
+import { parseDateDMY, weekStartOfDMY, timeMinus, timePlus } from "./dates.js";
+
+// `timeMinus`/`timePlus` lived here until the scorer's-table duty needed the same clock
+// arithmetic. They moved to dates.js rather than being imported across from here, because
+// "the secretary module depends on the bus module" is a sentence nobody should have to
+// explain. Re-exported so an import still pointing at this file keeps working.
+export { timeMinus, timePlus };
 
 // Away games (isHome=false) that fall in a given week (Sunday-ISO), sorted by date then time.
 // Away games carry the opponent's address in `venue` (the "מיקום" column from the federation file),
@@ -17,19 +23,6 @@ export function awayGamesForWeek(games, weekStart) {
       if (da && db && da - db !== 0) return da - db;
       return (a.time || "").localeCompare(b.time || "");
     });
-}
-
-// Subtract minutes from an "HH:MM" time, wrapping around midnight. Returns "HH:MM" (or "").
-export function timeMinus(hm, minutes) {
-  if (!hm) return "";
-  const [h, m] = hm.split(":").map(Number);
-  const total = (((h * 60 + (m || 0) - minutes) % 1440) + 1440) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
-
-// Add minutes to an "HH:MM" time (wraps around midnight).
-export function timePlus(hm, minutes) {
-  return timeMinus(hm, -minutes);
 }
 
 // A game lasts 1.5h from tip-off — used for the return-pickup time.
@@ -55,13 +48,15 @@ export const TRANSPORT_HEADERS = [
   "נקודת איסוף",
   "איסוף חזרה",
   "סוג רכב",
-  // Appended rather than slotted in beside the coach's phone, where they would read
-  // better. Three places in TransportExport.jsx address columns by index — CENTER_COLS,
-  // the em-dash on the address at 5, and the emphasis on the gathering time at 8 — and a
-  // mid-list insert silently shifts a column in the file that goes to the bus company.
-  "נהג",
-  "טלפון נהג",
 ];
+
+// The driver is deliberately NOT a column here. This sheet is produced a week ahead to
+// ORDER the bus, and at that point no driver has been assigned; by the time one has, the
+// sheet has already been sent. Its recipient is the bus company — which is where the
+// driver's number came from in the first place, so printing it back to them adds nothing
+// and puts a third party's phone into a file that leaves the building. The person who
+// actually needs it is the coach standing at the pickup point, and they read it on the
+// games screen. (Adi, gate #7.)
 
 // Build printable/exportable rows from away games.
 // `departBefore` = minutes before tip-off for the gathering ("שעת התייצבות") time.
@@ -85,13 +80,43 @@ export function buildTransportRows(awayGames, { teams, coaches, departBefore, pi
       pickupPoint: pickupPoint || "",
       returnTime: timePlus(g.time, GAME_DURATION_MIN), // end of game
       vehicle: team?.vehicleType || "",
-      // Per game, not per team: the company assigns a driver to a trip, and the same team
-      // can get a different one next week. Preserved across a federation re-import — see
-      // the carry-over list in utils/games.js.
-      driverName: g.driverName || "",
-      driverPhone: g.driverPhone || "",
     };
   });
+}
+
+// Driver contact for a game — quiet by default, and that default is the control.
+//
+// The number belongs to someone who never gave it to us; the bus company did. So a call
+// site that has not thought about who is reading the screen gets the name and nothing else,
+// and the two places allowed to show the number ask for it out loud. The first version of
+// this feature printed it in the games list with no guard at all, where every coach in the
+// club could read the driver's phone for every away game of every team.
+export function driverLine(game, withPhone = false) {
+  if (!game || game.isHome) return "";
+  const name = String(game.driverName || "").trim();
+  const phone = String(game.driverPhone || "").trim();
+  if (!withPhone) return name;
+  return [name, phone].filter(Boolean).join(" · ");
+}
+
+// A driver is assigned to one trip. Two weeks after it the number is dead weight on a
+// record nobody opens — and because the nightly federation sync carries hand-entered fields
+// forward, it would otherwise be copied onto the same game every night, for ever.
+//
+// `today` is injected rather than read from the clock so the rule can be tested.
+export function clearStaleDrivers(games, today = new Date(), days = 14) {
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() - days);
+  let cleared = 0;
+  const next = (games || []).map((g) => {
+    if (!g || (!g.driverName && !g.driverPhone)) return g;
+    const d = parseDateDMY(g.date);
+    if (!d || d >= cutoff) return g;
+    cleared++;
+    const { driverName, driverPhone, ...rest } = g;
+    return rest;
+  });
+  return { games: next, cleared };
 }
 
 // Row object -> array of cells in TRANSPORT_HEADERS order (shared by xlsx + image).
@@ -99,7 +124,6 @@ export function transportRowToCells(r) {
   return [
     r.team, r.day, r.date, r.gameTime, r.opponent, r.address,
     r.coachName, r.coachPhone, r.arriveTime, r.pickupPoint, r.returnTime, r.vehicle,
-    r.driverName, r.driverPhone,
   ];
 }
 
@@ -120,8 +144,6 @@ export function exportTransportXlsx(rows, fileTag) {
     { wch: 28 }, // נקודת איסוף
     { wch: 10 }, // איסוף חזרה
     { wch: 8 }, // סוג רכב
-    { wch: 14 }, // נהג
-    { wch: 13 }, // טלפון נהג
   ];
   const wb = XLSX.utils.book_new();
   wb.Workbook = { Views: [{ RTL: true }] }; // Excel opens the sheet right-to-left
