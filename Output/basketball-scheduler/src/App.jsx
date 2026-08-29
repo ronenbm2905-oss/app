@@ -4,6 +4,7 @@ import { useClubData } from "./hooks/useClubData";
 import { useGameNotes } from "./hooks/useGameNotes";
 import { useTrainingPlans } from "./hooks/useTrainingPlans";
 import { usePendingImport } from "./hooks/usePendingImport";
+import { useVideos } from "./hooks/useVideos";
 import { todayWeekStart } from "./utils/dates";
 import { coachForUser } from "./utils/coachIdentity";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
@@ -12,6 +13,7 @@ import { RostersView } from "./components/RostersView";
 import { ManagerView } from "./components/ManagerView";
 import { ConstraintsView } from "./components/ConstraintsView";
 import { AvailabilityView } from "./components/AvailabilityView";
+import { VideosView } from "./components/VideosView";
 import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
@@ -28,7 +30,7 @@ import { Greeting } from "./components/Greeting";
 import {
   IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
-  IconCalendarDays, IconUser, IconUsers, IconClock, IconCalendarX,
+  IconCalendarDays, IconUser, IconUsers, IconClock, IconCalendarX, IconVideo,
 } from "./components/ui/icons";
 import clubLogo from "./assets/club-logo.jpg";
 
@@ -45,6 +47,7 @@ const TABS = [
   { id: "games", label: "משחקים", Icon: IconTrophy },
   { id: "weekly", label: "לוח שבועי", Icon: IconCalendarDays },
   { id: "coach", label: "תצוגת מאמן", Icon: IconUser },
+  { id: "videos", label: "סרטוני אימון", Icon: IconVideo },
   { id: "players", label: "שחקנים", Icon: IconUsers },
   { id: "report", label: "דו\"ח שעות", Icon: IconClock },
 ];
@@ -85,6 +88,9 @@ export default function App() {
   // Only a manager is offered the nightly federation proposal — a coach has nothing to
   // decide about an import, and the listener is not even opened for them.
   const { pending, resolvePending } = usePendingImport(user, isAdmin);
+  // The drill-video library is shared: every coach reads it and every coach adds to it, so
+  // unlike the notes and plans hooks this one takes no role and scopes no query.
+  const { videos, saveVideo, removeVideo, videosReady } = useVideos(user);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -234,6 +240,7 @@ export default function App() {
             weekStart={weekStart}
             canEdit={canEdit}
             notes={notes}
+            videoCount={videosReady ? videos.length : undefined}
             onOpen={setTab}
           />
         ) : activeTab === "announcements" ? (
@@ -272,6 +279,16 @@ export default function App() {
             savePlan={savePlan}
             authorName={user?.displayName || user?.email || ""}
             authorEmail={myEmail}
+          />
+        ) : activeTab === "videos" ? (
+          <VideosView
+            data={data}
+            user={user}
+            canEdit={canEdit}
+            videos={videos}
+            saveVideo={saveVideo}
+            removeVideo={removeVideo}
+            videosReady={videosReady}
           />
         ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />

@@ -19,12 +19,13 @@ const TONES = {
   games: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   weekly: "bg-brand-50 text-brand-700 ring-brand-100",
   coach: "bg-sky-50 text-sky-700 ring-sky-100",
+  videos: "bg-red-50 text-red-700 ring-red-100",
   players: "bg-violet-50 text-violet-700 ring-violet-100",
   report: "bg-stone-100 text-stone-600 ring-stone-200",
 };
 
-export function HomeView({ tabs, data, weekStart, canEdit, notes, onOpen }) {
-  const stats = homeStats(data, weekStart, canEdit, notes);
+export function HomeView({ tabs, data, weekStart, canEdit, notes, videoCount, onOpen }) {
+  const stats = homeStats(data, weekStart, canEdit, notes, videoCount);
 
   return (
     <div dir="rtl">

@@ -25,7 +25,7 @@ function plural(n, one, many) {
 // `canEdit` shapes two lines: a coach's roster screen has no halls on it, so counting
 // them would describe a screen they are not going to get, and unread game notes are the
 // professional manager's inbox — the coach who wrote one is not waiting to read it.
-export function homeStats(data, weekStart, canEdit = true, notes) {
+export function homeStats(data, weekStart, canEdit = true, notes, videoCount) {
   const d = data || {};
   const sessions = arr(d.sessions).filter((s) => s && (s.weekOf || "") === weekStart);
   const games = arr(d.games).filter((g) => g && g.date && weekStartOfDMY(g.date) === weekStart);
@@ -51,6 +51,11 @@ export function homeStats(data, weekStart, canEdit = true, notes) {
     })(),
     weekly: d.schedulePublished?.weekOf === weekStart ? "הלו״ז פורסם" : "טרם פורסם",
     coach: "הלו״ז שלך, לשליחה בוואטסאפ",
+    // The library lives in its own subcollection, so homeStats never sees it — the count
+    // is passed in rather than counted here, and the line stays honest when it is absent.
+    videos: typeof videoCount === "number"
+      ? plural(videoCount, "סרטון אחד", "סרטונים")
+      : "תרגילים ומהלכים, בקישור",
     // Named and dated, because the question this tile answers is "who is missing soon" —
     // a count of marked days tells you there is something to look at without telling you
     // whether it matters. Counted from the shown week, not from a clock, like every other

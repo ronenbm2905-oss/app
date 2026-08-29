@@ -39,6 +39,18 @@ export const DAY_BG_COLORS = [
 ];
 
 // Shape of an empty club dataset
+// Categories for the shared drill-video library. Add to the end; the value is what is
+// stored on each video, so renaming one orphans the videos already filed under it.
+export const VIDEO_CATEGORIES = [
+  "התקפה",
+  "הגנה",
+  "מסירות וכדרור",
+  "קליעה",
+  "מהלכים",
+  "כושר וחימום",
+  "אחר",
+];
+
 export const EMPTY = {
   teams: [],
   coaches: [],

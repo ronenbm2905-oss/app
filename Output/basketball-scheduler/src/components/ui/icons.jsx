@@ -41,4 +41,7 @@ export {
   Undo2 as IconUndo,
   Share2 as IconShare,
   CalendarX2 as IconCalendarX,
+  PlayCircle as IconPlay,
+  Search as IconSearch,
+  Video as IconVideo,
 } from "lucide-react";

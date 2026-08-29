@@ -95,6 +95,21 @@ service cloud.firestore {
       allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
     }
 
+    // The club's shared library of drill videos.
+    //
+    // NOTE the read rule: any club member, NOT `canRead`. `canRead` requires ownership,
+    // which is right for a coach's private notes and exactly wrong here — it would give
+    // every coach a library containing only their own entries. Writing stays owner-scoped,
+    // so a coach curates what they added and the manager can remove anything.
+    //
+    // The client listener must be unscoped to match. See hooks/useVideos.js.
+    match /clubs/{clubId}/videos/{videoId} {
+      allow read: if isClubAdmin(clubId) || isClubMember(clubId);
+      allow create: if canCreate(clubId);
+      allow update: if canChange(clubId);
+      allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
+    }
+
     // Notes a coach writes after a game.
     match /clubs/{clubId}/gameNotes/{gameKey} {
       allow read: if canRead(clubId);
