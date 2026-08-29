@@ -42,6 +42,38 @@
 import { fileURLToPath } from 'node:url';
 import { buildFiles } from './check-no-model.mjs';
 import { codeOf } from './buildGraph.mjs';
+import { functionsGraph } from './functionsGraph.mjs';
+
+/**
+ * ★★ הקבצים שחייבים להיות בגרף ה-**Functions**.
+ *
+ * ---------------------------------------------------------------------------
+ * למה הבדיקה הזאת התרחבה לענן, ולמה דווקא היא
+ * ---------------------------------------------------------------------------
+ * עד עכשיו `console.log(parsed)` היה נוחת בקונסולת הדפדפן של דורית — לא נעים,
+ * מקומי, ונעלם ברענון. **בענן הוא נוחת ב-Cloud Logging**, ושם הוא נשמר,
+ * נסרק, מגובה, ו**אף מנגנון מחיקה שכתבנו לא נוגע בו**. `purgeOrders` מוחקת
+ * מ-Firestore; היא לא יודעת על יומנים.
+ *
+ * מסקירת עדי (M4, אחרי שהמודל ירד):
+ *
+ * > *"עם Anthropic מחוץ לתמונה, **Cloud Logging הוא הדרך היחידה שנשארה שבה
+ * > כתובת מגורים יוצאת מהמערכת.**"*
+ *
+ * כלומר: בפרוסה 0 זו הייתה בקרה חשובה; בפרוסה 1 היא **הבקרה** על הדליפה
+ * היחידה שנשארה. ולכן אין חריג — גם לא לסיכומי ריצה, גם לא ל-`console.error`
+ * בבלוק `catch`. מה שצריך להישמר נכתב ל-`syncRuns` כספירות וקודים, וזה גם
+ * הופך אותו לדבר שדורית רואה ולא רק רונן.
+ */
+export const GUARDED_FUNCTION_FILES = [
+  'functions/src/index.ts',
+  'functions/src/lib/orderSync.ts',
+  'functions/src/lib/gmailFetch.ts',
+  'functions/src/lib/tokenStore.ts',
+  'functions/src/lib/accessLog.ts',
+  'shared/lib/gmailContract.ts',
+  'shared/lib/purgePolicy.ts',
+];
 
 /**
  * ★ רצפת הכיסוי: קבצים שחייבים להיות בגרף הבנייה.
@@ -66,14 +98,26 @@ const CONSOLE_RE = /(^|[^\w.])console\s*\./;
 
 export function findViolations() {
   const violations = [];
-  const files = buildFiles();
+  const clientFiles = buildFiles();
+  const serverFiles = functionsGraph().files;
+  const files = Array.from(new Set([...clientFiles, ...serverFiles]));
 
   for (const rel of GUARDED_FILES) {
-    if (!files.includes(rel)) {
+    if (!clientFiles.includes(rel)) {
       violations.push({
         file: rel,
         line: 0,
         text: 'הקובץ אינו בגרף הבנייה — או שנמחק, או שאף אחד לא מייבא אותו',
+      });
+    }
+  }
+
+  for (const rel of GUARDED_FUNCTION_FILES) {
+    if (!serverFiles.includes(rel)) {
+      violations.push({
+        file: rel,
+        line: 0,
+        text: 'הקובץ אינו בגרף ה-Functions — או שנמחק, או שאף אחד לא מייבא אותו',
       });
     }
   }

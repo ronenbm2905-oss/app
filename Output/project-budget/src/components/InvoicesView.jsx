@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import InvoiceForm from "./InvoiceForm.jsx";
 import PaymentForm from "./PaymentForm.jsx";
+import QuickFillPanel from "./QuickFillPanel.jsx";
 import StatTile from "./ui/StatTile.jsx";
 import { Button, Pill } from "./ui/Button.jsx";
 import { Select } from "./ui/Field.jsx";
@@ -30,6 +31,7 @@ export default function InvoicesView({ slice, store, canEdit }) {
   const { invoices, payments, costLines, claimBatches } = slice;
   const [editing, setEditing] = useState(null); // invoice | "new"
   const [paying, setPaying] = useState(null);
+  const [quickFill, setQuickFill] = useState(false);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [claim, setClaim] = useState("");
@@ -62,6 +64,8 @@ export default function InvoicesView({ slice, store, canEdit }) {
     };
   }, [invoices, payments]);
 
+  const incompleteCount = invoices.filter((i) => !i.invoiceNumber || !i.issueDate).length;
+
   const batchTitle = (id) => claimBatches.find((b) => b.id === id)?.title || "—";
   const lineName = (id) => costLines.find((c) => c.id === id)?.name || null;
 
@@ -78,6 +82,21 @@ export default function InvoicesView({ slice, store, canEdit }) {
           tone={totals.unclaimed > 0 ? "warning" : "default"}
         />
       </div>
+
+      {incompleteCount > 0 && canEdit && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning-solid/30 bg-warning-fill p-3 text-sm text-warning-text">
+          <span className="flex items-center gap-2">
+            <IconWarning size={18} className="shrink-0" />
+            <span>
+              <strong>{incompleteCount} חשבוניות חסרות מספר או תאריך.</strong> הן ייכנסו לדוח
+              ההגשה כך, ויסומנו בו כחסרות.
+            </span>
+          </span>
+          <Button variant="secondary" onClick={() => setQuickFill(true)}>
+            השלמה מהירה
+          </Button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="relative min-w-[200px] flex-1">
@@ -220,6 +239,9 @@ export default function InvoicesView({ slice, store, canEdit }) {
           store={store}
           onClose={() => setEditing(null)}
         />
+      )}
+      {quickFill && (
+        <QuickFillPanel invoices={invoices} store={store} onClose={() => setQuickFill(false)} />
       )}
       {paying && <PaymentForm invoice={paying} slice={slice} store={store} onClose={() => setPaying(null)} />}
     </div>

@@ -3,32 +3,43 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "ההזמנות של היום — רשימת אריזה שנקראת מהודעות התשלום. מקומי, על fixtures. בלי גוגל, בלי ענן, ובלי מודל.",
+  "description": "ההזמנות של היום — רשימת אריזה שנקראת מהודעות התשלום. פרוסה 1: OAuth בצד שרת, gmail.readonly בלבד, ומחיקה מתוזמנת. בלי מודל.",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/check-no-model.mjs && node scripts/check-order-source.mjs && node scripts/check-order-logging.mjs && tsc --noEmit && vite build && node scripts/check-dist.mjs",
+    "build": "npm run check:all && tsc --noEmit && vite build && node scripts/check-dist.mjs",
+    "build:functions": "npm run sync:shared && npm --prefix functions run build",
+    "sync:shared": "node scripts/sync-shared.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:rules": "node ./node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only firestore --project inbox-agent-rules-test \"npx vitest run --config vitest.rules.config.mts\"",
+    "check:all": "node scripts/check-no-model.mjs && node scripts/check-order-source.mjs && node scripts/check-order-logging.mjs && node scripts/check-gmail-fetch.mjs && node scripts/check-scopes.mjs && node scripts/check-token-access.mjs",
     "check:orders": "node scripts/check-order-logging.mjs",
     "check:no-model": "node scripts/check-no-model.mjs",
     "check:source": "node scripts/check-order-source.mjs",
-    "check:dist": "node scripts/check-dist.mjs"
+    "check:gmail": "node scripts/check-gmail-fetch.mjs",
+    "check:scopes": "node scripts/check-scopes.mjs",
+    "check:token": "node scripts/check-token-access.mjs",
+    "check:dist": "node scripts/check-dist.mjs",
+    "fb": "node ./node_modules/firebase-tools/lib/bin/firebase.js"
   },
   "dependencies": {
+    "firebase": "^11.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "firebase-tools": "^13.35.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^5.4.11",
-    "vitest": "^2.1.8",
-    "@types/node": "^22.10.5"
+    "vitest": "^2.1.8"
   }
 }

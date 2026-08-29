@@ -36,6 +36,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { buildGraph, codeOf, ROOT } from './buildGraph.mjs';
+import { functionsGraph } from './functionsGraph.mjs';
 
 /**
  * סימנים שאסור שיופיעו בקוד שנבנה.
@@ -107,6 +108,60 @@ export function findViolations() {
       }
       if (DYNAMIC_IMPORT_RE.test(line)) {
         violations.push({ file: rel, line: n, text: line.trim(), why: 'ייבוא דינמי' });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ⇄ פרוסה 1 — גם גרף ה-Functions, ו**רק** לסימני מודל
+  // ---------------------------------------------------------------------------
+  // B13 אינו טענה על הדפדפן אלא על המוצר: *"אין בגרף הבנייה שום מודול שמדבר
+  // עם מודל."* מרגע שיש קוד שרת, בדיקה שמכסה רק את הקליינט מותירה את החצי
+  // שבאמת מחזיק את המידע בלי כיסוי.
+  //
+  // ★ קריאות רשת **אינן** נבדקות שם, וזה מכוון: `fetch` ל-Gmail ול-Google
+  // הוא כל תפקידו של הקוד ההוא. מה שמחליף את הבדיקה הזאת בצד השרת הוא
+  // `check-gmail-fetch.mjs` (מה בדיוק מבקשים) ו-`check-token-access.mjs`
+  // (מי רשאי לבקש). בצד הלקוח הבדיקה על היעדים עברה ל-`check-dist.mjs`.
+  const serverFiles = functionsGraph().files;
+  for (const rel of serverFiles) {
+    if (!/\.(ts|tsx)$/.test(rel)) continue;
+    if (rel.startsWith('frozen/')) {
+      violations.push({
+        file: rel,
+        line: 0,
+        text: 'קובץ מוקפא שנכנס לגרף ה-Functions',
+        why: 'frozen',
+      });
+      continue;
+    }
+    for (const { line, n } of codeOf(rel)) {
+      for (const marker of MODEL_MARKERS) {
+        if (line.includes(marker)) {
+          violations.push({
+            file: rel,
+            line: n,
+            text: line.trim(),
+            why: `סימן מודל ב-Functions: ${marker}`,
+          });
+        }
+      }
+    }
+  }
+
+  // ★ ותלויות ה-Functions בנפרד — יש להן `package.json` משלהן.
+  const fnPkgPath = join(ROOT, 'functions', 'package.json');
+  if (existsSync(fnPkgPath)) {
+    const fnPkg = JSON.parse(readFileSync(fnPkgPath, 'utf8'));
+    const fnDeps = { ...(fnPkg.dependencies ?? {}), ...(fnPkg.devDependencies ?? {}) };
+    for (const name of Object.keys(fnDeps)) {
+      if (/anthropic|openai/i.test(name)) {
+        violations.push({
+          file: 'functions/package.json',
+          line: 0,
+          text: name,
+          why: 'תלות בספק מודל בצד השרת',
+        });
       }
     }
   }

@@ -25,17 +25,45 @@
 // לעבור עליו ולזכור מה בדיוק צריך להיחסם.
 // ============================================================================
 
+// ---------------------------------------------------------------------------
+// ⇄ פרוסה 1 — שני מצבים, ומצב אחד מהם לא השתנה
+// ---------------------------------------------------------------------------
+// `isFirebaseConfigured === false` → **בדיוק מה שהיה**: fixtures, localStorage,
+// בלי גוגל ובלי ענן. ההדגמה שרונן מראה לדורית עוברת באותו מסלול קוד, ולכן
+// היא לא יכולה להישבר בגלל שינוי בענן.
+//
+// `true` → כניסה עם Google (זהות בלבד), ואז ההזמנות מגיעות מ-Firestore
+// ב-`onSnapshot`. **החיבור לתיבה הוא החלטה שלישית ונפרדת**, אחרי מסך ההסבר.
+//
+// ★ שלוש ההחלטות מופרדות בכוונה, ובסדר הזה:
+//   1. להיכנס לכלי        — `signInWithPopup`
+//   2. לקרוא את ההסבר     — `ExplainerScreen`
+//   3. לתת גישה לתיבה     — `googleAuthStart` (scope אחד, בצד שרת)
+// מיזוג 1 ו-3 היה חוסך לחיצה ומייצר הסכמה שתועדה ולא הושגה (סקירה, 5.2).
+// ---------------------------------------------------------------------------
+
 import { useEffect, useState } from 'react';
 import { ExplainerScreen } from './components/ExplainerScreen';
 import { OrdersView } from './components/OrdersView';
+import { ConnectionBanner } from './components/ConnectionBanner';
+import { SupportModePanel } from './components/SupportModePanel';
 import { Banner } from './components/ui/Badge';
 import { FriendlyError } from './components/ui/FriendlyError';
 import { useOrders } from './hooks/useOrders';
+import { useAuth } from './hooks/useAuth';
+import { useCloudOrders } from './hooks/useCloudOrders';
+import { cloudRunResult } from './utils/cloudView';
+import { isFirebaseConfigured } from './firebase';
 import { STORAGE_KEYS } from './constants';
 import { t } from './i18n';
 
 export function App() {
-  const orders = useOrders();
+  const localOrders = useOrders();
+  const auth = useAuth();
+  const cloud = useCloudOrders(auth.user);
+  const [connecting, setConnecting] = useState(false);
+
+  const orders = localOrders;
 
   /**
    * ★ `null` = "עוד לא יודעים", ולא `false`.
@@ -81,6 +109,132 @@ export function App() {
    */
   const loadFailed = !orders.loading && orders.result.stats.scanned === 0;
 
+  // ---------------------------------------------------------------------------
+  // ★ מצב ענן
+  // ---------------------------------------------------------------------------
+  const cloudResult = cloudRunResult(cloud.orders, {
+    messagesRead: cloud.lastReadCount,
+    readSources: cloud.lastReadSources,
+  });
+
+  const openConnect = async () => {
+    setConnecting(true);
+    try {
+      const url = await cloud.connectGoogle();
+      // ★ ניווט בחלון הנוכחי ולא `window.open`: חוסמי-פופאפ הורגים את
+      // הזרימה בשקט, והמשתמשת רואה כפתור שלא עושה כלום.
+      if (url) window.location.assign(url);
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  if (isFirebaseConfigured) {
+    // --- כניסה --------------------------------------------------------------
+    if (auth.authLoading) {
+      return <div className="p-8 text-center text-slate-500">רגע…</div>;
+    }
+
+    if (!auth.user) {
+      return (
+        <div className="mx-auto min-h-screen w-full max-w-md px-4 py-16 text-center">
+          <h1 className="mb-2 text-xl font-bold text-slate-900">{t('appTitle')}</h1>
+          <p className="mb-6 text-sm text-slate-600">{t('appSubtitle')}</p>
+          <button
+            type="button"
+            onClick={auth.signIn}
+            className="min-h-[44px] w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          >
+            כניסה עם חשבון Google
+          </button>
+          {/* ★ המשפט שמפריד בין שתי ההחלטות. בלעדיו הכניסה נראית כמו
+              נתינת ההרשאה, וזו בדיוק ההחלפה שמסך ההסבר נועד למנוע. */}
+          <p className="mt-4 text-xs leading-relaxed text-slate-500">
+            הכניסה הזאת היא רק כדי להיכנס לכלי. היא <strong>לא</strong> נותנת לו
+            גישה לתיבת הדואר — על זה תישאלי בנפרד, אחרי הסבר.
+          </p>
+          {auth.authError ? (
+            <p className="mt-4 text-sm text-red-700">{auth.authError}</p>
+          ) : null}
+        </div>
+      );
+    }
+
+    // --- מסך ההסבר, לפני החיבור ---------------------------------------------
+    //
+    // ★★ הוא עולה **בכל פעם** שהתיבה אינה מחוברת, בלי קשר לדגל
+    // `explainerSeen`. זה מה שנכתב ב-README של פרוסה 0: הדגל שומר שהיא
+    // **קראה**, ואינו רישום הסכמה.
+    const mustExplain = cloud.connection === 'disconnected' || showExplainer;
+
+    return (
+      <div className="mx-auto min-h-screen w-full max-w-3xl px-3 py-5 sm:px-5">
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">{t('appTitle')}</h1>
+            <p className="text-sm text-slate-500">{t('appSubtitle')}</p>
+          </div>
+          {!mustExplain ? (
+            <button
+              type="button"
+              onClick={() => setReopened(true)}
+              className="min-h-[44px] rounded-lg border border-slate-400 bg-white px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            >
+              {t('explainerReopen')}
+            </button>
+          ) : null}
+        </header>
+
+        <ConnectionBanner
+          state={cloud.connection}
+          onConnect={openConnect}
+          busy={connecting}
+        />
+
+        <main>
+          {mustExplain ? (
+            <ExplainerScreen onContinue={dismissExplainer} reopened={reopened} />
+          ) : cloud.loading ? (
+            <div className="p-8 text-center text-slate-500">רגע…</div>
+          ) : cloud.errorHe ? (
+            <FriendlyError whatHappened={cloud.errorHe} whatToDo={null} />
+          ) : (
+            <OrdersView
+              result={cloudResult}
+              canEdit
+              onToggleShipped={() => {
+                /* ★ הסימון עובר ב-onCall — הקליינט אינו כותב ל-Firestore.
+                   ראה `firestore.rules`: אין `allow write` לאף אוסף.
+                   מסלול הכתיבה הזה נכנס בסבב הבא — ראה README. */
+              }}
+              onPurgeRequest={() =>
+                'המחיקה לבקשת לקוחה עוברת דרך השרת, והיא עוד לא חוברה במסך הזה. בינתיים — לבקש מרונן.'
+              }
+            />
+          )}
+        </main>
+
+        {/* ★★ B3′ — המתג, הבאנר והיומן. */}
+        {!mustExplain ? (
+          <SupportModePanel
+            state={cloud.supportMode}
+            active={cloud.supportModeActive}
+            entries={cloud.accessLog}
+            onToggle={cloud.setSupportMode}
+            canToggle
+          />
+        ) : null}
+
+        <footer className="mt-8 text-center text-xs text-slate-400">
+          {cloud.lastSyncAt ? `עודכן לאחרונה: ${new Date(cloud.lastSyncAt).toLocaleString('he-IL')}` : null}
+        </footer>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // ★ מצב מקומי — **לא נגעתי בו.** זה המסלול של ההדגמה.
+  // ---------------------------------------------------------------------------
   return (
     <div className="mx-auto min-h-screen w-full max-w-3xl px-3 py-5 sm:px-5">
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">

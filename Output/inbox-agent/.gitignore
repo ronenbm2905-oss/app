@@ -6,3 +6,7 @@ dist/
 *.log
 .firebase/
 coverage/
+
+# תוצר של scripts/sync-shared.mjs — לא לערוך ידנית
+functions/src/shared/
+functions/lib/

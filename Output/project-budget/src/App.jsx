@@ -12,6 +12,7 @@ import ClaimBatchesView from "./components/ClaimBatchesView.jsx";
 import CashflowView from "./components/CashflowView.jsx";
 import BudgetView from "./components/BudgetView.jsx";
 import MembersPanel from "./components/MembersPanel.jsx";
+import ProjectSettings from "./components/ProjectSettings.jsx";
 import TopBar from "./components/TopBar.jsx";
 import { IconWarning } from "./components/ui/icons.jsx";
 
@@ -20,7 +21,7 @@ const TABS = [
   { key: "claims", label: "מנות מס רכוש" },
   { key: "cashflow", label: "תזרים" },
   { key: "budget", label: "תקציב מול ביצוע" },
-  { key: "members", label: "הרשאות" },
+  { key: "settings", label: "הגדרות" },
 ];
 
 export default function App() {
@@ -114,8 +115,8 @@ export default function App() {
           <CashflowView slice={slice} store={store} canEdit={canOwn} asOfMonth={asOfMonth} />
         )}
         {tab === "budget" && <BudgetView slice={slice} />}
-        {tab === "members" && (
-          <MembersPanel
+        {tab === "settings" && (
+          <SettingsTab
             project={slice.project}
             store={store}
             myEmail={auth.user?.email}
@@ -124,6 +125,48 @@ export default function App() {
           />
         )}
       </main>
+    </div>
+  );
+}
+
+/** הגדרות הפרויקט וההרשאות יושבות יחד — שתיהן "מי ומה הפרויקט", ושתיהן בעלים בלבד. */
+function SettingsTab({ project, store, myEmail, canEdit, cloudMode }) {
+  const [section, setSection] = useState("project");
+  const SECTIONS = [
+    { key: "project", label: "פרטי הפרויקט" },
+    { key: "members", label: "הרשאות" },
+  ];
+
+  return (
+    <div>
+      <div className="mb-5 flex flex-wrap gap-1 rounded-lg border border-border bg-white p-1">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => setSection(s.key)}
+            className={`rounded-sm px-4 py-1.5 text-sm font-semibold transition ${
+              section === s.key
+                ? "bg-navy text-white"
+                : "text-ink-muted hover:bg-surface-alt hover:text-navy"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {section === "project" && (
+        <ProjectSettings project={project} store={store} canEdit={canEdit} />
+      )}
+      {section === "members" && (
+        <MembersPanel
+          project={project}
+          store={store}
+          myEmail={myEmail}
+          canEdit={canEdit}
+          cloudMode={cloudMode}
+        />
+      )}
     </div>
   );
 }
