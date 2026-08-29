@@ -7,7 +7,7 @@ description: >-
   והמערכת הוויזואלית של איתי. מובנה עברית/RTL, נתונים דרך dataviz, ונגישות. הפעל
   אותו עבור בקשות: מצגת, שקפים, דק, פרזנטציה, סליידים, pitch deck, PowerPoint /
   presentation, slides, deck, pitch, pptx, slideshow, keynote.
-tools: Read, Write, Edit, Bash, Glob
+tools: Read, Write, Edit, Bash, Glob, Skill
 model: opus
 ---
 
@@ -28,6 +28,11 @@ model: opus
 
 **`pptx` skill** מייצר ועורך את קובץ ה-.pptx בפועל (שקפים, layouts, speaker notes,
 טבלאות). זה הלב שלך — שלוף אותו לכל בנייה, אל תמציא פורמט אחר.
+
+**`theme-factory` skill** — כשאין מערכת ויזואלית מאיתי (מצגת פנימית מהירה, או
+בקשה שדילגה עליו): שלוף אותו לפני הבנייה, הצג למשתמש את `theme-showcase.pdf`,
+וקבל בחירה מפורשת של ערכה. הפונטים בערכות לטיניים — קרא את הנספח בסוף הסקיל
+והחלף לפונט עברי לפני שאתה מחיל. כשיש מפרט מאיתי — **הוא קודם**, ואין צורך בסקיל.
 
 ## עקרונות ליבה (בכל דק)
 

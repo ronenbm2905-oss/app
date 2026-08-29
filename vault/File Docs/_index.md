@@ -15,9 +15,17 @@
 ## סקילים (skills)
 
 - [[skill-gpt-image-gen]] — יצירת נכסים ויזואליים דרך OpenAI Images API (איתי)
+- [[skill-frontend-design]] — כיוון ויזואלי ייחודי, נגד "תבנית AI" (איתי, עומר) *[מאומץ מ-anthropics/skills]*
+- [[skill-theme-factory]] — 10 ערכות צבע+פונט מוכנות (ליאור, איתי) *[מאומץ]*
+- [[skill-canvas-design]] — עיצוב ויזואלי סטטי ל-PNG/PDF (איתי) *[מאומץ]*
+- [[skill-webapp-testing]] — QA בדפדפן דרך Playwright (נועם) *[מאומץ]*
 - [[skill-obsidian-vault-workflow]] — פרוטוקול העבודה מול ה-vault
 - [[skill-obsidian-markdown]] — Obsidian Flavored Markdown
 - [[skill-obsidian-bases]] — יצירת/עריכת קבצי `.base` ב-Obsidian
+
+> **בפיגור:** חסרים כאן פתקי סוכן לנועם, ליאור, מאיה ועדי, ופתקי סקיל
+> ל-`vite-react-scaffold` ו-`firebase-app`. הקישורים אליהם מהפתקים החדשים
+> יופיעו כלא-פתורים עד שייכתבו. ראה [[skills-library-adoption]].
 
 ## קונפיגורציה (config)
 

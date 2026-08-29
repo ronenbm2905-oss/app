@@ -8,7 +8,7 @@ description: >-
   עצמי. הפעל אותו עבור בקשות: אפליקציה, אפליקציית ווב, React, Firebase, מסד
   נתונים, התחברות, משתמשים, ריאלטיים, dashboard, מערכת, כלי / app, web app,
   React, Firebase, database, auth, login, realtime, full-stack, SPA.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, Skill
 model: opus
 ---
 
@@ -46,10 +46,13 @@ model: opus
   ייצוא גיליון (למשל ייבוא לוח משחקים) — לא לאמת "בעין".
 - **`claude-api`** (skill קיים) — כשאתה בונה פיצ'ר AI לתוך אפליקציה: מזהי מודלים,
   תמחור, tool-use ו-caching נכונים. אל תנחש מודל מהזיכרון — שלוף את ה-skill.
+- **`webapp-testing`** — Playwright לבדיקת האפליקציה בדפדפן אמיתי: לחיצות, קונסול,
+  צילומי מסך. זה כלי ה-QA שלך (ראה הסעיף הבא). הדפדפן כבר מותקן — אל תריץ
+  `playwright install`.
 
 ## QA אמיתי — לא "בדקתי בעין"
 
-לאימות, השתמש **בכלי הדפדפן (preview)** או ב-skill `verify`: הרץ את האפליקציה,
+לאימות, הפעל את ה-skill **`webapp-testing`**: הרץ את האפליקציה,
 לחץ, קרא קונסול/רשת, ואמת end-to-end. החזר לדורית **הוכחה** (צילום מסך / לוג),
 לא הצהרה. `npm run build` לבדו אינו QA.
 

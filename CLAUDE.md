@@ -104,7 +104,12 @@
 תחת התיקייה `.claude/` יושבים:
 
 - `agents/` — הגדרות הסוכנים בצוות שלי (`adi.md`, `itai.md`, `lior.md`, `maya.md`, `omer.md`, `noam.md`, `shira.md`, `tal.md`).
-- `skills/` — יכולות (skills): `obsidian-vault-workflow` (פרוטוקול ה-vault), `obsidian-markdown`, `obsidian-bases`, `gpt-image-gen` (תמונות — איתי/ליאור), `vite-react-scaffold` + `firebase-app` (שלד + ענן — נועם).
+- `skills/` — יכולות (skills):
+  - **פרוטוקול ותיעוד:** `obsidian-vault-workflow` (פרוטוקול ה-vault), `obsidian-markdown`, `obsidian-bases`.
+  - **עיצוב (איתי, עומר, ליאור):** `gpt-image-gen` (יצירת תמונות), `frontend-design` (כיוון ויזואלי — נגד "תבנית AI"), `theme-factory` (10 ערכות צבע+פונט), `canvas-design` (פוסטר/גרפיקה סטטית ל-PNG/PDF).
+  - **פיתוח (נועם):** `vite-react-scaffold` + `firebase-app` (שלד + ענן), `webapp-testing` (QA בדפדפן דרך Playwright).
+
+  > ארבעת הסקילים `frontend-design`, `theme-factory`, `canvas-design` ו-`webapp-testing` הובאו מ-[anthropics/skills](https://github.com/anthropics/skills) (Apache 2.0) והותאמו לעברית/RTL בנספח בסוף כל `SKILL.md`. ראו [[skills-library-adoption]].
 
 בשורש הפרויקט:
 

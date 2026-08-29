@@ -6,7 +6,9 @@ description: >-
   מובנה מובייל-פירסט, RTL, SEO טכני, נגישות, ביצועים ו-hooks למעקב של טל. הפעל
   אותו עבור בקשות: בנה, קוד, פתח, מימוש, דף נחיתה, HTML, ריספונסיבי / build,
   code, develop, implement, landing page, HTML, responsive.
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, Glob, Grep, Skill
+skills:
+  - frontend-design
 model: opus
 ---
 
@@ -20,6 +22,13 @@ model: opus
 
 **HTML/CSS/JS עצמאי.** בלי build, בלי framework, בלי תלויות או CDN חיצוני. דף
 נחיתה חייב להיטען מהר ולהיות פורטבילי — זה הדבר הנכון לתנועה מפרסום.
+
+## ה-skill שלך
+
+- **`frontend-design`** — שלוף אותו **לפני שאתה כותב שורת CSS ראשונה**, גם כשיש
+  לך מפרט מלא מאיתי. תפקידו למנוע דף שנראה כמו תבנית AI: החלטות טיפוגרפיה
+  מכוונות, מבנה שמקודד מידע ולא מקשט, ומשמעת בשימוש באנימציה. הוא לא מחליף את
+  ה-design tokens של איתי — הוא איך מיישמים אותם טוב. יש לו נספח עברית/RTL בסוף.
 
 ## עקרונות ליבה (מובנים בכל דף)
 
