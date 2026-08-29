@@ -20,12 +20,20 @@ import { syncGamesToSessions, defaultGameTimes } from "../utils/games";
 import { AddToCalendarButton } from "./AddToCalendarButton";
 import { FixedTeamsStrip } from "./FixedTeamsStrip";
 import { fixedTeams } from "../utils/fixedTeams";
-import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
+import { IconDownload, IconTrash, IconCheck, IconX } from "./ui/icons";
 import clubLogo from "../assets/club-logo.jpg";
 
 export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart, myCoachId }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
+  // Rows folded away by hand, on top of whatever the coach filter is doing. Kept in
+  // component state rather than saved anywhere: this is "not the row I need in front of me
+  // right now", which is true for the next ten minutes and not for tomorrow. It survives
+  // moving between weeks — the same board, a different week — and resets when the screen is
+  // left, which is when the thought behind it has passed too.
+  const [hiddenRows, setHiddenRows] = useState([]);
+  const hideRow = (id) => setHiddenRows((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  const showAllRows = () => setHiddenRows([]);
   // Hiding the basketball school is a decision about the club board, not a preference of
   // whoever happens to be looking — so it lives in the club document and every coach sees
   // the same board the manager sees. It began life in localStorage, which meant the manager
@@ -165,7 +173,8 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             : "") +
           // Same honesty as the coach filter: a board that is missing four rows should say
           // so on its face, or whoever receives it reads it as the whole week.
-          (hideFixed && schoolTeams.length ? " · ללא בית הספר לכדורסל" : "");
+          (hideFixed && schoolTeams.length ? " · ללא בית הספר לכדורסל" : "") +
+          (hiddenRowNames.length ? ` · ללא ${hiddenRowNames.join(" · ")}` : "");
       const canvas = await captureBoardCanvas(node, heading);
       const blob = kind === "pdf" ? await canvasToPdfBlob(canvas) : await canvasToPngBlob(canvas);
       const ext = kind === "pdf" ? "pdf" : "png";
@@ -289,19 +298,21 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // being read for the competitive teams — or sent out — they are noise, so they can be
   // folded away. A view filter only: nothing is deleted, and one press brings them back.
   const schoolTeams = useMemo(() => fixedTeams(data.teams), [data.teams]);
+  const hiddenRowNames = data.teams.filter((t) => hiddenRows.includes(t.id)).map((t) => t.name);
   const visibleTeams = useMemo(() => {
     let list = data.teams;
     if (hideFixed) {
       const hidden = new Set(schoolTeams.map((t) => t.id));
       list = list.filter((t) => !hidden.has(t.id));
     }
+    if (hiddenRows.length) list = list.filter((t) => !hiddenRows.includes(t.id));
     if (!filterCoachIds.length) return list;
     const ids = new Set([
       ...list.filter((t) => filterCoachIds.includes(t.coachId)).map((t) => t.id),
       ...weekSessions.filter((s) => filterCoachIds.includes(s.coachId)).map((s) => s.teamId),
     ]);
     return list.filter((t) => ids.has(t.id));
-  }, [filterCoachIds, data.teams, weekSessions, hideFixed, schoolTeams]);
+  }, [filterCoachIds, data.teams, weekSessions, hideFixed, schoolTeams, hiddenRows]);
 
   // How many of this coach's sessions collide, so the toolbar can say so out loud rather
   // than relying on the manager spotting red cells across a wide board.
@@ -612,6 +623,21 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             is a manager's planning note: `canEdit` only. The ⛔ on a session cell stays as
             it was — that one says "this training has nobody", which is exactly what a
             coach needs to see. */}
+        {/* Hidden rows are the one filter with no visible trace on the board itself — the
+            row is simply gone — so the way back has to be stated, and it has to name what
+            is missing. A count alone would leave you guessing which one you dropped. */}
+        {hiddenRowNames.length > 0 && (
+          <div className="text-xs rounded-lg border border-stone-300 bg-stone-50 text-stone-700 p-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-semibold">
+              {hiddenRowNames.length === 1 ? "שורה אחת מוסתרת" : `${hiddenRowNames.length} שורות מוסתרות`}:
+            </span>
+            <span className="text-stone-600">{hiddenRowNames.join(" · ")}</span>
+            <button onClick={showAllRows} className="underline underline-offset-2 hover:text-stone-900 shrink-0">
+              הצג הכל
+            </button>
+          </div>
+        )}
+
         <FixedTeamsStrip data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
         {canEdit && weekAbsences.length > 0 && (
           <div className="text-xs rounded-lg border border-red-200 bg-red-50 text-red-800 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -679,7 +705,20 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                         <td className="border border-stone-200 px-3 py-2" style={{ backgroundColor: `${rowColor}20` }}>
                           <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: rowColor }} />
-                            <span className="font-medium text-xs" style={{ color: rowColor }}>{team.name}</span>
+                            <span className="font-medium text-xs flex-1 min-w-0" style={{ color: rowColor }}>{team.name}</span>
+                            {/* Drop one row from the view. The coach filter narrows to whole
+                                people; this is for the row you simply do not need in front
+                                of you right now. `no-print` because it is a control, and it
+                                hides nothing that was not already hidden by the time the
+                                board is captured. */}
+                            <button
+                              onClick={() => hideRow(team.id)}
+                              className="no-print p-0.5 rounded text-stone-500 hover:text-stone-800 hover:bg-white/60 shrink-0"
+                              aria-label={`הסתר את השורה של ${team.name}`}
+                              title="הסתר שורה זו"
+                            >
+                              <IconX size={13} />
+                            </button>
                           </div>
                           {team.coachId && <div className="text-xs text-stone-500 mt-0.5 pr-4">{nameOf(data.coaches, team.coachId)}</div>}
                         </td>
