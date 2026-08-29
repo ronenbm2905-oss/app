@@ -8,12 +8,12 @@
 // ============================================================================
 
 import { describe, expect, it } from 'vitest';
-import { invoiceDetect, looksLikeInvoice } from '../shared/lib/invoiceDetect';
-import { invoiceIntakeDecision } from '../shared/lib/invoiceIntake';
-import { validateInvoice } from '../shared/lib/validateInvoice';
-import { invoiceFilePath, safePathSegment, monthLabelHe, extensionFor } from '../shared/lib/invoiceFiling';
-import { ALLOWED_INVOICE_FIELDS, EMPTY_EXTRACTION } from '../shared/types';
-import type { AttachmentMeta, InvoiceExtraction, MessageMeta } from '../shared/types';
+import { invoiceDetect, looksLikeInvoice } from '../frozen/lib/invoiceDetect';
+import { invoiceIntakeDecision } from '../frozen/lib/invoiceIntake';
+import { validateInvoice } from '../frozen/lib/validateInvoice';
+import { invoiceFilePath, safePathSegment, monthLabelHe, extensionFor } from '../frozen/lib/invoiceFiling';
+import { ALLOWED_INVOICE_FIELDS, EMPTY_EXTRACTION } from '../frozen/types';
+import type { AttachmentMeta, InvoiceExtraction, MessageMeta } from '../frozen/types';
 
 const NOW = '2026-08-25T09:00:00+03:00';
 

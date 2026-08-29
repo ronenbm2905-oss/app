@@ -10,12 +10,13 @@
 // ============================================================================
 
 import { describe, expect, it } from 'vitest';
-import { runInvoicePipeline } from '../src/utils/invoicePipeline';
-import { buildAccountantCsv, csvCell, accountantFileName } from '../src/utils/accountantExport';
-import { buildPlan } from '../src/utils/plannedActions';
-import { mergedInbox, invoiceFixture, SEEDED_BRIEF_HISTORY } from '../src/fixtures';
-import { runPipeline, type InboxFixture } from '../src/utils/pipeline';
-import type { SenderLedgerEntry } from '../shared/types';
+import { runInvoicePipeline } from '../frozen/utils/invoicePipeline';
+import { buildAccountantCsv, csvCell, accountantFileName } from '../frozen/utils/accountantExport';
+import { buildPlan } from '../frozen/utils/plannedActions';
+import { mergedInbox, invoiceFixture, SEEDED_BRIEF_HISTORY } from '../frozen/fixtures';
+import { prepareContext, triageFilter } from '../frozen/lib/triageFilter';
+import { hydrateLedger } from '../frozen/utils/inboxFixture';
+import type { SenderLedgerEntry } from '../frozen/types';
 
 const NOW = '2026-08-26T09:00:00+03:00';
 
@@ -84,19 +85,28 @@ describe('ה-fixture עצמו', () => {
 // ---------------------------------------------------------------------------
 
 describe('★ הקידום שמונע מחשבוניות להיקבר', () => {
+  // ★ שני המבחנים האלה רצו דרך `runPipeline`, שנמחק יחד עם אוסף `items`
+  // (סקירת עדי, B13). הטענה שהם בודקים לא השתנתה — היא מעולם לא הייתה על
+  // הצינור אלא על **המסנן** — ולכן הם קוראים לו עכשיו ישירות. זה גם מבחן
+  // צר יותר: אין דרך שהוא יעבור בזכות שלב אחר בצינור.
+  const ctx = prepareContext({
+    senders: hydrateLedger(merged.senders),
+    sentAddresses: merged.sentAddresses,
+    signalThreadIds: merged.signalThreadIds,
+  });
+  const invoiceMsg = merged.messages.find((m) => m.messageId === 'inv-001')!;
+
   it('חשבונית מספק מוכר עם כותרות דיוור — לא נחשבת רעש', () => {
     // `billing@anan-shrutim.example` שולח עם `List-Unsubscribe` ו-
     // `Precedence: bulk`, כלומר שלב 5 של המסנן קבע עליה רעש **בצדק**.
     // בלי הקידום בשלב 7.5, דווקא המיילים שנוגעים בכסף היו נקברים.
-    const base = runPipeline(merged as unknown as InboxFixture);
-    const item = base.items.find((i) => i.id === 'inv-001');
-    expect(item?.verdict).not.toBe('noise');
-    expect(item?.reason).toBe('invoiceEvidence');
+    const d = triageFilter(invoiceMsg, ctx);
+    expect(d.verdict).not.toBe('noise');
+    expect(d.reason).toBe('invoiceEvidence');
   });
 
   it('הקידום מגיע רק עד "שווה מבט", לעולם לא ל"דורש טיפול"', () => {
-    const base = runPipeline(merged as unknown as InboxFixture);
-    expect(base.items.find((i) => i.id === 'inv-001')?.verdict).toBe('unknown');
+    expect(triageFilter(invoiceMsg, ctx).verdict).toBe('unknown');
   });
 });
 

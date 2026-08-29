@@ -13,7 +13,7 @@ import { IconDownload, IconBus, IconMapPin } from "./ui/icons";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
 // Cells that read better centered (times / short codes) — by column index in TRANSPORT_HEADERS.
-const CENTER_COLS = new Set([1, 3, 8, 10, 11]); // יום, שעה, שעת התייצבות, איסוף חזרה, סוג רכב
+const CENTER_COLS = new Set([1, 3, 8, 10, 11, 13]); // + 13 = טלפון נהג // יום, שעה, שעת התייצבות, איסוף חזרה, סוג רכב
 
 // Manager tool: weekly export of away games + addresses for ordering transportation.
 // Two outputs — an editable .xlsx (send to the bus vendor) and a PNG image (share on WhatsApp).

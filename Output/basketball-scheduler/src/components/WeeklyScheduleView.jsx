@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { flushSync } from "react-dom";
 import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
-import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
+import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
+import { findAbsenceHits, absenceLabel } from "../utils/availability";
 import {
   findHallClashes,
   findCoachClashes,
@@ -17,12 +18,23 @@ import { SessionForm } from "./SessionForm";
 import { GameTimeAdjuster } from "./GameTimeAdjuster";
 import { syncGamesToSessions, defaultGameTimes } from "../utils/games";
 import { AddToCalendarButton } from "./AddToCalendarButton";
+import { FixedTeamsStrip } from "./FixedTeamsStrip";
+import { fixedTeams } from "../utils/fixedTeams";
 import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
 import clubLogo from "../assets/club-logo.jpg";
 
 export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart, myCoachId }) {
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
+  // Hiding the basketball school is a decision about the club board, not a preference of
+  // whoever happens to be looking — so it lives in the club document and every coach sees
+  // the same board the manager sees. It began life in localStorage, which meant the manager
+  // hid four rows and nobody else's screen changed.
+  //
+  // Only a manager can set it; the Firestore rules would refuse a coach anyway, and a
+  // control that silently fails is worse than no control.
+  const hideFixed = Boolean(data.hideFixedTeams);
+  const toggleHideFixed = () => save({ ...data, hideFixedTeams: !hideFixed });
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [adjustingGame, setAdjustingGame] = useState(null); // an imported game whose hall slot is being nudged
   const [mode, setMode] = useState("team"); // "team" | "hall"
@@ -35,11 +47,17 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // what leaves the building is the decision, not the working notes.
   const [hideWarningMarks, setHideWarningMarks] = useState(true);
   const [suppressWarnings, setSuppressWarnings] = useState(false); // on only while exporting/printing
+  // The absence mark is not covered by the toggle above, and that is the point. A clash is
+  // a scheduling note about the board; "מאמן X לא זמין" is a statement about a person's
+  // week, and the exported board goes out to parents on WhatsApp. So it comes off every
+  // capture and every print, whether or not the manager chose to keep the other marks.
+  const [exporting, setExporting] = useState(false);
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
   const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
   const [shareBusy, setShareBusy] = useState(""); // "img" | "pdf" while producing that export
   const boardRef = useRef(null); // the team-mode <table> captured into the shared image/PDF
+  const hallRef = useRef(null); // the hall report's card — same treatment, see shareBoard
   const [logoDataUrl, setLogoDataUrl] = useState(""); // inline logo so html2canvas paints it on mobile too
 
   // Inline the bundled logo once as a data URI (mobile browsers fail to paint a fetched <img>).
@@ -52,10 +70,18 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // Ctrl+P goes through the browser rather than our export buttons, so it needs the same
   // treatment. beforeprint fires before the page is snapshotted, and flushSync makes the
   // re-render land inside that window — a queued update would not.
+  // No early return on `hideWarningMarks` any more: `exporting` has to flip even when the
+  // manager has chosen to keep the warning marks in, because the absence mark comes off
+  // regardless of that choice.
   useEffect(() => {
-    if (!hideWarningMarks) return;
-    const before = () => flushSync(() => setSuppressWarnings(true));
-    const after = () => flushSync(() => setSuppressWarnings(false));
+    const before = () => flushSync(() => {
+      setExporting(true);
+      if (hideWarningMarks) setSuppressWarnings(true);
+    });
+    const after = () => flushSync(() => {
+      setExporting(false);
+      if (hideWarningMarks) setSuppressWarnings(false);
+    });
     window.addEventListener("beforeprint", before);
     window.addEventListener("afterprint", after);
     return () => {
@@ -67,28 +93,49 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // Capture the whole board to a canvas with the logo + title composited on top. We flip the
   // table into its print-style read-only view during capture via the `capturing` class, so the
   // exported image is clean (no dropdowns/＋ buttons/totals; playing+secretary values shown).
-  async function captureBoardCanvas() {
-    const node = boardRef.current;
+  // `node` and `heading` are passed in so the hall report can use the same path. It used to
+  // have `window.print()` and nothing else — the very button the team board replaced,
+  // because the browser print dialog forces portrait, mobile print engines drop the
+  // repeated header row, and in an in-app browser it often does nothing at all.
+  async function captureBoardCanvas(node, heading) {
     node.classList.add("capturing");
+    // html2canvas renders the node's own box, so anything the node clips is clipped in the
+    // image too. The team board is the <table> itself and its box always fits its content;
+    // the hall report is a card with `overflow: hidden` around a table that is wider than
+    // the card on a phone — measured 436px of table inside a 341px card, and the last two
+    // columns simply were not in the picture. Widen the node to its content for the length
+    // of the capture and put it back afterwards.
+    const inner = node.querySelector("table");
+    const full = Math.max(node.scrollWidth, inner ? inner.offsetWidth : 0);
+    const prevWidth = node.style.width;
+    const prevMaxWidth = node.style.maxWidth;
+    const widened = full > node.clientWidth;
+    if (widened) {
+      node.style.width = `${full}px`;
+      node.style.maxWidth = "none";
+    }
     // flushSync, not a plain setState: html2canvas reads the DOM on the very next line, and
     // a normal React update would still be queued at that point — the markers would land in
     // the image anyway, intermittently, which is the worst kind of bug to chase.
-    if (hideWarningMarks) flushSync(() => setSuppressWarnings(true));
+    flushSync(() => {
+      setExporting(true);
+      if (hideWarningMarks) setSuppressWarnings(true);
+    });
     try {
       return await renderNodeCanvas(node, {
         logoSrc: logoDataUrl || clubLogo,
-        // Say so in the exported title when the board is filtered. The banner that warns
-        // about it on screen sits outside the captured node, so without this a one-coach
-        // board sent to the group would read as the whole week's schedule.
-        title:
-          `${title} · ${formatWeekRange(weekStart)}` +
-          (filterCoachIds.length
-            ? ` · ${data.coaches.filter((c) => filterCoachIds.includes(c.id)).map((c) => c.name).join(" · ")} בלבד`
-            : ""),
+        title: heading,
       });
     } finally {
       node.classList.remove("capturing"); // restore the interactive view immediately
-      if (hideWarningMarks) flushSync(() => setSuppressWarnings(false));
+      if (widened) {
+        node.style.width = prevWidth;
+        node.style.maxWidth = prevMaxWidth;
+      }
+      flushSync(() => {
+        setExporting(false);
+        if (hideWarningMarks) setSuppressWarnings(false);
+      });
     }
   }
 
@@ -96,13 +143,34 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // dialog (which forced portrait) and mobile print engines (which don't repeat table headers).
   // kind: "img" → PNG, "pdf" → single-page PDF sized to the image (header on top, one long page).
   async function shareBoard(kind) {
-    if (!boardRef.current || shareBusy) return;
+    const hall = mode === "hall";
+    const node = hall ? hallRef.current : boardRef.current;
+    // Silence here is what a dead button looks like. If the node is missing the export
+    // cannot run, and saying so beats a press that appears to do nothing.
+    if (shareBusy) return;
+    if (!node) {
+      alert(hall ? "בחר אולם קודם." : "אין לוח להפקה.");
+      return;
+    }
     setShareBusy(kind);
     try {
-      const canvas = await captureBoardCanvas();
+      // Say so in the exported title when the board is filtered. The banner that warns
+      // about it on screen sits outside the captured node, so without this a one-coach
+      // board sent to the group would read as the whole week's schedule.
+      const heading = hall
+        ? `${title} · ${selectedHallName} · ${formatWeekRange(weekStart)}`
+        : `${title} · ${formatWeekRange(weekStart)}` +
+          (filterCoachIds.length
+            ? ` · ${data.coaches.filter((c) => filterCoachIds.includes(c.id)).map((c) => c.name).join(" · ")} בלבד`
+            : "") +
+          // Same honesty as the coach filter: a board that is missing four rows should say
+          // so on its face, or whoever receives it reads it as the whole week.
+          (hideFixed && schoolTeams.length ? " · ללא בית הספר לכדורסל" : "");
+      const canvas = await captureBoardCanvas(node, heading);
       const blob = kind === "pdf" ? await canvasToPdfBlob(canvas) : await canvasToPngBlob(canvas);
       const ext = kind === "pdf" ? "pdf" : "png";
-      await shareOrDownloadBlob(blob, `לוז-שבועי-${weekStart}.${ext}`, title);
+      const name = hall ? `אולם-${selectedHallName}-${weekStart}.${ext}` : `לוז-שבועי-${weekStart}.${ext}`;
+      await shareOrDownloadBlob(blob, name, heading);
     } catch (e) {
       alert("לא הצלחנו להפיק את הקובץ. נסה שוב.");
     } finally {
@@ -217,14 +285,23 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   // Rows to show. Filtering by coach keeps a team if the coach is its assigned coach OR
   // runs any of its sessions this week — a coach often covers a team that is not formally
   // theirs, and those are exactly the sessions that cause the overlap.
+  // The basketball school is four rows of the same thing every week. When the board is
+  // being read for the competitive teams — or sent out — they are noise, so they can be
+  // folded away. A view filter only: nothing is deleted, and one press brings them back.
+  const schoolTeams = useMemo(() => fixedTeams(data.teams), [data.teams]);
   const visibleTeams = useMemo(() => {
-    if (!filterCoachIds.length) return data.teams;
+    let list = data.teams;
+    if (hideFixed) {
+      const hidden = new Set(schoolTeams.map((t) => t.id));
+      list = list.filter((t) => !hidden.has(t.id));
+    }
+    if (!filterCoachIds.length) return list;
     const ids = new Set([
-      ...data.teams.filter((t) => filterCoachIds.includes(t.coachId)).map((t) => t.id),
+      ...list.filter((t) => filterCoachIds.includes(t.coachId)).map((t) => t.id),
       ...weekSessions.filter((s) => filterCoachIds.includes(s.coachId)).map((s) => s.teamId),
     ]);
-    return data.teams.filter((t) => ids.has(t.id));
-  }, [filterCoachIds, data.teams, weekSessions]);
+    return list.filter((t) => ids.has(t.id));
+  }, [filterCoachIds, data.teams, weekSessions, hideFixed, schoolTeams]);
 
   // How many of this coach's sessions collide, so the toolbar can say so out loud rather
   // than relying on the manager spotting red cells across a wide board.
@@ -247,6 +324,54 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     () => findConstraintViolations(weekSessions, data.constraints || []),
     [weekSessions, data.constraints]
   );
+  // Sessions whose coach is marked unavailable on that actual date → ⛔.
+  //
+  // Deliberately not folded into `violations`: a constraint says the slot is awkward, an
+  // absence says nobody is coming. They are also dated differently — a constraint repeats
+  // every week, this one lands on one square of the calendar — so the same Wednesday cell
+  // is flagged this week and clean the next.
+  const absenceHits = useMemo(
+    () => findAbsenceHits(weekSessions, (s) => (weekDates[s.day] ? toISODate(weekDates[s.day]) : ""), data.absences || []),
+    [weekSessions, weekStart, data.absences]
+  );
+  // The reason rides along only where a manager is already looking at an editable cell.
+  // The hall report below is open to every coach, so it asks for the bare label.
+  const absenceText = (id, withNote = false) =>
+    (absenceHits[id] || []).map((a) => absenceLabel(a, withNote)).join(" · ");
+
+  // Who is out this week, by day — independent of whether anything is scheduled yet, which
+  // is the whole point: you mark someone out weeks ahead so you can see it while building
+  // that week, and at that moment the week is still empty.
+  //
+  // One row per day rather than a badge per column: five names in a column header grow the
+  // table's header row and squeeze the day it belongs to, and the same five on one
+  // full-width line cost nothing. Honours the coach filter.
+  const weekAbsences = useMemo(() => {
+    const list = data.absences || [];
+    if (!list.length) return [];
+    return DAYS.filter((day) => filterDays.includes(day))
+      .map((day) => {
+        const date = weekDates[day];
+        if (!date) return null;
+        const iso = toISODate(date);
+        const names = [
+          ...new Set(
+            list
+              .filter((a) => a && a.date === iso)
+              .filter((a) => !filterCoachIds.length || filterCoachIds.includes(a.coachId))
+              .map((a) => nameOf(data.coaches, a.coachId))
+          ),
+        ].sort((x, y) => x.localeCompare(y, "he"));
+        if (!names.length) return null;
+        return {
+          day,
+          dateLabel: `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`,
+          names: names.join(", "),
+        };
+      })
+      .filter(Boolean);
+  }, [data.absences, data.coaches, weekStart, filterDays, filterCoachIds]);
+
   // Which constraint kinds a session violates, as a Hebrew label ("מאמן", "אולם", "מאמן ואולם").
   const violationLabel = (id) => {
     const list = violations[id];
@@ -328,13 +453,64 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 />
               </>
             )}
+            {/* Same two exports the team board has, for the same reason: an image goes
+                everywhere, and the PDF is one landscape page with the header on top.
+                `window.print()` used to be the only thing here. */}
             {mode === "hall" && (
-              <button onClick={() => window.print()} className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50">
-                <IconDownload size={15} /> הדפסה / PDF
-              </button>
+              <>
+                <button
+                  onClick={() => shareBoard("img")}
+                  disabled={!!shareBusy || !selectedHallId}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40"
+                  title={selectedHallId ? "שמור/שתף את דוח האולם כתמונה — מומלץ לשליחה בווטאפ" : "בחר אולם קודם"}
+                >
+                  <IconDownload size={15} /> {shareBusy === "img" ? "מכין תמונה…" : "שיתוף / שמירת תמונה"}
+                </button>
+                <button
+                  onClick={() => shareBoard("pdf")}
+                  disabled={!!shareBusy || !selectedHallId}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50 disabled:opacity-40"
+                  title={selectedHallId ? "שמור/שתף את דוח האולם כ-PDF — עמוד אחד עם הכותרת למעלה" : "בחר אולם קודם"}
+                >
+                  <IconDownload size={15} /> {shareBusy === "pdf" ? "מכין PDF…" : "שמירת PDF"}
+                </button>
+              </>
             )}
           </div>
         </div>
+
+        {/* Only offered when there is something to hide — a control for a thing the club
+            does not have is a control that has to be explained. */}
+        {mode === "team" && schoolTeams.length > 0 && canEdit && (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <button
+              onClick={toggleHideFixed}
+              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors flex items-center gap-1.5 ${
+                hideFixed
+                  ? "bg-stone-200 text-stone-600 border-stone-300"
+                  : "bg-brand-600 text-white border-brand-600"
+              }`}
+              title={hideFixed ? "החזר את שורות בית הספר ללוח" : "הסתר את שורות בית הספר מהלוח — אצלך ואצל המאמנים"}
+            >
+              🔁 {hideFixed ? "הצג בית ספר לכדורסל" : "הסתר בית ספר לכדורסל"}
+              <span className={hideFixed ? "text-stone-500" : "text-brand-100"}>({schoolTeams.length})</span>
+            </button>
+            {hideFixed && (
+              <span className="text-xs text-stone-500 self-center">
+                {schoolTeams.length} שורות מוסתרות — <span className="font-medium text-stone-700">גם אצל המאמנים</span>,
+                וגם בתמונה וב-PDF. שום דבר לא נמחק, ומאמני בית הספר עדיין רואים את האימונים שלהם ב"תצוגת מאמן".
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* A coach opening the board and not finding their team would reasonably think the
+            week was never entered. Say it plainly instead. */}
+        {mode === "team" && schoolTeams.length > 0 && !canEdit && hideFixed && (
+          <p className="text-xs text-stone-500">
+            שורות בית הספר לכדורסל מוסתרות בלוח הזה. האימונים שלך מופיעים כרגיל ב"תצוגת מאמן".
+          </p>
+        )}
 
         {mode === "team" && (
           <div className="flex flex-wrap gap-1.5">
@@ -429,6 +605,25 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
             </button>
           </div>
         )}
+        {/* Who is out this week — one line above the board, not inside it.
+            Inside the day header it grew the whole table's header row with every extra
+            name, and it announced people's days off to every coach who opened the board.
+            Here it is a single wrapping line that no column has to make room for, and it
+            is a manager's planning note: `canEdit` only. The ⛔ on a session cell stays as
+            it was — that one says "this training has nobody", which is exactly what a
+            coach needs to see. */}
+        <FixedTeamsStrip data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
+        {canEdit && weekAbsences.length > 0 && (
+          <div className="text-xs rounded-lg border border-red-200 bg-red-50 text-red-800 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-semibold shrink-0">⛔ לא זמינים השבוע:</span>
+            {weekAbsences.map((d) => (
+              <span key={d.day}>
+                <span className="font-medium">{d.day} {d.dateLabel}</span>
+                <span className="text-red-700"> — {d.names}</span>
+              </span>
+            ))}
+          </div>
+        )}
         <p className="text-xs text-stone-600">לשליחה בווטאפ: "שיתוף / שמירת תמונה" (תמונה אחת לרוחב) או "שמירת PDF" (עמוד אחד לרוחב עם הכותרת למעלה). שניהם עובדים גם בנייד — בלי בעיות כיוון או כותרות שנעלמות בין עמודים.</p>
       </div>
 
@@ -519,9 +714,14 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                     const coachClash = coachClashes.has(s.id) && !suppressWarnings; // one coach, two places
                                     const clash = hallClash || coachClash;
                                     const violates = !!violations[s.id] && !suppressWarnings;
+                                    // The coach is marked away on this date. Drawn in the clash red
+                                    // rather than the constraint amber: a booking that breaks a
+                                    // constraint still happens, this one has nobody to run it.
+                                    const absent = !!absenceHits[s.id] && !suppressWarnings && !exporting;
+                                    const alarm = clash || absent; // red treatment
                                     const cellStyle = {
-                                      backgroundColor: clash ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
-                                      borderRight: `3px solid ${clash ? "#DC2626" : violates ? "#D97706" : color}`,
+                                      backgroundColor: alarm ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
+                                      borderRight: `3px solid ${alarm ? "#DC2626" : violates ? "#D97706" : color}`,
                                     };
                                     const inner = (
                                       <>
@@ -533,9 +733,14 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                             ⚠ חפיפת מאמן{s.coachId ? ` — ${nameOf(data.coaches, s.coachId)}` : ""}
                                           </div>
                                         )}
+                                        {absent && (
+                                          <div className="font-bold text-red-700 flex items-center gap-0.5">
+                                            ⛔ {s.coachId ? `${nameOf(data.coaches, s.coachId)} ` : ""}לא זמין
+                                          </div>
+                                        )}
                                         {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
-                                        <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}><span dir="ltr">{s.start}–{s.end}</span></div>
-                                        <div className={`mt-0.5 ${clash ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
+                                        <div className="font-semibold tabular-nums" style={{ color: alarm ? "#B91C1C" : violates ? "#B45309" : color }}><span dir="ltr">{s.start}–{s.end}</span></div>
+                                        <div className={`mt-0.5 ${alarm ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
                                         {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
                                         {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
                                       </>
@@ -545,11 +750,12 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                         key={s.id}
                                         onClick={() => setEditingSession(s)}
                                         title={
-                                          clash
+                                          alarm
                                             ? [
                                                 hallClash && "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן",
                                                 coachClash &&
                                                   `חפיפת מאמן! ${nameOf(data.coaches, s.coachId)} משובץ ליותר מקבוצה אחת באותו זמן`,
+                                                absent && `${nameOf(data.coaches, s.coachId)}: ${absenceText(s.id, canEdit)}`,
                                               ]
                                                 .filter(Boolean)
                                                 .join(" · ") + " — לחץ לעריכה"
@@ -557,7 +763,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                             ? `אילוץ פעיל (${violationLabel(s.id)}) בזמן הזה — לחץ לעריכה`
                                             : "לחץ לעריכה / הזזת האימון"
                                         }
-                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
+                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${alarm ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
                                         style={cellStyle}
                                       >
                                         {inner}
@@ -571,13 +777,13 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                         key={s.id}
                                         onClick={() => setAdjustingGame(s)}
                                         title="לחץ לשינוי הזמן שהמשחק תופס בלוח"
-                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
+                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${alarm ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
                                         style={cellStyle}
                                       >
                                         {inner}
                                       </button>
                                     ) : (
-                                      <div key={s.id} className={`rounded px-1.5 py-1 text-xs leading-tight ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`} style={cellStyle}>
+                                      <div key={s.id} className={`rounded px-1.5 py-1 text-xs leading-tight ${alarm ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`} style={cellStyle}>
                                         {inner}
                                       </div>
                                     );
@@ -614,7 +820,11 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                               ))}
                             </select>
                           ) : (
-                            <div className="text-xs text-stone-700">{assignDisplay(assignment.playing, false)}</div>
+                            // The print-only twin two lines down already covers paper. Without
+                            // `no-print` here a coach printing the board got the value TWICE in
+                            // the cell; editors never saw it because their visible copy is the
+                            // select, which does carry `no-print`.
+                            <div className="no-print text-xs text-stone-700">{assignDisplay(assignment.playing, false)}</div>
                           )}
                           {canEdit && assignment.playing && coachOfTeam(assignment.playing) && (
                             <div className="no-print text-[10px] text-stone-500 mt-0.5 truncate">{coachOfTeam(assignment.playing)}</div>
@@ -639,7 +849,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                               ))}
                             </select>
                           ) : (
-                            <div className="text-xs text-stone-700">{assignDisplay(assignment.secretary, false)}</div>
+                            <div className="no-print text-xs text-stone-700">{assignDisplay(assignment.secretary, false)}</div>
                           )}
                           {canEdit && assignment.secretary && coachOfTeam(assignment.secretary) && (
                             <div className="no-print text-[10px] text-stone-500 mt-0.5 truncate">{coachOfTeam(assignment.secretary)}</div>
@@ -682,7 +892,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
           ) : hallSessions.length === 0 ? (
             <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-600 text-sm">אין אימונים באולם זה בשבוע הנבחר.</div>
           ) : (
-            <div className="bg-white rounded-xl border border-stone-200 overflow-hidden print-flow">
+            <div ref={hallRef} className="bg-white rounded-xl border border-stone-200 overflow-hidden print-flow">
               {/* print-flow drops the rounding and the overflow clip when printing. A
                   container with `overflow: hidden` clips its content to the first printed
                   page — anything past it silently never comes out of the printer, which
@@ -717,6 +927,8 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                     // out too, and a stripe means nothing to someone who cannot act on it.
                     const clash = hallClashes.has(s.id) && !suppressWarnings; // two teams here at once
                     const violates = !!violations[s.id] && !suppressWarnings; // collides with a constraint
+                    const absent = !!absenceHits[s.id] && !suppressWarnings && !exporting; // the coach is away that date
+                    const alarm = clash || absent;
                     // The day colour always wins the row background — it is what makes this
                     // report readable as bands of days. Warnings used to REPLACE it, which
                     // both broke a day into two colours and, worse, disguised the day: the
@@ -724,7 +936,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                     // for Friday's. A warning now shows as a stripe down the row's edge, so
                     // both signals are readable at once instead of competing.
                     const bg = DAY_BG_COLORS[dayIdx] || "#ffffff";
-                    const stripe = clash ? "#DC2626" : violates ? "#D97706" : "";
+                    const stripe = alarm ? "#DC2626" : violates ? "#D97706" : "";
                     const date = weekDates[s.day];
                     return (
                       <tr key={s.id || i} style={{ backgroundColor: bg }}>
@@ -744,10 +956,13 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                             <span className="text-sm font-medium text-stone-700">{nameOf(data.teams, s.teamId)}</span>
                           </div>
                         </td>
-                        <td className="border border-stone-200 px-3 py-2 text-sm text-stone-600">{nameOf(data.coaches, s.coachId)}</td>
-                        <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${clash ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
+                        <td className={`border border-stone-200 px-3 py-2 text-sm ${absent ? "text-red-700 font-medium" : "text-stone-600"}`}>
+                          {absent && <span title={absenceText(s.id)}>⛔ </span>}
+                          {nameOf(data.coaches, s.coachId)}
+                        </td>
+                        <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${alarm ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
                           {clash && <span title="חפיפת אולם — שתי קבוצות באותו זמן">⚠ </span>}
-                          {!clash && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
+                          {!alarm && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
                           <span dir="ltr">{s.start}–{s.end}</span>
                         </td>
                         <td

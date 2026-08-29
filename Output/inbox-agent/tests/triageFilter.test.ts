@@ -12,8 +12,8 @@ import {
   triageBatch,
   triageFilter,
   type TriageContext,
-} from '../shared/lib/triageFilter';
-import type { MessageMeta, SenderLedgerEntry } from '../shared/types';
+} from '../frozen/lib/triageFilter';
+import type { MessageMeta, SenderLedgerEntry } from '../frozen/types';
 
 // --- עזרי בנייה ------------------------------------------------------------
 
@@ -39,7 +39,7 @@ function ledger(
       domainKey,
       defaultVerdict: 'noise',
       // ★ נוסף בפרוסה 0.5: מקור הפסק. 'header' = נלמד מכותרות RFC,
-      // כלומר מקור שמותר לו להוביל לארכוב. ראה `shared/lib/senderLedger.ts`.
+      // כלומר מקור שמותר לו להוביל לארכוב. ראה `frozen/lib/senderLedger.ts`.
       verdictSource: 'header',
       neverAutoNoise: false,
       invoiceSource: false,

@@ -403,10 +403,10 @@ if (!existsSync(SEED)) {
   }
 }
 
-
-// ={76}
+// ============================================================================
 // תפקידים — חייב להישאר תואם ל-firestore.rules (שנבדק מול האמולטור).
-// ={76}
+
+// ============================================================================
 {
   const A = await import("../src/utils/access.js");
   const project = {
@@ -433,13 +433,64 @@ if (!existsSync(SEED)) {
   ok("בעלים ראשון ברשימה", A.memberList(project)[0].role === "owner");
 }
 
-// ={76}
+// ============================================================================
+// דוח ההגשה למנה.
+// ============================================================================
+{
+  const { buildClaimReport, claimReportCsv } = await import("../src/utils/claimReport.js");
+  const project = { name: "פינסקר 9", address: "פינסקר 9 ת\"א", taxAuthorityName: "מס רכוש" };
+  const batch = makeClaimBatch({ id: "b1", seq: 1, title: "מנה 1", targetAmount: 1000, topUpAmount: 100, plannedDate: "2026-10-11" });
+  const invoices = [
+    makeInvoice({ id: "a", claimBatchId: "b1", vendorName: "ספק א", invoiceNumber: "111", issueDate: "2026-02-01", amountGross: 590, vatRate: 0.18 }),
+    makeInvoice({ id: "b", claimBatchId: "b1", vendorName: "ספק ב", issueDate: null, amountGross: 236, vatRate: 0.18 }),
+    makeInvoice({ id: "c", vendorName: "לא במנה", amountGross: 999, vatRate: 0.18 }),
+  ];
+  const rep = buildClaimReport({ project, batch, invoices });
+  eq("רק חשבוניות המנה נכנסות לדוח", rep.rows.length, 2);
+  eq("סה\"כ ברוטו בדוח", rep.totals.gross, 826);
+  eq("נטו + מע\"מ = ברוטו בדוח", round2(rep.totals.net + rep.totals.vat), rep.totals.gross);
+  eq("סה\"כ להגשה כולל השלמה", rep.totals.submitted, 926);
+  eq("פער ליעד", rep.totals.gap, 74);
+  ok("מיון לפי תאריך — המתוארך ראשון", rep.rows[0].vendorName === "ספק א");
+  ok("אזהרה על חשבונית בלי תאריך", rep.warnings.some((w) => w.includes("בלי תאריך")));
+  ok("אזהרה על חשבונית בלי מספר", rep.warnings.some((w) => w.includes("בלי מספר")));
+  ok("אזהרה על פער ליעד", rep.warnings.some((w) => w.includes("חסרים")));
+
+  // דרישה חלקית חייבת להיות גלויה — הרשות רואה סכום אחר מהחשבונית.
+  const partial = [makeInvoice({ id: "p", claimBatchId: "b1", vendorName: "חלקי", amountGross: 1000, vatRate: 0, claimedAmount: 400 })];
+  const rep2 = buildClaimReport({ project, batch, invoices: partial });
+  ok("דרישה חלקית מסומנת", rep2.rows[0].isPartial);
+  ok("אזהרה על דרישה חלקית", rep2.warnings.some((w) => w.includes("בחלקן")));
+  eq("הדרישה החלקית היא שנספרת", rep2.totals.claimTotal, 400);
+
+  const csv = claimReportCsv(rep);
+  ok("CSV נפתח ב-BOM (אחרת אקסל בעברית מציג גיבריש)", csv.charCodeAt(0) === 0xfeff);
+  ok("CSV מכיל את שורות החשבוניות", csv.includes("ספק א") && csv.includes("ספק ב"));
+  ok("CSV לא מכיל חשבונית שאינה במנה", !csv.includes("לא במנה"));
+  ok("CSV משתמש ב-CRLF", csv.includes("\r\n"));
+  {
+    const withComma = claimReportCsv(
+      buildClaimReport({
+        project,
+        batch,
+        invoices: [makeInvoice({ id: "q", claimBatchId: "b1", vendorName: "כהן, יוסי", amountGross: 100, vatRate: 0 })],
+      }),
+    );
+    ok("פסיק בשם ספק מצוטט", withComma.includes(String.fromCharCode(34) + "כהן, יוסי" + String.fromCharCode(34)));
+  }
+
+  const emptyRep = buildClaimReport({ project, batch, invoices: [] });
+  ok("מנה ריקה מסומנת כריקה", emptyRep.warnings.some((w) => w.includes("ריק")));
+}
+
+// ============================================================================
 // גיבוי — הרשת היחידה כל עוד אין ענן.
 // ============================================================================
 {
   const { backupFileName, validateBackup } = await import("../src/utils/backup.js");
   const name = backupFileName("פינסקר 9, תל אביב");
-  ok("שם קובץ גיבוי בלי תווים אסורים", !/[\/:*?"<>|]/.test(name), name);
+  // כולל לוכסן הפוך — ב-Windows הוא מפריד נתיבים ושם קובץ שמכיל אותו נשבר.
+  ok("שם קובץ גיבוי בלי תווים אסורים", !/[\\/:*?"<>|]/.test(name), name);
   ok("שם הגיבוי נושא חותמת זמן", /\d{4}-\d{2}-\d{2}-\d{4}\.json$/.test(name), name);
   ok("גיבוי תקין עובר", validateBackup({ projects: [{ id: "p" }], invoices: [] }) === null);
   ok("קובץ בלי פרויקטים נדחה", validateBackup({ projects: [] }) !== null);

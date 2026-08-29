@@ -34,18 +34,27 @@ import {
   purgeRecipient,
 } from '../../shared/lib/orderRetention';
 import { domainOf } from '../../shared/lib/addresses';
+import {
+  ORDER_SOURCE_QUERY,
+  readOrderBodies,
+  type OrderBodyPart,
+  type OrderSourceCandidate,
+} from '../../shared/lib/orderSource';
 import { isOrderSubject } from '../../shared/lib/orderParse';
-import type { MessageMeta, Order } from '../../shared/types';
+import type { Order, OrderIssue } from '../../shared/types';
 import { LOCAL_USER_ID } from '../constants';
 
 // ---------------------------------------------------------------------------
 // קלט
 // ---------------------------------------------------------------------------
 
-export interface OrderFixtureMessage extends MessageMeta {
-  bodyHtml?: string;
-  authenticationResults?: string | null;
-}
+/**
+ * ★ הטיפוס מוגדר ב-`orderSource.ts` ומיוצא מכאן מחדש.
+ *
+ * לא סגנון: השדה `bodyHtml` מוגדר במקום אחד בלבד — במודול שהוא אתר הקריאה
+ * היחיד. הגדרה שנייה כאן הייתה מזמינה גישה ישירה אליו מכאן.
+ */
+export type OrderFixtureMessage = OrderSourceCandidate;
 
 /**
  * מה שנשמר בין רענונים.
@@ -94,6 +103,21 @@ export interface OrderRunResult {
     needsAttention: number;
     /** נמחקו בריצה הזאת. */
     purged: number;
+    /**
+     * ★ כמה הודעות נקרא מהן גוף, ומאיזה מקור. מוצג במסך (M18).
+     * `readSources` נגזר ממה שנקרא בפועל — לא נכתב כמחרוזת קבועה.
+     */
+    messagesRead: number;
+    readSources: string[];
+    /**
+     * ★ מאיזה חלק MIME נקרא בפועל. אמור להיות `['text']` — כלומר מהטקסט
+     * הנקי ולא מה-HTML. נגזר ממה שקרה, לא נכתב כקבוע.
+     */
+    readParts: string[];
+    /** ★★ כמה הודעות היה בהן תוכן שנוסף אחרי החתימה, ונחתך. */
+    unsignedTail: number;
+    /** השאילתה הקבועה שממנה יגיעו ההודעות בפרוסה 1. מוצגת כמות שהיא. */
+    sourceQuery: string;
   };
 }
 
@@ -104,15 +128,43 @@ const nowIso = (v: Date | string | undefined): string =>
 // ★ בניית רשומה אחת
 // ---------------------------------------------------------------------------
 
+/**
+ * ★★ `body` מגיע כפרמטר, ולא נשלף מההודעה.
+ *
+ * זו הנקודה שבה B12 הופך ממדיניות למבנה: הפונקציה הזאת **לא יודעת** לקרוא
+ * גוף. מי שיודע הוא `readOrderBodies`, שבודק את השולח לפני שהוא נוגע בשדה,
+ * והוא היחיד. הודעה שלא עברה שם מגיעה לכאן בלי גוף, והפענוח מסמן אותה
+ * "לא הצלחתי לקרוא" — שהוא בדיוק המסלול הנכון בשבילה.
+ */
 export function buildOrder(
   msg: OrderFixtureMessage,
   opts: OrderRunOptions = {},
+  part?: OrderBodyPart,
 ): Order | null {
+  return buildOrderEntry(msg, opts, part)?.order ?? null;
+}
+
+/** הזמנה + מפתח התוכן שלה. המפתח לא נשמר ברשומה — ראה `markDuplicates`. */
+interface OrderEntry {
+  order: Order;
+  contentKey: string | null;
+}
+
+function buildOrderEntry(
+  msg: OrderFixtureMessage,
+  opts: OrderRunOptions = {},
+  part?: OrderBodyPart,
+): OrderEntry | null {
   const parsed = parseOrderMessage({
     fromAddress: msg.fromAddress,
     subject: msg.subject,
-    bodyHtml: msg.bodyHtml,
+    // ★ החלק שנבחר מועבר **כסוגו**: טקסט נקרא כטקסט, HTML כ-HTML. מיזוג
+    // השניים לשדה אחד היה מחזיר אותנו להפעלת ניקוי HTML על טקסט נקי.
+    bodyText: part?.kind === 'text' ? part.body : undefined,
+    bodyHtml: part && part.kind !== 'text' ? part.body : undefined,
     authenticationResults: msg.authenticationResults,
+    dkimSignature: msg.dkimSignature,
+    unsignedTailBytes: part?.unsignedBytes ?? 0,
   });
 
   // הודעה שאינה מתיימרת להיות הזמנה כלל אינה עניינו של המסך הזה.
@@ -141,7 +193,64 @@ export function buildOrder(
     updatedAt: ts,
   };
 
-  return { ...base, purgeAfter: purgeDateFor(base, opts) };
+  return {
+    order: { ...base, purgeAfter: purgeDateFor(base, opts) },
+    contentKey: parsed.contentKey,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// ★★ כפילות — לפי תוכן חתום, לא לפי מזהה
+// ---------------------------------------------------------------------------
+
+/**
+ * מסמן הזמנות שהתוכן החתום שלהן זהה להזמנה מוקדמת יותר.
+ *
+ * ---------------------------------------------------------------------------
+ * למה זה לא מיותר, ולמה `Message-ID` לא היה עוזר
+ * ---------------------------------------------------------------------------
+ * תג ה-`h=` של הספק מכסה `Received:From:To:Subject` בלבד. `Message-ID`
+ * **אינו חתום**, ולכן אפשר לקחת הודעת עסקה אמיתית, לשנות בה את המזהה
+ * ולשלוח אותה שוב — והחתימה תמשיך לעבור. מנגנון שסופר לפי מזהה רואה שתי
+ * הזמנות, ובעלת העסק אורזת חבילה שנייה שאיש לא שילם עליה.
+ *
+ * ★ **הראשונה נשארת נקייה, השנייה נעצרת.** לא מיזוג ולא מחיקה: המערכת לא
+ * יודעת מי מהן אמיתית, ולכן היא לא בוחרת — היא מראה, ומשאירה את ההכרעה
+ * לבעלת העסק. "הראשונה" נקבעת לפי זמן הקליטה שלנו, שהוא הדבר היחיד כאן
+ * שאף אחד מבחוץ לא קובע.
+ */
+function markDuplicates(entries: readonly OrderEntry[]): Order[] {
+  const firstSeen = new Set<string>();
+  const duplicateIds = new Set<string>();
+
+  const byArrival = [...entries].sort((a, b) =>
+    a.order.receivedAt.localeCompare(b.order.receivedAt),
+  );
+  for (const entry of byArrival) {
+    if (!entry.contentKey) continue;
+    if (firstSeen.has(entry.contentKey)) duplicateIds.add(entry.order.id);
+    else firstSeen.add(entry.contentKey);
+  }
+
+  if (duplicateIds.size === 0) return entries.map((e) => e.order);
+
+  const duplicateIssue: OrderIssue = {
+    field: 'document',
+    code: 'duplicateOrder',
+    severity: 'block',
+    messageHe:
+      'ההזמנה הזאת זהה לגמרי להזמנה אחרת שכבר קיבלת, עד הפרט האחרון. לא הצגתי ממנה כתובת — ייתכן שאותה הודעה נשלחה פעמיים, וכדאי לוודא לפני שאורזים חבילה נוספת',
+  };
+
+  return entries.map((e) =>
+    duplicateIds.has(e.order.id)
+      ? {
+          ...e.order,
+          issues: [...e.order.issues, duplicateIssue],
+          needsHumanReview: true,
+        }
+      : e.order,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -152,13 +261,17 @@ export function runOrderPipeline(
   messages: readonly OrderFixtureMessage[],
   opts: OrderRunOptions = {},
 ): OrderRunResult {
-  const built: Order[] = [];
+  // ★★ **הקריאה היחידה של גוף הודעה בכל האפליקציה.** ראה `orderSource.ts`.
+  // היא רצה פעם אחת, לפני הכול, ומחזירה גם את המונה שמוצג במסך.
+  const read = readOrderBodies(messages);
+
+  const entries: OrderEntry[] = [];
   const openQuestions: OrderOpenQuestion[] = [];
 
   for (const msg of messages) {
-    const order = buildOrder(msg, opts);
-    if (order) {
-      built.push(order);
+    const entry = buildOrderEntry(msg, opts, read.bodies.get(msg.messageId));
+    if (entry) {
+      entries.push(entry);
       continue;
     }
 
@@ -177,6 +290,10 @@ export function runOrderPipeline(
       });
     }
   }
+
+  // ★ כפילות מסומנת לפני המדיניות ולפני התצוגה — היא משנה את
+  // `needsHumanReview`, כלומר את הרשימה שההזמנה נופלת אליה.
+  const built = markDuplicates(entries);
 
   // ★ המדיניות רצה כאן, לפני שנבנית ולו רשימה אחת למסך.
   const retention = applyRetention(built, opts);
@@ -214,6 +331,11 @@ export function runOrderPipeline(
       unitsToPack,
       needsAttention: needsAttention.length,
       purged: retention.purgedIds.length + manual.size,
+      messagesRead: read.readCount,
+      readSources: read.sources,
+      readParts: read.parts,
+      unsignedTail: read.unsignedTailCount,
+      sourceQuery: ORDER_SOURCE_QUERY,
     },
   };
 }

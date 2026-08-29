@@ -1,4 +1,5 @@
 import { weekStartOfDMY } from "./dates";
+import { upcomingAbsences } from "./availability";
 import { unreadCount } from "./gameNotes";
 
 // One live line per tile on the home screen.
@@ -50,6 +51,18 @@ export function homeStats(data, weekStart, canEdit = true, notes) {
     })(),
     weekly: d.schedulePublished?.weekOf === weekStart ? "הלו״ז פורסם" : "טרם פורסם",
     coach: "הלו״ז שלך, לשליחה בוואטסאפ",
+    // Named and dated, because the question this tile answers is "who is missing soon" —
+    // a count of marked days tells you there is something to look at without telling you
+    // whether it matters. Counted from the shown week, not from a clock, like every other
+    // line here.
+    availability: (() => {
+      const next = upcomingAbsences(d.absences, weekStart, 1)[0];
+      if (!next) return "כולם זמינים מכאן והלאה";
+      const who = arr(d.coaches).find((c) => c && c.id === next.coachId)?.name || "מאמן";
+      const [, m, day] = String(next.date).split("-");
+      const more = upcomingAbsences(d.absences, weekStart).length - 1;
+      return `${who} · ${Number(day)}/${Number(m)}${more > 0 ? ` (+${more})` : ""}`;
+    })(),
     players: plural(count(d.players), "שחקן אחד", "שחקנים"),
     report: "שעות לפי מאמן, לפי חודש",
   };

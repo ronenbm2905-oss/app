@@ -1,5 +1,8 @@
 import { useState, useMemo } from "react";
 import { DAYS } from "../constants";
+// These three used to live here. The availability screen needed the same arithmetic, and
+// two copies of "which month is it" is how one screen ends up a month behind the other.
+import { currentMonth, shiftMonth, monthLabel } from "../utils/dates";
 import { IconDownload, IconChevronRight, IconChevronLeft } from "./ui/icons";
 import { IndoorBalanceCard } from "./IndoorBalanceCard";
 
@@ -12,24 +15,6 @@ const EXCLUDED_TYPES = ["ספורטתרפיה", "יורם", 'חד"כ'];
 // Built from the list rather than written out, so the note on screen cannot drift from
 // what the report actually does — it already had, the moment a third type was added.
 const excludedLabel = EXCLUDED_TYPES.map((t) => `"${t}"`).join(", ");
-
-// "YYYY-MM" של החודש הנוכחי.
-function currentMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-// הזזת חודש ב-±1: "YYYY-MM" -> "YYYY-MM".
-function shiftMonth(ym, delta) {
-  const [y, m] = ym.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthLabel(ym) {
-  const [y, m] = ym.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("he-IL", { month: "long", year: "numeric" });
-}
 
 // התאריך בפועל של אימון = יום ראשון של השבוע (weekOf) + היסט לפי היום.
 function sessionDate(s) {

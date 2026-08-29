@@ -45,3 +45,43 @@ p {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ============================================================================
+   הדפסה — דוח ההגשה למס רכוש.
+   הדפדפן מדפיס את כל הדף, כולל התפריטים והמודאל שמסביב. הטריק כאן מסתיר
+   הכול ב-visibility ומחזיר רק את `.print-root`: כך הדוח נשאר בתוך העץ של
+   React (ואינו זקוק לחלון נפרד), אבל על הנייר יוצא לבדו.
+   ============================================================================ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-root,
+  .print-root * {
+    visibility: visible;
+  }
+  .print-root {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: none;
+    background: #fff;
+    color: #000;
+  }
+  /* טבלה שנשברת בין עמודים — שורה לא נחתכת באמצע, וכותרת חוזרת. */
+  .print-root table {
+    page-break-inside: auto;
+  }
+  .print-root tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  .print-root thead {
+    display: table-header-group;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

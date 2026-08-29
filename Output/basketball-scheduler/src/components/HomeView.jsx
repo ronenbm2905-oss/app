@@ -15,6 +15,7 @@ const TONES = {
   rosters: "bg-brand-50 text-brand-700 ring-brand-100",
   manager: "bg-brand-50 text-brand-700 ring-brand-100",
   constraints: "bg-rose-50 text-rose-700 ring-rose-100",
+  availability: "bg-orange-50 text-orange-700 ring-orange-100",
   games: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   weekly: "bg-brand-50 text-brand-700 ring-brand-100",
   coach: "bg-sky-50 text-sky-700 ring-sky-100",

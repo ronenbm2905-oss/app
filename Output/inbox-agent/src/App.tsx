@@ -1,195 +1,132 @@
 // ============================================================================
-// App.tsx — שלד המסך: כותרת, באנר מצב הדגמה, וארבע לשוניות.
-//
-// `canEdit` מועבר לכל view גם כשהוא תמיד `true` בפרוסה 0. זה לא קוד מת: ברגע
-// שיש הרשאות אמיתיות, הרכיבים כבר יודעים להסתיר כפתורים ולהציג באנר "צפייה
-// בלבד" — ואין צורך לעבור עליהם אחד-אחד ולזכור מה בדיוק צריך להיחסם.
+// App.tsx — ★ האפליקציה היא מסך אחד: ההזמנות של היום.
 //
 // ---------------------------------------------------------------------------
-// ★ סדר הלשוניות אינו מקרי
+// למה אין כאן לשוניות
 // ---------------------------------------------------------------------------
-// "מה עומד לקרות" יושבת **לפני** לוח המשימות, כי בשלב הזה היא המסך החשוב
-// ביותר: זה המקום שבו בעלת העסק בודקת מה הסוכן היה עושה בתיבה שלה, לפני
-// שהוא מקבל הרשאה לעשות משהו. שמנו אותה אחרונה בגרסה הראשונה, וזה היה מסתיר
-// בדיוק את מה שצריך להיבדק.
+// היו כאן חמש: דוח בוקר, הזמנות, חשבוניות, "מה עומד לקרות", ולוח משימות.
+// דורית אמרה שמה שמעניין אותה זה מודול ההזמנות. לשונית "מסך אחד שחשוב וארבעה
+// שלא" היא לא פשרה — היא מסך שבו הדבר החשוב הוא אחד מחמישה דברים שווי-מראה.
+//
+// לכן: היא פותחת ורואה את ההזמנות. השאר עבר ל-`frozen/`, מחוץ לבנייה.
+//
+// ---------------------------------------------------------------------------
+// ★ מה שלא נמצא כאן, ולמה זה העיקר
+// ---------------------------------------------------------------------------
+// אין `useTriage`, אין `useInvoices`, ואין `runPipeline`. כלומר אין בקובץ
+// הזה — ובשום דבר שהוא מייבא — נתיב שמגיע למודל. זו לא הצהרה: הבדיקה
+// ב-`scripts/check-no-model.mjs` הולכת על גרף הייבוא מ-`main.tsx` ומפילה את
+// ה-build אם נוצרה קשת כזאת.
+//
+// ---------------------------------------------------------------------------
+// ★ `canEdit` נשאר, גם כשהוא תמיד `true`
+// ---------------------------------------------------------------------------
+// ברגע שיש הרשאות אמיתיות, `OrdersView` כבר יודע להסתיר כפתורים — ואין צורך
+// לעבור עליו ולזכור מה בדיוק צריך להיחסם.
 // ============================================================================
 
-import { useState } from 'react';
-import { MorningBriefView } from './components/MorningBriefView';
-import { InvoicesView } from './components/InvoicesView';
-import { PlannedActionsView } from './components/PlannedActionsView';
-import { TasksView } from './components/TasksView';
+import { useEffect, useState } from 'react';
+import { ExplainerScreen } from './components/ExplainerScreen';
+import { OrdersView } from './components/OrdersView';
 import { Banner } from './components/ui/Badge';
 import { FriendlyError } from './components/ui/FriendlyError';
-import { useTasks } from './hooks/useTasks';
-import { useTriage } from './hooks/useTriage';
-import { useInvoices } from './hooks/useInvoices';
-import { usePlannedActions } from './hooks/usePlannedActions';
+import { useOrders } from './hooks/useOrders';
+import { STORAGE_KEYS } from './constants';
 import { t } from './i18n';
-import type { ClassifiedItem } from '../shared/types';
-
-type Tab = 'brief' | 'invoices' | 'planned' | 'tasks';
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('brief');
-  const triage = useTriage();
-  const tasksState = useTasks();
-  const invoicesState = useInvoices();
-  const planned = usePlannedActions();
-
-  const canEdit = triage.canEdit && tasksState.canEdit;
+  const orders = useOrders();
 
   /**
-   * יצירת משימה מפריט. עוברת דרך `addTask` הרגיל, ולכן המשימה נושאת
-   * `updatedBy: 'user'` — הסוכן הציע, המשתמשת יצרה. זו ההבחנה שכל השאר
-   * נשען עליה, והיא נשמרת גם כשהמוק הוא זה שניסח את הכותרת.
+   * ★ `null` = "עוד לא יודעים", ולא `false`.
+   *
+   * הקריאה מ-`localStorage` יושבת ב-effect, ולכן ברינדור הראשון עוד אין
+   * תשובה. ברירת מחדל `false` הייתה מהבהבת את מסך ההסבר למי שכבר קראה
+   * אותו, ו-`true` הייתה מדלגת עליו לרגע למי שלא — כלומר בדיוק הפוך ממה
+   * שצריך. במצב `null` לא מרונדר אף אחד מהשניים.
    */
-  const createTaskFromItem = (item: ClassifiedItem) => {
-    const suggested = item.agent?.suggestedTaskTitle;
-    const title = suggested || `לטפל: ${item.subject}`;
-    tasksState.addTask({ title, sourceItemId: item.id, scheduledAt: null });
-    setTab('tasks');
+  const [seenExplainer, setSeenExplainer] = useState<boolean | null>(null);
+
+  /** פתיחה יזומה של המסך מתוך הרשימה. */
+  const [reopened, setReopened] = useState(false);
+
+  useEffect(() => {
+    try {
+      setSeenExplainer(localStorage.getItem(STORAGE_KEYS.explainerSeen) === '1');
+    } catch {
+      // דפדפן שחוסם אחסון. מציגים את ההסבר — הכיוון הבטוח הוא להראות, לא
+      // לדלג.
+      setSeenExplainer(false);
+    }
+  }, []);
+
+  const dismissExplainer = () => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.explainerSeen, '1');
+    } catch {
+      /* לא נשמר — המסך פשוט יופיע שוב. זה הכיוון הבטוח. */
+    }
+    setSeenExplainer(true);
+    setReopened(false);
   };
 
-  const needsInvoiceAttention = invoicesState.invoices.filter(
-    (i) => i.needsHumanReview && !i.reviewed,
-  ).length;
+  const showExplainer = seenExplainer === false || reopened;
+
+  /**
+   * ★ ההבחנה בין "אין מה לארוז" לבין "לא הצלחתי לטעון".
+   *
+   * רשימה ריקה היא מצב תקין ונפוץ — `OrdersView` אומר את זה יפה בעצמו.
+   * `scanned === 0` הוא משהו אחר לגמרי: לא נסרקה אף הודעה, כלומר משהו
+   * נשבר. שתי המצבים נראים על המסך אותו דבר, ולכן ההפרדה חייבת להיות כאן.
+   */
+  const loadFailed = !orders.loading && orders.result.stats.scanned === 0;
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-3xl px-3 py-5 sm:px-5">
-      <header className="mb-4">
-        <h1 className="text-xl font-bold text-slate-900">{t('appTitle')}</h1>
-        <p className="text-sm text-slate-500">{t('appSubtitle')}</p>
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">{t('appTitle')}</h1>
+          <p className="text-sm text-slate-500">{t('appSubtitle')}</p>
+        </div>
+
+        {/* ★ ההסבר נשאר בהישג יד תמיד. מסך שנקרא פעם אחת ונעלם הוא מסך
+            שאי אפשר לחזור אליו כשעולה השאלה — וזה בדיוק הרגע שבו היא
+            תשאל את רונן במקום לקרוא. */}
+        {!showExplainer ? (
+          <button
+            type="button"
+            onClick={() => setReopened(true)}
+            className="min-h-[44px] rounded-lg border border-slate-400 bg-white px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          >
+            {t('explainerReopen')}
+          </button>
+        ) : null}
       </header>
 
-      {/* הבאנר קבוע ולא ניתן לסגירה בפרוסה 0. משתמשת שתשכח שאלה נתוני דוגמה
-          עלולה להסיק מהמסך מסקנות על התיבה האמיתית שלה. */}
+      {/* הבאנר קבוע ולא ניתן לסגירה. משתמשת שתשכח שאלה נתוני דוגמה עלולה
+          להסיק מהמסך מסקנות על התיבה האמיתית שלה. */}
       <div className="mb-4">
         <Banner tone="info" title={t('demoBannerTitle')}>
           {t('demoBannerBody')}
         </Banner>
       </div>
 
-      <nav className="mb-4 flex flex-wrap gap-2" aria-label={t('appTitle')}>
-        <TabButton active={tab === 'brief'} onClick={() => setTab('brief')}>
-          {t('tabBrief')}
-        </TabButton>
-
-        <TabButton active={tab === 'invoices'} onClick={() => setTab('invoices')}>
-          {t('tabInvoices')}
-          {needsInvoiceAttention > 0 ? (
-            <Count
-              value={needsInvoiceAttention}
-              active={tab === 'invoices'}
-              srLabel="חשבוניות שצריך שתסתכלי עליהן"
-            />
-          ) : null}
-        </TabButton>
-
-        <TabButton active={tab === 'planned'} onClick={() => setTab('planned')}>
-          {t('tabPlanned')}
-        </TabButton>
-
-        <TabButton active={tab === 'tasks'} onClick={() => setTab('tasks')}>
-          {t('tabTasks')}
-          {tasksState.tasks.length > 0 ? (
-            <Count value={tasksState.tasks.length} active={tab === 'tasks'} srLabel="משימות" />
-          ) : null}
-        </TabButton>
-      </nav>
-
       <main>
-        {/* ★ מצב תקלה מנוסח כמו שאדם היה מסביר אותו. הוא לא אמור לקרות
-            במצב ההדגמה, וזה בדיוק למה הוא כאן: מסך תקלה שנכתב אחרי
-            שהתקלה קרתה נכתב תמיד בשפה של מי שמתקן. */}
-        {triage.items.length === 0 && !triage.loading ? (
-          <FriendlyError
-            whatHappened="לא הצלחתי לטעון את נתוני הדוגמה."
-            whatToDo={null}
-          />
-        ) : tab === 'brief' ? (
-          <MorningBriefView
-            items={triage.items}
-            bodies={triage.bodies}
-            stats={triage.stats}
-            canEdit={canEdit}
-            onCreateTask={createTaskFromItem}
-            onToggleHandled={triage.toggleHandled}
-          />
-        ) : tab === 'invoices' ? (
-          <InvoicesView
-            result={invoicesState.result}
-            invoices={invoicesState.invoices}
-            canEdit={invoicesState.canEdit}
-            onToggleReviewed={invoicesState.toggleReviewed}
-          />
-        ) : tab === 'planned' ? (
-          <PlannedActionsView
-            plan={planned.plan}
-            pinned={planned.pinned}
-            canEdit={planned.canEdit}
-            onKeep={planned.keepInInbox}
-            onRelease={planned.releaseItem}
-          />
+        {seenExplainer === null ? null : showExplainer ? (
+          <ExplainerScreen onContinue={dismissExplainer} reopened={reopened} />
+        ) : loadFailed ? (
+          <FriendlyError whatHappened="לא הצלחתי לטעון את נתוני הדוגמה." whatToDo={null} />
         ) : (
-          <TasksView
-            tasks={tasksState.tasks}
-            canEdit={canEdit}
-            onAdd={(title, scheduledAt) => tasksState.addTask({ title, scheduledAt })}
-            onToggleDone={tasksState.toggleDone}
-            onRemove={tasksState.removeTask}
-            onReschedule={(id, scheduledAt) => tasksState.updateTask(id, { scheduledAt })}
+          <OrdersView
+            result={orders.result}
+            canEdit={orders.canEdit}
+            onToggleShipped={orders.toggleShipped}
+            onPurgeRequest={orders.purgeForDataSubject}
           />
         )}
       </main>
 
-      <footer className="mt-8 text-center text-xs text-slate-400">
-        נתוני דוגמה בלבד · שום דבר לא מחובר לגוגל · שום מייל אמיתי לא נקרא
-      </footer>
+      <footer className="mt-8 text-center text-xs text-slate-400">{t('footerNote')}</footer>
     </div>
-  );
-}
-
-/**
- * מונה ליד שם הלשונית.
- * `srLabel` אינו קישוט: מספר עירום ליד טקסט נקרא בקורא מסך כ"חשבוניות 3",
- * ו-3 של מה זה לא ברור. הטקסט המוסתר הופך אותו למשפט.
- */
-function Count({ value, active, srLabel }: { value: number; active: boolean; srLabel: string }) {
-  return (
-    <span
-      className={`ms-1 rounded-full px-1.5 text-xs font-semibold ${
-        active ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-800'
-      }`}
-    >
-      {value}
-      <span className="sr-only"> {srLabel}</span>
-    </span>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? 'page' : undefined}
-      // גובה מגע 44px, פוקוס נראה, וניגודיות מעל 4.5:1 בשני המצבים.
-      className={`min-h-[44px] rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
-        active
-          ? 'bg-slate-900 text-white'
-          : 'border border-slate-400 bg-white text-slate-800 hover:bg-slate-50'
-      }`}
-    >
-      {children}
-    </button>
   );
 }

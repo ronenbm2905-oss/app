@@ -256,6 +256,7 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [coachId, setCoachId] = useState(initial?.coachId || "");
   const [vehicleType, setVehicleType] = useState(initial?.vehicleType || "");
+  const [weekly, setWeekly] = useState(!!initial?.weekly);
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -284,13 +285,29 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
           placeholder="בחר סוג רכב"
         />
       </div>
+      {/* The school runs the same rows every week; the competitive teams do not, which is
+          why this is a per-team flag and not a mode. */}
+      <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={weekly}
+          onChange={(e) => setWeekly(e.target.checked)}
+          className="w-4 h-4 accent-brand-600 mt-0.5"
+        />
+        <span>
+          קבוצה קבועה — חוזרת כל שבוע
+          <span className="block text-xs text-stone-500">
+            בשבוע שהיא עדיין לא הוזנה בו יופיע כפתור להוספת האימונים שלה, לפי השבוע האחרון שהיא רצה בו.
+          </span>
+        </span>
+      </label>
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
         </button>
         <button
           disabled={!valid}
-          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "" })}
+          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "", weekly })}
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
@@ -351,6 +368,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
                     <div className="flex-1">
                       <div className="text-sm text-stone-700">{item.name}</div>
                       {item.coachId && <div className="text-xs text-stone-600">מאמן: {coachName(item.coachId)}</div>}
+                      {item.weekly && <div className="text-xs text-brand-700 font-medium">🔁 קבועה — חוזרת כל שבוע</div>}
                     </div>
                     {canEdit && inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
@@ -424,9 +442,13 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
     </button>
   ) : null;
 
+  // Absences count too. Without them, deleting a coach left rows carrying a free-text
+  // reason written about that person, attached to an id nothing resolves any more —
+  // invisible in every screen, and therefore never deleted.
   const coachUsage = (id) =>
     data.sessions.filter((s) => s.coachId === id).length +
-    (data.constraints || []).filter((c) => c.type === "coach" && c.refId === id).length;
+    (data.constraints || []).filter((c) => c.type === "coach" && c.refId === id).length +
+    (data.absences || []).filter((a) => a.coachId === id).length;
   const hallUsage = (id) =>
     data.sessions.filter((s) => s.hallId === id).length +
     (data.constraints || []).filter((c) => c.type === "hall" && c.refId === id).length;
@@ -456,7 +478,7 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
 
   const handleDeleteCoach = (id, inUse) => {
     if (inUse > 0) {
-      setBlockedMsg("לא ניתן למחוק מאמן שיש לו אימונים או אילוצים רשומים. ערוך או מחק אותם קודם.");
+      setBlockedMsg("לא ניתן למחוק מאמן שיש לו אימונים, אילוצים או ימי היעדרות רשומים. ערוך או מחק אותם קודם.");
       return;
     }
     save({ ...data, coaches: data.coaches.filter((c) => c.id !== id) });

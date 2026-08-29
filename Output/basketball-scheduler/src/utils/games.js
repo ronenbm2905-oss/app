@@ -201,11 +201,16 @@ export function importGamesFile(rawRows, data) {
           // Everything the file owns is refreshed; everything the manager set by hand is
           // carried over. Losing either of these on a routine re-import would quietly undo
           // work that has no other record.
-          const { addressOverride, timeOverride } = nextGames[idx];
+          // The driver belongs on this list for the same reason the address does: the bus
+          // company tells us who is driving, the federation file knows nothing about it,
+          // and a routine re-import would erase it the same night it was entered.
+          const { addressOverride, timeOverride, driverName, driverPhone } = nextGames[idx];
           nextGames[idx] = {
             ...game,
             ...(addressOverride ? { addressOverride } : {}),
             ...(timeOverride ? { timeOverride } : {}),
+            ...(driverName ? { driverName } : {}),
+            ...(driverPhone ? { driverPhone } : {}),
           };
           updated++;
         }

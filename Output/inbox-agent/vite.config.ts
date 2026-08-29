@@ -20,6 +20,18 @@ export default defineConfig({
       '@': dir('./src'),
     },
   },
+  build: {
+    // ★ מכבה את ה-polyfill של modulepreload.
+    //
+    // הוא הדבר היחיד שהחדיר `fetch(` לחבילה — הוא מושך מראש את קובצי ה-JS
+    // שלנו עצמם, ולא פונה לשום שרת. ובכל זאת הוא כיבה בקרה אמיתית:
+    // `scripts/check-dist.mjs` סורק את התוצר ומוודא שאין בו קריאת רשת, ו-
+    // "חוץ מהשורה הזאת" הוא בדיוק סוג החריג שאחריו אף אחד לא מסתכל.
+    //
+    // המחיר אפס: אין באפליקציה ייבוא דינמי, ויש בה chunk אחד.
+    modulePreload: { polyfill: false },
+  },
+
   test: {
     globals: true,
     environment: 'node',

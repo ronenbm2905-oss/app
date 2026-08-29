@@ -3,7 +3,8 @@ import StatTile from "./ui/StatTile.jsx";
 import { Button, Pill } from "./ui/Button.jsx";
 import { Modal } from "./ui/Modal.jsx";
 import { Field } from "./ui/Field.jsx";
-import { IconPlus, IconLink, IconUnlink, IconWarning, IconInfo, IconAuthority } from "./ui/icons.jsx";
+import { IconPlus, IconLink, IconUnlink, IconWarning, IconInfo, IconAuthority, IconReport } from "./ui/icons.jsx";
+import ClaimReport from "./ClaimReport.jsx";
 import { fmtILS, round2, sum } from "../utils/money.js";
 import { fmtDate } from "../utils/dates.js";
 import {
@@ -25,6 +26,7 @@ export default function ClaimBatchesView({ slice, store, canEdit }) {
   const [openId, setOpenId] = useState(claimBatches[0]?.id || null);
   const [submitting, setSubmitting] = useState(null);
   const [refunding, setRefunding] = useState(null);
+  const [reporting, setReporting] = useState(null);
 
   const ov = useMemo(
     () => claimsOverview(claimBatches, invoices, project.entitlementCap, project.entitlementReceived),
@@ -97,6 +99,7 @@ export default function ClaimBatchesView({ slice, store, canEdit }) {
                 onToggle={() => setOpenId(openId === batch.id ? null : batch.id)}
                 onSubmit={() => setSubmitting(batch)}
                 onRefund={() => setRefunding(batch)}
+                onReport={() => setReporting(batch)}
               />
             ))}
         </div>
@@ -108,11 +111,19 @@ export default function ClaimBatchesView({ slice, store, canEdit }) {
       {refunding && (
         <RefundDialog batch={refunding} slice={slice} store={store} onClose={() => setRefunding(null)} />
       )}
+      {reporting && (
+        <ClaimReport
+          project={project}
+          batch={reporting}
+          invoices={invoices}
+          onClose={() => setReporting(null)}
+        />
+      )}
     </div>
   );
 }
 
-function BatchCard({ batch, slice, store, canEdit, open, onToggle, onSubmit, onRefund }) {
+function BatchCard({ batch, slice, store, canEdit, open, onToggle, onSubmit, onRefund, onReport }) {
   const { invoices, project } = slice;
   const s = batchSummary(batch, invoices);
   const derived = derivedBatchStatus(batch, invoices);
@@ -199,6 +210,13 @@ function BatchCard({ batch, slice, store, canEdit, open, onToggle, onSubmit, onR
                 קוצץ <span className="num">{fmtILS(s.reduction)}</span>
               </span>
             )}
+          </div>
+
+          {/* הדוח זמין לכל מי שרואה את המנה — גם צופה. הוא מסמך קריאה. */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={onReport}>
+              <IconReport size={16} /> דוח הגשה
+            </Button>
           </div>
 
           {canEdit && (

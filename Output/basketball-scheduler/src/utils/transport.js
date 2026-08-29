@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
-import { DAYS } from "../constants";
-import { parseDateDMY, weekStartOfDMY } from "./dates";
+import { DAYS } from "../constants.js";
+import { parseDateDMY, weekStartOfDMY } from "./dates.js";
 
 // Away games (isHome=false) that fall in a given week (Sunday-ISO), sorted by date then time.
 // Away games carry the opponent's address in `venue` (the "מיקום" column from the federation file),
@@ -55,6 +55,12 @@ export const TRANSPORT_HEADERS = [
   "נקודת איסוף",
   "איסוף חזרה",
   "סוג רכב",
+  // Appended rather than slotted in beside the coach's phone, where they would read
+  // better. Three places in TransportExport.jsx address columns by index — CENTER_COLS,
+  // the em-dash on the address at 5, and the emphasis on the gathering time at 8 — and a
+  // mid-list insert silently shifts a column in the file that goes to the bus company.
+  "נהג",
+  "טלפון נהג",
 ];
 
 // Build printable/exportable rows from away games.
@@ -79,6 +85,11 @@ export function buildTransportRows(awayGames, { teams, coaches, departBefore, pi
       pickupPoint: pickupPoint || "",
       returnTime: timePlus(g.time, GAME_DURATION_MIN), // end of game
       vehicle: team?.vehicleType || "",
+      // Per game, not per team: the company assigns a driver to a trip, and the same team
+      // can get a different one next week. Preserved across a federation re-import — see
+      // the carry-over list in utils/games.js.
+      driverName: g.driverName || "",
+      driverPhone: g.driverPhone || "",
     };
   });
 }
@@ -88,6 +99,7 @@ export function transportRowToCells(r) {
   return [
     r.team, r.day, r.date, r.gameTime, r.opponent, r.address,
     r.coachName, r.coachPhone, r.arriveTime, r.pickupPoint, r.returnTime, r.vehicle,
+    r.driverName, r.driverPhone,
   ];
 }
 
@@ -108,6 +120,8 @@ export function exportTransportXlsx(rows, fileTag) {
     { wch: 28 }, // נקודת איסוף
     { wch: 10 }, // איסוף חזרה
     { wch: 8 }, // סוג רכב
+    { wch: 14 }, // נהג
+    { wch: 13 }, // טלפון נהג
   ];
   const wb = XLSX.utils.book_new();
   wb.Workbook = { Views: [{ RTL: true }] }; // Excel opens the sheet right-to-left

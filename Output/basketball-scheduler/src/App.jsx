@@ -11,6 +11,7 @@ import { LoginPage } from "./components/LoginPage";
 import { RostersView } from "./components/RostersView";
 import { ManagerView } from "./components/ManagerView";
 import { ConstraintsView } from "./components/ConstraintsView";
+import { AvailabilityView } from "./components/AvailabilityView";
 import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
@@ -27,7 +28,7 @@ import { Greeting } from "./components/Greeting";
 import {
   IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
-  IconCalendarDays, IconUser, IconUsers, IconClock,
+  IconCalendarDays, IconUser, IconUsers, IconClock, IconCalendarX,
 } from "./components/ui/icons";
 import clubLogo from "./assets/club-logo.jpg";
 
@@ -40,6 +41,7 @@ const TABS = [
   { id: "rosters", label: "קבוצות ואולמות", Icon: IconBuilding },
   { id: "manager", label: "ניהול", Icon: IconClipboard },
   { id: "constraints", label: "אילוצים", Icon: IconBan },
+  { id: "availability", label: "זמינות מאמנים", Icon: IconCalendarX },
   { id: "games", label: "משחקים", Icon: IconTrophy },
   { id: "weekly", label: "לוח שבועי", Icon: IconCalendarDays },
   { id: "coach", label: "תצוגת מאמן", Icon: IconUser },
@@ -57,7 +59,7 @@ const TABS = [
 // This hides screens; it is NOT a security boundary. Access to the club's data is decided
 // by the Firestore rules and the admins/members lists, and every write still goes through
 // the same check. Hiding a tab keeps the app uncluttered — it does not protect anything.
-const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "report", "players"]);
+const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "availability", "report", "players"]);
 
 // The roster screen shows a coach two of its three cards — halls are a manager's concern
 // and are hidden from them — so the tab that opens it should not promise a third. Same
@@ -242,6 +244,8 @@ export default function App() {
           <ManagerView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "constraints" ? (
           <ConstraintsView data={data} save={save} canEdit={canEdit} />
+        ) : activeTab === "availability" ? (
+          <AvailabilityView data={data} save={save} canEdit={canEdit} />
         ) : activeTab === "games" ? (
           <GamesView
             data={data}
@@ -261,6 +265,7 @@ export default function App() {
           <CoachView
             data={data}
             fixedCoachId={myCoachId}
+            canEdit={canEdit}
             weekStart={weekStart}
             setWeekStart={setWeekStart}
             plans={plans}
@@ -275,7 +280,9 @@ export default function App() {
         )}
         </div>
 
-        <LegalFooter className="mt-10 pt-6 border-t border-stone-200" />
+        {/* Off paper. It was printing at the bottom of every report the club hands out —
+            three legal links and a copyright line under a hall schedule. */}
+        <LegalFooter className="no-print mt-10 pt-6 border-t border-stone-200" />
       </div>
     </div>
   );

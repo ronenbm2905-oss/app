@@ -10,8 +10,8 @@
 // ============================================================================
 
 import { describe, expect, it } from 'vitest';
-import { applyLedgerEvidence, ledgerVerdictMayArchive } from '../shared/lib/senderLedger';
-import type { MessageMeta, SenderLedgerEntry } from '../shared/types';
+import { applyLedgerEvidence, ledgerVerdictMayArchive } from '../frozen/lib/senderLedger';
+import type { MessageMeta, SenderLedgerEntry } from '../frozen/types';
 
 const USER = 'local-single-user';
 

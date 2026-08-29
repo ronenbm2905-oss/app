@@ -49,6 +49,13 @@ export const EMPTY = {
   gameMapping: [],
   players: [],  // { id, teamId, name, phone, birthDate, shirtSize, pantsSize, sweaterSize, jerseyNumber }
   holidays: [], // { id, date: "YYYY-MM-DD", name } — special days shown on the weekly board
+  // { id, coachId, date: "YYYY-MM-DD", start?, end?, note? } — a coach out on one date.
+  // The dated counterpart to `constraints`, which repeat every week; see utils/availability.js.
+  absences: [],
+  // Weeks where the manager answered "לא השבוע" to the fixed-teams strip. See utils/fixedTeams.js.
+  fixedWeekSkips: [],
+  // Fold the fixed teams away on the weekly board — club-wide, set by a manager.
+  hideFixedTeams: false,
   announcement: { text: "", updatedAt: null }, // single notice board shown to all coaches
   schedulePublished: null, // { weekOf, at } — set when a manager marks a week's schedule as published
   weeklyAssignments: {},

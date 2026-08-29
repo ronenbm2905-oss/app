@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { DAYS, SESSION_TYPES } from "../constants";
-import { timeToMinutes, overlaps } from "../utils/dates";
+import { timeToMinutes, overlaps, toISODate } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
+import { absencesOn, absenceCoversSession, absenceLabel } from "../utils/availability";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { IconAlert, IconBan, IconPlus, IconCheck } from "./ui/icons";
@@ -70,6 +71,25 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
     );
     return hits.length > 0 ? hits : null;
   }, [coachId, hallId, day, start, end, valid, data.constraints]);
+
+  // The coach is marked away on this exact date. Constraints repeat every week and this
+  // does not, so it is computed from weekOf + the weekday rather than from the weekday
+  // alone — and it is the moment the warning is worth most: while you are choosing who
+  // takes the session, not after the board is built.
+  // Not gated on `valid` like the two warnings below it, deliberately: those need a hall to
+  // mean anything, this needs only a coach and a date. Waiting for the form to be complete
+  // would hold the warning back until after the choice it is warning about was made.
+  const coachIsAway = useMemo(() => {
+    if (!coachId || !weekOf || !start || !end) return null;
+    const i = DAYS.indexOf(day);
+    if (i < 0) return null;
+    const d = new Date(weekOf + "T00:00:00");
+    d.setDate(d.getDate() + i);
+    const hits = absencesOn(data.absences, coachId, toISODate(d)).filter((a) =>
+      absenceCoversSession(a, { start, end })
+    );
+    return hits.length > 0 ? hits : null;
+  }, [coachId, day, start, end, weekOf, data.absences]);
 
   const currentSession = {
     id: sessionIdRef.current,
@@ -171,6 +191,16 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
               </div>
             );
           })}
+        </div>
+      )}
+
+      {coachIsAway && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg p-2.5 text-xs text-red-800">
+          <IconBan size={15} className="shrink-0 mt-0.5" />
+          <span>
+            <span className="font-semibold">{nameOf(data.coaches, coachId)}</span> מסומן/ת כלא זמין/ה בתאריך הזה
+            {" "}({coachIsAway.map((a) => absenceLabel(a, true)).join(" · ")}). אפשר לשמור בכל זאת — אבל יהיה צריך מחליף.
+          </span>
         </div>
       )}
 

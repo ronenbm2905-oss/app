@@ -8,6 +8,7 @@ import { parseCSV, buildCsvTemplate, importCsvToData } from "../utils/csv";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
+import { FixedTeamsStrip } from "./FixedTeamsStrip";
 import { SessionForm } from "./SessionForm";
 import {
   IconUpload, IconPlus, IconTrash, IconAlert, IconX, IconDownload,
@@ -116,6 +117,8 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
 
   return (
     <div className="space-y-4" dir="rtl">
+      <FixedTeamsStrip data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <WeekNav value={weekStart} onChange={setWeekStart} />
         {canEdit && (

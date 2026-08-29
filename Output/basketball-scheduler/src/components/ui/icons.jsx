@@ -40,4 +40,5 @@ export {
   Eraser as IconEraser,
   Undo2 as IconUndo,
   Share2 as IconShare,
+  CalendarX2 as IconCalendarX,
 } from "lucide-react";

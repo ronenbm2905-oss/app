@@ -1,60 +1,36 @@
 // ============================================================================
-// fixtures/index.ts — מיזוג נתוני הדוגמה לתיבה אחת.
+// fixtures/index.ts — נתוני הדוגמה של המוצר: **הזמנות בלבד**.
 //
-// שני קבצים ולא אחד, בכוונה: `inbox.sample.json` הוא התיבה של פרוסה 0
-// ו-`invoices.sample.json` נוסף בפרוסה 0.5. מיזוג בקוד במקום קובץ אחד ענק
-// שומר על שני דברים — אפשר לקרוא כל קובץ בישיבה אחת, והמבחנים של פרוסה 0
-// ממשיכים לרוץ על **בדיוק** אותו קלט שהם נכתבו עליו.
+// ---------------------------------------------------------------------------
+// ★ מה ירד מכאן
+// ---------------------------------------------------------------------------
+// הקובץ הזה החזיק גם את התיבה של פרוסה 0 (`inbox.sample.json`), את קובץ
+// החשבוניות ואת היסטוריית דוח הבוקר. שלושתם עברו ל-`frozen/fixtures/` יחד
+// עם המסכים שקוראים אותם.
 //
-// זה לא פדנטיות: מבחן שהקלט שלו השתנה מתחתיו הוא מבחן שאיבד את המשמעות
-// שלו בלי שאף אחד הבחין.
+// הסיבה אינה סדר: `mergedInbox()` ייבא את `InboxFixture` מ-`pipeline.ts`,
+// כלומר מהמודול שקורא למודל. כל קובץ בבנייה שהיה מייבא מכאן ולו שורה אחת
+// היה גורר את הצינור ההוא איתו לחבילה.
 // ============================================================================
 
-import inboxJson from './inbox.sample.json';
-import invoicesJson from './invoices.sample.json';
-import briefHistoryJson from './briefHistory.sample.json';
-import type { InboxFixture } from '../utils/pipeline';
-import type { InvoiceSourceMessage } from '../utils/invoicePipeline';
-import type { SenderLedgerEntry } from '../../shared/types';
+import ordersJson from './orders.sample.json';
+import type { OrderFixtureMessage } from '../utils/orderPipeline';
 
-export const baseInbox = inboxJson as unknown as InboxFixture;
-
-/** מבנה קובץ החשבוניות. `attachments` קיים ב-fixture בלבד. */
-export interface InvoiceFixture {
+export interface OrdersFixture {
   meta?: Record<string, string | number>;
-  sentAddresses?: string[];
-  senders?: Record<string, Partial<SenderLedgerEntry>>;
-  messages: InvoiceSourceMessage[];
+  /** הזמנות שכבר סומנו כנשלחו, לפי `messageId`. */
+  seededShipments?: Record<string, { shippedAt: string }>;
+  messages: OrderFixtureMessage[];
 }
 
-export const invoiceFixture = invoicesJson as unknown as InvoiceFixture;
+export const ordersFixture = ordersJson as unknown as OrdersFixture;
 
-/** הופעות קודמות בדוח בוקר — הקלט של חלון ההשהיה. */
-export interface BriefHistoryEntry {
-  firstSeenInBriefAt: string;
-  briefAppearances: number;
-}
-
-export const SEEDED_BRIEF_HISTORY: Record<string, BriefHistoryEntry> = (
-  briefHistoryJson as { entries: Record<string, BriefHistoryEntry> }
-).entries;
+export const orderMessages: OrderFixtureMessage[] = ordersFixture.messages;
 
 /**
- * התיבה המלאה: 42 ההודעות של פרוסה 0 + 15 ההודעות של מודול החשבוניות.
- *
- * ה-`senders` ממוזגים כי הפנקס הוא אחד — וזה מה שמאפשר לחשבונית מ-
- * `anan-shrutim.example` להיות גם `defaultVerdict: 'noise'` (הכותרות אומרות
- * דיוור) וגם `invoiceSource: true` (משם מגיעות חשבוניות). הצירוף הזה הוא
- * המצב הרגיל, והוא בדיוק מה שמפעיל את הקידום בשלב 7.5 של המסנן.
+ * שתי הזמנות שכבר יצאו: אחת מלפני 70 יום (עברה את מועד המחיקה) ואחת מלפני
+ * חמישה ימים. הן מוזרעות כדי שמסלול המחיקה יהיה **גלוי על המסך** ולא רק
+ * ירוק במבחן — בקרה שאי אפשר לראות היא בקרה שאף אחד לא מאמין לה.
  */
-export function mergedInbox(): InboxFixture & { messages: InvoiceSourceMessage[] } {
-  return {
-    ...baseInbox,
-    sentAddresses: [...(baseInbox.sentAddresses ?? []), ...(invoiceFixture.sentAddresses ?? [])],
-    senders: { ...(baseInbox.senders ?? {}), ...(invoiceFixture.senders ?? {}) },
-    messages: [
-      ...(baseInbox.messages as unknown as InvoiceSourceMessage[]),
-      ...invoiceFixture.messages,
-    ],
-  } as InboxFixture & { messages: InvoiceSourceMessage[] };
-}
+export const SEEDED_SHIPMENTS: Record<string, { shippedAt: string }> =
+  ordersFixture.seededShipments ?? {};

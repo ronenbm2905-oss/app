@@ -15,14 +15,20 @@
 //     שהיא לא יכולה לפעול לפיה.
 //
 // ---------------------------------------------------------------------------
-// `details` — ולמה הוא לא על המסך
+// ★★ `details` — היה כאן, ונמחק
 // ---------------------------------------------------------------------------
-// הפרטים הטכניים כן נשמרים, אבל ל-`console` בלבד: הם צריכים להיות זמינים
-// למי שיתקן, ולא למי שמשתמשת. הצגתם "בשביל שיהיה" היא בדיוק הדבר שהופך מסך
-// תקלה למסך מפחיד.
+// היה כאן `props.details` שנכתב ל-`console.error` "למי שיתקן". הוא ירד, ולא
+// בגלל סגנון.
+//
+// אחרי שמסלול המודל הוסר, **יומן הקונסולה הוא דרך הדליפה היחידה שנשארה שבה
+// כתובת מגורים יוצאת מהמערכת** (סקירת עדי, M4). והאובייקט שהיה נוחת שם הוא
+// בדיוק זה שהיה גורם לתקלה — כלומר, ברוב המקרים, ההזמנה עצמה: שם, טלפון
+// וכתובת. בפרוסה 1 זה נכתב ליומני Cloud Functions, ושם זה נשמר ומגובה.
+//
+// "רק לדיבוג" הוא בדיוק הניסוח שבו דליפה כזאת נכנסת. אם צריך לדבג — מבחן,
+// לא הדפסה. `scripts/check-order-logging.mjs` מפיל את ה-build על כל
+// `console.` בגרף הבנייה, והקובץ הזה כלול בו.
 // ============================================================================
-
-import { useEffect } from 'react';
 
 export interface FriendlyErrorProps {
   /** מה קרה, במילים שלה. */
@@ -32,20 +38,11 @@ export interface FriendlyErrorProps {
    * וזו תשובה טובה ולא כישלון.
    */
   whatToDo?: string | null;
-  /** פרטים למי שיתקן. לא מוצגים — נכתבים ל-`console`. */
-  details?: unknown;
   /** פעולה שאפשר לנסות שוב, אם יש כזו. */
   onRetry?: () => void;
 }
 
-export function FriendlyError({ whatHappened, whatToDo, details, onRetry }: FriendlyErrorProps) {
-  useEffect(() => {
-    if (details !== undefined) {
-      // eslint-disable-next-line no-console
-      console.error('[inbox-agent]', whatHappened, details);
-    }
-  }, [whatHappened, details]);
-
+export function FriendlyError({ whatHappened, whatToDo, onRetry }: FriendlyErrorProps) {
   return (
     <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm" role="alert">
       <p className="font-semibold text-amber-900">{whatHappened}</p>

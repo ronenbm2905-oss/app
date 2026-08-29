@@ -37,6 +37,7 @@ import {
   Link2,
   Unlink,
   Info,
+  FileSpreadsheet,
 } from "lucide-react";
 
 export const IconPlus = Plus;
@@ -76,3 +77,4 @@ export const IconAuthority = Landmark;
 export const IconLink = Link2;
 export const IconUnlink = Unlink;
 export const IconInfo = Info;
+export const IconReport = FileSpreadsheet;

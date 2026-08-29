@@ -34,6 +34,8 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
     initial && !initial.isHome ? initial.venue || "" : ""
   ); // free-text venue for away games
   const [league, setLeague] = useState(initial?.league || "");
+  const [driverName, setDriverName] = useState(initial?.driverName || "");
+  const [driverPhone, setDriverPhone] = useState(initial?.driverPhone || "");
 
   const valid = teamId && opponent.trim() && date && time;
 
@@ -108,6 +110,33 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
             className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
+        {/* Away games only — the club does not order a bus to its own hall. */}
+        {!isHome && (
+          <>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">שם הנהג (אופציונלי)</label>
+              <input
+                type="text"
+                value={driverName}
+                onChange={(e) => setDriverName(e.target.value)}
+                placeholder="לדוגמה: משה"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                dir="rtl"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-stone-500 mb-1 block">טלפון הנהג (אופציונלי)</label>
+              <input
+                type="tel"
+                value={driverPhone}
+                onChange={(e) => setDriverPhone(e.target.value)}
+                placeholder="050-0000000"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                dir="ltr"
+              />
+            </div>
+          </>
+        )}
         <div className="col-span-2">
           <label className="text-xs text-stone-500 mb-1 block">ליגה (אופציונלי)</label>
           <input
@@ -145,6 +174,10 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
               ourScore: initial?.ourScore ?? null,
               theirScore: initial?.theirScore ?? null,
               manual: true,
+              // Cleared when the game is a home fixture, so a driver entered before the
+              // venue was switched cannot ride along on a game that has no bus.
+              driverName: isHome ? "" : driverName.trim(),
+              driverPhone: isHome ? "" : driverPhone.trim(),
             })
           }
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 flex items-center gap-1.5"
@@ -160,9 +193,11 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
 // The value is stored as `addressOverride`, which survives re-import (see importGamesFile).
 function ImportedAddressForm({ game, onSave, onCancel }) {
   const [address, setAddress] = useState(game.addressOverride || game.venue || "");
+  const [driverName, setDriverName] = useState(game.driverName || "");
+  const [driverPhone, setDriverPhone] = useState(game.driverPhone || "");
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
-      <h3 className="text-sm font-semibold text-stone-700">עריכת כתובת — נגד {game.opponent}</h3>
+      <h3 className="text-sm font-semibold text-stone-700">{game.isHome ? "עריכת כתובת" : "כתובת ונהג"} — נגד {game.opponent}</h3>
       <p className="text-xs text-stone-500">
         כתובת ידנית למשחק חוץ מיובא. תישמר גם אחרי ייבוא/סנכרון מחדש של קובץ האיגוד.
       </p>
@@ -178,15 +213,51 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
           autoFocus
         />
       </div>
+
+      {/* Away games only: the transport sheet is built from away fixtures, and the club
+          does not order a bus to its own hall. */}
+      {!game.isHome && (
+        <div className="border-t border-stone-200 pt-3 space-y-3">
+          <p className="text-xs text-stone-600">
+            <span className="font-medium text-stone-700">נהג ההסעה</span> — נכנס לגיליון ולתמונת ההסעות.
+            אופציונלי, ונשמר גם אחרי סנכרון מחדש מהאיגוד.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[9rem]">
+              <label className="text-xs text-stone-500 mb-1 block">שם הנהג</label>
+              <input
+                type="text"
+                value={driverName}
+                onChange={(e) => setDriverName(e.target.value)}
+                placeholder="לדוגמה: משה"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                dir="rtl"
+              />
+            </div>
+            <div className="flex-1 min-w-[9rem]">
+              <label className="text-xs text-stone-500 mb-1 block">טלפון הנהג</label>
+              <input
+                type="tel"
+                value={driverPhone}
+                onChange={(e) => setDriverPhone(e.target.value)}
+                placeholder="050-0000000"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                dir="ltr"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
         </button>
         <button
-          onClick={() => onSave(address.trim())}
+          onClick={() => onSave({ address: address.trim(), driverName: driverName.trim(), driverPhone: driverPhone.trim() })}
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1.5"
         >
-          <IconCheck size={15} /> שמור כתובת
+          <IconCheck size={15} /> שמור
         </button>
       </div>
     </div>
@@ -484,7 +555,9 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                         ) : (
                           <ImportedAddressForm
                             game={g}
-                            onSave={(addr) => saveGame({ ...g, addressOverride: addr })}
+                            onSave={({ address, driverName, driverPhone }) =>
+                              saveGame({ ...g, addressOverride: address, driverName, driverPhone })
+                            }
                             onCancel={() => setEditingCode(null)}
                           />
                         )}
@@ -506,8 +579,13 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                           <div className="text-sm text-stone-700 truncate">נגד: {g.opponent}</div>
                           <div className="text-xs text-stone-600 truncate">
                             {g.addressOverride || g.venue}
-                            {g.addressOverride && <span className="text-stone-400"> (כתובת ידנית)</span>}
+                            {g.addressOverride && <span className="text-stone-500"> (כתובת ידנית)</span>}
                           </div>
+                          {!g.isHome && (g.driverName || g.driverPhone) && (
+                            <div className="text-xs text-stone-600 truncate">
+                              🚌 נהג: {[g.driverName, g.driverPhone].filter(Boolean).join(" · ")}
+                            </div>
+                          )}
                         </div>
                         <div className="hidden sm:block text-right shrink-0">
                           <div className="text-xs text-stone-500 truncate max-w-32">{g.league}</div>
@@ -556,7 +634,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                             onClick={() => setEditingCode(g.federationCode)}
                             className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0"
                             aria-label="ערוך כתובת"
-                            title="ערוך כתובת (להסעות)"
+                            title={g.isHome ? "ערוך כתובת" : "ערוך כתובת ונהג (להסעות)"}
                           >
                             <IconPencil size={14} />
                           </button>

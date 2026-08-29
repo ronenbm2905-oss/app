@@ -3,13 +3,17 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "סוכן תיבה + לוח משימות + מודול חשבוניות — פרוסות 0 ו-0.5: הכל מקומי, על fixtures מסונתזים. בלי Google, בלי Firebase, בלי מודל אמיתי.",
+  "description": "ההזמנות של היום — רשימת אריזה שנקראת מהודעות התשלום. מקומי, על fixtures. בלי גוגל, בלי ענן, ובלי מודל.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/check-no-model.mjs && node scripts/check-order-source.mjs && node scripts/check-order-logging.mjs && tsc --noEmit && vite build && node scripts/check-dist.mjs",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:orders": "node scripts/check-order-logging.mjs",
+    "check:no-model": "node scripts/check-no-model.mjs",
+    "check:source": "node scripts/check-order-source.mjs",
+    "check:dist": "node scripts/check-dist.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

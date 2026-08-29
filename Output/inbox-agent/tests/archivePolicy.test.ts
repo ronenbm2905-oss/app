@@ -24,7 +24,7 @@ import {
   restoreArchived,
   weeklyArchiveReport,
   type ArchiveCandidate,
-} from '../shared/lib/archivePolicy';
+} from '../frozen/lib/archivePolicy';
 
 const NOW = '2026-08-25T06:00:00+03:00';
 /** אתמול בבוקר — עבר את חלון ההשהיה. */

@@ -1,8 +1,10 @@
 // ============================================================================
-// constants.ts — קבועים ומצב התחלתי.
+// constants.ts — קבועים ומצב התחלתי. **מודול ההזמנות בלבד.**
+//
+// מה שהיה כאן וקשור למסכים שהוקפאו (מפתחות משימות, מצב התחלתי של דוח הבוקר,
+// ותמחור קריאת מודל) עבר ל-`frozen/constants.ts`. ראה שם את הנימוק לשני
+// קבצים.
 // ============================================================================
-
-import type { RunStats, Task, TriageItem } from '../shared/types';
 
 /**
  * מזהה המשתמש בפרוסה 0.
@@ -14,46 +16,26 @@ import type { RunStats, Task, TriageItem } from '../shared/types';
  */
 export const LOCAL_USER_ID = 'local-single-user';
 
-/** מפתחות `localStorage`. עם תחילית, כדי לא להתנגש בכלום. */
+/**
+ * מפתחות `localStorage`. עם תחילית, כדי לא להתנגש בכלום.
+ *
+ * ★ **מזהים וחותמות זמן בלבד.** לא שם, לא טלפון, לא כתובת, לא סכום. ראה
+ * ההערה בראש `useOrders.ts`: כרטיס שמור היה עותק שני של אותן כתובות, שלא
+ * עובר את מדיניות המחיקה.
+ */
 export const STORAGE_KEYS = {
-  tasks: 'inboxAgent.tasks.v1',
-  handledItems: 'inboxAgent.handled.v1',
-  userRules: 'inboxAgent.userRules.v1',
-  // פרוסה 0.5 — **מזהים בלבד**. לא ספק, לא סכום, לא שם קובץ.
-  reviewedInvoices: 'inboxAgent.reviewedInvoices.v1',
-  pinnedItems: 'inboxAgent.pinnedItems.v1',
+  shippedOrders: 'inboxAgent.shippedOrders.v1',
+  purgedOrders: 'inboxAgent.purgedOrders.v1',
+  /**
+   * ★ "ראתה את מסך ההסבר", ולא "אישרה חיבור".
+   *
+   * השם חשוב: הדגל הזה חוסך לה קיר טקסט בכל רענון, והוא **לא** רישום הסכמה.
+   * ברגע שיהיה חיבור אמיתי לגוגל, המסך חייב לעלות שוב לפני החיבור — בלי
+   * קשר לערך שכאן. כתוב גם ב-README, כי דגל ששמו מטעה הופך אחרי חצי שנה
+   * ל"הרי כבר הסכימה".
+   */
+  explainerSeen: 'inboxAgent.explainerSeen.v1',
 } as const;
 
-/**
- * ★ `EMPTY` ולא `SAMPLE`.
- *
- * לוח המשימות מתחיל **ריק**. ה-fixtures מזינים את דוח הבוקר בלבד — שם הם
- * הדגמה של תיבה נכנסת, וזה תפקידם. משימות דמו הן דבר אחר: הן נראות כמו עבודה
- * אמיתית, והמשתמשת תמחק אותן אחת-אחת ותתהה למה הכלי המציא לה משימות.
- */
-export const EMPTY_TASKS: Task[] = [];
-
-export const EMPTY_ITEMS: TriageItem[] = [];
-
-export const EMPTY_STATS: RunStats = {
-  fetched: 0,
-  filteredOut: 0,
-  llmCalls: 0,
-  filterRate: 0,
-  estSavedUsd: 0,
-};
-
-/** ברירת מחדל למשך אירוע ביומן, כשלא נאמר אחרת. */
-export const DEFAULT_TASK_DURATION_MINUTES = 30;
-
-/** 90 יום — חלון ה-retention על `subject`, שהוא PII של צד שלישי. */
+/** 90 יום — חלון ה-retention על פרטי המשלוח, שהם PII של צד שלישי. */
 export const RETENTION_DAYS = 90;
-
-/**
- * עלות משוערת לקריאת LLM אחת, לחישוב "כמה המסנן חסך".
- *
- * המספר גס בכוונה ומוצג כאומדן. הוא נגזר מהטבלה בתוכנית: ≈$83 לחודש עבור
- * ~3,600 מיילים בלי מסנן, כלומר בערך 2.3 סנט לקריאה. הוא לא נועד לחיוב אלא
- * כדי שהמסך יגיד משהו שאפשר להרגיש, במקום "סוננו 30 פריטים".
- */
-export const EST_COST_PER_LLM_CALL_USD = 0.023;
