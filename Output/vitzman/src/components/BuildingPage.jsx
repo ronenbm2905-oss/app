@@ -3,10 +3,20 @@ import { Button } from "./ui/Button.jsx";
 import { StatTile } from "./ui/StatTile.jsx";
 import { IconBack, IconNote } from "./ui/icons.jsx";
 import { fmtILS, fmtILSExact, fmtPct, round2 } from "../utils/money.js";
+import { fmtDate, fmtRelative, todayISO, isISODate } from "../utils/dates.js";
 import { buildingProfit, priceHistory } from "../utils/profitability.js";
-import { EXPENSE_CATEGORIES, NOTE_KIND_LABEL, BUILDING_STATUS_LABEL, INSPECTION_TYPE_LABEL, INSPECTION_TYPES } from "../constants.js";
+import { indexInspections, buildingInspections, INSPECTION_STATUS_LABEL } from "../utils/inspections.js";
+import { makeInspection } from "../schema.js";
+import { EXPENSE_CATEGORIES, NOTE_KIND_LABEL, BUILDING_STATUS_LABEL, INSPECTION_TYPE_LABEL } from "../constants.js";
 
-export default function BuildingPage({ buildingId, data, contractIndex, update, onBack }) {
+const INSPECTION_CARD = {
+  never: "border-slate-200 bg-slate-50 text-slate-600",
+  overdue: "border-red-300 bg-red-50 text-red-900",
+  dueSoon: "border-amber-300 bg-amber-50 text-amber-900",
+  ok: "border-emerald-200 bg-emerald-50 text-emerald-900",
+};
+
+export default function BuildingPage({ buildingId, data, contractIndex, update, add, onBack }) {
   const building = data.buildings.find((b) => b.id === buildingId);
   const [editing, setEditing] = useState(null); // categoryId שנערך כרגע
 
@@ -16,9 +26,10 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
     () => data.notes.filter((n) => n.buildingId === buildingId),
     [data.notes, buildingId]
   );
-  const inspections = useMemo(
-    () => data.inspections.filter((i) => i.buildingId === buildingId),
-    [data.inspections, buildingId]
+  const inspectionIndex = useMemo(() => indexInspections(data.inspections), [data.inspections]);
+  const inspectionRows = useMemo(
+    () => (building ? buildingInspections(building, inspectionIndex, todayISO()) : []),
+    [building, inspectionIndex]
   );
 
   // ⚠ מחושב מחדש בכל רינדור מהחוזים — לא נשמר בשום מקום. זה בדיוק ההבדל
@@ -43,6 +54,17 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
     if (trimmed !== "" && !Number.isFinite(value)) return;
     update("contracts", contract.id, { amount: value === null ? null : round2(value) });
     setEditing(null);
+  };
+
+  /**
+   * רישום ביקורת. שדה ריק מוחק את התאריך ומחזיר ל״מעולם לא תועד״ — טעות הקלדה
+   * חייבת להיות הפיכה, ומחיקת הרשומה כולה הייתה מאבדת גם את הספק ואת ההערה.
+   * `nextDueDate` מתאפס כדי שהמועד הבא ייגזר מחדש מהתאריך החדש.
+   */
+  const recordInspection = (row, value) => {
+    const date = isISODate(value) ? value : null;
+    if (row.record) update("inspections", row.record.id, { lastDate: date, nextDueDate: null });
+    else if (date) add("inspections", makeInspection({ buildingId, type: row.type, lastDate: date }));
   };
 
   return (
@@ -169,21 +191,28 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
       <div className="card p-4">
         <h2 className="text-sm font-semibold text-slate-700">ביקורות תקופתיות</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {INSPECTION_TYPES.map((t) => {
-            const rec = inspections.find((i) => i.type === t);
-            return (
-              <div key={t} className="rounded-lg border border-slate-200 p-3">
-                <div className="text-xs font-medium text-slate-600">{INSPECTION_TYPE_LABEL[t]}</div>
-                <div className="mt-1 text-sm tnum">
-                  {rec?.lastDate || <span className="text-slate-400">— לא תועד מעולם</span>}
-                </div>
+          {inspectionRows.map((row) => (
+            <div key={row.type} className={`rounded-lg border p-3 ${INSPECTION_CARD[row.status]}`}>
+              <div className="text-xs font-medium">{INSPECTION_TYPE_LABEL[row.type]}</div>
+              <div className="mt-0.5 text-[11px] opacity-80">
+                {INSPECTION_STATUS_LABEL[row.status]}
+                {row.status !== "never" && <> · הבא {fmtDate(row.nextDue)} ({fmtRelative(row.daysUntil)})</>}
               </div>
-            );
-          })}
+              <input
+                type="date"
+                max={todayISO()}
+                value={row.lastDate || ""}
+                onChange={(e) => recordInspection(row, e.target.value)}
+                className="mt-2 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs tnum"
+                aria-label={`תאריך ביצוע — ${INSPECTION_TYPE_LABEL[row.type]}`}
+              />
+              <div className="mt-1 text-[11px] opacity-70">כל {row.intervalMonths} חודשים</div>
+            </div>
+          ))}
         </div>
-        <p className="mt-3 text-xs text-slate-500">
-          ארבע העמודות האלה קיימות בגיליון המקור ולא מולא בהן אף תא באף בניין.
-          מעקב פקיעה והתראות — פרוסה 2.
+        <p className="mt-3 text-xs leading-relaxed text-slate-500">
+          התדירויות הן <b>ברירות מחדל, לא קביעה משפטית</b>. אימות מול הדין, מול דרישות
+          המבטח ומול הוראות היצרן הוא שער משפטי ולא החלטה של המערכת.
         </p>
       </div>
 

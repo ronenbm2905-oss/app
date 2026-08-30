@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { StatTile } from "./ui/StatTile.jsx";
 import { IconWarning } from "./ui/icons.jsx";
 import { fmtILS, fmtILSExact, fmtPct, round2 } from "../utils/money.js";
+import { todayISO } from "../utils/dates.js";
 import { portfolioTotals, categoryBreakdown, employeeLoad, unassignedBuildings } from "../utils/profitability.js";
+import { inspectionSummary } from "../utils/inspections.js";
+import { stalePriceContracts, STALE_PRICE_YEARS } from "../utils/vendors.js";
 
 /**
  * דשבורד הרווחיות.
@@ -15,8 +18,17 @@ import { portfolioTotals, categoryBreakdown, employeeLoad, unassignedBuildings }
  * 2. **פירוק הקטגוריות מציג את בדיקת ההתאזנות על המסך.** אם הפירוק לא מסתכם
  *    לסה"כ — זה מוצג באדום, לא מתגלה חצי שנה אחרי.
  */
-export default function ProfitabilityDashboard({ data, contractIndex, onOpenBuilding }) {
+export default function ProfitabilityDashboard({ data, contractIndex, onOpenBuilding, onOpenTab }) {
+  const asOf = todayISO();
   const active = useMemo(() => data.buildings.filter((b) => b.status === "active"), [data.buildings]);
+  const inspections = useMemo(
+    () => inspectionSummary(active, data.inspections, asOf),
+    [active, data.inspections, asOf]
+  );
+  const stale = useMemo(
+    () => stalePriceContracts(data.buildings, contractIndex, asOf),
+    [data.buildings, contractIndex, asOf]
+  );
   const totals = useMemo(() => portfolioTotals(active, contractIndex), [active, contractIndex]);
   const breakdown = useMemo(() => categoryBreakdown(active, contractIndex), [active, contractIndex]);
   const loads = useMemo(
@@ -42,6 +54,37 @@ export default function ProfitabilityDashboard({ data, contractIndex, onOpenBuil
           tone={totals.margin >= 0.1 ? "good" : "warn"}
           hint="רווח חלקי ההכנסה — שיעור הרווח מהמחזור" />
       </div>
+
+      {/* --- דורש טיפול: מה שאינו כספי, ולכן נעלם בגיליון --- */}
+      {(inspections.counts.overdue > 0 || inspections.counts.never > 0 ||
+        inspections.counts.dueSoon > 0 || stale.contracts.length > 0 || unassigned.length > 0) && (
+        <div className="card p-4">
+          <h2 className="text-sm font-semibold text-slate-700">דורש טיפול</h2>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {inspections.counts.overdue > 0 && (
+              <Alert tone="bad" label="ביקורות שפג תוקפן" value={inspections.counts.overdue}
+                onClick={() => onOpenTab?.("inspections")} />
+            )}
+            {inspections.counts.never > 0 && (
+              <Alert tone="warn" label="ביקורות שמעולם לא תועדו" value={inspections.counts.never}
+                hint={`מתוך ${inspections.total} תאים`} onClick={() => onOpenTab?.("inspections")} />
+            )}
+            {inspections.counts.dueSoon > 0 && (
+              <Alert tone="warn" label="ביקורות מתקרבות" value={inspections.counts.dueSoon}
+                onClick={() => onOpenTab?.("inspections")} />
+            )}
+            {unassigned.length > 0 && (
+              <Alert tone="warn" label="בניינים ללא עובד אחראי" value={unassigned.length}
+                onClick={() => onOpenTab?.("buildings")} />
+            )}
+            {stale.contracts.length > 0 && (
+              <Alert tone="warn" label={`מחיר שלא זז מעל ${STALE_PRICE_YEARS} שנים`}
+                value={stale.contracts.length} hint={`${fmtILS(stale.monthlyTotal)} לחודש`}
+                onClick={() => onOpenTab?.("vendors")} />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* --- margin מול markup: ההבדל שהגיליון טשטש --- */}
       <div className="card p-4">
@@ -209,5 +252,21 @@ export default function ProfitabilityDashboard({ data, contractIndex, onOpenBuil
         </div>
       )}
     </div>
+  );
+}
+
+const ALERT_TONE = {
+  bad: "border-red-200 bg-red-50 text-red-900 hover:bg-red-100",
+  warn: "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100",
+};
+
+function Alert({ tone, label, value, hint, onClick }) {
+  return (
+    <button onClick={onClick}
+      className={`rounded-lg border p-3 text-right transition ${ALERT_TONE[tone]}`}>
+      <div className="text-xs font-medium opacity-80">{label}</div>
+      <div className="mt-0.5 text-2xl font-semibold tnum">{value}</div>
+      {hint && <div className="text-[11px] opacity-70">{hint}</div>}
+    </button>
   );
 }

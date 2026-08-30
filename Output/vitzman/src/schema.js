@@ -125,7 +125,10 @@ export function makeInspection(i = {}) {
     buildingId: i.buildingId || null,
     type: i.type || "fireDetection",
     lastDate: i.lastDate || null, // "YYYY-MM-DD"
+    /** מועד יעד ידני — גובר על החישוב מ-`lastDate + intervalMonths`. */
     nextDueDate: i.nextDueDate || null,
+    /** עקיפת התדירות לבניין הזה. `null` = ברירת המחדל לסוג הביקורת. */
+    intervalMonths: Number(i.intervalMonths) > 0 ? Number(i.intervalMonths) : null,
     vendorId: i.vendorId || null,
     notes: i.notes || "",
   };

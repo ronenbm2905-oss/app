@@ -5,18 +5,22 @@ import BuildingsView from "./components/BuildingsView.jsx";
 import BuildingPage from "./components/BuildingPage.jsx";
 import ProfitabilityDashboard from "./components/ProfitabilityDashboard.jsx";
 import DiscrepancyReport from "./components/DiscrepancyReport.jsx";
+import InspectionsView from "./components/InspectionsView.jsx";
+import VendorsView from "./components/VendorsView.jsx";
 import { Button } from "./components/ui/Button.jsx";
-import { IconBuilding, IconChart, IconWarning } from "./components/ui/icons.jsx";
+import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers } from "./components/ui/icons.jsx";
 
 const TABS = [
   { id: "dashboard", label: "רווחיות", Icon: IconChart },
   { id: "buildings", label: "בניינים", Icon: IconBuilding },
+  { id: "inspections", label: "ביקורות", Icon: IconShield },
+  { id: "vendors", label: "ספקים", Icon: IconUsers },
   { id: "findings", label: "ממצאים בגיליון", Icon: IconWarning },
 ];
 
 export default function App() {
   const store = useData();
-  const { data, contractIndex, replaceAll, update, reset, error } = store;
+  const { data, contractIndex, replaceAll, update, add, applyBatch, reset, error } = store;
   const [tab, setTab] = useState("dashboard");
   const [openBuildingId, setOpenBuildingId] = useState(null);
 
@@ -65,7 +69,18 @@ export default function App() {
 
       <main>
         {tab === "dashboard" && (
-          <ProfitabilityDashboard data={data} contractIndex={contractIndex} onOpenBuilding={openBuilding} />
+          <ProfitabilityDashboard
+            data={data}
+            contractIndex={contractIndex}
+            onOpenBuilding={openBuilding}
+            onOpenTab={setTab}
+          />
+        )}
+        {tab === "inspections" && (
+          <InspectionsView data={data} applyBatch={applyBatch} onOpenBuilding={openBuilding} />
+        )}
+        {tab === "vendors" && (
+          <VendorsView data={data} contractIndex={contractIndex} onOpenBuilding={openBuilding} />
         )}
         {tab === "buildings" &&
           (openBuildingId ? (
@@ -74,6 +89,7 @@ export default function App() {
               data={data}
               contractIndex={contractIndex}
               update={update}
+              add={add}
               onBack={() => setOpenBuildingId(null)}
             />
           ) : (

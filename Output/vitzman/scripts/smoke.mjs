@@ -14,11 +14,17 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { makeBuilding, makeContract, normalize } from "../src/schema.js";
+import { makeBuilding, makeContract, makeInspection, makeVendor, normalize } from "../src/schema.js";
 import {
   indexContracts, buildingProfit, portfolioTotals, categoryBreakdown,
   activeContract, priceHistory, unassignedBuildings, imputedVatIncluded,
 } from "../src/utils/profitability.js";
+import {
+  inspectionStatus, inspectionSummary, planBulkRecord, indexInspections,
+  buildingInspections, worstStatus, warnWindowDays,
+} from "../src/utils/inspections.js";
+import { vendorSpend, vendorConcentration, stalePriceContracts } from "../src/utils/vendors.js";
+import { addMonths, daysBetween, fmtDate, todayISO } from "../src/utils/dates.js";
 import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
 import { addressKey } from "../src/utils/id.js";
 
@@ -191,7 +197,133 @@ ok("כתובות שונות באמת נשארות שונות",
 }
 
 // ============================================================================
-// 10. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 10. תאריכים — פרוסה 2
+// ============================================================================
+eq("addMonths רגיל", addMonths("2026-01-15", 12), "2027-01-15");
+eq("addMonths חוצה שנה", addMonths("2026-08-30", 6), "2027-02-28");
+eq("31.1 + חודש נחתך ל-28.2 ולא גולש ל-3.3", addMonths("2026-01-31", 1), "2026-02-28");
+eq("31.1 + חודש בשנה מעוברת", addMonths("2028-01-31", 1), "2028-02-29");
+eq("addMonths על קלט לא תקין", addMonths("לא-תאריך", 1), null);
+eq("daysBetween קדימה", daysBetween("2026-01-01", "2026-01-31"), 30);
+eq("daysBetween אחורה שלילי", daysBetween("2026-02-01", "2026-01-01"), -31);
+eq("fmtDate בעברית", fmtDate("2026-08-30"), "30.08.2026");
+ok("todayISO בפורמט ISO", /^\d{4}-\d{2}-\d{2}$/.test(todayISO()));
+{
+  // באג אזור-זמן: `new Date("2026-08-30")` הוא חצות UTC = 29.8 בישראל.
+  const local = todayISO(new Date(2026, 7, 30, 0, 30));
+  eq("todayISO משתמש בשעון מקומי ולא ב-UTC", local, "2026-08-30");
+}
+
+// ============================================================================
+// 11. מנוע הביקורות — ממצא 9
+// ============================================================================
+{
+  const never = inspectionStatus("fireDetection", undefined, "2026-08-30");
+  eq("ללא רשומה — מעולם לא תועד", never.status, "never");
+  eq("ללא רשומה אין מועד הבא", never.nextDue, null);
+
+  const ok1 = inspectionStatus("fireDetection", { lastDate: "2026-06-01" }, "2026-08-30");
+  eq("בוצעה לאחרונה — בתוקף", ok1.status, "ok");
+  eq("המועד הבא שנה אחרי", ok1.nextDue, "2027-06-01");
+
+  const over = inspectionStatus("fireDetection", { lastDate: "2025-01-01" }, "2026-08-30");
+  eq("עבר המועד — פג תוקף", over.status, "overdue");
+  ok("ימים שליליים כשפג", over.daysUntil < 0);
+
+  const soon = inspectionStatus("fireDetection", { lastDate: "2025-10-01" }, "2026-08-30");
+  eq("בתוך חלון ההתראה — מתקרב", soon.status, "dueSoon");
+
+  // הגנרטור חצי-שנתי, ולכן חלון ההתראה שלו קצר יותר
+  const gen = inspectionStatus("generator", { lastDate: "2026-04-01" }, "2026-08-30");
+  eq("גנרטור: תדירות 6 חודשים", gen.intervalMonths, 6);
+  eq("חלון התראה קצר יותר לגנרטור", warnWindowDays(6), 45);
+  eq("חלון התראה למחזור שנתי", warnWindowDays(12), 60);
+
+  eq("עקיפת תדירות פר רשומה",
+    inspectionStatus("fireDetection", { lastDate: "2026-06-01", intervalMonths: 3 }, "2026-08-30").nextDue,
+    "2026-09-01");
+  eq("מועד יעד ידני גובר על החישוב",
+    inspectionStatus("fireDetection", { lastDate: "2026-06-01", nextDueDate: "2026-12-31" }, "2026-08-30").nextDue,
+    "2026-12-31");
+
+  ok("'מעולם' ו'פג תוקף' אינם אותו מצב", never.status !== over.status,
+    "ערבובם מייצר רשימה של מאות פריטים אדומים שאי אפשר לעבוד איתה");
+}
+
+// ============================================================================
+// 12. סיכום ביקורות + הזנה מרוכזת
+// ============================================================================
+{
+  const bs = [
+    makeBuilding({ id: "i1", address: "אלף 1" }),
+    makeBuilding({ id: "i2", address: "בית 2" }),
+  ];
+  const insp = [
+    makeInspection({ id: "r1", buildingId: "i1", type: "fireDetection", lastDate: "2026-06-01" }),
+    makeInspection({ id: "r2", buildingId: "i1", type: "generator", lastDate: "2024-01-01" }),
+  ];
+  const s = inspectionSummary(bs, insp, "2026-08-30");
+  eq("סה\"כ תאים = בניינים × סוגים", s.total, 8);
+  eq("תועדו 2", s.recorded, 2);
+  eq("כיסוי 25%", Number((s.coverage * 100).toFixed(0)), 25);
+  eq("מעולם לא תועדו 6", s.counts.never, 6);
+  eq("פג תוקף 1", s.counts.overdue, 1);
+  eq("בתוקף 1", s.counts.ok, 1);
+  eq("התור מתחיל בפג תוקף", s.queue[0].status, "overdue");
+  ok("התור מסתיים בתקין", s.queue[s.queue.length - 1].status === "ok");
+
+  // תצוגה מקדימה: מה בדיוק ישתנה
+  const plan = planBulkRecord({
+    buildingIds: ["i1", "i2"], type: "fireDetection", date: "2026-08-30", inspections: insp,
+  });
+  eq("רשומה קיימת מסומנת לעדכון", plan.updates.length, 1);
+  eq("רשומה חסרה מסומנת ליצירה", plan.creates.length, 1);
+  eq("העדכון נושא את התאריך הקודם להצגה", plan.updates[0].previous, "2026-06-01");
+  eq("התוכנית לא נוגעת במקור", insp[0].lastDate, "2026-06-01");
+  ok("תאריך לא תקין נדחה",
+    planBulkRecord({ buildingIds: ["i1"], type: "fireDetection", date: "30/08/2026", inspections: insp }).error !== null);
+  ok("סוג לא מוכר נדחה",
+    planBulkRecord({ buildingIds: ["i1"], type: "לא-קיים", date: "2026-08-30", inspections: insp }).error !== null);
+  eq("worstStatus מחזיר את החמור", worstStatus(buildingInspections(bs[0], indexInspections(insp), "2026-08-30")), "overdue");
+}
+
+// ============================================================================
+// 13. ספקים וותק מחיר
+// ============================================================================
+{
+  const bs = [
+    makeBuilding({ id: "v1", address: "גימל 3", status: "active" }),
+    makeBuilding({ id: "v2", address: "דלת 4", status: "active" }),
+    makeBuilding({ id: "v3", address: "הא 5", status: "inactive" }),
+  ];
+  const vendors = [makeVendor({ id: "vend1", name: "קבלן א" }), makeVendor({ id: "vend2", name: "קבלן ב" })];
+  const contracts = [
+    makeContract({ buildingId: "v1", categoryId: "cleaning", vendorId: "vend1", amount: 1000, effectiveFrom: "2020-01-01" }),
+    makeContract({ buildingId: "v2", categoryId: "cleaning", vendorId: "vend1", amount: 1500, effectiveFrom: "2026-01-01" }),
+    makeContract({ buildingId: "v2", categoryId: "gardening", vendorId: "vend2", amount: 400 }),
+    makeContract({ buildingId: "v3", categoryId: "cleaning", vendorId: "vend1", amount: 9999, effectiveFrom: "2020-01-01" }),
+  ];
+  const idx = indexContracts(contracts);
+  const spend = vendorSpend(vendors, bs, idx, "2026-08-30");
+  eq("ספק ראשי בראש הרשימה", spend[0].id, "vend1");
+  eq("ההוצאה מצטברת על פני בניינים", spend[0].monthlySpend, 2500);
+  ok("בניין לא-פעיל אינו נספר", spend[0].monthlySpend === 2500,
+    "9,999 של הבניין הלא-פעיל היו מנפחים את התמונה");
+  eq("מספר הבניינים לספק", spend[0].buildingCount, 2);
+  eq("ממוצע לבניין", vendorConcentration(spend, 2900)[0].avgPerBuilding, 1250);
+  eq("נתח מההוצאה", Number((vendorConcentration(spend, 2900)[0].share * 100).toFixed(1)), 86.2);
+
+  const stale = stalePriceContracts(bs, idx, "2026-08-30");
+  eq("חוזה מ-2020 מסומן כוותיק", stale.contracts.length, 1);
+  eq("הוותיק הוא של הבניין הפעיל", stale.contracts[0].buildingId, "v1");
+  eq("חוזה בלי תאריך נספר כלא-ידוע ולא כוותיק", stale.undatedCount, 1);
+  ok("חוזה בלי תאריך אינו ברשימת הוותיקים",
+    !stale.contracts.some((c) => c.categoryId === "gardening"),
+    "ספירת הלא-ידועים כוותיקים הייתה הופכת את הרשימה לחסרת ערך");
+}
+
+// ============================================================================
+// 14. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
@@ -229,8 +361,31 @@ if (!existsSync(SEED)) {
     skip("בדיקת הטווח הקטוע", "meta.sheetFindings.truncatedRanges חסר");
   }
 
-  // ביקורות תקופתיות
+  // --- פרוסה 2: ביקורות ---
+  const insp = inspectionSummary(active, data.inspections, "2026-08-30");
   eq("אף ביקורת תקופתית לא תועדה בגיליון", data.inspections.length, 0);
+  eq("524 תאי ביקורת (131 × 4)", insp.total, 524);
+  eq("כיסוי התיעוד ההתחלתי הוא אפס", insp.recorded, 0);
+  eq("כולם במצב 'מעולם לא תועד' ולא 'פג תוקף'", insp.counts.never, 524);
+  eq("אין פג-תוקף כשאין תיעוד כלל", insp.counts.overdue, 0);
+
+  // --- פרוסה 2: ספקים ---
+  const vspend = vendorSpend(data.vendors, data.buildings, idx, "2026-08-30");
+  const covered = vspend.reduce((a, v) => a + v.monthlySpend, 0);
+  eq("82 ספקים עם הוצאה בפועל", vspend.length, 82);
+  ok("ההוצאה המכוסה בחוזי ספק קטנה מסך ההוצאה", covered < totals.cost,
+    "לא לכל קטגוריה יש עמודת ספק בגיליון");
+  // ריכוזיות: ספק הניקיון הראשי הוא לבדו יותר משליש מההוצאה כולה
+  eq("הספק הגדול משרת 82 בניינים", vspend[0].buildingCount, 82);
+  ok("הספק הגדול הוא מעל 30% מההוצאה",
+    vspend[0].monthlySpend / totals.cost > 0.3,
+    `בפועל ${((vspend[0].monthlySpend / totals.cost) * 100).toFixed(1)}%`);
+
+  const vstale = stalePriceContracts(data.buildings, idx, "2026-08-30");
+  ok("נמצאו חוזים שמחירם לא זז מעל 3 שנים", vstale.contracts.length > 0);
+  ok("רוב החוזים ללא תאריך תחולה ידוע ולא נספרו כוותיקים",
+    vstale.undatedCount > vstale.contracts.length * 10,
+    `ותיקים ${vstale.contracts.length} מול לא-ידועים ${vstale.undatedCount}`);
 
   // aliases ממזגים כתובות
   const withAliases = data.buildings.filter((b) => b.aliases.length > 0);

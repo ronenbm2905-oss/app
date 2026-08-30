@@ -51,10 +51,28 @@ export function useData() {
     setData((d) => ({ ...d, [collection]: [...(d[collection] || []), entity] }));
   }, []);
 
+  /**
+   * עדכון ויצירה בפעולה אחת ובעדכון-מצב אחד.
+   *
+   * הזנה מרוכזת נוגעת בעשרות רשומות; קריאה נפרדת ל-`update`/`add` לכל אחת
+   * הייתה מייצרת עשרות רינדורים ועשרות כתיבות ל-localStorage. חשוב מזה —
+   * `setData` הוא אסינכרוני, ולכן שרשרת קריאות נפרדות הייתה בונה כל אחת על
+   * מצב ישן ומאבדת את קודמותיה.
+   */
+  const applyBatch = useCallback((collection, { updates = [], creates = [] }) => {
+    setData((d) => {
+      const byId = new Map(updates.map((u) => [u.id, u.patch]));
+      const existing = (d[collection] || []).map((x) =>
+        byId.has(x.id) ? { ...x, ...byId.get(x.id) } : x
+      );
+      return { ...d, [collection]: [...existing, ...creates] };
+    });
+  }, []);
+
   const reset = useCallback(() => setData(normalize(EMPTY)), []);
 
   // האינדקס נבנה פעם אחת לכל שינוי חוזים, לא בכל רינדור של כל שורה.
   const contractIndex = useMemo(() => indexContracts(data.contracts), [data.contracts]);
 
-  return { data, contractIndex, replaceAll, update, add, reset, error };
+  return { data, contractIndex, replaceAll, update, add, applyBatch, reset, error };
 }
