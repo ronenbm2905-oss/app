@@ -7,8 +7,10 @@ import ProfitabilityDashboard from "./components/ProfitabilityDashboard.jsx";
 import DiscrepancyReport from "./components/DiscrepancyReport.jsx";
 import InspectionsView from "./components/InspectionsView.jsx";
 import VendorsView from "./components/VendorsView.jsx";
+import AsOfBar from "./components/AsOfBar.jsx";
 import { Button } from "./components/ui/Button.jsx";
 import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers } from "./components/ui/icons.jsx";
+import { todayISO, isISODate } from "./utils/dates.js";
 
 const TABS = [
   { id: "dashboard", label: "רווחיות", Icon: IconChart },
@@ -23,6 +25,17 @@ export default function App() {
   const { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, reset, error } = store;
   const [tab, setTab] = useState("dashboard");
   const [openBuildingId, setOpenBuildingId] = useState(null);
+  const [asOf, setAsOf] = useState(todayISO);
+
+  /**
+   * צפייה בתאריך שאינו היום היא **קריאה בלבד**.
+   *
+   * לא מגבלה טכנית אלא הכרעה: העורך בוחר את הרשומה התקפה לפי `asOf`, ולכן
+   * עריכה במצב היסטורי הייתה משנה את המחיר של יוני בזמן שהמשתמש חושב שהוא
+   * מתקן את היום. חסימה מפורשת עם דרך חזרה ברורה עדיפה על פעולה שמצליחה
+   * ועושה משהו אחר ממה שנראה.
+   */
+  const isHistorical = isISODate(asOf) && asOf !== todayISO();
 
   if (!data.buildings.length) return <ImportView onLoad={replaceAll} />;
 
@@ -65,6 +78,7 @@ export default function App() {
         {error && (
           <div className="bg-red-50 px-4 py-2 text-center text-sm text-red-700">{error}</div>
         )}
+        <AsOfBar asOf={asOf} onChange={(v) => setAsOf(isISODate(v) ? v : todayISO())} isHistorical={isHistorical} />
       </header>
 
       <main>
@@ -73,15 +87,16 @@ export default function App() {
             data={data}
             contractIndex={contractIndex}
             feeIndex={feeIndex}
+            asOf={asOf}
             onOpenBuilding={openBuilding}
             onOpenTab={setTab}
           />
         )}
         {tab === "inspections" && (
-          <InspectionsView data={data} applyBatch={applyBatch} onOpenBuilding={openBuilding} />
+          <InspectionsView data={data} applyBatch={applyBatch} asOf={asOf} readOnly={isHistorical} onOpenBuilding={openBuilding} />
         )}
         {tab === "vendors" && (
-          <VendorsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} onOpenBuilding={openBuilding} />
+          <VendorsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} asOf={asOf} onOpenBuilding={openBuilding} />
         )}
         {tab === "buildings" &&
           (openBuildingId ? (
@@ -90,6 +105,8 @@ export default function App() {
               data={data}
               contractIndex={contractIndex}
               feeIndex={feeIndex}
+              asOf={asOf}
+              readOnly={isHistorical}
               update={update}
               add={add}
               applyBatch={applyBatch}
@@ -97,10 +114,10 @@ export default function App() {
               onBack={() => setOpenBuildingId(null)}
             />
           ) : (
-            <BuildingsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} onOpenBuilding={setOpenBuildingId} />
+            <BuildingsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} asOf={asOf} onOpenBuilding={setOpenBuildingId} />
           ))}
         {tab === "findings" && (
-          <DiscrepancyReport data={data} contractIndex={contractIndex} feeIndex={feeIndex} onOpenBuilding={openBuilding} />
+          <DiscrepancyReport data={data} contractIndex={contractIndex} feeIndex={feeIndex} asOf={asOf} onOpenBuilding={openBuilding} />
         )}
       </main>
 

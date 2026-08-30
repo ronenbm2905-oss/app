@@ -14,8 +14,7 @@ import { CATEGORY_BY_ID } from "../constants.js";
  * בגיליון הספק היה שם בתא ליד כל בניין בנפרד, ולכן אי אפשר היה לשאול *״כמה
  * אנחנו משלמים לו בסך הכל״*. כאן זו השורה הראשונה בטבלה.
  */
-export default function VendorsView({ data, contractIndex, feeIndex, onOpenBuilding }) {
-  const asOf = todayISO();
+export default function VendorsView({ data, contractIndex, feeIndex, asOf = todayISO(), onOpenBuilding }) {
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState(null);
 

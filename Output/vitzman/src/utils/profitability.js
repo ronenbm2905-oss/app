@@ -257,12 +257,18 @@ export function priceHistory(buildingId, categoryId, contractIndex) {
 export const unassignedBuildings = (buildings) =>
   buildings.filter((b) => b.status === "active" && !b.assignedEmployeeId);
 
-/** עומס פר עובד, כולל הרווח שהוא אחראי עליו. */
-export function employeeLoad(employees, buildings, contractIndex, asOf = todayISO()) {
+/**
+ * עומס פר עובד, כולל הרווח שהוא אחראי עליו.
+ *
+ * ⚠ `feeIndex` אינו אופציונלי בפועל: בלעדיו ההכנסה נגזרת מ-`building.managementFee`
+ * — הערך הסקלרי שהוא **רק זרע הגירה** — ולכן היא תתנתק מההסכם התקף ברגע שדמי
+ * הניהול ייערכו. הפרמטר נשאר עם ברירת מחדל רק לתאימות לאחור.
+ */
+export function employeeLoad(employees, buildings, contractIndex, asOf = todayISO(), feeIndex = null) {
   return employees
     .map((e) => {
       const mine = buildings.filter((b) => b.status === "active" && b.assignedEmployeeId === e.id);
-      const rows = mine.map((b) => buildingProfit(b, contractIndex, asOf));
+      const rows = mine.map((b) => buildingProfit(b, contractIndex, asOf, feeIndex));
       return {
         employeeId: e.id,
         name: e.name,

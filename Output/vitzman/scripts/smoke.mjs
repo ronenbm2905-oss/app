@@ -18,7 +18,7 @@ import { makeBuilding, makeContract, makeInspection, makeVendor, makeFeeAgreemen
 import {
   indexContracts, buildingProfit, portfolioTotals, categoryBreakdown,
   activeContract, priceHistory, unassignedBuildings, imputedVatIncluded,
-  indexFees, activeFee, feeHistory,
+  indexFees, activeFee, feeHistory, employeeLoad,
 } from "../src/utils/profitability.js";
 import {
   inspectionStatus, inspectionSummary, planBulkRecord, indexInspections,
@@ -457,7 +457,53 @@ ok("todayISO בפורמט ISO", /^\d{4}-\d{2}-\d{2}$/.test(todayISO()));
 }
 
 // ============================================================================
-// 17. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 17. עדשת "נכון לתאריך" — התיק כולו, לא רק השורה
+// ============================================================================
+{
+  const b = makeBuilding({ id: "t1", address: "עדשה 1", managementFee: 0 });
+  const contracts = [
+    makeContract({ id: "c-old", buildingId: "t1", categoryId: "cleaning", amount: 1000, effectiveFrom: null }),
+    makeContract({ id: "c-new", buildingId: "t1", categoryId: "cleaning", amount: 1500, effectiveFrom: "2026-07-01" }),
+  ];
+  const fees = [
+    makeFeeAgreement({ id: "f-old", buildingId: "t1", amount: 2000, effectiveFrom: null }),
+    makeFeeAgreement({ id: "f-new", buildingId: "t1", amount: 2400, effectiveFrom: "2026-05-01" }),
+  ];
+  const ci = indexContracts(contracts);
+  const fi = indexFees(fees);
+
+  const before = portfolioTotals([b], ci, "2026-04-01", fi);
+  const middle = portfolioTotals([b], ci, "2026-06-01", fi);
+  const now = portfolioTotals([b], ci, "2026-08-30", fi);
+
+  eq("אפריל: מחיר ישן משני הצדדים", before.profit, 1000);   // 2000 - 1000
+  eq("יוני: ההכנסה עלתה, ההוצאה עוד לא", middle.profit, 1400); // 2400 - 1000
+  eq("היום: שתיהן עלו", now.profit, 900);                    // 2400 - 1500
+  ok("שלושת התאריכים נותנים שלוש תמונות שונות",
+    new Set([before.profit, middle.profit, now.profit]).size === 3);
+
+  // הפירוק חייב להתאזן **בכל תאריך**, לא רק היום
+  for (const d of ["2026-04-01", "2026-06-01", "2026-08-30"]) {
+    const t = portfolioTotals([b], ci, d, fi);
+    eq(`הפירוק מתאזן לסה"כ ב-${d}`, categoryBreakdown([b], ci, d).actualTotal, t.cost);
+  }
+
+  // עומס העובדים נגזר מהתאריך **ומההסכם התקף** — לא מ-managementFee הסקלרי
+  const emp = [{ id: "e1", name: "עובד", active: true }];
+  const assigned = makeBuilding({ ...b, assignedEmployeeId: "e1" });
+  eq("עומס העובד באפריל לפי ההסכם שהיה אז",
+    employeeLoad(emp, [assigned], ci, "2026-04-01", fi)[0].income, 2000);
+  eq("ובאוגוסט לפי ההסכם החדש",
+    employeeLoad(emp, [assigned], ci, "2026-08-30", fi)[0].income, 2400);
+  eq("והרווח נגזר משניהם", employeeLoad(emp, [assigned], ci, "2026-08-30", fi)[0].profit, 900);
+  // בלי feeIndex ההכנסה נופלת ל-managementFee הסקלרי (0 כאן) — ולכן הוא נמסר תמיד
+  ok("בלי feeIndex ההכנסה מתנתקת מההסכם",
+    employeeLoad(emp, [assigned], ci, "2026-08-30")[0].income === 0,
+    "זו הסיבה ש-feeIndex נמסר בכל קריאה אמיתית");
+}
+
+// ============================================================================
+// 18. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
@@ -491,6 +537,15 @@ if (!existsSync(SEED)) {
     const drift = active.filter((b) => Math.abs(activeFee(b, fidx, "2026-08-30") - b.managementFee) > 0.01);
     eq("אף בניין לא סוטה מדמי הניהול שבגיליון", drift.length, 0);
   }
+  // --- עדשת התאריך על הנתונים האמיתיים ---
+  {
+    const early = portfolioTotals(active, idx, "2021-01-01", fidx);
+    ok("התיק בינואר 2021 שונה מהיום", early.income !== totals.income,
+      `2021: ${early.income} · היום: ${totals.income}`);
+    eq("הפירוק מתאזן גם בתאריך היסטורי",
+      categoryBreakdown(active, idx, "2021-01-01").actualTotal, early.cost);
+  }
+
   const withFeeHistory = active.filter((b) => feeHistory(b.id, fidx).length > 1);
   eq("3 בניינים עם היסטוריית הכנסה מההערות", withFeeHistory.length, 3);
   ok("היסטוריית ההכנסה נושאת תאריכי תחולה",

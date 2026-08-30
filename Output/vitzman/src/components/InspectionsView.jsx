@@ -26,8 +26,7 @@ const STATUS_STYLE = {
  * מקדימה של מה בדיוק ישתנה. מסך שרק מציג 524 פריטים אדומים לא היה מזיז כלום —
  * הוא היה הופך את החוסר לרעש שמתרגלים אליו, בדיוק כמו העמודות הריקות בגיליון.
  */
-export default function InspectionsView({ data, applyBatch, onOpenBuilding }) {
-  const asOf = todayISO();
+export default function InspectionsView({ data, applyBatch, asOf = todayISO(), readOnly = false, onOpenBuilding }) {
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -161,7 +160,7 @@ export default function InspectionsView({ data, applyBatch, onOpenBuilding }) {
               {data.vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </label>
-          <Button variant="primary" disabled={!selected.size || !!plan.error} onClick={commit}>
+          <Button variant="primary" disabled={readOnly || !selected.size || !!plan.error} onClick={commit}>
             רישום {selected.size || ""}
           </Button>
         </div>

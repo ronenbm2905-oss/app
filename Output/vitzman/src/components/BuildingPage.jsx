@@ -18,7 +18,7 @@ const INSPECTION_CARD = {
   ok: "border-emerald-200 bg-emerald-50 text-emerald-900",
 };
 
-export default function BuildingPage({ buildingId, data, contractIndex, feeIndex, update, add, applyBatch, remove, onBack }) {
+export default function BuildingPage({ buildingId, data, contractIndex, feeIndex, asOf = todayISO(), readOnly = false, update, add, applyBatch, remove, onBack }) {
   const building = data.buildings.find((b) => b.id === buildingId);
   // { kind: "contract", categoryId } | { kind: "fee" } | null
   const [editing, setEditing] = useState(null);
@@ -31,8 +31,8 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
   );
   const inspectionIndex = useMemo(() => indexInspections(data.inspections), [data.inspections]);
   const inspectionRows = useMemo(
-    () => (building ? buildingInspections(building, inspectionIndex, todayISO()) : []),
-    [building, inspectionIndex]
+    () => (building ? buildingInspections(building, inspectionIndex, asOf) : []),
+    [building, inspectionIndex, asOf]
   );
 
   const feeRows = useMemo(() => feeHistory(buildingId, feeIndex), [buildingId, feeIndex]);
@@ -40,8 +40,8 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
   // ⚠ מחושב מחדש בכל רינדור מהחוזים — לא נשמר בשום מקום. זה בדיוק ההבדל
   // מהאקסל: שינוי סכום חוזה מזיז את הרווח ואת האחוזים באותו רגע.
   const p = useMemo(
-    () => (building ? buildingProfit(building, contractIndex, todayISO(), feeIndex) : null),
-    [building, contractIndex, feeIndex]
+    () => (building ? buildingProfit(building, contractIndex, asOf, feeIndex) : null),
+    [building, contractIndex, asOf, feeIndex]
   );
 
   if (!building) {
@@ -69,6 +69,7 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
    * `nextDueDate` מתאפס כדי שהמועד הבא ייגזר מחדש מהתאריך החדש.
    */
   const recordInspection = (row, value) => {
+    if (readOnly) return;
     const date = isISODate(value) ? value : null;
     if (row.record) update("inspections", row.record.id, { lastDate: date, nextDueDate: null });
     else if (date) add("inspections", makeInspection({ buildingId, type: row.type, lastDate: date }));
@@ -97,9 +98,11 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <button className="text-right" onClick={() => setEditing({ kind: "fee" })}>
+        <button className="text-right" disabled={readOnly}
+          title={readOnly ? "צפייה בתאריך עבר — קריאה בלבד" : "עריכת דמי הניהול"}
+          onClick={() => setEditing({ kind: "fee" })}>
           <StatTile label="דמי ניהול (הכנסה)" value={fmtILS(p.income)}
-            hint={feeRows.length > 1 ? `${feeRows.length} מחירים — לחץ לעריכה` : "לחץ לעריכה"} />
+            hint={readOnly ? "קריאה בלבד" : feeRows.length > 1 ? `${feeRows.length} מחירים — לחץ לעריכה` : "לחץ לעריכה"} />
         </button>
         <StatTile label="עלות חודשית" value={fmtILS(p.cost)} />
         <StatTile label="רווח" value={fmtILSExact(p.profit)} tone={p.isLoss ? "bad" : p.isThin ? "warn" : "good"} />
@@ -113,7 +116,9 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
         <div className="border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-700">חוזי שירות</h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            עריכת סכום מעדכנת מיד את הרווח, את ה-margin ואת ה-markup למעלה. שדה ריק = הוועד משלם ישירות.
+            {readOnly
+              ? "צפייה בתמונה של תאריך עבר — העריכה נעולה. חזרה להיום כדי לערוך."
+              : "עריכת סכום מעדכנת מיד את הרווח, את ה-margin ואת ה-markup למעלה. שדה ריק = הוועד משלם ישירות."}
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -141,7 +146,9 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
                       ) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="td tnum">
-                      <button className="rounded px-2 py-1 hover:bg-slate-100"
+                      <button className="rounded px-2 py-1 hover:bg-slate-100 disabled:hover:bg-transparent"
+                        disabled={readOnly}
+                        title={readOnly ? "צפייה בתאריך עבר — קריאה בלבד" : "עריכת המחיר"}
                         onClick={() => setEditing({ kind: "contract", categoryId: row.categoryId })}>
                         {row.amount === null
                           ? <span className="text-slate-400">— הוועד משלם</span>
@@ -198,8 +205,9 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
               </div>
               <input
                 type="date"
-                max={todayISO()}
+                max={asOf}
                 value={row.lastDate || ""}
+                disabled={readOnly}
                 onChange={(e) => recordInspection(row, e.target.value)}
                 className="mt-2 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs tnum"
                 aria-label={`תאריך ביצוע — ${INSPECTION_TYPE_LABEL[row.type]}`}
@@ -215,9 +223,9 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
       </div>
 
       {/* --- עורך המחיר --- */}
-      {editing?.kind === "contract" && (() => {
+      {!readOnly && editing?.kind === "contract" && (() => {
         const entries = priceHistory(buildingId, editing.categoryId, contractIndex);
-        const active = activeAsOf(entries, todayISO());
+        const active = activeAsOf(entries, asOf);
         const cat = EXPENSE_CATEGORIES.find((c) => c.id === editing.categoryId);
         return (
           <PriceEditor
@@ -240,11 +248,11 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
         );
       })()}
 
-      {editing?.kind === "fee" && (
+      {!readOnly && editing?.kind === "fee" && (
         <PriceEditor
           title={`דמי ניהול — ${building.address}`}
           entries={feeRows}
-          current={activeAsOf(feeRows, todayISO())}
+          current={activeAsOf(feeRows, asOf)}
           collection="feeAgreements"
           template={{ buildingId }}
           allowNull={false}

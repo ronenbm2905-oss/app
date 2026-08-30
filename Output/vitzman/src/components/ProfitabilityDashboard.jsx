@@ -18,8 +18,7 @@ import { stalePriceContracts, STALE_PRICE_YEARS } from "../utils/vendors.js";
  * 2. **פירוק הקטגוריות מציג את בדיקת ההתאזנות על המסך.** אם הפירוק לא מסתכם
  *    לסה"כ — זה מוצג באדום, לא מתגלה חצי שנה אחרי.
  */
-export default function ProfitabilityDashboard({ data, contractIndex, feeIndex, onOpenBuilding, onOpenTab }) {
-  const asOf = todayISO();
+export default function ProfitabilityDashboard({ data, contractIndex, feeIndex, asOf = todayISO(), onOpenBuilding, onOpenTab }) {
   const active = useMemo(() => data.buildings.filter((b) => b.status === "active"), [data.buildings]);
   const inspections = useMemo(
     () => inspectionSummary(active, data.inspections, asOf),
@@ -30,10 +29,10 @@ export default function ProfitabilityDashboard({ data, contractIndex, feeIndex, 
     [data.buildings, contractIndex, asOf]
   );
   const totals = useMemo(() => portfolioTotals(active, contractIndex, asOf, feeIndex), [active, contractIndex, asOf, feeIndex]);
-  const breakdown = useMemo(() => categoryBreakdown(active, contractIndex), [active, contractIndex]);
+  const breakdown = useMemo(() => categoryBreakdown(active, contractIndex, asOf), [active, contractIndex, asOf]);
   const loads = useMemo(
-    () => employeeLoad(data.employees, data.buildings, contractIndex),
-    [data.employees, data.buildings, contractIndex]
+    () => employeeLoad(data.employees, data.buildings, contractIndex, asOf, feeIndex),
+    [data.employees, data.buildings, contractIndex, asOf, feeIndex]
   );
   const unassigned = useMemo(() => unassignedBuildings(data.buildings), [data.buildings]);
 
