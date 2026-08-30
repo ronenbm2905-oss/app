@@ -27,6 +27,10 @@ import {
 import { vendorSpend, vendorConcentration, stalePriceContracts } from "../src/utils/vendors.js";
 import { planPriceChange, canDeleteEntry, activeAsOf, sortByEffective } from "../src/utils/pricing.js";
 import { addMonths, daysBetween, fmtDate, todayISO } from "../src/utils/dates.js";
+import {
+  makeBackup, validateBackup, backupFilename, toCsv, BOM,
+  profitabilityCsv, inspectionsCsv, priceHistoryCsv,
+} from "../src/utils/backup.js";
 import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
 import { addressKey } from "../src/utils/id.js";
 
@@ -503,7 +507,46 @@ ok("todayISO בפורמט ISO", /^\d{4}-\d{2}-\d{2}$/.test(todayISO()));
 }
 
 // ============================================================================
-// 18. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 18. גיבוי, שחזור וייצוא
+// ============================================================================
+{
+  const data = normalize({ buildings: [{ id: "bk", address: "גיבוי 1", managementFee: 3000 }] });
+  const backup = makeBackup(data);
+  eq("הגיבוי נושא חותמת זיהוי", backup.kind, "vitzman-backup");
+  eq("והוא סופר את הישויות", backup.counts.buildings, 1);
+
+  const round = validateBackup(JSON.parse(JSON.stringify(backup)));
+  eq("גיבוי חוזר תקין", round.ok, true);
+  eq("והנתונים שרדו את המסע", round.data.buildings[0].address, "גיבוי 1");
+
+  // גם פלט הייבוא הגולמי מתקבל — הוא מצב שלם, רק בלי העטיפה
+  eq("פלט הייבוא מתקבל כשחזור", validateBackup(data).ok, true);
+
+  // אימות לפני דריסה: קלט לא תקין חייב להיחסם עם סיבה
+  for (const [label, input] of [
+    ["null", null], ["מחרוזת", "לא JSON"], ["אובייקט ריק", {}],
+    ["בלי בניינים", { contracts: [] }], ["בניינים ריקים", { buildings: [] }],
+  ]) {
+    const r = validateBackup(input);
+    ok(`שחזור נחסם: ${label}`, r.ok === false && typeof r.reason === "string" && r.reason.length > 0);
+  }
+
+  ok("שם הגיבוי נושא תאריך", /^vitzman-backup-\d{4}-\d{2}-\d{2}\.json$/.test(backupFilename("2026-08-30")));
+}
+{
+  // ⚠ BOM — בלעדיו אקסל בעברית קורא UTF-8 כ-Windows-1255 ומציג ג'יבריש.
+  const csv = toCsv([["כתובת", "סכום"], ["רחוב א", 100]]);
+  ok("CSV מתחיל ב-BOM", csv.startsWith(BOM), "בלי זה אקסל בעברית מציג ג'יבריש");
+  ok("שורות מופרדות בשורה חדשה", csv.split("\n").length === 2);
+  // ציטוט: פסיק, גרשיים ושורה חדשה בתוך ערך
+  ok("פסיק בערך מצוטט", toCsv([["א,ב"]]).includes('"א,ב"'));
+  ok("גרשיים מוכפלים", toCsv([['הוא אמר "שלום"']]).includes('""שלום""'));
+  ok("שורה חדשה בערך מצוטטת", toCsv([["שורה\nשנייה"]]).includes('"שורה\nשנייה"'));
+  eq("null הופך למחרוזת ריקה", toCsv([[null, 1]]).replace(BOM, ""), ",1");
+}
+
+// ============================================================================
+// 19. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
@@ -544,6 +587,23 @@ if (!existsSync(SEED)) {
       `2021: ${early.income} · היום: ${totals.income}`);
     eq("הפירוק מתאזן גם בתאריך היסטורי",
       categoryBreakdown(active, idx, "2021-01-01").actualTotal, early.cost);
+  }
+
+  // --- ייצוא על הנתונים האמיתיים ---
+  {
+    const prof = profitabilityCsv(data, "2026-08-30").split("\n");
+    eq("דוח הרווחיות: שורה לכל בניין פעיל", prof.length - 1, 131);
+    const insp = inspectionsCsv(data, "2026-08-30").split("\n");
+    eq("דוח הביקורות: שורה לכל בניין×סוג", insp.length - 1, 524);
+    const hist = priceHistoryCsv(data).split("\n");
+    eq("היסטוריית המחירים: שורה לכל חוזה והסכם",
+      hist.length - 1, data.contracts.length + data.feeAgreements.length);
+    ok("כל שלושת הדוחות נושאים BOM",
+      [prof, insp, hist].every((r) => r[0].startsWith(BOM)));
+    // סבב מלא: גיבוי → אימות → אותם מספרים
+    const back = validateBackup(makeBackup(data));
+    eq("סבב גיבוי־שחזור שומר את כל הבניינים", back.data.buildings.length, data.buildings.length);
+    eq("ואת כל החוזים", back.data.contracts.length, data.contracts.length);
   }
 
   const withFeeHistory = active.filter((b) => feeHistory(b.id, fidx).length > 1);

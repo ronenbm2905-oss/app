@@ -21,6 +21,9 @@ seed/*.md
 node_modules/
 dist/
 dist-ssr/
+# הקובץ העצמאי הוא פלט בנייה (~600KB) ולא קוד. נבנה עם `npm run build:standalone`
+# ונשלח לרונן ישירות; אין סיבה שיישב בגיט וישתנה בכל בנייה.
+dist-standalone/
 
 # --- לוגים וקבצי מערכת ---
 *.log

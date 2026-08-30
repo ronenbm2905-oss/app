@@ -8,8 +8,9 @@ import DiscrepancyReport from "./components/DiscrepancyReport.jsx";
 import InspectionsView from "./components/InspectionsView.jsx";
 import VendorsView from "./components/VendorsView.jsx";
 import AsOfBar from "./components/AsOfBar.jsx";
+import BackupBar from "./components/BackupBar.jsx";
 import { Button } from "./components/ui/Button.jsx";
-import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers } from "./components/ui/icons.jsx";
+import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase } from "./components/ui/icons.jsx";
 import { todayISO, isISODate } from "./utils/dates.js";
 
 const TABS = [
@@ -18,6 +19,7 @@ const TABS = [
   { id: "inspections", label: "ביקורות", Icon: IconShield },
   { id: "vendors", label: "ספקים", Icon: IconUsers },
   { id: "findings", label: "ממצאים בגיליון", Icon: IconWarning },
+  { id: "backup", label: "גיבוי", Icon: IconDatabase },
 ];
 
 export default function App() {
@@ -116,6 +118,9 @@ export default function App() {
           ) : (
             <BuildingsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} asOf={asOf} onOpenBuilding={setOpenBuildingId} />
           ))}
+        {tab === "backup" && (
+          <BackupBar data={data} asOf={asOf} onRestore={replaceAll} />
+        )}
         {tab === "findings" && (
           <DiscrepancyReport data={data} contractIndex={contractIndex} feeIndex={feeIndex} asOf={asOf} onOpenBuilding={openBuilding} />
         )}
