@@ -4,9 +4,11 @@ import { StatTile } from "./ui/StatTile.jsx";
 import { IconBack, IconNote } from "./ui/icons.jsx";
 import { fmtILS, fmtILSExact, fmtPct, round2 } from "../utils/money.js";
 import { fmtDate, fmtRelative, todayISO, isISODate } from "../utils/dates.js";
-import { buildingProfit, priceHistory } from "../utils/profitability.js";
+import { buildingProfit, priceHistory, feeHistory } from "../utils/profitability.js";
 import { indexInspections, buildingInspections, INSPECTION_STATUS_LABEL } from "../utils/inspections.js";
-import { makeInspection } from "../schema.js";
+import { activeAsOf } from "../utils/pricing.js";
+import { makeInspection, makeContract, makeFeeAgreement } from "../schema.js";
+import PriceEditor from "./PriceEditor.jsx";
 import { EXPENSE_CATEGORIES, NOTE_KIND_LABEL, BUILDING_STATUS_LABEL, INSPECTION_TYPE_LABEL } from "../constants.js";
 
 const INSPECTION_CARD = {
@@ -16,9 +18,10 @@ const INSPECTION_CARD = {
   ok: "border-emerald-200 bg-emerald-50 text-emerald-900",
 };
 
-export default function BuildingPage({ buildingId, data, contractIndex, update, add, onBack }) {
+export default function BuildingPage({ buildingId, data, contractIndex, feeIndex, update, add, applyBatch, remove, onBack }) {
   const building = data.buildings.find((b) => b.id === buildingId);
-  const [editing, setEditing] = useState(null); // categoryId שנערך כרגע
+  // { kind: "contract", categoryId } | { kind: "fee" } | null
+  const [editing, setEditing] = useState(null);
 
   const vendorById = useMemo(() => new Map(data.vendors.map((v) => [v.id, v])), [data.vendors]);
   const empById = useMemo(() => new Map(data.employees.map((e) => [e.id, e.name])), [data.employees]);
@@ -32,11 +35,13 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
     [building, inspectionIndex]
   );
 
+  const feeRows = useMemo(() => feeHistory(buildingId, feeIndex), [buildingId, feeIndex]);
+
   // ⚠ מחושב מחדש בכל רינדור מהחוזים — לא נשמר בשום מקום. זה בדיוק ההבדל
   // מהאקסל: שינוי סכום חוזה מזיז את הרווח ואת האחוזים באותו רגע.
   const p = useMemo(
-    () => (building ? buildingProfit(building, contractIndex) : null),
-    [building, contractIndex]
+    () => (building ? buildingProfit(building, contractIndex, todayISO(), feeIndex) : null),
+    [building, contractIndex, feeIndex]
   );
 
   if (!building) {
@@ -47,13 +52,15 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
     );
   }
 
-  const saveAmount = (contract, raw) => {
-    const trimmed = String(raw).trim();
-    // ריק → `null` = "לא אנחנו משלמים". שונה מהותית מ-0, ולכן לא ממירים לאפס.
-    const value = trimmed === "" ? null : Number(trimmed.replace(/,/g, ""));
-    if (trimmed !== "" && !Number.isFinite(value)) return;
-    update("contracts", contract.id, { amount: value === null ? null : round2(value) });
-    setEditing(null);
+  /**
+   * מחיל תוכנית שינוי מחיר.
+   *
+   * `updates` ו-`creates` מגיעים מ-`planPriceChange` — עדכון במקום (״תיקון״) או
+   * שורה חדשה (״מחיר חדש מתאריך״). כאן רק ההחלה; ההחלטה נעשתה במנוע הטהור.
+   */
+  const applyPricePlan = (collection, { updates, creates }) => {
+    const factory = collection === "contracts" ? makeContract : makeFeeAgreement;
+    applyBatch(collection, { updates, creates: creates.map((c) => factory(c)) });
   };
 
   /**
@@ -90,7 +97,10 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatTile label="דמי ניהול (הכנסה)" value={fmtILS(p.income)} />
+        <button className="text-right" onClick={() => setEditing({ kind: "fee" })}>
+          <StatTile label="דמי ניהול (הכנסה)" value={fmtILS(p.income)}
+            hint={feeRows.length > 1 ? `${feeRows.length} מחירים — לחץ לעריכה` : "לחץ לעריכה"} />
+        </button>
         <StatTile label="עלות חודשית" value={fmtILS(p.cost)} />
         <StatTile label="רווח" value={fmtILSExact(p.profit)} tone={p.isLoss ? "bad" : p.isThin ? "warn" : "good"} />
         <StatTile label="margin" value={fmtPct(p.margin)} tone={p.isLoss ? "bad" : p.isThin ? "warn" : "good"}
@@ -131,33 +141,21 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
                       ) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="td tnum">
-                      {editing === row.categoryId ? (
-                        <input
-                          autoFocus
-                          defaultValue={c.amount ?? ""}
-                          onBlur={(e) => saveAmount(c, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveAmount(c, e.target.value);
-                            if (e.key === "Escape") setEditing(null);
-                          }}
-                          className="w-28 rounded border border-slate-400 px-2 py-1 text-sm tnum"
-                        />
-                      ) : (
-                        <button className="rounded px-2 py-1 hover:bg-slate-100"
-                          onClick={() => setEditing(row.categoryId)}>
-                          {row.amount === null
-                            ? <span className="text-slate-400">— הוועד משלם</span>
-                            : fmtILSExact(row.amount)}
-                        </button>
-                      )}
+                      <button className="rounded px-2 py-1 hover:bg-slate-100"
+                        onClick={() => setEditing({ kind: "contract", categoryId: row.categoryId })}>
+                        {row.amount === null
+                          ? <span className="text-slate-400">— הוועד משלם</span>
+                          : fmtILSExact(row.amount)}
+                      </button>
                     </td>
                     <td className="td text-xs text-slate-500">
                       {c.effectiveFrom || <span className="text-slate-300">—</span>}
                       {history.length > 1 && (
-                        <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600"
-                          title={history.map((h) => `${h.effectiveFrom || "עד לשינוי"}: ${fmtILS(h.amount)}`).join("\n")}>
+                        <button
+                          onClick={() => setEditing({ kind: "contract", categoryId: row.categoryId })}
+                          className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 hover:bg-slate-200">
                           {history.length} מחירים
-                        </span>
+                        </button>
                       )}
                     </td>
                     <td className="td">
@@ -215,6 +213,46 @@ export default function BuildingPage({ buildingId, data, contractIndex, update, 
           המבטח ומול הוראות היצרן הוא שער משפטי ולא החלטה של המערכת.
         </p>
       </div>
+
+      {/* --- עורך המחיר --- */}
+      {editing?.kind === "contract" && (() => {
+        const entries = priceHistory(buildingId, editing.categoryId, contractIndex);
+        const active = activeAsOf(entries, todayISO());
+        const cat = EXPENSE_CATEGORIES.find((c) => c.id === editing.categoryId);
+        return (
+          <PriceEditor
+            title={`${cat?.name || editing.categoryId} — ${building.address}`}
+            entries={entries}
+            current={active}
+            collection="contracts"
+            template={{
+              buildingId,
+              categoryId: editing.categoryId,
+              vendorId: active?.vendorId ?? null,
+              vatMode: active?.vatMode ?? "standard",
+              vatRate: active?.vatRate,
+            }}
+            allowNull
+            onApply={applyPricePlan}
+            onDelete={remove}
+            onClose={() => setEditing(null)}
+          />
+        );
+      })()}
+
+      {editing?.kind === "fee" && (
+        <PriceEditor
+          title={`דמי ניהול — ${building.address}`}
+          entries={feeRows}
+          current={activeAsOf(feeRows, todayISO())}
+          collection="feeAgreements"
+          template={{ buildingId }}
+          allowNull={false}
+          onApply={applyPricePlan}
+          onDelete={remove}
+          onClose={() => setEditing(null)}
+        />
+      )}
 
       {/* --- ההערות --- */}
       {notes.length > 0 && (

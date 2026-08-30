@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EMPTY } from "../constants.js";
 import { normalize } from "../schema.js";
-import { indexContracts } from "../utils/profitability.js";
+import { indexContracts, indexFees } from "../utils/profitability.js";
 
 const LOCAL_KEY = "vitzman_data";
 
@@ -69,10 +69,21 @@ export function useData() {
     });
   }, []);
 
+  /**
+   * מחיקת ישות. משמש למחיקת שורת היסטוריית מחיר שנוצרה בטעות — עריכה שיוצרת
+   * שורות חייבת לאפשר גם לנקות אותן, אחרת ההיסטוריה נהיית זבל שאי אפשר לתקן.
+   * חוקיות המחיקה (למשל "לא למחוק את השורה האחרונה") נבדקת ב-`canDeleteEntry`
+   * לפני הקריאה — כאן זו פעולת מצב בלבד.
+   */
+  const remove = useCallback((collection, id) => {
+    setData((d) => ({ ...d, [collection]: (d[collection] || []).filter((x) => x.id !== id) }));
+  }, []);
+
   const reset = useCallback(() => setData(normalize(EMPTY)), []);
 
   // האינדקס נבנה פעם אחת לכל שינוי חוזים, לא בכל רינדור של כל שורה.
   const contractIndex = useMemo(() => indexContracts(data.contracts), [data.contracts]);
+  const feeIndex = useMemo(() => indexFees(data.feeAgreements), [data.feeAgreements]);
 
-  return { data, contractIndex, replaceAll, update, add, applyBatch, reset, error };
+  return { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, reset, error };
 }

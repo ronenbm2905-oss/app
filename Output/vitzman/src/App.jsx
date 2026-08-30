@@ -20,7 +20,7 @@ const TABS = [
 
 export default function App() {
   const store = useData();
-  const { data, contractIndex, replaceAll, update, add, applyBatch, reset, error } = store;
+  const { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, reset, error } = store;
   const [tab, setTab] = useState("dashboard");
   const [openBuildingId, setOpenBuildingId] = useState(null);
 
@@ -72,6 +72,7 @@ export default function App() {
           <ProfitabilityDashboard
             data={data}
             contractIndex={contractIndex}
+            feeIndex={feeIndex}
             onOpenBuilding={openBuilding}
             onOpenTab={setTab}
           />
@@ -80,7 +81,7 @@ export default function App() {
           <InspectionsView data={data} applyBatch={applyBatch} onOpenBuilding={openBuilding} />
         )}
         {tab === "vendors" && (
-          <VendorsView data={data} contractIndex={contractIndex} onOpenBuilding={openBuilding} />
+          <VendorsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} onOpenBuilding={openBuilding} />
         )}
         {tab === "buildings" &&
           (openBuildingId ? (
@@ -88,15 +89,18 @@ export default function App() {
               buildingId={openBuildingId}
               data={data}
               contractIndex={contractIndex}
+              feeIndex={feeIndex}
               update={update}
               add={add}
+              applyBatch={applyBatch}
+              remove={remove}
               onBack={() => setOpenBuildingId(null)}
             />
           ) : (
-            <BuildingsView data={data} contractIndex={contractIndex} onOpenBuilding={setOpenBuildingId} />
+            <BuildingsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} onOpenBuilding={setOpenBuildingId} />
           ))}
         {tab === "findings" && (
-          <DiscrepancyReport data={data} contractIndex={contractIndex} onOpenBuilding={openBuilding} />
+          <DiscrepancyReport data={data} contractIndex={contractIndex} feeIndex={feeIndex} onOpenBuilding={openBuilding} />
         )}
       </main>
 

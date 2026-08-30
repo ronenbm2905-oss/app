@@ -18,7 +18,7 @@ import { stalePriceContracts, STALE_PRICE_YEARS } from "../utils/vendors.js";
  * 2. **פירוק הקטגוריות מציג את בדיקת ההתאזנות על המסך.** אם הפירוק לא מסתכם
  *    לסה"כ — זה מוצג באדום, לא מתגלה חצי שנה אחרי.
  */
-export default function ProfitabilityDashboard({ data, contractIndex, onOpenBuilding, onOpenTab }) {
+export default function ProfitabilityDashboard({ data, contractIndex, feeIndex, onOpenBuilding, onOpenTab }) {
   const asOf = todayISO();
   const active = useMemo(() => data.buildings.filter((b) => b.status === "active"), [data.buildings]);
   const inspections = useMemo(
@@ -29,7 +29,7 @@ export default function ProfitabilityDashboard({ data, contractIndex, onOpenBuil
     () => stalePriceContracts(data.buildings, contractIndex, asOf),
     [data.buildings, contractIndex, asOf]
   );
-  const totals = useMemo(() => portfolioTotals(active, contractIndex), [active, contractIndex]);
+  const totals = useMemo(() => portfolioTotals(active, contractIndex, asOf, feeIndex), [active, contractIndex, asOf, feeIndex]);
   const breakdown = useMemo(() => categoryBreakdown(active, contractIndex), [active, contractIndex]);
   const loads = useMemo(
     () => employeeLoad(data.employees, data.buildings, contractIndex),

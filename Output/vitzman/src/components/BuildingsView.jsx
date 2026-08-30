@@ -12,7 +12,7 @@ const SORTS = {
   cost: (a, b) => b.cost - a.cost,
 };
 
-export default function BuildingsView({ data, contractIndex, onOpenBuilding }) {
+export default function BuildingsView({ data, contractIndex, feeIndex, onOpenBuilding }) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("profit");
   const [filter, setFilter] = useState("active");
@@ -34,9 +34,9 @@ export default function BuildingsView({ data, contractIndex, onOpenBuilding }) {
       ? pool.filter((b) => [b.address, ...b.aliases].some((a) => addressKey(a).includes(needle)))
       : pool;
     return matched
-      .map((b) => ({ ...buildingProfit(b, contractIndex), building: b }))
+      .map((b) => ({ ...buildingProfit(b, contractIndex, undefined, feeIndex), building: b }))
       .sort(SORTS[sort]);
-  }, [data.buildings, contractIndex, q, sort, filter]);
+  }, [data.buildings, contractIndex, feeIndex, q, sort, filter]);
 
   const unassigned = useMemo(() => unassignedBuildings(data.buildings), [data.buildings]);
 

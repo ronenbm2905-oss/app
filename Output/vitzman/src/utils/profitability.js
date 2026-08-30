@@ -31,24 +31,49 @@
 // ============================================================================
 
 import { round2, sum } from "./money.js";
+import { activeAsOf } from "./pricing.js";
 import { EXPENSE_CATEGORIES, THIN_MARGIN_THRESHOLD } from "../constants.js";
 
 /** ברירת מחדל: היום. נמסר במפורש בבדיקות כדי שהן לא ישתנו עם הזמן. */
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 /**
- * החוזה התקף לקטגוריה בתאריך נתון: בעל ה-`effectiveFrom` הגדול ביותר שכבר עבר.
- * חוזה בלי `effectiveFrom` נחשב תקף מאז ומעולם (כך נכנסים נתוני הייבוא, שאין
- * להם תאריך תחולה במקור) — אבל מפסיד לכל חוזה מתוארך שכבר נכנס לתוקף.
+ * החוזה התקף לקטגוריה בתאריך נתון.
+ *
+ * כינוי ל-`activeAsOf` מ-`pricing.js`, שהוא גנרי ומשרת גם את הסכמי דמי הניהול.
+ * **מנוע בחירה אחד לשני הצדדים** — שני מימושים נפרדים היו נפרדים גם בהתנהגות
+ * ברגע שאחד מהם מתוקן והשני לא.
  */
-export function activeContract(contracts, asOf = todayISO()) {
-  let best = null;
-  for (const c of contracts) {
-    if (c.effectiveFrom && c.effectiveFrom > asOf) continue;
-    if (!best) { best = c; continue; }
-    if ((c.effectiveFrom || "") > (best.effectiveFrom || "")) best = c;
+export const activeContract = activeAsOf;
+
+/** מקבץ הסכמי דמי ניהול לפי בניין. */
+export function indexFees(feeAgreements) {
+  const idx = new Map();
+  for (const f of feeAgreements || []) {
+    if (!f.buildingId) continue;
+    const list = idx.get(f.buildingId);
+    if (list) list.push(f); else idx.set(f.buildingId, [f]);
   }
-  return best;
+  return idx;
+}
+
+/**
+ * ההכנסה התקפה לבניין בתאריך נתון.
+ *
+ * נופל-לאחור ל-`building.managementFee` רק כשאין אף הסכם — מצב שלא אמור לקרות
+ * אחרי `normalize` (שמייצר הסכם פותח), אבל שומר על התנהגות נכונה אם מישהו מרכיב
+ * מצב ביד או קורא למנוע עם אוסף ריק.
+ */
+export function activeFee(building, feeIndex, asOf = todayISO()) {
+  const active = activeAsOf(feeIndex?.get(building.id) || [], asOf);
+  return active ? round2(active.amount) : round2(building.managementFee || 0);
+}
+
+/** היסטוריית דמי הניהול של בניין — החדש בראש. */
+export function feeHistory(buildingId, feeIndex) {
+  return [...(feeIndex?.get(buildingId) || [])].sort(
+    (a, b) => (b.effectiveFrom || "").localeCompare(a.effectiveFrom || "")
+  );
 }
 
 /** מקבץ חוזים לפי buildingId → categoryId. נבנה פעם אחת ומועבר הלאה. */
@@ -129,9 +154,9 @@ export function buildingCost(building, contractIndex, asOf = todayISO()) {
  * `markup` = רווח / **עלות** — תוספת על העלות. זה מה שהאקסל הציג כ"אחוז רווח".
  * שניהם `null` כשהמכנה 0 — לא 0, כי "אין רווח" ו"אי אפשר לחשב" אינם אותו דבר.
  */
-export function buildingProfit(building, contractIndex, asOf = todayISO()) {
+export function buildingProfit(building, contractIndex, asOf = todayISO(), feeIndex = null) {
   const cost = buildingCost(building, contractIndex, asOf);
-  const income = round2(building.managementFee || 0);
+  const income = feeIndex ? activeFee(building, feeIndex, asOf) : round2(building.managementFee || 0);
   const profit = round2(income - cost.bookedCost);
   return {
     buildingId: building.id,
@@ -161,8 +186,8 @@ export function buildingProfit(building, contractIndex, asOf = todayISO()) {
  * 14 בניינים נשרו והפירוק לא התאזן לסה"כ (936,750 מול 940,050). טווח קשיח
  * הוא באג שממתין לשורה ה-133; מערך אינו יכול "להיגמר מוקדם".
  */
-export function portfolioTotals(buildings, contractIndex, asOf = todayISO()) {
-  const rows = buildings.map((b) => buildingProfit(b, contractIndex, asOf));
+export function portfolioTotals(buildings, contractIndex, asOf = todayISO(), feeIndex = null) {
+  const rows = buildings.map((b) => buildingProfit(b, contractIndex, asOf, feeIndex));
   const income = sum(rows, (r) => r.income);
   const cost = sum(rows, (r) => r.cost);
   const profit = round2(income - cost);

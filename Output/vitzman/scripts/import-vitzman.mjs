@@ -214,6 +214,9 @@ function commentsOf(sheetName) {
 }
 
 const discrepancies = [];
+/** הערות AA שהפכו להיסטוריית הכנסה, ואלה שלא ניתן היה למקם בזמן. */
+const feeHistorySeeded = [];
+const feeNoteWithoutDate = [];
 const flag = (severity, title, detail) => discrepancies.push({ severity, title, detail });
 
 // ============================================================================
@@ -223,6 +226,7 @@ const activeComments = commentsOf(ACTIVE_SHEET);
 
 const buildings = [];
 const contracts = [];
+const feeAgreements = [];
 const notes = [];
 const inspections = [];
 const vendorByName = new Map();
@@ -259,6 +263,14 @@ for (let r = ACTIVE_FIRST_ROW; r <= ACTIVE_LAST_ROW; r++) {
   };
   buildings.push(b);
 
+  // --- דמי הניהול כהסכם, לא כשדה ---
+  // ההכנסה מקבלת אותו מבנה כמו ההוצאה (`amount` + `effectiveFrom`) כדי שגם לה
+  // תהיה היסטוריה. ההסכם הפותח נושא `effectiveFrom: null` = "מאז ומעולם".
+  const baseFee = {
+    id: newId("fee"), buildingId: b.id, amount: b.managementFee, effectiveFrom: null, note: "",
+  };
+  feeAgreements.push(baseFee);
+
   // --- ספקים של השורה, ממופים לקטגוריה שהם משרתים ---
   const vendorForCat = {};
   for (const [col, catId] of VENDOR_COLUMNS) {
@@ -286,6 +298,34 @@ for (let r = ACTIVE_FIRST_ROW; r <= ACTIVE_LAST_ROW; r++) {
       authoredAt: null,
       author,
     });
+    // --- שינוי מחיר של דמי הניהול (עמודה AA) → שורת היסטוריה להכנסה ---
+    // רק הערה שנושאת **גם סכומים וגם תאריך** הופכת להיסטוריה. הערה עם סכומים
+    // בלי תאריך לא ניתנת למיקום בזמן, ולכן היא נשארת הערה בלבד ומדווחת בדוח —
+    // המצאת תאריך הייתה המצאת נתון.
+    if (m[1] === COL.fee && kind === "priceChange") {
+      const change = priceChangeAmounts(text);
+      const from = effectiveFromText(text);
+      // ⚠ הגנה על ההכנסה: השורה נזרעת רק אם הסכום ה"אחרי" בהערה תואם את התא.
+      // אם המחיר עלה שוב אחרי ההערה, "אחרי" כבר אינו התקף — וזריעה עיוורת
+      // הייתה משנה את ההכנסה הכוללת ומפילה את מבחן ההתאמה בלי להסביר למה.
+      const matchesSheet = change && Math.abs(round2(change.to) - b.managementFee) < 0.01;
+      if (change && from && matchesSheet) {
+        // הסכום הקודם תופס את "מאז ומעולם", והסכום הנוכחי מקבל את תאריך התחולה.
+        baseFee.amount = round2(change.from);
+        baseFee.note = `מחיר קודם, לפי ההערה בתא ${ref}`;
+        feeAgreements.push({
+          id: newId("fee"), buildingId: b.id, amount: round2(change.to),
+          effectiveFrom: from, note: `לפי ההערה בתא ${ref}`,
+        });
+        feeHistorySeeded.push({ row: r, address, ref, from: change.from, to: change.to, effectiveFrom: from });
+      } else if (change) {
+        feeNoteWithoutDate.push({
+          row: r, address, ref, text,
+          reason: !from ? "אין תאריך תחולה" : "הסכום שאחרי השינוי אינו תואם את התא",
+        });
+      }
+    }
+
     // טלפון שנמצא בהערה על עמודת ספק → נכנס לכרטיס הספק
     if (kind === "contact") {
       const phone = (text.match(/0\d{1,2}-?\d{7}|\d{9,10}/) || [])[0] || "";
@@ -514,6 +554,21 @@ const totalCommentedCells = wb.SheetNames.reduce((acc, name) => {
   return acc + Object.keys(s).filter((r) => r[0] !== "!" && s[r].c?.length).length;
 }, 0);
 check("כל תאי ההערות נקלטו", notes.length, totalCommentedCells);
+check("הסכם דמי ניהול לכל בניין פעיל",
+  new Set(feeAgreements.map((f) => f.buildingId)).size, activeBuildings.length);
+// הבדיקה שמגינה על ההכנסה: אחרי הפיכת דמי הניהול להסכמים עם היסטוריה,
+// ההסכם התקף היום חייב להחזיר בדיוק את מה שהתא בגיליון אומר.
+{
+  const latest = new Map();
+  for (const f of feeAgreements) {
+    const cur = latest.get(f.buildingId);
+    if (!cur || (f.effectiveFrom || "") > (cur.effectiveFrom || "")) latest.set(f.buildingId, f);
+  }
+  const drift = activeBuildings.filter(
+    (b) => Math.abs((latest.get(b.id)?.amount ?? 0) - b.managementFee) > 0.01
+  );
+  check("ההסכם התקף מחזיר את דמי הניהול שבגיליון", drift.length, 0);
+}
 check("הערות הגיליון הפעיל", notes.filter((n) => n.sourceSheet === ACTIVE_SHEET).length, 161);
 
 const failed = checks.filter((c) => !c.ok);
@@ -798,7 +853,24 @@ ${inspections.length === 0 ? "**אף אחת מהן לא מולאה באף בני
 
 ---
 
-## 11 · סתירות נוספות שנרשמו במהלך הייבוא
+## 11 · היסטוריית דמי ניהול שנזרעה מההערות
+
+דמי הניהול הם **הסכם עם תאריך תחולה**, לא שדה — כדי שגם להכנסה תהיה היסטוריה.
+${feeHistorySeeded.length} הערות בעמודה \`${COL.fee}\` נשאו גם סכומים וגם תאריך, ולכן הפכו לשורת מחיר קודם:
+
+${feeHistorySeeded.length ? `| שורה | בניין | תא | מ- | ל- | בתוקף מ- |
+|---|---|---|---|---|---|
+${feeHistorySeeded.map((f) => `| ${f.row} | ${f.address} | ${f.ref} | ${nf(f.from)} | ${nf(f.to)} | ${f.effectiveFrom} |`).join("\n")}` : "— אף אחת"}
+
+${feeNoteWithoutDate.length ? `**לא נזרעו** (${feeNoteWithoutDate.length}) — נשארו כהערה גלויה בלבד:
+
+${feeNoteWithoutDate.map((f) => `- שורה ${f.row}, ${f.address} (${f.ref}) — **${f.reason}**\n  \`${f.text}\``).join("\n")}
+
+שינוי מחיר בלי מועד אי אפשר למקם בזמן, והמצאת תאריך הייתה המצאת נתון.` : ""}
+
+---
+
+## 12 · סתירות נוספות שנרשמו במהלך הייבוא
 
 ${discrepancies.length ? discrepancies.map((d) => `### [${d.severity}] ${d.title}\n${d.detail}`).join("\n\n") : "— אין"}
 `;
@@ -812,6 +884,7 @@ const payload = {
   schemaVersion: 1,
   buildings,
   vendors: [...vendorByName.values()],
+  feeAgreements,
   employees,
   contracts,
   notes,

@@ -110,6 +110,7 @@ export const ENTITY_COLLECTIONS = [
   "vendors",
   "employees",
   "contracts",
+  "feeAgreements",
   "notes",
   "inspections",
 ];
@@ -120,6 +121,7 @@ export const EMPTY = {
   vendors: [],
   employees: [],
   contracts: [],
+  feeAgreements: [],
   notes: [],
   inspections: [],
   meta: { sourceFile: null, importedAt: null, discrepancies: [] },

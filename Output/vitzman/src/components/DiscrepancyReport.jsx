@@ -13,10 +13,10 @@ import { addressKey } from "../utils/id.js";
  *  · **היסטורי** — נוגע לגיליון עצמו (טווחי נוסחה, שורת רפאים). אי אפשר לגזור
  *    אותו מהמודל ולכן הוא נשמר ב-`meta.sheetFindings` בזמן הייבוא.
  */
-export default function DiscrepancyReport({ data, contractIndex, onOpenBuilding }) {
+export default function DiscrepancyReport({ data, contractIndex, feeIndex, onOpenBuilding }) {
   const f = data.meta?.sheetFindings;
   const active = useMemo(() => data.buildings.filter((b) => b.status === "active"), [data.buildings]);
-  const totals = useMemo(() => portfolioTotals(active, contractIndex), [active, contractIndex]);
+  const totals = useMemo(() => portfolioTotals(active, contractIndex, undefined, feeIndex), [active, contractIndex, feeIndex]);
   const breakdown = useMemo(() => categoryBreakdown(active, contractIndex), [active, contractIndex]);
   const unassigned = useMemo(() => unassignedBuildings(data.buildings), [data.buildings]);
 

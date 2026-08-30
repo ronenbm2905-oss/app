@@ -14,16 +14,18 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { makeBuilding, makeContract, makeInspection, makeVendor, normalize } from "../src/schema.js";
+import { makeBuilding, makeContract, makeInspection, makeVendor, makeFeeAgreement, normalize } from "../src/schema.js";
 import {
   indexContracts, buildingProfit, portfolioTotals, categoryBreakdown,
   activeContract, priceHistory, unassignedBuildings, imputedVatIncluded,
+  indexFees, activeFee, feeHistory,
 } from "../src/utils/profitability.js";
 import {
   inspectionStatus, inspectionSummary, planBulkRecord, indexInspections,
   buildingInspections, worstStatus, warnWindowDays,
 } from "../src/utils/inspections.js";
 import { vendorSpend, vendorConcentration, stalePriceContracts } from "../src/utils/vendors.js";
+import { planPriceChange, canDeleteEntry, activeAsOf, sortByEffective } from "../src/utils/pricing.js";
 import { addMonths, daysBetween, fmtDate, todayISO } from "../src/utils/dates.js";
 import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
 import { addressKey } from "../src/utils/id.js";
@@ -323,7 +325,139 @@ ok("todayISO בפורמט ISO", /^\d{4}-\d{2}-\d{2}$/.test(todayISO()));
 }
 
 // ============================================================================
-// 14. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 14. שינוי מחיר — פרוסה 3
+// ============================================================================
+{
+  const base = { id: "e1", amount: 1000, effectiveFrom: null };
+  const entries = [base];
+
+  // --- תיקון: דורס, בלי שורת היסטוריה ---
+  const fix = planPriceChange({ entries, currentId: "e1", newAmount: 1100, mode: "correct" });
+  eq("תיקון מעדכן במקום", fix.updates.length, 1);
+  eq("תיקון לא יוצר שורה חדשה", fix.creates.length, 0);
+  eq("תיקון נושא את הסכום החדש", fix.updates[0].patch.amount, 1100);
+  ok("תיקון של אותו סכום נחסם",
+    planPriceChange({ entries, currentId: "e1", newAmount: 1000, mode: "correct" }).error !== null);
+
+  // --- מחיר חדש: שומר היסטוריה ---
+  const nu = planPriceChange({
+    entries, currentId: "e1", newAmount: 1200, mode: "newPrice",
+    effectiveFrom: "2026-09-01", template: { buildingId: "b1", categoryId: "cleaning" }, asOf: "2026-08-30",
+  });
+  eq("מחיר חדש יוצר שורה", nu.creates.length, 1);
+  eq("מחיר חדש לא דורס", nu.updates.length, 0);
+  eq("השורה נושאת את התאריך", nu.creates[0].effectiveFrom, "2026-09-01");
+  eq("השורה יורשת את ה-template", nu.creates[0].categoryId, "cleaning");
+  ok("תאריך עתידי מייצר אזהרה", /עתידי/.test(nu.warning || ""));
+  ok("התוכנית לא נגעה במקור", entries.length === 1 && base.amount === 1000);
+
+  // --- מלכודת: תאריך שכבר קיים → עדכון, לא כפילות ---
+  const withHist = [base, { id: "e2", amount: 1200, effectiveFrom: "2026-09-01" }];
+  const dup = planPriceChange({
+    entries: withHist, currentId: "e1", newAmount: 1300, mode: "newPrice",
+    effectiveFrom: "2026-09-01", asOf: "2026-08-30",
+  });
+  eq("תאריך קיים → מעדכן את אותה שורה", dup.updates.length, 1);
+  eq("תאריך קיים → לא יוצר כפילות", dup.creates.length, 0);
+  eq("העדכון על השורה הנכונה", dup.updates[0].id, "e2");
+  ok("ומייצר אזהרה", (dup.warning || "").length > 0);
+  ok("סכום זהה באותו תאריך נחסם",
+    planPriceChange({ entries: withHist, currentId: "e1", newAmount: 1200, mode: "newPrice",
+      effectiveFrom: "2026-09-01", asOf: "2026-08-30" }).error !== null);
+
+  // --- מלכודת: רטרואקטיבי ---
+  const past = [base, { id: "e3", amount: 1500, effectiveFrom: "2026-06-01" }];
+  const retro = planPriceChange({
+    entries: past, currentId: "e3", newAmount: 1400, mode: "newPrice",
+    effectiveFrom: "2026-03-01", asOf: "2026-08-30",
+  });
+  eq("רטרואקטיבי מותר", retro.error, null);
+  ok("רטרואקטיבי מייצר אזהרה", /דווחה|לא תשנה/.test(retro.warning || ""));
+  // רטרואקטיבי מול "מאז ומעולם" — אין תאריך להשוות אליו, ובכל זאת זו תקופה שדווחה
+  const retroVsNull = planPriceChange({
+    entries: [base], currentId: "e1", newAmount: 1400, mode: "newPrice",
+    effectiveFrom: "2026-06-01", asOf: "2026-08-30",
+  });
+  ok("רטרואקטיבי מול 'מאז ומעולם' גם הוא מזהיר", /דווחה/.test(retroVsNull.warning || ""),
+    "מחיר מיוני משנה יוני-אוגוסט גם כשהמחיר שהוא מחליף הוא חסר-תאריך");
+  // מלכודת: תאריך בעבר שלא ישנה את המחיר הנוכחי כי יש רשומה מאוחרת יותר
+  const shadowed = planPriceChange({
+    entries: [base, { id: "e9", amount: 1600, effectiveFrom: "2026-07-01" }],
+    currentId: "e1", newAmount: 1450, mode: "newPrice",
+    effectiveFrom: "2026-06-01", asOf: "2026-08-30",
+  });
+  ok("שורה שלא תשנה את המחיר התקף מסומנת ככזו", /לא תשנה/.test(shadowed.warning || ""));
+
+  // --- מלכודות קלט ---
+  ok("תאריך לא תקין נחסם",
+    planPriceChange({ entries, currentId: "e1", newAmount: 1200, mode: "newPrice", effectiveFrom: "1.9.2026" }).error !== null);
+  ok("סכום שלילי נחסם",
+    planPriceChange({ entries, currentId: "e1", newAmount: -5, mode: "correct" }).error !== null);
+  ok("מצב לא מוכר נחסם",
+    planPriceChange({ entries, currentId: "e1", newAmount: 1200, mode: "לא-קיים" }).error !== null);
+  eq("null מותר (הוועד משלם)",
+    planPriceChange({ entries, currentId: "e1", newAmount: null, mode: "correct" }).updates[0].patch.amount, null);
+
+  // --- מחיקה ---
+  eq("אי אפשר למחוק את השורה האחרונה", canDeleteEntry(entries, "e1").ok, false);
+  eq("אפשר למחוק כשיש יותר מאחת", canDeleteEntry(withHist, "e2").ok, true);
+  eq("מחיקת רשומה לא קיימת נחסמת", canDeleteEntry(withHist, "אין-כזה").ok, false);
+
+  // --- מיון ובחירה ---
+  eq("המיון מציב את החדש בראש", sortByEffective(withHist)[0].id, "e2");
+  eq("null מפסיד לתאריך שכבר עבר", activeAsOf(past, "2026-08-30").id, "e3");
+  eq("לפני התאריך — null מנצח", activeAsOf(past, "2026-05-01").id, "e1");
+  eq("תאריך עתידי מתעלמים ממנו", activeAsOf(withHist, "2026-08-30").id, "e1");
+}
+
+// ============================================================================
+// 15. הכנסה כהסכם עם היסטוריה
+// ============================================================================
+{
+  const b = makeBuilding({ id: "fb", address: "הכנסה 1", managementFee: 5000 });
+  const fees = [
+    makeFeeAgreement({ id: "f1", buildingId: "fb", amount: 4600, effectiveFrom: null }),
+    makeFeeAgreement({ id: "f2", buildingId: "fb", amount: 5400, effectiveFrom: "2021-11-01" }),
+  ];
+  const fi = indexFees(fees);
+  eq("ההכנסה נגזרת מההסכם התקף", activeFee(b, fi, "2026-08-30"), 5400);
+  eq("ולפני התחולה — מההסכם הקודם", activeFee(b, fi, "2021-10-31"), 4600);
+  eq("היסטוריה מוחזרת, החדש בראש", feeHistory("fb", fi)[0].id, "f2");
+  eq("בלי feeIndex — נפילה לאחור ל-managementFee",
+    buildingProfit(b, indexContracts([]), "2026-08-30").income, 5000);
+  eq("עם feeIndex — ההסכם גובר",
+    buildingProfit(b, indexContracts([]), "2026-08-30", fi).income, 5400);
+
+  const idx = indexContracts([makeContract({ buildingId: "fb", categoryId: "cleaning", amount: 1000 })]);
+  const t = portfolioTotals([b], idx, "2026-08-30", fi);
+  eq("הרווח מחושב מההכנסה התקפה", t.profit, 4400);
+  eq("ובתאריך מוקדם — מההכנסה שהייתה אז", portfolioTotals([b], idx, "2021-10-31", fi).profit, 3600);
+}
+
+// ============================================================================
+// 16. הגירת normalize — נתונים מלפני פרוסה 3
+// ============================================================================
+{
+  const old = { buildings: [{ id: "ob", address: "ישן 1", managementFee: 7000 }] };
+  const n = normalize(old);
+  eq("נוצר הסכם פותח מ-managementFee", n.feeAgreements.length, 1);
+  eq("בסכום הנכון", n.feeAgreements[0].amount, 7000);
+  eq("ובלי תאריך תחולה (מאז ומעולם)", n.feeAgreements[0].effectiveFrom, null);
+  eq("ההכנסה נשמרת אחרי ההגירה",
+    buildingProfit(n.buildings[0], indexContracts([]), "2026-08-30", indexFees(n.feeAgreements)).income, 7000);
+
+  // אידמפוטנטיות: הרצה חוזרת לא מכפילה ולא דורסת עריכה
+  const twice = normalize(n);
+  eq("הגירה חוזרת לא מכפילה", twice.feeAgreements.length, 1);
+  const edited = normalize({ ...n, feeAgreements: [{ ...n.feeAgreements[0], amount: 7500 }] });
+  eq("הגירה חוזרת לא דורסת עריכה", edited.feeAgreements[0].amount, 7500);
+
+  eq("בניין בלי managementFee לא מקבל הסכם",
+    normalize({ buildings: [{ id: "z", address: "ללא", managementFee: 0 }] }).feeAgreements.length, 0);
+}
+
+// ============================================================================
+// 17. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
@@ -334,7 +468,8 @@ if (!existsSync(SEED)) {
   const active = data.buildings.filter((b) => b.status === "active");
   // החוזים ההיסטוריים (מחיר קודם) לא אמורים להשפיע על התמונה הנוכחית
   const idx = indexContracts(data.contracts);
-  const totals = portfolioTotals(active, idx, "2026-08-30");
+  const fidx = indexFees(data.feeAgreements);
+  const totals = portfolioTotals(active, idx, "2026-08-30", fidx);
   const bd = categoryBreakdown(active, idx, "2026-08-30");
   const sheet = raw.meta?.sheetTotals || {};
 
@@ -348,6 +483,18 @@ if (!existsSync(SEED)) {
   ok("margin נמוך מ-markup", totals.margin < totals.markup);
   eq("2 בניינים בהפסד", totals.losses.length, 2);
   eq("212 הערות נשמרו", data.notes.length, 212);
+
+  // --- פרוסה 3: ההכנסה עברה להסכמים בלי לזוז בשקל ---
+  eq("הסכם דמי ניהול לכל בניין פעיל", new Set(data.feeAgreements.map((f) => f.buildingId)).size, 131);
+  eq("ההכנסה דרך ההסכמים זהה לגיליון", totals.income, sheet.income);
+  {
+    const drift = active.filter((b) => Math.abs(activeFee(b, fidx, "2026-08-30") - b.managementFee) > 0.01);
+    eq("אף בניין לא סוטה מדמי הניהול שבגיליון", drift.length, 0);
+  }
+  const withFeeHistory = active.filter((b) => feeHistory(b.id, fidx).length > 1);
+  eq("3 בניינים עם היסטוריית הכנסה מההערות", withFeeHistory.length, 3);
+  ok("היסטוריית ההכנסה נושאת תאריכי תחולה",
+    withFeeHistory.every((b) => feeHistory(b.id, fidx).some((f) => f.effectiveFrom)));
   eq("3 עובדים", data.employees.length, 3);
 
   // הבניינים שנפלו מ-SUBTOTAL(9,Y2:Y118) — הסכום שלהם חייב להיות בפנים

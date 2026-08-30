@@ -31,7 +31,12 @@ export function makeBuilding(b = {}) {
     status: b.status === "inactive" ? "inactive" : "active",
     assignedEmployeeId: b.assignedEmployeeId || null,
     inIlm: !!b.inIlm,
-    /** ההכנסה: דמי הניהול החודשיים מוועד הבית. */
+    /**
+     * ⚠ **ערך מוצא להגירה בלבד.** ההכנסה התקפה נגזרת תמיד מ-`feeAgreements`,
+     * כדי שגם לדמי הניהול תהיה היסטוריה (16 מ-24 הערות שינוי-המחיר בגיליון
+     * היו על העמודה הזו, לא על ההוצאות). `normalize` ממיר את השדה הזה להסכם
+     * עם `effectiveFrom: null` כשאין עדיין הסכם — כך נתונים ישנים עולים כמו שהם.
+     */
     managementFee: round2(b.managementFee ?? 0),
     insurerName: b.insurerName || "",
     areaManager: b.areaManager || "",
@@ -97,6 +102,23 @@ export function makeContract(c = {}) {
 }
 
 /**
+ * הסכם דמי ניהול — ההכנסה מוועד הבית, מתאריך תחולה מסוים.
+ *
+ * **אותה צורה בדיוק כמו `serviceContract`** (`amount` + `effectiveFrom`), ולכן
+ * `activeAsOf` משרת את שניהם ואין שני מנועי בחירה שיכולים להיפרד זה מזה.
+ * היסטוריה = כמה הסכמים לאותו בניין; התקף הוא בעל התאריך הגדול ביותר שכבר עבר.
+ */
+export function makeFeeAgreement(f = {}) {
+  return {
+    id: f.id || newId("fee"),
+    buildingId: f.buildingId || null,
+    amount: round2(f.amount ?? 0),
+    effectiveFrom: f.effectiveFrom || null, // `null` = מאז ומעולם
+    note: f.note || "",
+  };
+}
+
+/**
  * הערה. באקסל אלה היו 214 הערות תאים — מידע שאי אפשר לשאול אותו שאלה
  * ושהדבקה אחת שגויה מוחקת. כאן זו ישות עם `kind`, קישור לבניין, ו-`sourceCell`
  * שמאפשר לחזור למקור.
@@ -137,14 +159,35 @@ export function makeInspection(i = {}) {
 /** נרמול מצב מלא — כל אוסף חסר הופך למערך ריק, כל ישות עוברת ב-factory. */
 export function normalize(raw) {
   const d = raw && typeof raw === "object" ? raw : {};
+  const buildings = (d.buildings || []).map(makeBuilding);
   return {
     schemaVersion: SCHEMA_VERSION,
-    buildings: (d.buildings || []).map(makeBuilding),
+    buildings,
     vendors: (d.vendors || []).map(makeVendor),
     employees: (d.employees || []).map(makeEmployee),
     contracts: (d.contracts || []).map(makeContract),
+    feeAgreements: migrateFees(buildings, d.feeAgreements),
     notes: (d.notes || []).map(makeNote),
     inspections: (d.inspections || []).map(makeInspection),
     meta: { ...EMPTY.meta, ...(d.meta || {}) },
   };
+}
+
+/**
+ * הגירה: בניין שיש לו `managementFee` ואין לו אף הסכם מקבל הסכם פותח עם
+ * `effectiveFrom: null` (= מאז ומעולם).
+ *
+ * זה מה שמאפשר ל-`localStorage` קיים ול-seed שנוצר לפני פרוסה 3 לעלות בלי
+ * שבירה ובלי ייבוא מחדש. ההגירה **לא נוגעת** בבניין שכבר יש לו הסכם, ולכן
+ * היא אידמפוטנטית: הרצה חוזרת לא מייצרת כפילות ולא דורסת עריכות.
+ */
+function migrateFees(buildings, rawFees) {
+  const fees = (rawFees || []).map(makeFeeAgreement);
+  const covered = new Set(fees.map((f) => f.buildingId));
+  for (const b of buildings) {
+    if (covered.has(b.id)) continue;
+    if (!b.managementFee) continue;
+    fees.push(makeFeeAgreement({ buildingId: b.id, amount: b.managementFee, effectiveFrom: null }));
+  }
+  return fees;
 }

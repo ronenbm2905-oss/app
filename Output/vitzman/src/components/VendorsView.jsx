@@ -14,13 +14,13 @@ import { CATEGORY_BY_ID } from "../constants.js";
  * בגיליון הספק היה שם בתא ליד כל בניין בנפרד, ולכן אי אפשר היה לשאול *״כמה
  * אנחנו משלמים לו בסך הכל״*. כאן זו השורה הראשונה בטבלה.
  */
-export default function VendorsView({ data, contractIndex, onOpenBuilding }) {
+export default function VendorsView({ data, contractIndex, feeIndex, onOpenBuilding }) {
   const asOf = todayISO();
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState(null);
 
   const active = useMemo(() => data.buildings.filter((b) => b.status === "active"), [data.buildings]);
-  const totals = useMemo(() => portfolioTotals(active, contractIndex, asOf), [active, contractIndex, asOf]);
+  const totals = useMemo(() => portfolioTotals(active, contractIndex, asOf, feeIndex), [active, contractIndex, asOf, feeIndex]);
   const rows = useMemo(() => {
     const spend = vendorSpend(data.vendors, data.buildings, contractIndex, asOf);
     return vendorConcentration(spend, totals.cost);
