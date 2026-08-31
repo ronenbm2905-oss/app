@@ -3,7 +3,7 @@ import { DAYS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
-import { absencesOn, absenceLabel, absenceCoversSession } from "../utils/availability";
+import { absencesOn, absenceLabel, absenceCoversSession, hallClosuresOn } from "../utils/availability";
 import { secretaryDutiesFor, secretaryLabel, secretaryWhen, shortDate } from "../utils/secretary";
 import { driverLine } from "../utils/transport";
 import { Select } from "./ui/Select";
@@ -253,7 +253,18 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
             // Days the manager has marked this coach as unavailable. Read-only here — the
             // coach is a viewer — but shown on their own board, because a day marked in the
             // office that the coach never sees is a day everyone still expects them at.
-            const dayAbsences = absencesOn(data.absences, coachId, weekDates[d] ? toISODate(weekDates[d]) : "");
+            const dayIso = weekDates[d] ? toISODate(weekDates[d]) : "";
+            const dayAbsences = absencesOn(data.absences, coachId, dayIso);
+            // A hall taken for the evening empties this coach's training exactly as his own
+            // absence does, and he is the one who would otherwise drive to a locked door.
+            // Matched per session rather than per day: the club has several halls and only
+            // the one his training stands in is his problem.
+            const dayClosures = hallClosuresOn(data.absences, dayIso);
+            const closuresFor = (s) =>
+              dayClosures.filter((a) => a.hallId === s.hallId && absenceCoversSession(a, s));
+            const myClosures = [
+              ...new Map(mySessions.flatMap(closuresFor).map((a) => [a.id, a])).values(),
+            ];
             const anyActivity = mySessions.length > 0 || dayAbsences.length > 0 || hallRows.some((h) => h.sessions.length > 0);
             if (!anyActivity) return null;
 
@@ -272,6 +283,13 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                       ⛔ {absenceLabel(a, canEdit || (Boolean(fixedCoachId) && coachId === fixedCoachId))}
                     </span>
                   ))}
+                  {/* No such guard here: a closure is a fact about a building, so the reason
+                      rides along for everyone — see the note on `absenceLabel`. */}
+                  {myClosures.map((a) => (
+                    <span key={a.id} className="text-xs font-medium text-amber-800">
+                      🏟 {nameOf(data.halls, a.hallId)} — {absenceLabel(a)}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="p-4 space-y-4">
@@ -283,7 +301,8 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                       <div className="space-y-1.5">
                         {mySessions.map((s) => {
                           const violated = sessionViolatesConstraints(s, data.constraints || []);
-                          const away = dayAbsences.some((a) => absenceCoversSession(a, s));
+                          const away =
+                            dayAbsences.some((a) => absenceCoversSession(a, s)) || closuresFor(s).length > 0;
                           return (
                             <div
                               key={s.id}

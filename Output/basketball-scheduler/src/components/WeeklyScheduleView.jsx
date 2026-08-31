@@ -4,7 +4,7 @@ import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
-import { findAbsenceHits, absenceLabel } from "../utils/availability";
+import { findAbsenceHits, absenceLabel, isHallClosure, hallClosuresOn, isAllDay } from "../utils/availability";
 import {
   findHallClashes,
   findCoachClashes,
@@ -347,8 +347,18 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   );
   // The reason rides along only where a manager is already looking at an editable cell.
   // The hall report below is open to every coach, so it asks for the bare label.
+  // Named at the source, because one session can now be hit by two different things and
+  // "לא זמין כל היום" on its own no longer says which. The name in front is the coach for
+  // an absence and the hall for a closure — attributing a closed building to the coach who
+  // happened to be booked into it is the mistake this replaces.
   const absenceText = (id, withNote = false) =>
-    (absenceHits[id] || []).map((a) => absenceLabel(a, withNote)).join(" · ");
+    (absenceHits[id] || [])
+      .map((a) =>
+        isHallClosure(a)
+          ? `${nameOf(data.halls, a.hallId)}: ${absenceLabel(a)}`
+          : `${nameOf(data.coaches, a.coachId)}: ${absenceLabel(a, withNote)}`
+      )
+      .join(" · ");
 
   // Who is out this week, by day — independent of whether anything is scheduled yet, which
   // is the whole point: you mark someone out weeks ahead so you can see it while building
@@ -368,7 +378,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
         const names = [
           ...new Set(
             list
-              .filter((a) => a && a.date === iso)
+              .filter((a) => a && a.date === iso && !isHallClosure(a))
               .filter((a) => !filterCoachIds.length || filterCoachIds.includes(a.coachId))
               .map((a) => nameOf(data.coaches, a.coachId))
           ),
@@ -382,6 +392,37 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       })
       .filter(Boolean);
   }, [data.absences, data.coaches, weekStart, filterDays, filterCoachIds]);
+
+  // Halls taken this week, by day. Its own strip rather than a third name on the line
+  // above, for two reasons that both point the same way: a closed hall is not filtered by
+  // the coach picker — the building is shut for whoever was in it, including a coach who
+  // is not on the board right now — and unlike a coach absence it is shown to everyone,
+  // because the coach who drives to a locked door is the one who needed to know.
+  const weekHallClosures = useMemo(() => {
+    const list = data.absences || [];
+    if (!list.length) return [];
+    return DAYS.filter((day) => filterDays.includes(day))
+      .map((day) => {
+        const date = weekDates[day];
+        if (!date) return null;
+        const iso = toISODate(date);
+        const halls = [
+          ...new Set(
+            hallClosuresOn(list, iso).map((a) => {
+              const name = nameOf(data.halls, a.hallId);
+              return isAllDay(a) ? name : `${name} ${a.start}–${a.end}`;
+            })
+          ),
+        ].sort((x, y) => x.localeCompare(y, "he"));
+        if (!halls.length) return null;
+        return {
+          day,
+          dateLabel: `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`,
+          halls: halls.join(", "),
+        };
+      })
+      .filter(Boolean);
+  }, [data.absences, data.halls, weekStart, filterDays]);
 
   // Which constraint kinds a session violates, as a Hebrew label ("מאמן", "אולם", "מאמן ואולם").
   const violationLabel = (id) => {
@@ -586,7 +627,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 className="accent-brand-600"
               />
               דוח נקי בהדפסה ובתמונה
-              <span className="text-stone-400">— בלי סימוני אילוץ וחפיפה</span>
+              <span className="text-stone-500">— בלי סימוני אילוץ וחפיפה</span>
             </label>
           </div>
         )}
@@ -639,6 +680,17 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
         )}
 
         <FixedTeamsStrip data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
+        {weekHallClosures.length > 0 && (
+          <div className="text-xs rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-semibold shrink-0">🏟 אולמות תפוסים השבוע:</span>
+            {weekHallClosures.map((d) => (
+              <span key={d.day}>
+                <span className="font-medium">{d.day} {d.dateLabel}</span>
+                <span className="text-amber-800"> — {d.halls}</span>
+              </span>
+            ))}
+          </div>
+        )}
         {canEdit && weekAbsences.length > 0 && (
           <div className="text-xs rounded-lg border border-red-200 bg-red-50 text-red-800 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="font-semibold shrink-0">⛔ לא זמינים השבוע:</span>
@@ -756,7 +808,14 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                     // The coach is marked away on this date. Drawn in the clash red
                                     // rather than the constraint amber: a booking that breaks a
                                     // constraint still happens, this one has nobody to run it.
-                                    const absent = !!absenceHits[s.id] && !suppressWarnings && !exporting;
+                                    // Split by subject: the badge names the coach, and a hall
+                                    // taken by the municipality is not something the coach did.
+                                    // Both can land on one session, and then both are shown —
+                                    // finding another coach does not open the building.
+                                    const hits = !suppressWarnings && !exporting ? absenceHits[s.id] || [] : [];
+                                    const coachAway = hits.some((a) => !isHallClosure(a));
+                                    const hallShut = hits.some(isHallClosure);
+                                    const absent = hits.length > 0;
                                     const alarm = clash || absent; // red treatment
                                     const cellStyle = {
                                       backgroundColor: alarm ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
@@ -772,9 +831,14 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                             ⚠ חפיפת מאמן{s.coachId ? ` — ${nameOf(data.coaches, s.coachId)}` : ""}
                                           </div>
                                         )}
-                                        {absent && (
+                                        {coachAway && (
                                           <div className="font-bold text-red-700 flex items-center gap-0.5">
                                             ⛔ {s.coachId ? `${nameOf(data.coaches, s.coachId)} ` : ""}לא זמין
+                                          </div>
+                                        )}
+                                        {hallShut && (
+                                          <div className="font-bold text-red-700 flex items-center gap-0.5">
+                                            ⛔ {nameOf(data.halls, s.hallId)} תפוס
                                           </div>
                                         )}
                                         {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
@@ -794,7 +858,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                                 hallClash && "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן",
                                                 coachClash &&
                                                   `חפיפת מאמן! ${nameOf(data.coaches, s.coachId)} משובץ ליותר מקבוצה אחת באותו זמן`,
-                                                absent && `${nameOf(data.coaches, s.coachId)}: ${absenceText(s.id, canEdit)}`,
+                                                absent && absenceText(s.id, canEdit),
                                               ]
                                                 .filter(Boolean)
                                                 .join(" · ") + " — לחץ לעריכה"
@@ -831,7 +895,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                     <button
                                       onClick={() => setAddingCell({ teamId: team.id, coachId: team.coachId || "", day, weekOf: weekStart })}
                                       title="הוסף אימון נוסף"
-                                      className="no-print w-full flex items-center justify-center py-0.5 text-[10px] text-stone-400 hover:text-brand-600 rounded"
+                                      className="no-print w-full flex items-center justify-center py-0.5 text-[10px] text-stone-500 hover:text-brand-600 rounded"
                                     >
                                       ＋ הוסף
                                     </button>

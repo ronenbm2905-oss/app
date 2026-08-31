@@ -91,6 +91,21 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
     return hits.length > 0 ? hits : null;
   }, [coachId, day, start, end, weekOf, data.absences]);
 
+  // The same question about the room. Kept separate from `coachIsAway` rather than merged
+  // into one "something is wrong" flag, because they are fixed by different actions: one
+  // needs another coach, the other needs another hall.
+  const hallIsTaken = useMemo(() => {
+    if (!hallId || !weekOf || !start || !end) return null;
+    const i = DAYS.indexOf(day);
+    if (i < 0) return null;
+    const d = new Date(weekOf + "T00:00:00");
+    d.setDate(d.getDate() + i);
+    const hits = absencesOn(data.absences, hallId, toISODate(d), "hall").filter((a) =>
+      absenceCoversSession(a, { start, end })
+    );
+    return hits.length > 0 ? hits : null;
+  }, [hallId, day, start, end, weekOf, data.absences]);
+
   const currentSession = {
     id: sessionIdRef.current,
     teamId,
@@ -200,6 +215,16 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
           <span>
             <span className="font-semibold">{nameOf(data.coaches, coachId)}</span> מסומן/ת כלא זמין/ה בתאריך הזה
             {" "}({coachIsAway.map((a) => absenceLabel(a, true)).join(" · ")}). אפשר לשמור בכל זאת — אבל יהיה צריך מחליף.
+          </span>
+        </div>
+      )}
+
+      {hallIsTaken && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-lg p-2.5 text-xs text-amber-900">
+          <IconBan size={15} className="shrink-0 mt-0.5" />
+          <span>
+            <span className="font-semibold">{nameOf(data.halls, hallId)}</span> מסומן כתפוס בתאריך הזה
+            {" "}({hallIsTaken.map((a) => absenceLabel(a)).join(" · ")}). אפשר לשמור בכל זאת — אבל יהיה צריך אולם אחר.
           </span>
         </div>
       )}

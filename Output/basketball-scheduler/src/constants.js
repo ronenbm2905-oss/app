@@ -61,7 +61,8 @@ export const EMPTY = {
   gameMapping: [],
   players: [],  // { id, teamId, name, phone, birthDate, shirtSize, pantsSize, sweaterSize, jerseyNumber }
   holidays: [], // { id, date: "YYYY-MM-DD", name } — special days shown on the weekly board
-  // { id, coachId, date: "YYYY-MM-DD", start?, end?, note? } — a coach out on one date.
+  // { id, coachId? | hallId?, date: "YYYY-MM-DD", start?, end?, note? } — a coach out, or a
+  // hall taken, on one date. Exactly one of coachId / hallId says which.
   // The dated counterpart to `constraints`, which repeat every week; see utils/availability.js.
   absences: [],
   // Weeks where the manager answered "לא השבוע" to the fixed-teams strip. See utils/fixedTeams.js.

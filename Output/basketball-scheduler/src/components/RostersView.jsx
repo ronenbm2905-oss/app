@@ -451,7 +451,10 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
     (data.absences || []).filter((a) => a.coachId === id).length;
   const hallUsage = (id) =>
     data.sessions.filter((s) => s.hallId === id).length +
-    (data.constraints || []).filter((c) => c.type === "hall" && c.refId === id).length;
+    (data.constraints || []).filter((c) => c.type === "hall" && c.refId === id).length +
+    // Closure marks count too, exactly as a coach's absences do above: deleting the hall
+    // would leave records pointing at an id no list can resolve any more.
+    (data.absences || []).filter((a) => a.hallId === id).length;
   const teamUsage = (id) => data.sessions.filter((s) => s.teamId === id).length;
 
   const handleSaveCoach = (item, exists) => {

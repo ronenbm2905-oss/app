@@ -1,5 +1,5 @@
 import { weekStartOfDMY } from "./dates";
-import { upcomingAbsences } from "./availability";
+import { upcomingAbsences, subjectOf } from "./availability";
 import { unreadCount } from "./gameNotes";
 
 // One live line per tile on the home screen.
@@ -63,7 +63,11 @@ export function homeStats(data, weekStart, canEdit = true, notes, videoCount) {
     availability: (() => {
       const next = upcomingAbsences(d.absences, weekStart, 1)[0];
       if (!next) return "כולם זמינים מכאן והלאה";
-      const who = arr(d.coaches).find((c) => c && c.id === next.coachId)?.name || "מאמן";
+      const { kind, id } = subjectOf(next);
+      const who =
+        kind === "hall"
+          ? `🏟 ${arr(d.halls).find((h) => h && h.id === id)?.name || "אולם"}`
+          : arr(d.coaches).find((c) => c && c.id === id)?.name || "מאמן";
       const [, m, day] = String(next.date).split("-");
       const more = upcomingAbsences(d.absences, weekStart).length - 1;
       return `${who} · ${Number(day)}/${Number(m)}${more > 0 ? ` (+${more})` : ""}`;

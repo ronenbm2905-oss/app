@@ -43,7 +43,7 @@ const TABS = [
   { id: "rosters", label: "קבוצות ואולמות", Icon: IconBuilding },
   { id: "manager", label: "ניהול", Icon: IconClipboard },
   { id: "constraints", label: "אילוצים", Icon: IconBan },
-  { id: "availability", label: "זמינות מאמנים", Icon: IconCalendarX },
+  { id: "availability", label: "זמינות", Icon: IconCalendarX },
   { id: "games", label: "משחקים", Icon: IconTrophy },
   { id: "weekly", label: "לוח שבועי", Icon: IconCalendarDays },
   { id: "coach", label: "תצוגת מאמן", Icon: IconUser },
