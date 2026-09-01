@@ -35,6 +35,10 @@ import {
 } from "../src/utils/backup.js";
 import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
 import { addressKey } from "../src/utils/id.js";
+import {
+  vendorUsage, canDeleteVendor, employeeUsage, canDeleteEmployee,
+  buildingDeletionImpact, buildingDependentIds, validateAddress,
+} from "../src/utils/entities.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SEED = resolve(HERE, "../seed/vitzman.json");
@@ -622,7 +626,100 @@ if (!existsSync(SEED_XLSX)) {
 }
 
 // ============================================================================
-// 20. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 20. מדריכי המחיקה והעריכה של הישויות
+//
+// ספק אחד משרת 82 בניינים ועובד אחד אחראי על 50 — מחיקה שלהם אינה פעולה
+// מקומית. הכלל: הפונקציה מחזירה סיבה, המסך חוסם, ואף רשומה לא נשארת מצביעה
+// על מזהה שנעלם.
+// ============================================================================
+{
+  const contracts = [
+    makeContract({ buildingId: "b1", categoryId: "cleaning", vendorId: "v1", amount: 100 }),
+    makeContract({ buildingId: "b2", categoryId: "cleaning", vendorId: "v1", amount: 200 }),
+    makeContract({ buildingId: "b2", categoryId: "elevator", vendorId: "v2", amount: 300 }),
+  ];
+  const u = vendorUsage("v1", contracts);
+  eq("ספק בשימוש: ספירת חוזים", u.contractCount, 2);
+  eq("ספק בשימוש: ספירת בניינים ייחודיים", u.buildingCount, 2);
+
+  const blocked = canDeleteVendor("v1", contracts);
+  eq("ספק בשימוש נחסם למחיקה", blocked.ok, false);
+  ok("והסיבה מונה כמה חוזים ובכמה בניינים",
+    /2 חוזים/.test(blocked.reason) && /2 בניינים/.test(blocked.reason), blocked.reason);
+  eq("ספק בלי חוזים נמחק", canDeleteVendor("v9", contracts).ok, true);
+  eq("רשימת חוזים ריקה לא מפילה", canDeleteVendor("v1", []).ok, true);
+  eq("undefined לא מפיל", canDeleteVendor("v1", undefined).ok, true);
+}
+{
+  const buildings = [
+    makeBuilding({ id: "b1", address: "אהרוני 10", assignedEmployeeId: "e1" }),
+    makeBuilding({ id: "b2", address: "אהרוני 12", assignedEmployeeId: "e1" }),
+    makeBuilding({ id: "b3", address: "אהרוני 14", assignedEmployeeId: null }),
+  ];
+  eq("עובד אחראי: ספירת בניינים", employeeUsage("e1", buildings).buildingCount, 2);
+  const blocked = canDeleteEmployee("e1", buildings);
+  eq("עובד עם בניינים נחסם למחיקה", blocked.ok, false);
+  ok("והסיבה מציעה לסמן כלא-פעיל במקום", /לא-פעיל/.test(blocked.reason), blocked.reason);
+  eq("עובד בלי בניינים נמחק", canDeleteEmployee("e9", buildings).ok, true);
+
+  // ⚠ בניין ללא שיוך לא נספר בטעות כשייך למי שמחפשים
+  eq("null אינו מתאים לשום מזהה", employeeUsage(null, buildings).buildingCount, 0);
+  eq("וגם בצד הספק — null לא סופר חוזים בלי ספק",
+    vendorUsage(null, [makeContract({ buildingId: "b1", categoryId: "cleaning", amount: 1 })]).contractCount, 0);
+}
+{
+  // מחיקת בניין: מה נעלם איתו, ושכל הרשומות התלויות אכן נאספות
+  const data = normalize({
+    buildings: [{ id: "b1", address: "אהרוני 10", managementFee: 5000 },
+                { id: "b2", address: "אהרוני 12", managementFee: 4000 }],
+    contracts: [makeContract({ buildingId: "b1", categoryId: "cleaning", amount: 100 }),
+                makeContract({ buildingId: "b1", categoryId: "elevator", amount: 200 }),
+                makeContract({ buildingId: "b2", categoryId: "cleaning", amount: 300 })],
+    inspections: [makeInspection({ buildingId: "b1", type: "fireExtinguishers", performedOn: "2026-01-01" })],
+    notes: [{ id: "n1", buildingId: "b1", text: "הערה", kind: "general" }],
+  });
+  const impact = buildingDeletionImpact("b1", data);
+  eq("מחיקת בניין: חוזים שיימחקו", impact.contracts, 2);
+  eq("מחיקת בניין: הסכמי ניהול שיימחקו", impact.feeAgreements, 1);
+  eq("מחיקת בניין: ביקורות שיימחקו", impact.inspections, 1);
+  eq("מחיקת בניין: הערות שיימחקו", impact.notes, 1);
+
+  const dep = buildingDependentIds("b1", data);
+  eq("המזהים התלויים תואמים לספירה", dep.contracts.length, impact.contracts);
+  ok("אף מזהה של בניין אחר לא נגרר",
+    dep.contracts.every((id) => data.contracts.find((c) => c.id === id).buildingId === "b1"));
+
+  // הסימולציה של removeMany: אחרי המחיקה לא נשארת שורה יתומה
+  const drop = { ...dep, buildings: ["b1"] };
+  const after = { ...data };
+  for (const [coll, ids] of Object.entries(drop)) {
+    const set = new Set(ids);
+    after[coll] = data[coll].filter((x) => !set.has(x.id));
+  }
+  eq("נשאר בניין אחד", after.buildings.length, 1);
+  eq("נשאר חוזה אחד", after.contracts.length, 1);
+  ok("אין רשומה שמצביעה על בניין שנמחק",
+    [...after.contracts, ...after.feeAgreements, ...after.inspections, ...after.notes]
+      .every((x) => x.buildingId !== "b1"));
+}
+{
+  // כתובת: ייחודית ולא ריקה. זה הבאג של הגיליון — שתי שורות לאותו בניין.
+  const buildings = [makeBuilding({ id: "b1", address: "אהרוני 10" }),
+                     makeBuilding({ id: "b2", address: "אהרוני 12" })];
+  eq("כתובת ריקה נחסמת", validateAddress("   ", "b1", buildings, addressKey).ok, false);
+  eq("כתובת חדשה מתקבלת", validateAddress("אהרוני 14", null, buildings, addressKey).ok, true);
+  const clash = validateAddress("אהרוני 12", "b1", buildings, addressKey);
+  eq("כתובת תפוסה נחסמת", clash.ok, false);
+  ok("והסיבה מנקבת בבניין המתנגש", /אהרוני 12/.test(clash.reason), clash.reason);
+  eq("הבניין עצמו אינו מתנגש עם עצמו",
+    validateAddress("אהרוני 10", "b1", buildings, addressKey).ok, true);
+  // ⚠ אותו באג בדיוק: רווח לפני אות סופית הוא אותה כתובת
+  eq("איות שונה של אותה כתובת נחסם",
+    validateAddress("אהרוני  10 ", "b2", buildings, addressKey).ok, false);
+}
+
+// ============================================================================
+// 21. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {

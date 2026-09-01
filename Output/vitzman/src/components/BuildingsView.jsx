@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
-import { IconWarning, IconSearch } from "./ui/icons.jsx";
+import { IconWarning, IconSearch, IconPlus } from "./ui/icons.jsx";
+import { Button } from "./ui/Button.jsx";
 import { fmtILS, fmtILSExact, fmtPct } from "../utils/money.js";
 import { buildingProfit, unassignedBuildings } from "../utils/profitability.js";
 import { addressKey } from "../utils/id.js";
+import { makeBuilding } from "../schema.js";
+import { validateAddress } from "../utils/entities.js";
 
 const SORTS = {
   address: (a, b) => a.address.localeCompare(b.address, "he"),
@@ -12,10 +15,25 @@ const SORTS = {
   cost: (a, b) => b.cost - a.cost,
 };
 
-export default function BuildingsView({ data, contractIndex, feeIndex, asOf, onOpenBuilding }) {
+export default function BuildingsView({ data, contractIndex, feeIndex, asOf, readOnly = false, add, onOpenBuilding }) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("profit");
   const [filter, setFilter] = useState("active");
+  const [newAddress, setNewAddress] = useState("");
+
+  /**
+   * בניין חדש נוצר **ריק** — בלי חוזים ובלי דמי ניהול. זו הכרעה: מספר שהומצא
+   * בהוספה היה נכנס לסכום התיק ונראה כמו נתון אמיתי. המסלול הוא כתובת, ואז
+   * מילוי בדף הבניין עצמו, שם כל שדה מתועד ובעל היסטוריה.
+   */
+  const addCheck = newAddress.trim() ? validateAddress(newAddress, null, data.buildings, addressKey) : null;
+  const createBuilding = () => {
+    if (readOnly || !addCheck?.ok) return;
+    const b = makeBuilding({ address: newAddress.trim() });
+    add("buildings", b);
+    setNewAddress("");
+    onOpenBuilding(b.id);
+  };
 
   const empById = useMemo(
     () => new Map(data.employees.map((e) => [e.id, e.name])),
@@ -83,6 +101,20 @@ export default function BuildingsView({ data, contractIndex, feeIndex, asOf, onO
             <option value="address">מיון: כתובת</option>
           </select>
           <span className="text-sm text-slate-500 tnum">{rows.length} תוצאות</span>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <input
+            value={newAddress}
+            onChange={(e) => setNewAddress(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && createBuilding()}
+            placeholder="כתובת של בניין חדש…"
+            disabled={readOnly}
+            className="min-w-[14rem] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+          />
+          <Button disabled={readOnly || !addCheck?.ok} onClick={createBuilding}><IconPlus /> בניין חדש</Button>
+          {addCheck && !addCheck.ok && (
+            <span className="text-xs text-red-700">{addCheck.reason}</span>
+          )}
         </div>
       </div>
 

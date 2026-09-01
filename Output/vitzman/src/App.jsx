@@ -7,10 +7,11 @@ import ProfitabilityDashboard from "./components/ProfitabilityDashboard.jsx";
 import DiscrepancyReport from "./components/DiscrepancyReport.jsx";
 import InspectionsView from "./components/InspectionsView.jsx";
 import VendorsView from "./components/VendorsView.jsx";
+import SettingsView from "./components/SettingsView.jsx";
 import AsOfBar from "./components/AsOfBar.jsx";
 import BackupBar from "./components/BackupBar.jsx";
 import { Button } from "./components/ui/Button.jsx";
-import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase } from "./components/ui/icons.jsx";
+import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog } from "./components/ui/icons.jsx";
 import { todayISO, isISODate } from "./utils/dates.js";
 
 const TABS = [
@@ -19,12 +20,13 @@ const TABS = [
   { id: "inspections", label: "ביקורות", Icon: IconShield },
   { id: "vendors", label: "ספקים", Icon: IconUsers },
   { id: "findings", label: "ממצאים בגיליון", Icon: IconWarning },
+  { id: "settings", label: "ניהול", Icon: IconCog },
   { id: "backup", label: "גיבוי", Icon: IconDatabase },
 ];
 
 export default function App() {
   const store = useData();
-  const { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, reset, error } = store;
+  const { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, removeMany, reset, error } = store;
   const [tab, setTab] = useState("dashboard");
   const [openBuildingId, setOpenBuildingId] = useState(null);
   const [asOf, setAsOf] = useState(todayISO);
@@ -113,11 +115,31 @@ export default function App() {
               add={add}
               applyBatch={applyBatch}
               remove={remove}
+              removeMany={removeMany}
               onBack={() => setOpenBuildingId(null)}
             />
           ) : (
-            <BuildingsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} asOf={asOf} onOpenBuilding={setOpenBuildingId} />
+            <BuildingsView
+              data={data}
+              contractIndex={contractIndex}
+              feeIndex={feeIndex}
+              asOf={asOf}
+              readOnly={isHistorical}
+              add={add}
+              onOpenBuilding={setOpenBuildingId}
+            />
           ))}
+        {tab === "settings" && (
+          <SettingsView
+            data={data}
+            contractIndex={contractIndex}
+            asOf={asOf}
+            readOnly={isHistorical}
+            update={update}
+            add={add}
+            remove={remove}
+          />
+        )}
         {tab === "backup" && (
           <BackupBar data={data} asOf={asOf} onRestore={replaceAll} />
         )}

@@ -79,11 +79,29 @@ export function useData() {
     setData((d) => ({ ...d, [collection]: (d[collection] || []).filter((x) => x.id !== id) }));
   }, []);
 
+  /**
+   * מחיקה חוצת-אוספים בעדכון-מצב אחד. מחיקת בניין חייבת להוריד איתו את
+   * החוזים, הסכמי הניהול, הביקורות וההערות שלו — קריאות `remove` נפרדות היו
+   * בונות כל אחת על מצב ישן (`setData` אסינכרוני) ומשאירות שורות יתומות
+   * שמצביעות על `buildingId` שכבר לא קיים.
+   */
+  const removeMany = useCallback((byCollection) => {
+    setData((d) => {
+      const next = { ...d };
+      for (const [collection, ids] of Object.entries(byCollection || {})) {
+        const drop = new Set(ids || []);
+        if (!drop.size) continue;
+        next[collection] = (d[collection] || []).filter((x) => !drop.has(x.id));
+      }
+      return next;
+    });
+  }, []);
+
   const reset = useCallback(() => setData(normalize(EMPTY)), []);
 
   // האינדקס נבנה פעם אחת לכל שינוי חוזים, לא בכל רינדור של כל שורה.
   const contractIndex = useMemo(() => indexContracts(data.contracts), [data.contracts]);
   const feeIndex = useMemo(() => indexFees(data.feeAgreements), [data.feeAgreements]);
 
-  return { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, reset, error };
+  return { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, removeMany, reset, error };
 }

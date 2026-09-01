@@ -7,9 +7,23 @@ import { fmtDate, fmtRelative, todayISO, isISODate } from "../utils/dates.js";
 import { buildingProfit, priceHistory, feeHistory } from "../utils/profitability.js";
 import { indexInspections, buildingInspections, INSPECTION_STATUS_LABEL } from "../utils/inspections.js";
 import { activeAsOf } from "../utils/pricing.js";
+import { EditableField } from "./ui/EditableField.jsx";
+import { validateAddress, buildingDeletionImpact, buildingDependentIds } from "../utils/entities.js";
+import { addressKey } from "../utils/id.js";
 import { makeInspection, makeContract, makeFeeAgreement } from "../schema.js";
 import PriceEditor from "./PriceEditor.jsx";
-import { EXPENSE_CATEGORIES, NOTE_KIND_LABEL, BUILDING_STATUS_LABEL, INSPECTION_TYPE_LABEL } from "../constants.js";
+import {
+  EXPENSE_CATEGORIES, NOTE_KIND_LABEL, BUILDING_STATUS_LABEL, BUILDING_STATUS,
+  INSPECTION_TYPE_LABEL,
+} from "../constants.js";
+
+/** תווית קטנה מעל שדה נערך, כדי שברור מה עורכים. */
+const Labelled = ({ label, children }) => (
+  <span className="inline-flex items-center gap-1">
+    <span className="text-slate-400">{label}:</span>
+    {children}
+  </span>
+);
 
 const INSPECTION_CARD = {
   never: "border-slate-200 bg-slate-50 text-slate-600",
@@ -18,10 +32,11 @@ const INSPECTION_CARD = {
   ok: "border-emerald-200 bg-emerald-50 text-emerald-900",
 };
 
-export default function BuildingPage({ buildingId, data, contractIndex, feeIndex, asOf = todayISO(), readOnly = false, update, add, applyBatch, remove, onBack }) {
+export default function BuildingPage({ buildingId, data, contractIndex, feeIndex, asOf = todayISO(), readOnly = false, update, add, applyBatch, remove, removeMany, onBack }) {
   const building = data.buildings.find((b) => b.id === buildingId);
   // { kind: "contract", categoryId } | { kind: "fee" } | null
   const [editing, setEditing] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const vendorById = useMemo(() => new Map(data.vendors.map((v) => [v.id, v])), [data.vendors]);
   const empById = useMemo(() => new Map(data.employees.map((e) => [e.id, e.name])), [data.employees]);
@@ -36,6 +51,14 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
   );
 
   const feeRows = useMemo(() => feeHistory(buildingId, feeIndex), [buildingId, feeIndex]);
+
+  const deletionImpact = useMemo(() => buildingDeletionImpact(buildingId, data), [buildingId, data]);
+  const deleteBuilding = () => {
+    if (readOnly) return;
+    removeMany({ ...buildingDependentIds(buildingId, data), buildings: [buildingId] });
+    setConfirmDelete(false);
+    onBack();
+  };
 
   // ⚠ מחושב מחדש בכל רינדור מהחוזים — לא נשמר בשום מקום. זה בדיוק ההבדל
   // מהאקסל: שינוי סכום חוזה מזיז את הרווח ואת האחוזים באותו רגע.
@@ -68,6 +91,27 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
    * חייבת להיות הפיכה, ומחיקת הרשומה כולה הייתה מאבדת גם את הספק ואת ההערה.
    * `nextDueDate` מתאפס כדי שהמועד הבא ייגזר מחדש מהתאריך החדש.
    */
+  /**
+   * שינוי ספק חל על **כל שורות המחיר** של אותה קטגוריה.
+   *
+   * הספק הוא תכונה של ההתקשרות, לא של מחיר מסוים. אילו היה משתנה רק בשורה
+   * הפעילה, ההיסטוריה הייתה מייחסת מחירים ישנים לספק שמעולם לא סיפק אותם.
+   */
+  const setVendorForCategory = (categoryId, vendorId) => {
+    if (readOnly) return;
+    const rows = priceHistory(buildingId, categoryId, contractIndex);
+    applyBatch("contracts", {
+      updates: rows.map((r) => ({ id: r.id, patch: { vendorId: vendorId || null } })),
+      creates: [],
+    });
+  };
+
+  /** סימוני החוזה מתארים את **הסכום הנוכחי**, ולכן חלים על השורה הפעילה בלבד. */
+  const setContractFlag = (contract, patch) => {
+    if (readOnly || !contract) return;
+    update("contracts", contract.id, patch);
+  };
+
   const recordInspection = (row, value) => {
     if (readOnly) return;
     const date = isISODate(value) ? value : null;
@@ -80,13 +124,39 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Button onClick={onBack}><IconBack /> חזרה לרשימה</Button>
-          <h1 className="mt-2 text-2xl font-semibold">{building.address}</h1>
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-            <span>{BUILDING_STATUS_LABEL[building.status]}</span>
-            <span>עובד אחראי: {empById.get(building.assignedEmployeeId) || "— לא משויך"}</span>
-            {building.areaManager && <span>אחראי איזור: {building.areaManager}</span>}
-            {building.insurerName && <span>ביטוח: {building.insurerName}</span>}
-            {building.inIlm && <span>ברשימת ילמ</span>}
+          <h1 className="mt-2 text-2xl font-semibold">
+            <EditableField
+              value={building.address}
+              readOnly={readOnly}
+              className="text-2xl font-semibold"
+              validate={(v) => validateAddress(v, buildingId, data.buildings, addressKey)}
+              onSave={(v) => update("buildings", buildingId, { address: v })}
+            />
+          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+            <Labelled label="סטטוס">
+              <EditableField type="select" value={building.status} readOnly={readOnly}
+                placeholder="—"
+                options={BUILDING_STATUS.map((v) => ({ value: v, label: BUILDING_STATUS_LABEL[v] }))}
+                onSave={(v) => update("buildings", buildingId, { status: v || "active" })} />
+            </Labelled>
+            <Labelled label="עובד אחראי">
+              <EditableField type="select" value={building.assignedEmployeeId || ""} readOnly={readOnly}
+                placeholder="— לא משויך"
+                options={data.employees.map((e) => ({ value: e.id, label: e.name }))}
+                onSave={(v) => update("buildings", buildingId, { assignedEmployeeId: v })} />
+            </Labelled>
+            <Labelled label="אחראי איזור">
+              <EditableField value={building.areaManager} readOnly={readOnly}
+                onSave={(v) => update("buildings", buildingId, { areaManager: v })} />
+            </Labelled>
+            <Labelled label="ביטוח">
+              <EditableField value={building.insurerName} readOnly={readOnly}
+                onSave={(v) => update("buildings", buildingId, { insurerName: v })} />
+            </Labelled>
+            <EditableField type="checkbox" value={building.inIlm} readOnly={readOnly}
+              placeholder="ברשימת ילמ"
+              onSave={(v) => update("buildings", buildingId, { inIlm: v })} />
             {building.sourceRow && <span className="text-slate-400">שורה {building.sourceRow} במקור</span>}
           </div>
           {building.aliases.length > 0 && (
@@ -138,12 +208,19 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
                   <tr key={row.categoryId} className="hover:bg-slate-50">
                     <td className="td max-w-xs truncate" title={row.name}>{row.name}</td>
                     <td className="td text-slate-600">
-                      {vendor ? (
-                        <>
-                          {vendor.name}
-                          {vendor.phone && <span className="mr-2 text-xs text-slate-400">{vendor.phone}</span>}
-                        </>
-                      ) : <span className="text-slate-300">—</span>}
+                      <EditableField
+                        type="select"
+                        value={c.vendorId || ""}
+                        readOnly={readOnly}
+                        placeholder="— ללא ספק"
+                        title={vendor?.phone ? `${vendor.name} · ${vendor.phone}` : "שינוי ספק חל על כל שורות המחיר"}
+                        options={data.vendors
+                          .slice()
+                          .sort((a, b) => a.name.localeCompare(b.name, "he"))
+                          .map((v) => ({ value: v.id, label: v.name }))}
+                        onSave={(v) => setVendorForCategory(row.categoryId, v)}
+                      />
+                      {vendor?.phone && <span className="mr-1 text-xs text-slate-400 tnum">{vendor.phone}</span>}
                     </td>
                     <td className="td tnum">
                       <button className="rounded px-2 py-1 hover:bg-slate-100 disabled:hover:bg-transparent"
@@ -166,15 +243,22 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
                       )}
                     </td>
                     <td className="td">
-                      <div className="flex gap-1">
-                        {c.vatMode === "imputed" && (
-                          <Pill tone="violet" title="עוסק פטור — הסכום כולל מע״מ רעיוני להשוואה">
-                            רעיוני {fmtILS(row.imputedVat)}
-                          </Pill>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
+                        <EditableField type="checkbox" readOnly={readOnly}
+                          value={c.vatMode === "imputed"} placeholder="עוסק פטור"
+                          title="הסכום כולל מע״מ רעיוני שנוסף להשוואה מול ספק רגיל"
+                          onSave={(v) => setContractFlag(c, { vatMode: v ? "imputed" : "standard" })} />
+                        {c.vatMode === "imputed" && row.imputedVat > 0 && (
+                          <span className="text-violet-700 tnum">({fmtILS(row.imputedVat)})</span>
                         )}
-                        {c.isEstimate && <Pill tone="amber" title="הערכה בלבד, לא חוזה חתום">הערכה</Pill>}
-                        {c.isConditional && <Pill tone="amber" title="מותנה בכך שכל הדיירים שילמו">מותנה</Pill>}
-                        {c.paidByVaad && <Pill tone="slate">ועד</Pill>}
+                        <EditableField type="checkbox" readOnly={readOnly}
+                          value={c.isEstimate} placeholder="הערכה"
+                          title="הסכום הוא אומדן ולא חוזה חתום"
+                          onSave={(v) => setContractFlag(c, { isEstimate: v })} />
+                        <EditableField type="checkbox" readOnly={readOnly}
+                          value={c.isConditional} placeholder="מותנה"
+                          title="מותנה בכך שכל הדיירים שילמו"
+                          onSave={(v) => setContractFlag(c, { isConditional: v })} />
                       </div>
                     </td>
                   </tr>
@@ -289,15 +373,38 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
           </ul>
         </div>
       )}
+
+      {/* --- מחיקת הבניין --- */}
+      {!readOnly && (
+        <div className="card border-red-200 p-4">
+          {!confirmDelete ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm text-slate-600">
+                מחיקת הבניין מוחקת איתו גם את החוזים, הסכמי הניהול, הביקורות וההערות שלו.
+              </div>
+              <Button variant="danger" onClick={() => setConfirmDelete(true)}>מחיקת הבניין</Button>
+            </div>
+          ) : (
+            <>
+              <div className="text-sm text-red-900">
+                למחוק את ״{building.address}״? יימחקו איתו{" "}
+                <b className="tnum">{deletionImpact.contracts}</b> שורות מחיר,{" "}
+                <b className="tnum">{deletionImpact.feeAgreements}</b> הסכמי ניהול,{" "}
+                <b className="tnum">{deletionImpact.inspections}</b> ביקורות ו-{" "}
+                <b className="tnum">{deletionImpact.notes}</b> הערות. הפעולה אינה הפיכה —
+                מומלץ להוריד גיבוי לפניה. אם הבניין רק יצא מניהול, עדיף לסמן אותו כ״לא פעיל״.
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button variant="danger" onClick={deleteBuilding}>מחיקה סופית</Button>
+                <Button onClick={() => setConfirmDelete(false)}>ביטול</Button>
+                <Button onClick={() => { update("buildings", buildingId, { status: "inactive" }); setConfirmDelete(false); }}>
+                  סימון כלא פעיל במקום
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
-
-const TONES = {
-  slate: "bg-slate-100 text-slate-600",
-  amber: "bg-amber-100 text-amber-800",
-  violet: "bg-violet-100 text-violet-800",
-};
-const Pill = ({ tone = "slate", children, title }) => (
-  <span title={title} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${TONES[tone]}`}>{children}</span>
-);
