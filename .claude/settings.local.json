@@ -24,7 +24,8 @@
       "Bash(echo \"exit=$?\")",
       "Bash(npm install *)",
       "Bash(npx vitest *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(python3 -)"
     ]
   }
 }
