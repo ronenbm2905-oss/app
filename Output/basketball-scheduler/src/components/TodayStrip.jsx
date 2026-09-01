@@ -25,7 +25,7 @@ export function TodayStrip({ data, coachId, showSessions = true }) {
       <div className="min-w-0">
         {/* With no session line under it, the date has to be the line — a lone 11px
             caption next to a chip reads as a leftover. */}
-        <div className="text-[11px] font-semibold tracking-wider text-stone-400">
+        <div className="text-[11px] font-semibold tracking-wider text-stone-500">
           {showSessions ? `היום · יום ${t.dayName}, ${t.dateLabel}` : "היום"}
         </div>
         {!showSessions && (
