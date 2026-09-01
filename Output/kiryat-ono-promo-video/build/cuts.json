@@ -165,7 +165,8 @@
         "from": "weekly:absence-warning",
         "to": "weekly:share-hover",
         "lt": "lt-weekly-2",
-        "max": 11
+        "max": 11,
+        "vo": "מאמן לא זמין, או שני אימונים באותו אולם — מסומן באדום."
       },
       {
         "clip": "02-weekly",
@@ -190,7 +191,8 @@
         "from": "games:transport",
         "to": "games:transport-export",
         "lt": "lt-transport",
-        "max": 12
+        "max": 12,
+        "vo": "ולכל משחק חוץ — רשימת הסעות מוכנה לספק."
       },
       {
         "clip": "04-coach",
@@ -237,72 +239,12 @@
         "from": "admin:report",
         "to": "admin:report-table",
         "lt": "lt-report",
-        "max": 11
+        "max": 11,
+        "vo": "ובסוף החודש, דוח שעות לפי מאמן."
       },
       {
         "card": "end",
         "hold": 3.2
-      }
-    ]
-  },
-  "vertical": {
-    "title": "kiryat-ono-9x16-45s",
-    "preset": "vertical",
-    "ratio": "9x16",
-    "timeline": [
-      {
-        "card": "title",
-        "hold": 2.2
-      },
-      {
-        "clip": "02-weekly",
-        "from": "weekly:board",
-        "to": "weekly:filter-clear",
-        "lt": "lt-disclaimer",
-        "max": 15,
-        "vo": "כאן הלוח נבנה. קבוצה, מאמן, אולם, שעה — לכל השבוע. אפשר לסנן לפי מאמן, לדלג בין שבועות, ולשכפל את השבוע הקודם במקום לבנות מחדש."
-      },
-      {
-        "clip": "02-weekly",
-        "from": "weekly:absence-warning",
-        "to": "weekly:share-hover",
-        "lt": "lt-weekly-2",
-        "max": 9
-      },
-      {
-        "clip": "02-weekly",
-        "from": "weekly:share-hover",
-        "to": "weekly:share-done",
-        "lt": "lt-share",
-        "max": 10,
-        "vo": "וכשהלוח מוכן — לחיצה אחת, והוא יוצא כתמונה."
-      },
-      {
-        "whatsapp": true,
-        "hold": 4.0
-      },
-      {
-        "clip": "04-coach",
-        "from": "coach:sketch-open",
-        "to": "coach:sketch-passes",
-        "lt": "lt-sketch",
-        "max": 9,
-        "vo": "המאמן כותב את מערך האימון באפליקציה, ואת התרגיל עצמו הוא פשוט מצייר על המגרש — שחקנים, תנועה ומסירות."
-      },
-      {
-        "clip": "04-coach",
-        "from": "coach:team-picked",
-        "to": "coach:report-export",
-        "lt": "lt-coach-report",
-        "max": 7
-      },
-      {
-        "proof": "coach-report",
-        "hold": 3.6
-      },
-      {
-        "card": "end",
-        "hold": 3.0
       }
     ]
   }

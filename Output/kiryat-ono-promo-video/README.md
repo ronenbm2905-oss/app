@@ -5,7 +5,6 @@
 
 | קובץ ב-`final/` | פורמט | שימוש |
 |---|---|---|
-| `kiryat-ono-9x16-45s.mp4` | 1080×1920 | ריל / סטטוס / טיקטוק |
 | `kiryat-ono-16x9-90s.mp4` | 1920×1080 | דף נחיתה, יוטיוב, מייל |
 | `kiryat-ono-16x9-demo.mp4` | 1920×1080 | דמו מלא למתעניינים |
 
@@ -35,7 +34,6 @@ node harness/smoke.mjs            # סטילס של כל מסך -> work/smoke/
 
 # 3. צילום
 node harness/record.mjs           # מעבר רוחבי  -> raw/landscape/
-node harness/record.mjs --vertical # מעבר אנכי   -> raw/vertical/
 
 # 4. כרטיסי טקסט והוכחת השיתוף
 node cards/render-cards.mjs       # -> work/cards/
@@ -44,13 +42,20 @@ node build/render-proof.mjs       # -> work/proof/
 # 5. הרכבה
 node build/assemble.mjs           # -> final/
 node build/captions.mjs           # -> final/*.he.srt
-node build/narration.mjs          # -> work/narration.md (תסריט קריינות מתוזמן)
+node build/narration.mjs          # -> work/narration.md
+node build/narration-pdf.mjs      # -> final/תסריט-קריינות.pdf
+node build/guide-track.mjs short  # -> work/audio/guide-short.mp3 (רצועת תרגול)
 ```
 
 הרצה של סצנה אחת בלבד: `node harness/record.mjs --only=02-weekly`.
 הרכבה של חתך אחד בלבד: `node build/assemble.mjs short`.
 
 ---
+
+> **החתך האנכי (9:16) ירד.** בלייאאוט המובייל טבלת הלוח נחתכת בצדדים והפריים
+> מתמלא בפקדים קטנים — הוא פשוט לא נראה טוב. כל התשתית שלו נשארה במקום
+> (`PRESETS.vertical`, כרטיסי 9x16, `record.mjs --vertical`); כדי להחזיר אותו
+> צריך רק להוסיף חזרה מקטע `vertical` ל-`build/cuts.json`.
 
 ## קריינות
 
@@ -61,7 +66,6 @@ node build/narration.mjs          # -> work/narration.md (תסריט קריינ�
 |---|---|
 | `audio/demo.m4a` | הדמו המלא |
 | `audio/short.m4a` | החתך של 16:9 |
-| `audio/vertical.m4a` | האנכי |
 
 התסריט המתוזמן נוצר מהקטעים שנבנו בפועל, ולא נכתב ביד:
 
