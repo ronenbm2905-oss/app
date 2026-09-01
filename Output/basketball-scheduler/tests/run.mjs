@@ -9,6 +9,7 @@ const FILES = [
   "./availability.test.mjs",
   "./availability-halls.test.mjs",
   "./publish-absences.test.mjs",
+  "./access.test.mjs",
 ];
 
 for (const f of FILES) {

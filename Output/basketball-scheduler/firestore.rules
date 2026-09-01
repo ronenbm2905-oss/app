@@ -56,7 +56,17 @@ service cloud.firestore {
       // Read limited to the allowlist (admins or members) — not any signed-in user.
       allow read: if isAdmin() || isMember();
       // Changes to an existing club: its own admins only.
-      allow update, delete: if isAdmin();
+      //
+      // The same non-empty `admins` guard as `create`, and for the same reason — now that
+      // the club edits its own allowlist from the settings screen rather than from the
+      // Firebase console. `isAdmin()` reads the STORED list, so a club that writes an
+      // empty one can never be read or written by anyone again, and a service operator is
+      // not a way back: this block grants a super-admin nothing. The screen refuses to
+      // remove the last manager; this refuses it at the layer that actually decides.
+      allow update: if isAdmin() &&
+        request.resource.data.admins is list &&
+        request.resource.data.admins.size() > 0;
+      allow delete: if isAdmin();
       // Creating a NEW club is a service-operator action. It must arrive with at least
       // one admin: `isAdmin()` reads the *existing* document, so a club created with an
       // empty admins[] could never be read or written by anyone again.

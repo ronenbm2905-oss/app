@@ -293,6 +293,7 @@ export default function App({ clubId }) {
             clubId={clubId}
             subscription={subscription}
             isAdmin={isAdmin}
+            currentEmail={user?.email || ""}
           />
         ) : (
           <ReportView data={data} />

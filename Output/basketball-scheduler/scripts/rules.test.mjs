@@ -80,6 +80,7 @@ const asStale = testEnv.authenticatedContext("stale", { email: "s@p.com" }).fire
 const asLegacy = testEnv.authenticatedContext("legacy", { email: "l@p.com" }).firestore();
 const asStranger = testEnv.authenticatedContext("nobody", { email: "x@x.com" }).firestore();
 const asCoach = testEnv.authenticatedContext("coach", { email: "coach@club.org" }).firestore();
+const asAdmin = testEnv.authenticatedContext("admin", { email: "admin@club.org" }).firestore();
 
 const teamDoc = (db, team) => doc(db, "clubs", CLUB, "published", WEEK, "teams", team);
 const weekDoc = (db) => doc(db, "clubs", CLUB, "published", WEEK);
@@ -115,6 +116,25 @@ await check("a valid code creates the link",
 await check("a parent cannot write someone else's link",
   assertFails(setDoc(doc(asStranger, "portalUsers", "parentA"),
     { clubId: CLUB, teams: { [TEAM_A]: CODE_A }, joinCode: CODE_A })));
+
+console.log("\nA club cannot lock itself out:");
+const clubDoc = (db) => doc(db, "clubs", CLUB);
+const CLUB_BODY = { members: ["coach@club.org"], settings: { name: "מועדון" } };
+await check("an admin edits the club normally",
+  assertSucceeds(setDoc(clubDoc(asAdmin), { ...CLUB_BODY, admins: ["admin@club.org"] })));
+await check("an admin hands over to another admin",
+  assertSucceeds(setDoc(clubDoc(asAdmin), { ...CLUB_BODY, admins: ["admin@club.org", "two@club.org"] })));
+// The screen refuses this too, but the screen is not the boundary. Without the rule a
+// club could write an empty allowlist and become unreachable by anyone, including the
+// service operator — this block grants a super-admin nothing.
+await check("an admin CANNOT write an empty admins list",
+  assertFails(setDoc(clubDoc(asAdmin), { ...CLUB_BODY, admins: [] })));
+await check("...nor drop the admins field altogether",
+  assertFails(setDoc(clubDoc(asAdmin), CLUB_BODY)));
+await check("...nor replace it with something that is not a list",
+  assertFails(setDoc(clubDoc(asAdmin), { ...CLUB_BODY, admins: "admin@club.org" })));
+await check("a coach still cannot edit the club at all",
+  assertFails(setDoc(clubDoc(asCoach), { ...CLUB_BODY, admins: ["coach@club.org"] })));
 
 await testEnv.cleanup();
 console.log(`\n${passed} passed, ${failed} failed\n`);

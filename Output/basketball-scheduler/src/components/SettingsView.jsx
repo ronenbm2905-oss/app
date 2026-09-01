@@ -11,6 +11,7 @@ import { fileToLogoDataUrl, dataUrlBytes, LOGO_MAX_BYTES } from "../utils/imageR
 import { generateJoinCode, formatJoinCode } from "../utils/joinCode";
 import { describeSubscription, WARN_DAYS, GRACE_DAYS } from "../utils/subscription";
 import { IconTrash, IconCheck } from "./ui/icons";
+import { AccessCard } from "./AccessCard";
 
 const KB = (bytes) => `${Math.round(bytes / 1024)} KB`;
 
@@ -293,7 +294,7 @@ function PortalCard({ data, save, syncJoinCode, clubId, canEdit }) {
   );
 }
 
-export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscription, isAdmin }) {
+export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscription, isAdmin, currentEmail }) {
   const saved = clubSettings(data);
   const [draft, setDraft] = useState(saved);
   const [logoMsg, setLogoMsg] = useState("");
@@ -611,6 +612,10 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
         </p>
       </Card>
 
+      {/* Inside the locked fieldset on purpose. Adding a coach is an edit, and a club
+          whose subscription lapsed does not get to change who reaches its data. The
+          renewal and export cards sit outside it; this one does not belong with them. */}
+      <AccessCard data={data} save={save} currentEmail={currentEmail} />
       <Card
         title="פרטים משפטיים"
         hint="מוצגים בתוך מדיניות הפרטיות, תנאי השימוש והצהרת הנגישות של המועדון."
