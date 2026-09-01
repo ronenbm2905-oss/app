@@ -10,6 +10,7 @@ const FILES = [
   "./transport.test.mjs",
   "./fixedteams.test.mjs",
   "./videolinks.test.mjs",
+  "./playerprogress.test.mjs",
 ];
 
 for (const f of FILES) {

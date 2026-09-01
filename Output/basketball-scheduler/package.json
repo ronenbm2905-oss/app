@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:offline": "vite --mode offline",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-basketball \"node rules-tests/videos.test.mjs\"",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-basketball \"node rules-tests/videos.test.mjs && node rules-tests/player-progress.test.mjs\"",
     "test": "node tests/run.mjs"
   },
   "dependencies": {

@@ -21,11 +21,12 @@ const TONES = {
   coach: "bg-sky-50 text-sky-700 ring-sky-100",
   videos: "bg-red-50 text-red-700 ring-red-100",
   players: "bg-violet-50 text-violet-700 ring-violet-100",
+  progress: "bg-teal-50 text-teal-700 ring-teal-100",
   report: "bg-stone-100 text-stone-600 ring-stone-200",
 };
 
-export function HomeView({ tabs, data, weekStart, canEdit, notes, videoCount, onOpen }) {
-  const stats = homeStats(data, weekStart, canEdit, notes, videoCount);
+export function HomeView({ tabs, data, weekStart, canEdit, notes, videoCount, progress, onOpen }) {
+  const stats = homeStats(data, weekStart, canEdit, notes, videoCount, progress);
 
   return (
     <div dir="rtl">

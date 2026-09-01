@@ -5,6 +5,7 @@ import { useGameNotes } from "./hooks/useGameNotes";
 import { useTrainingPlans } from "./hooks/useTrainingPlans";
 import { usePendingImport } from "./hooks/usePendingImport";
 import { useVideos } from "./hooks/useVideos";
+import { usePlayerProgress } from "./hooks/usePlayerProgress";
 import { todayWeekStart } from "./utils/dates";
 import { coachForUser } from "./utils/coachIdentity";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
@@ -18,6 +19,7 @@ import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
 import { PlayersView } from "./components/PlayersView";
+import { PlayerProgressView } from "./components/PlayerProgressView";
 import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
@@ -30,7 +32,7 @@ import { Greeting } from "./components/Greeting";
 import {
   IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
-  IconCalendarDays, IconUser, IconUsers, IconClock, IconCalendarX, IconVideo,
+  IconCalendarDays, IconUser, IconUsers, IconClock, IconCalendarX, IconVideo, IconPencil,
 } from "./components/ui/icons";
 import clubLogo from "./assets/club-logo.jpg";
 
@@ -48,6 +50,7 @@ const TABS = [
   { id: "weekly", label: "לוח שבועי", Icon: IconCalendarDays },
   { id: "coach", label: "תצוגת מאמן", Icon: IconUser },
   { id: "videos", label: "סרטוני אימון", Icon: IconVideo },
+  { id: "progress", label: "התקדמות שחקנים", Icon: IconPencil },
   { id: "players", label: "שחקנים", Icon: IconUsers },
   { id: "report", label: "דו\"ח שעות", Icon: IconClock },
 ];
@@ -91,6 +94,10 @@ export default function App() {
   // The drill-video library is shared: every coach reads it and every coach adds to it, so
   // unlike the notes and plans hooks this one takes no role and scopes no query.
   const { videos, saveVideo, removeVideo, videosReady } = useVideos(user);
+  // Half-season progress notes. Scoped like the notes and plans hooks — a coach listens
+  // only to their own, because the rule gives them nothing else and an unscoped listen is
+  // refused outright rather than filtered.
+  const { progress, saveProgress } = usePlayerProgress(user, isAdmin, myEmail);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -241,6 +248,7 @@ export default function App() {
             canEdit={canEdit}
             notes={notes}
             videoCount={videosReady ? videos.length : undefined}
+            progress={progress}
             onOpen={setTab}
           />
         ) : activeTab === "announcements" ? (
@@ -289,6 +297,16 @@ export default function App() {
             saveVideo={saveVideo}
             removeVideo={removeVideo}
             videosReady={videosReady}
+          />
+        ) : activeTab === "progress" ? (
+          <PlayerProgressView
+            data={data}
+            canEdit={canEdit}
+            myCoachId={myCoachId}
+            progress={progress}
+            saveProgress={saveProgress}
+            authorName={user?.displayName || user?.email || ""}
+            authorEmail={myEmail}
           />
         ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />
