@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>כתובית תחתונה — 900×1600 (רקע שקוף)</title>
+<!--
+  Transparent overlay. Capture with Playwright: screenshot({ omitBackground: true }).
+  Text is driven by the query string so one template renders every caption:
+    04-lower-third-9x16.html?k=KICKER&t=TITLE&s=SUB&disc=1
+    k    = kicker (small orange label, optional)
+    t    = title  (required)
+    s    = subtitle (optional)
+    disc = 1  -> shows the "demo data is fictional" strip on the opposite corner
+    bg   = light|dark  -> PROOFING ONLY, paints a fake background. Never use for the final PNG.
+-->
+<style>
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-hebrew.woff2') format('woff2');
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212,U+2215,U+FEFF,U+FFFD;}
+
+:root{
+  --brand-900:#122A50; --brand-700:#1D4788; --brand-100:#D6E1F2;
+  --accent-500:#F58634; --white:#FFFFFF;
+  --lt-right:56px; --lt-bottom:420px;  /* 420px clears the platform caption + share rail */
+  --fs-title:52px; --fs-sub:31px; --fs-kicker:24px; --fs-disc:21px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:900px;height:1600px;overflow:hidden;background:transparent}
+body{font-family:'Heebo',system-ui,Arial,sans-serif;direction:rtl;text-align:right;
+  -webkit-font-smoothing:antialiased}
+/* proofing backgrounds only */
+body[data-bg="light"]{background:#FAFAF9}
+body[data-bg="dark"]{background:#0E1726}
+
+.lt{
+  position:absolute;right:var(--lt-right);left:var(--lt-right);bottom:var(--lt-bottom);
+  /* the drop-shadow is what keeps the panel separated from a bright app UI */
+  filter:drop-shadow(0 20px 44px rgba(6,16,34,.42));
+}
+.panel{
+  background:rgba(18,42,80,.95);
+  border:1px solid rgba(255,255,255,.14);
+  border-inline-start:10px solid var(--accent-500); /* RTL: the accent sits on the right */
+  border-radius:20px;
+  padding:24px 30px 26px;
+}
+.kicker{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:var(--fs-kicker);font-weight:800;letter-spacing:.01em;color:var(--accent-500);
+  margin-bottom:10px;
+}
+.kicker .dot{width:8px;height:8px;border-radius:50%;background:var(--accent-500)}
+.title{font-size:var(--fs-title);font-weight:800;line-height:1.22;color:var(--white);letter-spacing:-.01em}
+.sub{font-size:var(--fs-sub);font-weight:500;line-height:1.45;color:var(--brand-100);margin-top:10px}
+.sub b{color:#fff;font-weight:700}
+.hide{display:none !important}  /* !important required: .disc is declared later with display:flex at equal specificity, so the later rule won and .hide never took effect */
+
+/* fictional-data strip — required by the brief; opposite corner, never over the caption */
+.disc{
+  position:absolute;right:var(--lt-right);bottom:calc(var(--lt-bottom) - 74px);
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:var(--fs-disc);font-weight:600;color:rgba(255,255,255,.92);
+  background:rgba(18,42,80,.85);border:1px solid rgba(255,255,255,.16);
+  padding:10px 18px;border-radius:999px;
+  filter:drop-shadow(0 10px 26px rgba(6,16,34,.35));
+}
+.disc .dot{width:7px;height:7px;border-radius:50%;background:var(--accent-500)}
+
+body.anim .lt{animation:wipeR .35s cubic-bezier(.22,1,.36,1) both}
+body.anim .panel>*{animation:riseIn .25s ease-out .12s both}
+@keyframes wipeR{from{clip-path:inset(0 0 0 100%);opacity:.2}to{clip-path:inset(0 0 0 0);opacity:1}}
+@keyframes riseIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+  <div class="lt">
+    <div class="panel">
+      <div class="kicker" id="k"><span class="dot"></span><span id="kt">לוח שבועי</span></div>
+      <div class="title" id="t">בונים שבוע אחד — ומשכפלים אותו לשבוע הבא</div>
+      <div class="sub" id="s">בלי להעתיק שורות באקסל ובלי הודעה חדשה בוואטסאפ.</div>
+    </div>
+  </div>
+
+  <div class="disc hide" id="d"><span class="dot"></span>כל הנתונים בסרטון בדויים</div>
+
+<script>
+  var q = new URLSearchParams(location.search);
+  function set(id, v){ var el = document.getElementById(id); if (v !== null) el.textContent = v; }
+  if (q.has('k')) { q.get('k') ? set('kt', q.get('k')) : document.getElementById('k').classList.add('hide'); }
+  if (q.has('t')) set('t', q.get('t'));
+  if (q.has('s')) { q.get('s') ? set('s', q.get('s')) : document.getElementById('s').classList.add('hide'); }
+  if (q.get('disc') === '1') document.getElementById('d').classList.remove('hide');
+  if (q.has('bg')) document.body.dataset.bg = q.get('bg');
+  if (q.get('anim') === '1') document.body.classList.add('anim');
+</script>
+</body>
+</html>

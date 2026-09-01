@@ -1,0 +1,252 @@
+{
+  "_comment": "העריכה כולה היא נתונים. כל קטע נבחר לפי תווית ביט מיומן הקלטה — אף טיימקוד לא נמדד ידנית, ולכן הקלטה חוזרת לא שוברת את החיתוך.",
+  "demo": {
+    "title": "kiryat-ono-16x9-demo",
+    "preset": "landscape",
+    "ratio": "16x9",
+    "timeline": [
+      {
+        "card": "title",
+        "hold": 2.6
+      },
+      {
+        "card": "pain-1",
+        "over": "01-home",
+        "from": "home:start",
+        "to": "home:tiles",
+        "lt": "pain-1"
+      },
+      {
+        "card": "beat-1",
+        "hold": 1.7
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:open",
+        "to": "weekly:board",
+        "lt": "lt-disclaimer"
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:board",
+        "to": "weekly:filter-clear",
+        "lt": "lt-weekly-3"
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:filter-clear",
+        "to": "weekly:absence-warning",
+        "lt": "lt-weekly-2"
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:absence-warning",
+        "to": "weekly:share-done",
+        "lt": "lt-share"
+      },
+      {
+        "whatsapp": true,
+        "hold": 4.0
+      },
+      {
+        "card": "beat-2",
+        "hold": 1.7
+      },
+      {
+        "clip": "03-games",
+        "from": "games:pending-banner",
+        "to": "games:approved",
+        "lt": "lt-games-2"
+      },
+      {
+        "clip": "03-games",
+        "from": "games:open",
+        "to": "games:transport",
+        "lt": "lt-games-1"
+      },
+      {
+        "clip": "03-games",
+        "from": "games:transport",
+        "to": "games:end",
+        "lt": "lt-transport"
+      },
+      {
+        "card": "beat-3",
+        "hold": 1.7
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:open",
+        "to": "coach:plan-open",
+        "lt": "lt-coach-1"
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:plan-open",
+        "to": "coach:sketch-open",
+        "lt": "lt-coach-2"
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:sketch-open",
+        "to": "coach:end",
+        "lt": "lt-sketch"
+      },
+      {
+        "card": "beat-4",
+        "hold": 1.7
+      },
+      {
+        "clip": "05-admin",
+        "from": "admin:players",
+        "to": "admin:availability",
+        "lt": "lt-disclaimer"
+      },
+      {
+        "clip": "05-admin",
+        "from": "admin:availability",
+        "to": "admin:report",
+        "lt": "lt-availability"
+      },
+      {
+        "clip": "05-admin",
+        "from": "admin:report",
+        "to": "admin:end",
+        "lt": "lt-report"
+      },
+      {
+        "card": "end",
+        "hold": 3.4
+      }
+    ]
+  },
+  "short": {
+    "title": "kiryat-ono-16x9-90s",
+    "preset": "landscape",
+    "ratio": "16x9",
+    "timeline": [
+      {
+        "card": "title",
+        "hold": 2.4
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:board",
+        "to": "weekly:filter-clear",
+        "lt": "lt-disclaimer",
+        "max": 17
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:absence-warning",
+        "to": "weekly:share-hover",
+        "lt": "lt-weekly-2",
+        "max": 11
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:share-hover",
+        "to": "weekly:share-done",
+        "lt": "lt-share",
+        "max": 11
+      },
+      {
+        "whatsapp": true,
+        "hold": 3.6
+      },
+      {
+        "clip": "03-games",
+        "from": "games:pending-banner",
+        "to": "games:approved",
+        "lt": "lt-games-2",
+        "max": 16
+      },
+      {
+        "clip": "03-games",
+        "from": "games:transport",
+        "to": "games:transport-export",
+        "lt": "lt-transport",
+        "max": 12
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:open",
+        "to": "coach:plan-open",
+        "lt": "lt-coach-1",
+        "max": 9
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:sketch-open",
+        "to": "coach:sketch-passes",
+        "lt": "lt-sketch",
+        "max": 14
+      },
+      {
+        "clip": "05-admin",
+        "from": "admin:players",
+        "to": "admin:availability",
+        "lt": "lt-disclaimer",
+        "max": 8
+      },
+      {
+        "clip": "05-admin",
+        "from": "admin:report",
+        "to": "admin:report-table",
+        "lt": "lt-report",
+        "max": 11
+      },
+      {
+        "card": "end",
+        "hold": 3.2
+      }
+    ]
+  },
+  "vertical": {
+    "title": "kiryat-ono-9x16-45s",
+    "preset": "vertical",
+    "ratio": "9x16",
+    "timeline": [
+      {
+        "card": "title",
+        "hold": 2.2
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:board",
+        "to": "weekly:filter-clear",
+        "lt": "lt-disclaimer",
+        "max": 15
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:absence-warning",
+        "to": "weekly:share-hover",
+        "lt": "lt-weekly-2",
+        "max": 9
+      },
+      {
+        "clip": "02-weekly",
+        "from": "weekly:share-hover",
+        "to": "weekly:share-done",
+        "lt": "lt-share",
+        "max": 10
+      },
+      {
+        "whatsapp": true,
+        "hold": 4.0
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:sketch-open",
+        "to": "coach:sketch-passes",
+        "lt": "lt-sketch",
+        "max": 9
+      },
+      {
+        "card": "end",
+        "hold": 3.0
+      }
+    ]
+  }
+}

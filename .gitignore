@@ -47,3 +47,10 @@ itai/Outputs/run2dream-web/
 # --- עותקי עבודה מקוננים ---
 # .saas-review הוא clone מלא עם .git משלו (~693MB). ריפו בתוך ריפו = צרות.
 .saas-review/
+
+# --- סרטון שיווקי: חומר גלם וקבצי ביניים ---
+# הקליפים הגולמיים וקטעי הביניים נבנים מחדש בפקודה אחת (ראה README שם),
+# ומשקלם מאות MB. התוצרים הסופיים ב-final/ כן נשמרים.
+Output/kiryat-ono-promo-video/raw/
+Output/kiryat-ono-promo-video/work/
+Output/kiryat-ono-promo-video/node_modules/

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>כרטיס ביט מפריד — 1600×900</title>
+<!--
+  Full-frame beat card between chapters.
+  05-beat-16x9.html?n=1&of=5&t=TITLE&s=SUB
+    n  = beat index (1-based) — drives both the numeral and the progress segments
+    of = number of beats (default 5)
+    t  = title (short: 2-3 words)
+    s  = subtitle (optional, one line)
+-->
+<style>
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-hebrew.woff2') format('woff2');
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212,U+2215,U+FEFF,U+FFFD;}
+
+:root{
+  --brand-900:#122A50; --brand-800:#17386B; --brand-700:#1D4788; --brand-600:#2355A5;
+  --brand-100:#D6E1F2; --accent-500:#F58634;
+  /* a tint of the club orange, for orange TEXT over the lighter blues (AA-safe) */
+  --accent-300:#FFB07A;
+  --white:#FFFFFF;
+  --pad-x:112px; --pad-y:88px;
+  --fs-num:28px; --fs-title:116px; --fs-sub:32px; --fs-ghost:560px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1600px;height:900px;overflow:hidden}
+body{font-family:'Heebo',system-ui,Arial,sans-serif;direction:rtl;text-align:right;
+  background:var(--brand-700);-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1600px;height:900px;overflow:hidden;
+  background:
+    radial-gradient(900px 620px at 78% 30%, rgba(47,95,172,.55) 0%, rgba(29,71,136,0) 60%),
+    linear-gradient(210deg,#2355A5 0%,#1D4788 52%,#17386B 100%);}
+.ghost{
+  position:absolute;left:56px;top:50%;transform:translateY(-50%);
+  font-size:var(--fs-ghost);font-weight:900;line-height:.8;letter-spacing:-.04em;
+  color:rgba(255,255,255,.055);user-select:none;direction:ltr;
+}
+.content{position:absolute;inset:var(--pad-y) var(--pad-x);display:flex;flex-direction:column;justify-content:center}
+.meta{display:flex;align-items:center;gap:14px;font-size:var(--fs-num);font-weight:800;
+  color:rgba(255,255,255,.72);letter-spacing:.02em;margin-bottom:22px}
+.meta .num{color:var(--accent-300);direction:ltr;unicode-bidi:isolate}
+.meta .sep{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.35)}
+.title{font-size:var(--fs-title);font-weight:900;line-height:1.02;letter-spacing:-.025em;color:var(--white)}
+.sub{font-size:var(--fs-sub);font-weight:500;color:var(--brand-100);margin-top:24px;max-width:900px}
+.segs{position:absolute;right:var(--pad-x);left:var(--pad-x);bottom:var(--pad-y);
+  display:flex;flex-direction:row;gap:12px}
+.segs i{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.16)}
+.segs i.on{background:var(--accent-500)}
+.hide{display:none !important}  /* !important required: .disc is declared later with display:flex at equal specificity, so the later rule won and .hide never took effect */
+
+body.anim .content>*{animation:riseIn .3s cubic-bezier(.22,1,.36,1) both}
+body.anim .title{animation-delay:.06s}
+body.anim .sub{animation-delay:.12s}
+body.anim .segs i.on{animation:grow .3s ease-out .1s both}
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="ghost" id="ghost">01</div>
+    <div class="content">
+      <div class="meta">
+        <span class="num" id="num">01</span><span class="sep"></span><span id="ofTxt">מתוך 5</span>
+      </div>
+      <div class="title" id="t">לוח שבועי</div>
+      <div class="sub" id="s">בונים, משכפלים, משתפים.</div>
+    </div>
+    <div class="segs" id="segs"></div>
+  </div>
+<script>
+  var q = new URLSearchParams(location.search);
+  var n  = parseInt(q.get('n') || '1', 10);
+  var of = parseInt(q.get('of') || '5', 10);
+  var pad = function (x) { return String(x).padStart(2, '0'); };
+  document.getElementById('num').textContent = pad(n);
+  document.getElementById('ghost').textContent = pad(n);
+  document.getElementById('ofTxt').textContent = 'מתוך ' + of;
+  if (q.has('t')) document.getElementById('t').textContent = q.get('t');
+  if (q.has('s')) {
+    if (q.get('s')) document.getElementById('s').textContent = q.get('s');
+    else document.getElementById('s').classList.add('hide');
+  }
+  var segs = document.getElementById('segs');
+  for (var i = 1; i <= of; i++) {
+    var el = document.createElement('i');
+    if (i <= n) el.className = 'on';
+    segs.appendChild(el);
+  }
+  if (q.get('anim') === '1') document.body.classList.add('anim');
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>באג פינה (watermark) — 1600×900 · רקע שקוף</title>
+<!--
+  Corner bug: sits on screen for the whole film at ~85% opacity, top-LEFT so it never
+  collides with the RTL caption block on the right. Capture with omitBackground:true.
+  09-bug-16x9.html?corner=tl|tr   (default tl)
+-->
+<style>
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-hebrew.woff2') format('woff2');
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+:root{--brand-900:#122A50;--accent-500:#F58634;--white:#FFFFFF;--pad:56px}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1600px;height:900px;overflow:hidden;background:transparent}
+body{font-family:'Heebo',system-ui,Arial,sans-serif;direction:rtl;-webkit-font-smoothing:antialiased}
+.bug{position:absolute;top:var(--pad);left:var(--pad);display:flex;align-items:center;gap:14px;
+  background:rgba(18,42,80,.88);border:1px solid rgba(255,255,255,.16);
+  padding:10px 20px 10px 10px;border-radius:999px;opacity:.92;
+  filter:drop-shadow(0 12px 28px rgba(6,16,34,.35))}
+.bug[data-corner="tr"]{left:auto;right:var(--pad);flex-direction:row-reverse;padding:10px 10px 10px 20px}
+.bug img{width:52px;height:52px;object-fit:contain;background:#fff;border-radius:50%;padding:5px;display:block}
+.bug .txt{font-size:23px;font-weight:700;color:#fff;line-height:1.15}
+.bug .txt em{display:block;font-style:normal;font-size:17px;font-weight:600;color:rgba(255,255,255,.7)}
+</style>
+</head>
+<body>
+  <div class="bug" id="bug">
+    <img src="./assets/club-logo.jpg" alt="עירוני קריית אונו – כדורסל דור העתיד">
+    <div class="txt">קרית אונו — דור העתיד<em>מערכת שעות אימונים</em></div>
+  </div>
+<script>
+  var c = new URLSearchParams(location.search).get('corner');
+  if (c) document.getElementById('bug').dataset.corner = c;
+</script>
+</body>
+</html>

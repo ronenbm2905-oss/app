@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>כרטיס סגירה — 900×1600</title>
+<!--
+  End card. Centred composition (the title card is right-aligned) so the film has a full stop.
+  Contact details are PLACEHOLDERS — replace before export.
+-->
+<style>
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-hebrew.woff2') format('woff2');
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212,U+2215,U+FEFF,U+FFFD;}
+
+:root{
+  --brand-900:#122A50; --brand-800:#17386B; --brand-700:#1D4788; --brand-600:#2355A5;
+  --brand-100:#D6E1F2; --accent-500:#F58634; --white:#FFFFFF; --ink:#0B1A33;
+  --pad-y:220px; /* platform safe area top/bottom */
+  --fs-punch:60px; --fs-cta:32px; --fs-contact:25px; --fs-legal:19px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:900px;height:1600px;overflow:hidden}
+body{font-family:'Heebo',system-ui,Arial,sans-serif;direction:rtl;text-align:center;
+  background:var(--brand-900);-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:900px;height:1600px;overflow:hidden;
+  background:
+    radial-gradient(760px 760px at 50% 24%, rgba(47,95,172,.5) 0%, rgba(18,42,80,0) 62%),
+    linear-gradient(180deg,#1D4788 0%,#17386B 46%,#122A50 100%);}
+.court{position:absolute;left:50%;bottom:-300px;transform:translateX(-50%);
+  width:760px;height:760px;border:3px solid rgba(255,255,255,.06);border-radius:50%}
+.content{position:absolute;inset:var(--pad-y) 64px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:0}
+.logo-plate{width:132px;height:132px;background:var(--white);border-radius:24px;padding:14px;
+  box-shadow:0 18px 48px rgba(0,0,0,.30);display:grid;place-items:center;margin-bottom:34px}
+.logo-plate img{width:100%;height:100%;object-fit:contain;display:block}
+.punch{font-size:var(--fs-punch);font-weight:900;line-height:1.14;letter-spacing:-.02em;
+  color:var(--white);max-width:1180px}
+.punch b{color:var(--accent-500);font-weight:900}
+.rule{width:88px;height:8px;background:var(--accent-500);border-radius:4px;margin:32px 0 30px}
+.cta{display:inline-flex;align-items:center;gap:14px;background:var(--white);color:var(--ink);
+  font-size:var(--fs-cta);font-weight:800;padding:20px 40px;border-radius:999px;
+  box-shadow:0 16px 40px rgba(0,0,0,.28)}
+.cta .ball{width:14px;height:14px;border-radius:50%;background:var(--accent-500);flex:none}
+.contact{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;margin-top:34px;
+  font-size:var(--fs-contact);font-weight:600;color:var(--brand-100)}
+.contact .sep{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3)}
+.contact span[dir="ltr"]{direction:ltr;unicode-bidi:isolate}
+.legal{position:absolute;left:24px;right:24px;bottom:330px; /* above the platform UI */font-size:var(--fs-legal);font-weight:500;
+  color:rgba(255,255,255,.55)}
+
+body.anim .logo-plate{animation:pop .5s cubic-bezier(.22,1,.36,1) both}
+body.anim .punch{animation:riseIn .45s cubic-bezier(.22,1,.36,1) .12s both}
+body.anim .rule{animation:grow .3s ease-out .4s both}
+body.anim .cta{animation:pop .4s cubic-bezier(.22,1,.36,1) .5s both}
+body.anim .contact{animation:riseIn .35s ease-out .68s both}
+@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes riseIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes grow{from{width:0}to{width:88px}}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="court"></div>
+    <div class="content">
+      <div class="logo-plate">
+        <img src="./assets/club-logo.jpg" alt="עירוני קריית אונו – כדורסל דור העתיד">
+      </div>
+      <div class="punch">ערב שלם באקסל —<br><b>או לחיצה אחת כאן.</b></div>
+      <div class="rule"></div>
+      <div class="cta"><span class="ball"></span  data-t="3">רוצה לראות אותה על הלו״ז שלך?</div>
+      <div class="contact">
+        <span dir="ltr"  data-c="1">example.org</span><span class="sep"></span>
+        <span dir="ltr"  data-c="2">hello@example.org</span><span class="sep"></span>
+        <span dir="ltr"  data-c="3">03-0000000</span>
+      </div>
+    </div>
+    <div class="legal">המערכת פועלת במועדון "קרית אונו — דור העתיד" · כל הנתונים המוצגים בסרטון בדויים</div>
+  </div>
+<script>
+  var q = new URLSearchParams(location.search);
+  function put(sel, v){
+    var els = document.querySelectorAll(sel);
+    for (var i=0;i<els.length;i++){
+      if (v) { els[i].textContent = v; els[i].style.visibility=''; }
+      else   { els[i].style.visibility='hidden'; }
+    }
+  }
+  if (q.has('c1')) put('[data-c="1"]', q.get('c1'));
+  if (q.has('c2')) put('[data-c="2"]', q.get('c2'));
+  if (q.has('c3')) put('[data-c="3"]', q.get('c3'));
+  // t1 יושב על אלמנט שמכיל בתוכו את t2. הצבת textContent עליו מוחקת את הצאצא,
+  // ואז t2 לא נמצא ונופל בשקט — כך נעלמה שורת האמצע מכרטיס הסיום.
+  // לכן כותבים רק לצומת הטקסט הראשון ומשאירים את הצאצאים במקומם.
+  if (q.has('t1')) {
+    var e = document.querySelector('[data-t="1"]');
+    if (e) {
+      var tn = null;
+      for (var i = 0; i < e.childNodes.length; i++) {
+        if (e.childNodes[i].nodeType === 3 && e.childNodes[i].nodeValue.trim()) { tn = e.childNodes[i]; break; }
+      }
+      if (tn) tn.nodeValue = q.get('t1') + ' ';
+      else e.insertBefore(document.createTextNode(q.get('t1') + ' '), e.firstChild);
+    }
+  }
+  if (q.has('t2')) { var e2=document.querySelector('[data-t="2"]'); if(e2) e2.textContent=q.get('t2'); }
+  if (q.has('t3')) { var e3=document.querySelector('[data-t="3"]'); if(e3) e3.textContent=q.get('t3'); }
+</script>
+</body>
+</html>

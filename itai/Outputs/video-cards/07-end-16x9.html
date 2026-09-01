@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>כרטיס סגירה — 1600×900</title>
+<!--
+  End card. Centred composition (the title card is right-aligned) so the film has a full stop.
+  Contact details are PLACEHOLDERS — replace before export.
+-->
+<style>
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-hebrew.woff2') format('woff2');
+  unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F;}
+@font-face{font-family:'Heebo';font-style:normal;font-weight:100 900;font-display:block;
+  src:url('./fonts/heebo-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2212,U+2215,U+FEFF,U+FFFD;}
+
+:root{
+  --brand-900:#122A50; --brand-800:#17386B; --brand-700:#1D4788; --brand-600:#2355A5;
+  --brand-100:#D6E1F2; --accent-500:#F58634; --white:#FFFFFF; --ink:#0B1A33;
+  --pad-y:76px;
+  --fs-punch:68px; --fs-cta:34px; --fs-contact:26px; --fs-legal:19px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1600px;height:900px;overflow:hidden}
+body{font-family:'Heebo',system-ui,Arial,sans-serif;direction:rtl;text-align:center;
+  background:var(--brand-900);-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1600px;height:900px;overflow:hidden;
+  background:
+    radial-gradient(900px 620px at 50% 22%, rgba(47,95,172,.5) 0%, rgba(18,42,80,0) 62%),
+    linear-gradient(180deg,#1D4788 0%,#17386B 46%,#122A50 100%);}
+.court{position:absolute;left:50%;bottom:-420px;transform:translateX(-50%);
+  width:920px;height:920px;border:3px solid rgba(255,255,255,.06);border-radius:50%}
+.content{position:absolute;inset:var(--pad-y) 120px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:0}
+.logo-plate{width:132px;height:132px;background:var(--white);border-radius:24px;padding:14px;
+  box-shadow:0 18px 48px rgba(0,0,0,.30);display:grid;place-items:center;margin-bottom:34px}
+.logo-plate img{width:100%;height:100%;object-fit:contain;display:block}
+.punch{font-size:var(--fs-punch);font-weight:900;line-height:1.14;letter-spacing:-.02em;
+  color:var(--white);max-width:1180px}
+.punch b{color:var(--accent-500);font-weight:900}
+.rule{width:88px;height:8px;background:var(--accent-500);border-radius:4px;margin:32px 0 30px}
+.cta{display:inline-flex;align-items:center;gap:14px;background:var(--white);color:var(--ink);
+  font-size:var(--fs-cta);font-weight:800;padding:20px 40px;border-radius:999px;
+  box-shadow:0 16px 40px rgba(0,0,0,.28)}
+.cta .ball{width:14px;height:14px;border-radius:50%;background:var(--accent-500);flex:none}
+.contact{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:34px;
+  font-size:var(--fs-contact);font-weight:600;color:var(--brand-100)}
+.contact .sep{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3)}
+.contact span[dir="ltr"]{direction:ltr;unicode-bidi:isolate}
+.legal{position:absolute;left:0;right:0;bottom:44px;font-size:var(--fs-legal);font-weight:500;
+  color:rgba(255,255,255,.55)}
+
+body.anim .logo-plate{animation:pop .5s cubic-bezier(.22,1,.36,1) both}
+body.anim .punch{animation:riseIn .45s cubic-bezier(.22,1,.36,1) .12s both}
+body.anim .rule{animation:grow .3s ease-out .4s both}
+body.anim .cta{animation:pop .4s cubic-bezier(.22,1,.36,1) .5s both}
+body.anim .contact{animation:riseIn .35s ease-out .68s both}
+@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@keyframes riseIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes grow{from{width:0}to{width:88px}}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="court"></div>
+    <div class="content">
+      <div class="logo-plate">
+        <img src="./assets/club-logo.jpg" alt="עירוני קריית אונו – כדורסל דור העתיד">
+      </div>
+      <div class="punch">מה שלוקח היום ערב שלם באקסל —<br><b>יוצא כאן בלחיצה.</b></div>
+      <div class="rule"></div>
+      <div class="cta"><span class="ball"></span>רוצים את זה במועדון שלכם?</div>
+      <div class="contact">
+        <span dir="ltr">example.org</span><span class="sep"></span>
+        <span dir="ltr">hello@example.org</span><span class="sep"></span>
+        <span dir="ltr">03-0000000</span>
+      </div>
+    </div>
+    <div class="legal">המערכת פועלת במועדון "קרית אונו — דור העתיד" · כל הנתונים המוצגים בסרטון בדויים</div>
+  </div>
+</body>
+</html>
