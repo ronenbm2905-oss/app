@@ -39,8 +39,8 @@
     - English: presentation, slides, deck, pitch, pptx, slideshow, keynote
 - **טל** — הפרסום. אחראי על חומרי הפרסום, הקמפיינים וההפצה של דף הנחיתה. (`.claude/agents/tal.md`)
   - **מתי להפעיל (trigger keywords):**
-    - עברית: פרסום, קמפיין, מודעה, קידום, הפצה, טירגוט
-    - English: ads, campaign, promotion, publishing, targeting, marketing
+    - עברית: פרסום, קמפיין, מודעה, קידום, הפצה, טירגוט, קריינות, ווייס-אובר
+    - English: ads, campaign, promotion, publishing, targeting, marketing, voiceover, narration
 - **מאיה** — מנהלת המשרד (תפעול). מיון תיבת דואר, טיוטות מייל, תיאום פגישות, תזכורות ומעקבים. **מכינה — לא שולחת** (כל שליחה/אישור עוברת דרך המשתמש). (`.claude/agents/maya.md`)
   - **מתי להפעיל (trigger keywords):**
     - עברית: מייל, אימייל, תיבת דואר, טיוטה, פגישה, יומן, תזכורת, מעקב, לתאם, אדמיניסטרציה, תפעול
@@ -108,6 +108,7 @@
   - **פרוטוקול ותיעוד:** `obsidian-vault-workflow` (פרוטוקול ה-vault), `obsidian-markdown`, `obsidian-bases`.
   - **עיצוב (איתי, עומר, ליאור):** `gpt-image-gen` (יצירת תמונות), `frontend-design` (כיוון ויזואלי — נגד "תבנית AI"), `theme-factory` (10 ערכות צבע+פונט), `canvas-design` (פוסטר/גרפיקה סטטית ל-PNG/PDF).
   - **פיתוח (נועם):** `vite-react-scaffold` + `firebase-app` (שלד + ענן), `webapp-testing` (QA בדפדפן דרך Playwright).
+  - **אודיו (טל, ליאור):** `tts-gen` (קריינות עברית כקובץ MP3 דרך OpenAI Speech API). ראו [[tts-narration-skill]].
 
   > ארבעת הסקילים `frontend-design`, `theme-factory`, `canvas-design` ו-`webapp-testing` הובאו מ-[anthropics/skills](https://github.com/anthropics/skills) (Apache 2.0) והותאמו לעברית/RTL בנספח בסוף כל `SKILL.md`. ראו [[skills-library-adoption]].
 

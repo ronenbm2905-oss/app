@@ -19,6 +19,7 @@
 - [[skill-theme-factory]] — 10 ערכות צבע+פונט מוכנות (ליאור, איתי) *[מאומץ]*
 - [[skill-canvas-design]] — עיצוב ויזואלי סטטי ל-PNG/PDF (איתי) *[מאומץ]*
 - [[skill-webapp-testing]] — QA בדפדפן דרך Playwright (נועם) *[מאומץ]*
+- [[skill-tts-gen]] — קריינות עברית כקובץ MP3 דרך OpenAI Speech API (טל, ליאור)
 - [[skill-obsidian-vault-workflow]] — פרוטוקול העבודה מול ה-vault
 - [[skill-obsidian-markdown]] — Obsidian Flavored Markdown
 - [[skill-obsidian-bases]] — יצירת/עריכת קבצי `.base` ב-Obsidian
