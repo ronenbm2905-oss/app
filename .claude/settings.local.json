@@ -24,7 +24,10 @@
       "Bash(echo \"exit=$?\")",
       "Bash(npm install *)",
       "Bash(npx vitest *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Read(//opt/node22/lib/node_modules/playwright/**)",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(node --input-type=module -e \"import\\('playwright'\\).then\\(m=>console.log\\('resolved from cwd ok', typeof m.chromium\\)\\).catch\\(e=>console.log\\('ESM resolve fail:', e.code\\)\\)\")"
     ]
   }
 }
