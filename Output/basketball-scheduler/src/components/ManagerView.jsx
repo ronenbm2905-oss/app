@@ -72,6 +72,22 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
     save({ ...data, sessions: data.sessions.filter((s) => s.id !== id) });
   };
 
+  // Copying last week used to be a blind append: it took every manual session of the
+  // previous week and pushed it on, whatever the target week already held. On 30.8.2026
+  // that landed 115 August sessions on top of a week whose new-season schedule was already
+  // typed in, and every team showed its hours twice. Two guards, because they answer two
+  // different mistakes:
+  //
+  // 1. **Nothing is copied twice.** A session already standing in this week — same team,
+  //    coach, hall, day, hours and type — is skipped. Pressing the button a second time now
+  //    does nothing, which is the property the old version most conspicuously lacked.
+  // 2. **A week that is already built asks first.** Skipping identical rows does not save
+  //    you from a week whose hours have all moved since: those are not duplicates by any
+  //    comparison, and they are exactly what happened here. So when the target week is not
+  //    empty, the count is put in front of the manager before anything is written.
+  const sessionKey = (s) =>
+    [s.teamId, s.coachId, s.hallId, s.day, s.start, s.end, s.type || ""].join("|");
+
   const handleCopyPrevWeek = () => {
     const prev = shiftWeek(weekStart, -1);
     const prevSessions = data.sessions.filter((s) => (s.weekOf || "") === prev && !s.fromGame);
@@ -79,9 +95,33 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
       setImportMsg({ type: "error", text: "אין אימונים בשבוע הקודם להעתקה." });
       return;
     }
-    const copies = prevSessions.map((s) => ({ ...s, id: uid(), weekOf: weekStart }));
+
+    const existing = data.sessions.filter((s) => (s.weekOf || "") === weekStart && !s.fromGame);
+    const here = new Set(existing.map(sessionKey));
+    const fresh = prevSessions.filter((s) => !here.has(sessionKey(s)));
+    const skipped = prevSessions.length - fresh.length;
+
+    if (fresh.length === 0) {
+      setImportMsg({ type: "error", text: "כל האימונים של השבוע הקודם כבר קיימים בשבוע זה — לא הועתק דבר." });
+      return;
+    }
+
+    if (existing.length > 0) {
+      const ok = window.confirm(
+        `בשבוע זה כבר יש ${existing.length} אימונים.\n\n` +
+        `העתקה תוסיף ${fresh.length} אימונים נוספים מהשבוע הקודם — היא לא מחליפה ולא מוחקת כלום.\n` +
+        `אם הלו"ז של השבוע כבר נבנה, הקבוצות יופיעו פעמיים.\n\nלהמשיך?`
+      );
+      if (!ok) return;
+    }
+
+    const copies = fresh.map((s) => ({ ...s, id: uid(), weekOf: weekStart }));
     save({ ...data, sessions: [...data.sessions, ...copies] });
-    setImportMsg({ type: "success", text: `הועתקו ${copies.length} אימונים מהשבוע הקודם.` });
+    setImportMsg({
+      type: "success",
+      text: `הועתקו ${copies.length} אימונים מהשבוע הקודם.` +
+        (skipped > 0 ? ` ${skipped} דולגו כי הם כבר קיימים בשבוע זה.` : ""),
+    });
   };
 
   const handleFile = async (e) => {
