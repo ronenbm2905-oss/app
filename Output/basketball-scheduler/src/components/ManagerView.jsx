@@ -5,6 +5,7 @@ import { uid } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
 import { findConflicts, findConstraintViolations } from "../utils/conflicts";
 import { parseCSV, buildCsvTemplate, importCsvToData } from "../utils/csv";
+import { sessionKey } from "../utils/rowCopy";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
@@ -85,8 +86,9 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   //    you from a week whose hours have all moved since: those are not duplicates by any
   //    comparison, and they are exactly what happened here. So when the target week is not
   //    empty, the count is put in front of the manager before anything is written.
-  const sessionKey = (s) =>
-    [s.teamId, s.coachId, s.hallId, s.day, s.start, s.end, s.type || ""].join("|");
+  // The key itself lives in `utils/rowCopy.js`, next to the row-level copy that has to
+  // agree with this one about what a duplicate is. Two definitions of "the same training"
+  // is one more than the app can afford.
 
   const handleCopyPrevWeek = () => {
     const prev = shiftWeek(weekStart, -1);

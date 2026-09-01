@@ -16,6 +16,7 @@ export {
   ChevronRight as IconChevronRight,
   ChevronLeft as IconChevronLeft,
   Copy as IconCopy,
+  ClipboardPaste as IconPaste,
   Pencil as IconPencil,
   Check as IconCheck,
   ShieldAlert as IconShield,

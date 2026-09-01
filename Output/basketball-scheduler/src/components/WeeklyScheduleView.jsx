@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { flushSync } from "react-dom";
 import { DAYS, SESSION_TYPES, DAY_BG_COLORS } from "../constants";
-import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate } from "../utils/dates";
+import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate, uid } from "../utils/dates";
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
 import { findAbsenceHits, absenceLabel, isHallClosure, hallClosuresOn, isAllDay } from "../utils/availability";
@@ -20,7 +20,8 @@ import { syncGamesToSessions, defaultGameTimes } from "../utils/games";
 import { AddToCalendarButton } from "./AddToCalendarButton";
 import { FixedTeamsStrip } from "./FixedTeamsStrip";
 import { fixedTeams } from "../utils/fixedTeams";
-import { IconDownload, IconTrash, IconCheck, IconX } from "./ui/icons";
+import { copyRow, planRowPaste, rowSessions } from "../utils/rowCopy";
+import { IconDownload, IconTrash, IconCheck, IconX, IconCopy, IconPaste } from "./ui/icons";
 import clubLogo from "../assets/club-logo.jpg";
 
 export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStart, myCoachId }) {
@@ -34,6 +35,19 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const [hiddenRows, setHiddenRows] = useState([]);
   const hideRow = (id) => setHiddenRows((prev) => (prev.includes(id) ? prev : [...prev, id]));
   const showAllRows = () => setHiddenRows([]);
+  // One row, picked up here and put down in another week. The board is week-by-week by
+  // design, and "שכפל שבוע קודם" is the whole-week tool; this is the same move at the
+  // resolution a manager actually works at — one team's hours moved, everyone else's did
+  // not. Component state, like `hiddenRows`: it survives paging between weeks (that is the
+  // entire point) and is gone when the screen is left, because a row copied last Tuesday is
+  // not a thing anyone wants offered back to them today.
+  const [rowClip, setRowClip] = useState(null);
+  const [rowMsg, setRowMsg] = useState(""); // what the last copy/paste did, in words
+  // A result line belongs to the week it was produced in. Carrying "נוספו 4 אימונים" along
+  // to the next week would read as though something had just been written there.
+  useEffect(() => { setRowMsg(""); }, [weekStart]);
+  // Hebrew has no bare "1 אימונים". Every count in this feature goes through here.
+  const nTrainings = (n) => (n === 1 ? "אימון אחד" : `${n} אימונים`);
   // Hiding the basketball school is a decision about the club board, not a preference of
   // whoever happens to be looking — so it lives in the club document and every coach sees
   // the same board the manager sees. It began life in localStorage, which meant the manager
@@ -324,6 +338,71 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
 
   const toggleCoach = (id) =>
     setFilterCoachIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+
+  // --- Copy one row into another week -------------------------------------------------
+  //
+  // Copy takes the row as it stands in the club's data — every manual training that team
+  // has this week — and not the squares currently on screen. A board narrowed to one coach
+  // or to three days is a way of reading the week, not a smaller row, and a copy that
+  // quietly dropped the sessions behind the filter would be discovered a week later. So the
+  // whole row is taken and the message says how many of them were not in view.
+  const handleCopyRow = (team) => {
+    const clip = copyRow(data.sessions, team.id, weekStart);
+    if (!clip) {
+      setRowClip(null);
+      setRowMsg(`אין אימונים ל${team.name} בשבוע הזה, אז אין מה להעתיק.`);
+      return;
+    }
+    const shown = rowSessions(data.sessions, team.id, weekStart).filter(
+      (s) => activeDays.includes(s.day) && (!filterCoachIds.length || filterCoachIds.includes(s.coachId))
+    ).length;
+    const offscreen = clip.sessions.length - shown;
+    setRowClip({ ...clip, teamName: team.name });
+    setRowMsg(
+      `הועתקה השורה של ${team.name} — ${nTrainings(clip.sessions.length)}.` +
+        (offscreen > 0
+          ? offscreen === 1
+            ? " (אימון אחד מהם אינו מוצג כרגע בגלל הסינון, והוא הועתק גם כן.)"
+            : ` (${offscreen} מהם אינם מוצגים כרגע בגלל הסינון, והם הועתקו גם כן.)`
+          : "") +
+        ` עברו לשבוע אחר ולחצו "הדבק".`
+    );
+  };
+
+  const handlePasteRow = () => {
+    if (!rowClip) return;
+    const plan = planRowPaste(rowClip, data.sessions, weekStart, uid);
+    if (plan.status === "same-week") {
+      setRowMsg(`זהו השבוע שממנו הועתקה השורה של ${rowClip.teamName} — עברו לשבוע אחר כדי להדביק.`);
+      return;
+    }
+    if (plan.status === "nothing-new") {
+      setRowMsg(`כל האימונים של ${rowClip.teamName} כבר קיימים בשבוע הזה — לא נוסף דבר.`);
+      return;
+    }
+    if (plan.status !== "ok") return;
+    // The row already has hours in it. Skipping identical trainings does not cover this
+    // case — a row whose hours all moved has no identical trainings at all — so the number
+    // goes in front of the manager before anything is written. This is the guard the
+    // whole-week copy grew on 31.8.2026, at row resolution.
+    if (plan.existing > 0) {
+      const ok = window.confirm(
+        `ל${rowClip.teamName} כבר יש ${nTrainings(plan.existing)} בשבוע הזה.\n\n` +
+          `ההדבקה תוסיף עוד ${nTrainings(plan.fresh.length)} — היא לא מוחקת ולא מחליפה כלום.\n` +
+          `אם השורה כבר נבנתה לשבוע הזה, האימונים יופיעו פעמיים.\n\nלהמשיך?`
+      );
+      if (!ok) return;
+    }
+    save({ ...data, sessions: [...data.sessions, ...plan.fresh] });
+    setRowMsg(
+      `${plan.fresh.length === 1 ? "נוסף" : "נוספו"} ${nTrainings(plan.fresh.length)} ל${rowClip.teamName} בשבוע זה.` +
+        (plan.skipped > 0
+          ? plan.skipped === 1
+            ? " אחד דולג כי הוא כבר קיים."
+            : ` ${plan.skipped} דולגו כי הם כבר קיימים.`
+          : "")
+    );
+  };
 
   // Selected coaches in the order they appear in the club's list, not the order they were
   // clicked — so the same selection always reads the same way in the banner and the export.
@@ -679,6 +758,37 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
           </div>
         )}
 
+        {/* What is on the row clipboard, and the way to put it down. The paste button lives
+            here as well as on the row itself because after paging two weeks forward the row
+            in question is often somewhere down a board of twenty — and this line is always
+            at the top. */}
+        {canEdit && mode === "team" && rowClip && (
+          <div className="no-print text-xs rounded-lg border border-brand-300 bg-brand-50 text-brand-900 p-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="font-semibold shrink-0">
+              📋 הועתקה השורה של {rowClip.teamName}
+            </span>
+            <span className="text-brand-800">
+              משבוע {formatWeekRange(rowClip.fromWeek)} · {nTrainings(rowClip.sessions.length)}
+            </span>
+            {rowClip.fromWeek === weekStart ? (
+              <span className="text-brand-700">— זהו השבוע שממנו הועתקה. עברו לשבוע אחר כדי להדביק.</span>
+            ) : (
+              <button
+                onClick={handlePasteRow}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-600 text-white hover:bg-brand-700 shrink-0"
+              >
+                <IconPaste size={13} /> הדבק בשבוע זה
+              </button>
+            )}
+            <button onClick={() => { setRowClip(null); setRowMsg(""); }} className="underline underline-offset-2 hover:text-brand-900 shrink-0">
+              בטל העתקה
+            </button>
+          </div>
+        )}
+        {canEdit && mode === "team" && rowMsg && (
+          <p className="no-print text-xs text-stone-700 bg-stone-50 border border-stone-200 rounded-lg p-2">{rowMsg}</p>
+        )}
+
         <FixedTeamsStrip data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
         {weekHallClosures.length > 0 && (
           <div className="text-xs rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -763,6 +873,31 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                 of you right now. `no-print` because it is a control, and it
                                 hides nothing that was not already hidden by the time the
                                 board is captured. */}
+                            {/* Pick this row up: every training this team has this week,
+                                to be put down in another week. Editors only — a coach
+                                cannot write to the board anyway, and a button that fails
+                                silently is worse than no button. */}
+                            {canEdit && (
+                              <button
+                                onClick={() => handleCopyRow(team)}
+                                className="no-print p-0.5 rounded text-stone-500 hover:text-brand-700 hover:bg-white/60 shrink-0"
+                                aria-label={`העתק את שורת האימונים של ${team.name} בשבוע זה`}
+                                title="העתק את שורת האימונים של השבוע הזה"
+                              >
+                                <IconCopy size={13} />
+                              </button>
+                            )}
+                            {/* And put it down — on the same row, in a different week. */}
+                            {canEdit && rowClip && rowClip.teamId === team.id && rowClip.fromWeek !== weekStart && (
+                              <button
+                                onClick={handlePasteRow}
+                                className="no-print p-0.5 rounded text-brand-700 bg-brand-100 hover:bg-brand-200 shrink-0"
+                                aria-label={`הדבק את שורת האימונים שהועתקה ל${team.name} בשבוע זה`}
+                                title={`הדבק כאן ${nTrainings(rowClip.sessions.length)} משבוע ${formatWeekRange(rowClip.fromWeek)}`}
+                              >
+                                <IconPaste size={13} />
+                              </button>
+                            )}
                             <button
                               onClick={() => hideRow(team.id)}
                               className="no-print p-0.5 rounded text-stone-500 hover:text-stone-800 hover:bg-white/60 shrink-0"
