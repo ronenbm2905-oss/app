@@ -309,7 +309,7 @@ export default function App() {
             authorEmail={myEmail}
           />
         ) : activeTab === "players" ? (
-          <PlayersView data={data} save={save} canEdit={canEdit} />
+          <PlayersView data={data} save={save} canEdit={canEdit} progress={progress} />
         ) : (
           <ReportView data={data} weekStart={weekStart} />
         )}

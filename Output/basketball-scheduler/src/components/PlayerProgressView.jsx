@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   periodOf, periodsOfSeason, seasonOfPeriod, periodLabel, progressKey,
-  progressFor, rosterFor, missingFor, writtenCount, markRead, isUnread,
+  progressFor, rosterFor, missingFor, writtenCount, markRead, staleSeasons,
 } from "../utils/playerProgress";
 import { teamsOfCoach, teamsWithCoach } from "../utils/teams";
 import { sortByName } from "../utils/names";
@@ -21,8 +21,10 @@ import { IconUsers, IconPencil } from "./ui/icons";
 // children's names.
 //
 // **There is no export, share or image button here, and that omission is deliberate.** The
-// banner below tells the coach this note is not passed to the player or the parents. One
-// share button turns that sentence into a lie, and the privacy policy with it.
+// banner below tells the coach the club does not pass this note to the player or the
+// parents of its own motion. One share button turns that sentence into a lie, and the
+// privacy policy with it. (What the banner does NOT claim is secrecy from a parent who
+// asks — that right exists in law and the coach is told so before they write.)
 export function PlayerProgressView({ data, canEdit, myCoachId, progress, saveProgress, authorName, authorEmail }) {
   // Pinned once, on mount. Recomputing it per save would file a note written at 23:59 on
   // 31 January into the second half if the coach pressed save a minute later.
@@ -50,6 +52,7 @@ export function PlayerProgressView({ data, canEdit, myCoachId, progress, savePro
   );
   const numbered = (p) => fullRoster.find((f) => f.id === p.id) || p;
 
+  const stale = canEdit ? staleSeasons(progress, season) : [];
   const missing = missingFor(roster, progress, period);
   const done = writtenCount(roster, progress, period);
   const readOnly = period !== currentPeriod; // an earlier half is history, not a form
@@ -76,8 +79,20 @@ export function PlayerProgressView({ data, canEdit, myCoachId, progress, savePro
     <div className="space-y-4" dir="rtl">
       {!canEdit && (
         <div className="text-xs rounded-lg border border-stone-300 bg-stone-50 text-stone-700 p-2.5">
-          ההערכה נועדה לשיחה מקצועית בינך לבין המנהל המקצועי. היא אינה מועברת לשחקן/ית או
-          להורים, ואינה מסמך רשמי.
+          ההערכה נועדה לשיחה מקצועית בינך לבין מנהלי המועדון. היא אינה מסמך רשמי, ואיננו
+          מעבירים אותה לשחקן/ית או להורים ביוזמתנו. עם זאת, להורה עומדת זכות על פי דין
+          לבקש לעיין במידע שנשמר על ילדו — ובקשה כזו תיענה.
+        </div>
+      )}
+
+      {/* Hiding is not deleting. From the first of August the screen offers only the new
+          season's halves, so last season's records sit in Firestore visible to nobody — and
+          a record nobody sees is a record nobody remembers to purge. The manager is told. */}
+      {canEdit && stale.length > 0 && (
+        <div className="text-xs rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-2.5">
+          <span className="font-semibold">קיימות הערכות מעונה קודמת שטרם נמחקו</span>
+          {" "}({stale.join(", ")}). לפי מדיניות הפרטיות הן נשמרות לעונה שבה נכתבו בלבד —
+          ראו נוהל המחיקה, סעיף 6א.3.
         </div>
       )}
 
@@ -113,9 +128,11 @@ export function PlayerProgressView({ data, canEdit, myCoachId, progress, savePro
       ) : (
         <>
           {/* The manager's actual working list: who has nothing written, and by whom. This
-              is what gives him something to raise with the coach. */}
+              is what gives him something to raise with the coach.
+              `no-print` because the line names children, and it is a working note for one
+              manager — not something that should survive onto a sheet of paper. */}
           {canEdit && missing.length > 0 && (
-            <div className="text-xs rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-2.5">
+            <div className="no-print text-xs rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-2.5">
               <span className="font-semibold">טרם נכתבו {missing.length} מתוך {roster.length}:</span>{" "}
               {missing.map((p) => p.name).join(" · ")}
             </div>

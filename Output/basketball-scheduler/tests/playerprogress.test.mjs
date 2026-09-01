@@ -4,6 +4,7 @@ import {
   seasonOf, halfOf, periodOf, seasonOfPeriod, periodsOfSeason, periodLabel,
   progressKey, parseProgressKey, buildProgress, markRead, isUnread, unreadCount,
   hasContent, progressFor, rosterFor, playerLabel, missingFor, writtenCount,
+  progressCountFor, staleSeasons,
 } from "../src/utils/playerProgress.js";
 
 let pass = 0;
@@ -232,5 +233,39 @@ t("progressFor finds the right half and nothing else", () => {
   assert.equal(progressFor(map, "p1", "2026-27-B").text, "של ב");
   assert.equal(progressFor(map, "p9", "2026-27-A"), null);
 });
+
+console.log("- the deletion guard (gate #10 B1) -");
+t("progressCountFor counts a player's notes across both halves", () => {
+  const map = { ...written("p1", "2026-27-A"), ...written("p1", "2026-27-B"), ...written("p2", "2026-27-A") };
+  assert.equal(progressCountFor(map, "p1"), 2);
+  assert.equal(progressCountFor(map, "p2"), 1);
+  assert.equal(progressCountFor(map, "p3"), 0);
+});
+t("a prefix that is not a whole id does not count — p1 must not match p10", () => {
+  const map = { ...written("p10", "2026-27-A") };
+  assert.equal(progressCountFor(map, "p1"), 0, "p1 matched p10's key");
+  assert.equal(progressCountFor(map, "p10"), 1);
+});
+t("no map, no id, nothing thrown", () => {
+  assert.equal(progressCountFor(null, "p1"), 0);
+  assert.equal(progressCountFor({}, ""), 0);
+});
+
+console.log("- last season's leftovers (gate #10 M4) -");
+t("staleSeasons names seasons that are not the current one", () => {
+  const map = { ...written("p1", "2025-26-B"), ...written("p2", "2026-27-A") };
+  assert.deepEqual(staleSeasons(map, "2026-27"), ["2025-26"]);
+});
+t("a clean collection reports nothing", () => {
+  const map = { ...written("p1", "2026-27-A"), ...written("p2", "2026-27-B") };
+  assert.deepEqual(staleSeasons(map, "2026-27"), []);
+  assert.deepEqual(staleSeasons({}, "2026-27"), []);
+});
+t("two old seasons are both named, sorted", () => {
+  const map = { ...written("p1", "2024-25-A"), ...written("p2", "2025-26-B"), ...written("p3", "2026-27-A") };
+  assert.deepEqual(staleSeasons(map, "2026-27"), ["2024-25", "2025-26"]);
+});
+t("a malformed key is ignored rather than reported as a season", () =>
+  assert.deepEqual(staleSeasons({ junk: {}, "p1__nonsense": {} }, "2026-27"), []));
 
 console.log("\n" + pass + " tests passed");
