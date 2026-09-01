@@ -1,6 +1,7 @@
 import { weekStartOfDMY } from "./dates";
 import { upcomingAbsences, subjectOf } from "./availability";
 import { unreadCount } from "./gameNotes";
+import { unreadCount as unreadProgress } from "./playerProgress";
 
 // One live line per tile on the home screen.
 //
@@ -25,7 +26,7 @@ function plural(n, one, many) {
 // `canEdit` shapes two lines: a coach's roster screen has no halls on it, so counting
 // them would describe a screen they are not going to get, and unread game notes are the
 // professional manager's inbox — the coach who wrote one is not waiting to read it.
-export function homeStats(data, weekStart, canEdit = true, notes, videoCount) {
+export function homeStats(data, weekStart, canEdit = true, notes, videoCount, progress) {
   const d = data || {};
   const sessions = arr(d.sessions).filter((s) => s && (s.weekOf || "") === weekStart);
   const games = arr(d.games).filter((g) => g && g.date && weekStartOfDMY(g.date) === weekStart);
@@ -71,6 +72,17 @@ export function homeStats(data, weekStart, canEdit = true, notes, videoCount) {
       const [, m, day] = String(next.date).split("-");
       const more = upcomingAbsences(d.absences, weekStart).length - 1;
       return `${who} · ${Number(day)}/${Number(m)}${more > 0 ? ` (+${more})` : ""}`;
+    })(),
+    // Like the videos line, this one lives in a subcollection homeStats never sees, so
+    // the map is passed in. The manager is asked to read; the coach is asked to write, and
+    // a count of someone else's unread notes would tell them nothing they can act on.
+    progress: (() => {
+      if (!canEdit) return "הערכה קצרה על כל שחקן, פעם בחציון";
+      const waiting = unreadProgress(progress);
+      if (!progress) return "הערכות חציון, לקריאה";
+      return waiting === 0
+        ? "אין הערכות חדשות"
+        : waiting === 1 ? "הערכה אחת חדשה" : `${waiting} הערכות חדשות`;
     })(),
     players: plural(count(d.players), "שחקן אחד", "שחקנים"),
     report: "שעות לפי מאמן, לפי חודש",

@@ -11,6 +11,7 @@ const FILES = [
   "./fixedteams.test.mjs",
   "./videolinks.test.mjs",
   "./rowcopy.test.mjs",
+  "./playerprogress.test.mjs",
   "./hoursreport.test.mjs",
 ];
 

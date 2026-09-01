@@ -118,6 +118,27 @@ service cloud.firestore {
       allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
     }
 
+    // A coach's half-season note on a player's progress, one document per player per half:
+    // clubs/{id}/playerProgress/{playerId}__{period}.
+    //
+    // The same block as trainingPlans, and that is the point: the requirement — "the
+    // manager and the coach who wrote it, nobody else" — is the literal reading of
+    // `canRead`. Another coach does not see it because the RULE says so, not because a
+    // screen hides it. Note the contrast with `videos` above, which deliberately does NOT
+    // use canRead: there the library is shared, here it must not be.
+    //
+    // What this block does NOT enforce: that a coach only writes about players in their own
+    // squads. `teams` and `players` are arrays of maps on the club document, and a rule
+    // cannot search inside them. A coach could stamp a note onto another squad's player —
+    // only they and the manager would ever see it, and the manager's screen shows which
+    // squad it was filed under, so it is visible rather than silent. Enforced in the UI.
+    match /clubs/{clubId}/playerProgress/{progressId} {
+      allow read: if canRead(clubId);
+      allow create: if canCreate(clubId);
+      allow update: if canChange(clubId);
+      allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
+    }
+
     // Proposals filed by the nightly federation sync, one per day.
     //
     // Managers only — a coach has nothing to decide about an import, and the proposal
