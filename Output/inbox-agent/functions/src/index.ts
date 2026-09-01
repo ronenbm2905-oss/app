@@ -5,7 +5,8 @@
 //   googleAuthCallback   onRequest   — הקולבק מגוגל. פודה code, שומר טוקן.
 //   checkConnection      onCall      — "האם החיבור חי?" בלי לגעת בתוכן.
 //   setSupportMode       onCall      — ★ B3′. **רק הבעלים.**
-//   syncOrders           onSchedule  — כל בוקר, שעון ישראל.
+//   syncOrdersNow        onCall      — "לבדוק אם הגיעו הזמנות חדשות".
+//   syncOrders           onSchedule  — כל בוקר, שעון ישראל. ★ מדווח ריצה.
 //   purgeOrders          onSchedule  — 03:15, שעון ישראל. ★ A7.
 //
 // ---------------------------------------------------------------------------
@@ -50,7 +51,7 @@ import {
   purgeExpiredStates,
   startAuthorization,
 } from './lib/oauthFlow';
-import { syncOrdersForUser } from './lib/orderSync';
+import { syncOrdersForUser, writeFailedRun } from './lib/orderSync';
 import { TokenStore } from './lib/tokenStore';
 
 setGlobalOptions({ region: 'me-west1', maxInstances: 4 });
@@ -223,12 +224,35 @@ export const syncOrders = onSchedule(
   async () => {
     const tokens = makeTokenStore();
     const users = await db.collection('users').get();
+
     for (const user of users.docs) {
-      await syncOrdersForUser(user.id, {
-        db,
-        tokens,
-        makeClient: (accessToken) => new GmailClient({ accessToken }),
-      });
+      try {
+        await syncOrdersForUser(user.id, {
+          db,
+          tokens,
+          makeClient: (accessToken) => new GmailClient({ accessToken }),
+          // ★★ **מי הריץ.** בלי זה `syncRuns` לא יכול לענות על "האם הריצה
+          //    של הבוקר קרתה" — רשומה מלחיצה של דורית נראתה זהה לרשומה
+          //    מהמתזמן.
+          trigger: 'schedule',
+        });
+      } catch {
+        // ★★ שתי הבטחות בבלוק הזה, ושתיהן נלמדו מ-`purgeOrders`:
+        //
+        //  1. **הריצה מדווחת גם כשהיא נפלה.** `syncOrdersForUser` מחזירה
+        //     סיכום בכל מסלול חזרה — אבל זריקה (כשל Firestore, באג עתידי)
+        //     עוקפת אותה לגמרי, ואז הבוקר הזה נראה בדיוק כמו בוקר שבו
+        //     המתזמן לא רץ. **ריצה שלא מדווחת נראית כמו ריצה שלא קרתה.**
+        //
+        //  2. **משתמשת אחת שנפלה אינה מפילה את השאר.** בלי ה-`catch`,
+        //     הלולאה מתה על הראשונה ואף אחת מהבאות לא נבדקת — בשקט.
+        //
+        // ⚠️ אין כאן `console.error`, ולא במקרה: `check-order-logging.mjs`
+        // מפיל build על כל `console.` בגרף ה-Functions, כי Cloud Logging
+        // הוא דרך הדליפה היחידה שנשארה. מה שצריך להישמר נכתב ל-`syncRuns`
+        // כספירות וקוד — וזה גם מה שהופך אותו לדבר **שדורית רואה**.
+        await writeFailedRun(db, user.id, 'schedule');
+      }
     }
   },
 );
@@ -240,6 +264,7 @@ export const syncOrdersNow = onCall({ secrets: SECRETS }, async (request) => {
     db,
     tokens: makeTokenStore(),
     makeClient: (accessToken) => new GmailClient({ accessToken }),
+    trigger: 'manual',
   });
   return {
     messagesRead: summary.messagesRead,

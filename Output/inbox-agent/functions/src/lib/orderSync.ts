@@ -63,12 +63,24 @@ export interface SyncSummary {
   errorHe: string | null;
 }
 
+/**
+ * ★ מה גרם לריצה. **נשמר ברשומת הריצה**, וזו כל הסיבה שהוא קיים.
+ *
+ * בלעדיו `syncRuns` אינו יכול לענות על השאלה שבגללה מסתכלים בו: *"האם
+ * הריצה של 06:30 קרתה הבוקר?"* — רשומה שנוצרה מלחיצה של דורית ורשומה
+ * שנוצרה מהמתזמן נראו זהות לחלוטין, ולכן "יש רשומות" לא היה אומר שהמתזמן
+ * עובד.
+ */
+export type SyncTrigger = 'schedule' | 'manual';
+
 export interface SyncDeps {
   db: Firestore;
   tokens: TokenStore;
   /** מוזרק כדי שאפשר יהיה להריץ את הצינור מול Gmail מדומה. */
   makeClient: (accessToken: string) => GmailClient;
   now?: () => Date;
+  /** ★ ברירת מחדל `'manual'`: הרצה שלא הצהירה על עצמה אינה נזקפת למתזמן. */
+  trigger?: SyncTrigger;
 }
 
 const emptySummary = (): SyncSummary => ({
@@ -92,6 +104,7 @@ const emptySummary = (): SyncSummary => ({
 export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<SyncSummary> {
   const summary = emptySummary();
   const now = deps.now ?? (() => new Date());
+  const trigger = deps.trigger ?? 'manual';
 
   let accessToken: string;
   try {
@@ -106,7 +119,7 @@ export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<Sy
     summary.errorHe = expired
       ? 'החיבור לגוגל פג. צריך להתחבר מחדש — שום דבר לא נמחק.'
       : 'לא הצלחתי להתחבר לגוגל. אנסה שוב אוטומטית.';
-    await writeRun(deps.db, uid, summary, now());
+    await writeRun(deps.db, uid, summary, now(), trigger);
     return summary;
   }
 
@@ -117,7 +130,7 @@ export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<Sy
     ids = await client.listOrderMessageIds();
   } catch {
     summary.errorHe = 'לא הצלחתי לקבל מגוגל את רשימת ההודעות. אנסה שוב אוטומטית.';
-    await writeRun(deps.db, uid, summary, now());
+    await writeRun(deps.db, uid, summary, now(), trigger);
     return summary;
   }
   summary.scanned = ids.length;
@@ -276,7 +289,7 @@ export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<Sy
     { merge: true },
   );
 
-  await writeRun(deps.db, uid, summary, at);
+  await writeRun(deps.db, uid, summary, at, trigger);
   return summary;
 }
 
@@ -292,11 +305,14 @@ async function writeRun(
   uid: string,
   summary: SyncSummary,
   at: Date,
+  trigger: SyncTrigger = 'manual',
 ): Promise<void> {
   const ts = at.toISOString();
   await db.collection(collectionPath(uid, COLLECTIONS.syncRuns)).add({
     userId: uid,
     kind: 'sync',
+    // ★ מי הריץ. ראה `SyncTrigger`.
+    trigger,
     at: ts,
     scanned: summary.scanned,
     written: summary.written,
@@ -312,6 +328,32 @@ async function writeRun(
     ).toISOString(),
     createdAt: FieldValue.serverTimestamp(),
   });
+}
+
+/**
+ * ★★ רשומת ריצה שנפלה **לפני** שהצינור הספיק לכתוב אחת בעצמו.
+ *
+ * `syncOrdersForUser` מבטיחה רשומה בכל מסלול **חזרה** — אבל לא בכל מסלול
+ * **זריקה**: כשל של Firestore באמצע הלולאה, או באג שיוסיף מחר `throw`,
+ * מפילים אותה בלי שנכתב דבר. ואז, מנקודת המבט של מי שמסתכל, הבוקר הזה
+ * נראה בדיוק כמו בוקר שבו המתזמן לא רץ.
+ *
+ * ולכן ההצהרה שנכתבה על `purgeOrders` חלה גם כאן:
+ * **ריצה שלא מדווחת נראית כמו ריצה שלא קרתה.**
+ *
+ * ★ ההודעה היא מחרוזת **קבועה מהקוד**. לא `err.message`: מה שנזרק שם הוא
+ * טקסט של SDK שיכול להכיל כל דבר, ו-`syncRuns` הוא אוסף שמותר שיהיו בו
+ * ספירות וקודים בלבד — בלי נושא, בלי שם, ובלי כתובת.
+ */
+export async function writeFailedRun(
+  db: Firestore,
+  uid: string,
+  trigger: SyncTrigger,
+  at: Date = new Date(),
+): Promise<void> {
+  const summary = emptySummary();
+  summary.errorHe = 'הבדיקה נפלה באמצע ולא הושלמה. אנסה שוב אוטומטית.';
+  await writeRun(db, uid, summary, at, trigger);
 }
 
 /** נתיב מסמך ההזמנה. מיוצא כדי שאף קורא לא יבנה מחרוזת נתיב משלו. */

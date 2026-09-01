@@ -46,12 +46,14 @@ import { useEffect, useState } from 'react';
 import { ExplainerScreen } from './components/ExplainerScreen';
 import { OrdersView } from './components/OrdersView';
 import { ConnectionBanner } from './components/ConnectionBanner';
+import { RefreshOrders } from './components/RefreshOrders';
 import { SupportModePanel } from './components/SupportModePanel';
 import { Banner } from './components/ui/Badge';
 import { FriendlyError } from './components/ui/FriendlyError';
 import { useOrders } from './hooks/useOrders';
 import { useAuth } from './hooks/useAuth';
 import { useCloudOrders } from './hooks/useCloudOrders';
+import { useRefreshOrders } from './hooks/useRefreshOrders';
 import { cloudRunResult } from './utils/cloudView';
 import { isFirebaseConfigured } from './firebase';
 import { STORAGE_KEYS } from './constants';
@@ -61,6 +63,26 @@ export function App() {
   const localOrders = useOrders();
   const auth = useAuth();
   const cloud = useCloudOrders(auth.user);
+
+  /**
+   * ★★ **הפקד שלא היה.**
+   *
+   * `cloud.refreshNow` היה מוגדר, מיוצא, ולא נקרא מאף מקום — ולכן דורית
+   * חיברה את התיבה ולא ראתה כלום עד 06:30 למחרת. שתי השורות האלה הן
+   * התיקון: ההרצה האוטומטית שמיד אחרי החיבור, והפקד שמאפשר לה לשאול שוב.
+   *
+   * ה-hook נקרא **תמיד** ולא רק במסלול הענן, כי חוקי ה-hooks. במצב המקומי
+   * הוא אינרטי: `connection` הוא `disconnected` ולכן אין הרצה אוטומטית,
+   * והרכיב עצמו לא מרונדר.
+   */
+  const refresh = useRefreshOrders({
+    refreshNow: cloud.refreshNow,
+    orders: cloud.orders,
+    connection: cloud.connection,
+    lastSyncAt: cloud.lastSyncAt,
+    loading: cloud.loading,
+  });
+
   const [connecting, setConnecting] = useState(false);
 
   const orders = localOrders;
@@ -191,6 +213,20 @@ export function App() {
           busy={connecting}
         />
 
+        {/* ★ מעל הרשימה ולא מתחתיה: זו השאלה שנשאלת **לפני** שמסתכלים על
+            מה שיש, ובמובייל "מתחת לרשימה" הוא מקום שלא רואים. */}
+        {!mustExplain ? (
+          <RefreshOrders
+            phase={refresh.phase}
+            newCount={refresh.newCount}
+            errorHe={refresh.errorHe}
+            lastSyncAt={cloud.lastSyncAt}
+            onRefresh={() => {
+              void refresh.run();
+            }}
+          />
+        ) : null}
+
         <main>
           {mustExplain ? (
             <ExplainerScreen onContinue={dismissExplainer} reopened={reopened} />
@@ -225,9 +261,9 @@ export function App() {
           />
         ) : null}
 
-        <footer className="mt-8 text-center text-xs text-slate-400">
-          {cloud.lastSyncAt ? `עודכן לאחרונה: ${new Date(cloud.lastSyncAt).toLocaleString('he-IL')}` : null}
-        </footer>
+        {/* ★ "עודכן לאחרונה" ירד מכאן. אותו נתון מוצג עכשיו ליד הכפתור
+            כ"בדקתי לאחרונה ב-08:14" — במקום שבו שואלים אותו, ובניסוח אחד
+            במקום שניים. */}
       </div>
     );
   }
