@@ -31,7 +31,10 @@ export default function ImportView({ onLoad }) {
         const result = importWorkbook(wb, file.name);
         setChecks(result.checks);
         if (!result.ok) {
+          // `error` מגיע כשהמבנה עצמו לא זוהה (גיליון חסר) — הוא אומר בדיוק מה
+          // נמצא בקובץ. אחרת מדובר בכשל התאמה מספרי, והרשימה למטה מפרטת אותו.
           setError(
+            result.error ||
             `${result.failed.length} מבחני התאמה נכשלו — הנתונים לא נטענו. ` +
             `הייבוא לא מייצר תמונה חלקית שנראית תקינה.`
           );
@@ -90,8 +93,9 @@ export default function ImportView({ onLoad }) {
             <div className="text-xs font-semibold text-slate-600">מבחני התאמה מול הגיליון</div>
             <ul className="mt-1 space-y-0.5 text-xs">
               {checks.map((c) => (
-                <li key={c.name} className={c.ok ? "text-emerald-700" : "text-red-700"}>
-                  {c.ok ? "✓" : "✗"} {c.name}:{" "}
+                <li key={c.name}
+                  className={!c.ok ? "text-red-700" : c.informational ? "text-slate-500" : "text-emerald-700"}>
+                  {!c.ok ? "✗" : c.informational ? "·" : "✓"} {c.name}:{" "}
                   <span className="tnum">
                     {typeof c.actual === "number" ? c.actual.toLocaleString("he-IL") : String(c.actual)}
                   </span>

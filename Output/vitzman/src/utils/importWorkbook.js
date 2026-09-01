@@ -68,10 +68,42 @@ const COL = { address: "A", forecast: "Z", fee: "AA", total: "AB", profit: "AC",
 const INSPECTION_COLUMNS = [["AI", "fireDetection"], ["AJ", "fireSuppression"],
                             ["AK", "waterTank"], ["AL", "generator"]];
 
-const ACTIVE_SHEET = "רשימת בנינים פעילים";
-const EMPLOYEE_SHEET = "רשימת  בנינים בחלוקה לעובדים ";
-const ILM_SHEET = "רשימת ביניינים ילמ";
-const INACTIVE_SHEET = "רשימת בנינים לא פעילים";
+// --- איתור הגיליונות ------------------------------------------------------
+//
+// ⚠ שמות הלשוניות בקובץ המקור נושאים רווחים לא סדירים ("רשימת  בנינים בחלוקה
+// לעובדים " — רווח כפול ורווח בסוף). השוואת מחרוזות מדויקת נשברה על גרסה
+// מעודכנת של הקובץ וקרסה עם `Cannot read properties of undefined`, בלי לומר
+// איזה גיליון חסר. לכן: **התאמה סלחנית + שגיאה שאומרת מה נמצא בפועל.**
+const norm = (s) => String(s || "").replace(/\s+/g, " ").trim();
+const findSheet = (wanted) =>
+  wb.SheetNames.find((n) => norm(n) === norm(wanted)) ||
+  wb.SheetNames.find((n) => norm(n).replace(/\s/g, "") === norm(wanted).replace(/\s/g, "")) ||
+  null;
+
+const ACTIVE_SHEET = findSheet("רשימת בנינים פעילים");
+const EMPLOYEE_SHEET = findSheet("רשימת בנינים בחלוקה לעובדים");
+const ILM_SHEET = findSheet("רשימת ביניינים ילמ");
+const INACTIVE_SHEET = findSheet("רשימת בנינים לא פעילים");
+
+// הגיליון הפעיל הוא היחיד שבלעדיו אין ייבוא — כל הכספים יושבים בו.
+// שלושת האחרים מוסיפים שיוך לעובדים, רשימת ילמ וזהות בניינים לא-פעילים;
+// בלעדיהם הייבוא ממשיך ומדווח מה דולג, במקום ליפול.
+if (!ACTIVE_SHEET) {
+  return {
+    ok: false,
+    checks: [],
+    failed: [{
+      name: "גיליון הבניינים הפעילים לא נמצא",
+      actual: wb.SheetNames.join(" · ") || "(אין גיליונות)",
+      expected: "רשימת בנינים פעילים",
+    }],
+    payload: null,
+    report: null,
+    error:
+      `לא נמצא גיליון בשם ״רשימת בנינים פעילים״. הגיליונות בקובץ: ` +
+      `${wb.SheetNames.map((n) => `״${n}״`).join(", ") || "(אין)"}.`,
+  };
+}
 
 const ACTIVE_FIRST_ROW = 2;
 const ACTIVE_LAST_ROW = 132; // 133 = סיכום, 1002 = רפאים
@@ -397,12 +429,17 @@ for (let r = ACTIVE_FIRST_ROW; r <= ACTIVE_LAST_ROW; r++) {
 // ============================================================================
 // 2. הבניינים הלא-פעילים  (מבנה עמודות שונה — ולכן רק זהות, בלי עלויות)
 // ============================================================================
-const inactiveSheet = wb.Sheets[INACTIVE_SHEET];
-const inactiveRange = XLSX.utils.decode_range(inactiveSheet["!ref"]);
 const inactiveNames = [];
-for (let r = 2; r <= inactiveRange.e.r + 1; r++) {
-  const a = str(INACTIVE_SHEET, `A${r}`);
-  if (a && a !== "כתובת הבנין") inactiveNames.push({ address: a, row: r });
+const inactiveSheet = INACTIVE_SHEET ? wb.Sheets[INACTIVE_SHEET] : null;
+if (inactiveSheet?.["!ref"]) {
+  const inactiveRange = XLSX.utils.decode_range(inactiveSheet["!ref"]);
+  for (let r = 2; r <= inactiveRange.e.r + 1; r++) {
+    const a = str(INACTIVE_SHEET, `A${r}`);
+    if (a && a !== "כתובת הבנין") inactiveNames.push({ address: a, row: r });
+  }
+} else {
+  flag("medium", "גיליון הבניינים הלא-פעילים לא נמצא",
+    "הייבוא המשיך בלעדיו; בניינים שיצאו מהרשימה הפעילה לא ייכנסו למערכת.");
 }
 
 const byKey = new Map();
@@ -434,9 +471,15 @@ flag("medium", `לגיליון "${INACTIVE_SHEET}" מבנה עמודות שונ�
 // 3. שיוך לעובדים  (הגיליון: עובד לכל עמודה)
 // ============================================================================
 const employees = [];
-const empSheet = wb.Sheets[EMPLOYEE_SHEET];
-const empRange = XLSX.utils.decode_range(empSheet["!ref"]);
 const assignedNotFound = [];
+const empSheet = EMPLOYEE_SHEET ? wb.Sheets[EMPLOYEE_SHEET] : null;
+if (!empSheet?.["!ref"]) {
+  flag("medium", "גיליון החלוקה לעובדים לא נמצא",
+    "הייבוא המשיך בלעדיו; אף בניין לא ישויך לעובד, וכל הבניינים יופיעו כ״ללא עובד אחראי״.");
+}
+const empRange = empSheet?.["!ref"]
+  ? XLSX.utils.decode_range(empSheet["!ref"])
+  : { s: { c: 0, r: 0 }, e: { c: -1, r: -1 } };
 
 for (let c = empRange.s.c; c <= empRange.e.c; c++) {
   const colLetter = XLSX.utils.encode_col(c);
@@ -461,9 +504,14 @@ for (let c = empRange.s.c; c <= empRange.e.c; c++) {
 // ============================================================================
 // 4. רשימת "ילמ"
 // ============================================================================
-const ilmSheet = wb.Sheets[ILM_SHEET];
-const ilmRange = XLSX.utils.decode_range(ilmSheet["!ref"]);
 const ilmNotFound = [];
+const ilmSheet = ILM_SHEET ? wb.Sheets[ILM_SHEET] : null;
+if (!ilmSheet?.["!ref"]) {
+  flag("low", "גיליון ״ילמ״ לא נמצא", "הייבוא המשיך בלעדיו; אף בניין לא יסומן כשייך לרשימה.");
+}
+const ilmRange = ilmSheet?.["!ref"]
+  ? XLSX.utils.decode_range(ilmSheet["!ref"])
+  : { s: { r: 0 }, e: { r: -1 } };
 for (let r = 1; r <= ilmRange.e.r + 1; r++) {
   const addr = str(ILM_SHEET, `A${r}`);
   if (!addr || addr === "כתובת הבנין") continue;
@@ -481,7 +529,7 @@ for (let r = 1; r <= ilmRange.e.r + 1; r++) {
 // סכום (עלויות מיובאות מהגיליון הפעיל בלבד), אבל הם היסטוריה עסקית אמיתית
 // ולכן לא נזרקים.
 // ============================================================================
-for (const sheetName of [EMPLOYEE_SHEET, ILM_SHEET, INACTIVE_SHEET]) {
+for (const sheetName of [EMPLOYEE_SHEET, ILM_SHEET, INACTIVE_SHEET].filter(Boolean)) {
   const isCostSheet = sheetName === INACTIVE_SHEET;
   for (const [ref, { text, author }] of commentsOf(sheetName)) {
     const m = ref.match(/^([A-Z]+)(\d+)$/);
@@ -524,20 +572,35 @@ const SHEET_INCOME = round2(val(ACTIVE_SHEET, `${COL.fee}${TOTALS_ROW}`));
 const SHEET_PROFIT = round2(val(ACTIVE_SHEET, `${COL.profit}${TOTALS_ROW}`));
 
 const checks = [];
+/**
+ * שתי משפחות של מבחנים, והבחנה ביניהן קריטית:
+ *
+ * · `check` — **עקביות פנימית**: הסכום שחישבנו מול הסכום שהגיליון עצמו מצהיר
+ *   עליו. נגזר מהקובץ ולכן תקף לכל גרסה שלו. כישלון כאן = הייבוא שגוי, וחוסם.
+ *
+ * · `info` — **ספירות של הקובץ הספציפי** (131 בניינים, 3 עובדים...). אלה
+ *   צילום מצב של גרסה אחת, לא אמת. ⚠ הן היו חוסמות: ברגע שרונן מוסיף בניין,
+ *   ייבוא תקין לחלוטין היה נדחה בטענה ש״מספר הבניינים אינו 131״. מדווחות ולא
+ *   חוסמות.
+ */
+const info = (name, actual, note = "") => {
+  checks.push({ name, actual, expected: note || "לידיעה", ok: true, informational: true });
+};
 const check = (name, actual, expected, tol = 0.01) => {
   const ok = typeof expected === "number" ? Math.abs(actual - expected) <= tol : actual === expected;
-  checks.push({ name, actual, expected, ok });
+  checks.push({ name, actual, expected, ok, informational: false });
   return ok;
 };
 
 check("סה\"כ הוצאות מתאים לגיליון", importedExpenses, SHEET_EXPENSES);
 check("סה\"כ הכנסות מתאים לגיליון", importedIncome, SHEET_INCOME);
 check("רווח מתאים לגיליון", importedProfit, SHEET_PROFIT);
-check("מספר בניינים פעילים", activeBuildings.length, 131);
-check("מספר עובדים", employees.length, 3);
+info("מספר בניינים פעילים", activeBuildings.length);
+info("מספר עובדים", employees.length, EMPLOYEE_SHEET ? "לידיעה" : "גיליון העובדים לא נמצא");
 // לא משווים ל-`activeComments.size` — זו אותה מדידה משני צדדי המשוואה ולכן
 // בדיקה שמאשרת את עצמה. הספירה נגזרת מחדש מהחוברת, לכל הגיליונות.
-const totalCommentedCells = wb.SheetNames.reduce((acc, name) => {
+const KNOWN_SHEETS = [ACTIVE_SHEET, EMPLOYEE_SHEET, ILM_SHEET, INACTIVE_SHEET].filter(Boolean);
+const totalCommentedCells = KNOWN_SHEETS.reduce((acc, name) => {
   const s = wb.Sheets[name];
   return acc + Object.keys(s).filter((r) => r[0] !== "!" && s[r].c?.length).length;
 }, 0);
@@ -557,7 +620,8 @@ check("הסכם דמי ניהול לכל בניין פעיל",
   );
   check("ההסכם התקף מחזיר את דמי הניהול שבגיליון", drift.length, 0);
 }
-check("הערות הגיליון הפעיל", notes.filter((n) => n.sourceSheet === ACTIVE_SHEET).length, 161);
+info("הערות בגיליון הפעיל", notes.filter((n) => n.sourceSheet === ACTIVE_SHEET).length);
+info("גיליונות שזוהו", [ACTIVE_SHEET, EMPLOYEE_SHEET, ILM_SHEET, INACTIVE_SHEET].filter(Boolean).length + " מתוך 4");
 
   const failed = checks.filter((c) => !c.ok);
   // ⚠ הפונקציה **לא זורקת ולא יוצאת** — היא מחזירה `ok: false` עם המבחנים.

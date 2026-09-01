@@ -30,18 +30,19 @@ if (!existsSync(SRC)) {
 // (`XLSX.readFile` אינו קיים ב-build של SheetJS ל-ESM, אבל גם אילו היה — מסלול
 // אחד לשני הצדדים עדיף על שניים שיכולים להיפרד.)
 const wb = XLSX.read(readFileSync(SRC), { cellFormula: true, bookFiles: true });
-const { ok, checks, failed, payload, report } = importWorkbook(wb, basename(SRC));
+const { ok, checks, failed, payload, report, error } = importWorkbook(wb, basename(SRC));
 
 const nf = (n) => Number(n).toLocaleString("he-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmt = (v) => (typeof v === "number" ? v.toLocaleString("he-IL") : v);
 
 console.log("\n=== מבחני התאמה ===");
 for (const c of checks) {
-  console.log(`  ${c.ok ? "✓" : "✗"} ${c.name}: ${fmt(c.actual)}` + (c.ok ? "" : `  (צפוי: ${fmt(c.expected)})`));
+  const mark = !c.ok ? "✗" : c.informational ? "·" : "✓";
+  console.log(`  ${mark} ${c.name}: ${fmt(c.actual)}` + (c.ok ? "" : `  (צפוי: ${fmt(c.expected)})`));
 }
 
 if (!ok) {
-  console.error(`\n✗ ${failed.length} מבחני התאמה נכשלו — שום קובץ לא נכתב.`);
+  console.error(`\n✗ ${error || `${failed.length} מבחני התאמה נכשלו`} — שום קובץ לא נכתב.`);
   process.exit(1);
 }
 

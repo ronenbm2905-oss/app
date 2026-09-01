@@ -26,6 +26,8 @@ import {
 } from "../src/utils/inspections.js";
 import { vendorSpend, vendorConcentration, stalePriceContracts } from "../src/utils/vendors.js";
 import { planPriceChange, canDeleteEntry, activeAsOf, sortByEffective } from "../src/utils/pricing.js";
+import * as XLSX from "xlsx";
+import { importWorkbook } from "../src/utils/importWorkbook.js";
 import { addMonths, daysBetween, fmtDate, todayISO } from "../src/utils/dates.js";
 import {
   makeBackup, validateBackup, backupFilename, toCsv, BOM,
@@ -36,6 +38,7 @@ import { addressKey } from "../src/utils/id.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SEED = resolve(HERE, "../seed/vitzman.json");
+const SEED_XLSX = resolve(HERE, "../seed/vitzman-buildings-2025.xlsx");
 
 let pass = 0, fail = 0, skipped = 0;
 const failures = [];
@@ -546,7 +549,80 @@ ok("todayISO בפורמט ISO", /^\d{4}-\d{2}-\d{2}$/.test(todayISO()));
 }
 
 // ============================================================================
-// 19. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 19. עמידות הייבוא — גיליונות חסרים ושמות עם רווחים
+//
+// הקריסה שרונן ראה: `Cannot read properties of undefined (reading '!ref')`.
+// שמות הלשוניות נושאים רווחים לא סדירים, והשוואה מדויקת נשברה על גרסה מעודכנת
+// של הקובץ — בלי לומר איזה גיליון חסר.
+// ============================================================================
+if (!existsSync(SEED_XLSX)) {
+  skip("עמידות הייבוא", "קובץ האקסל לא קיים — הנח אותו ב-seed/");
+} else {
+  const buf = readFileSync(SEED_XLSX);
+  const fresh = () => XLSX.read(buf, { cellFormula: true, bookFiles: true });
+  const rename = (wb, from, to) => {
+    wb.Sheets[to] = wb.Sheets[from]; delete wb.Sheets[from];
+    wb.SheetNames = wb.SheetNames.map((n) => (n === from ? to : n));
+    return wb;
+  };
+  const drop = (wb, n) => {
+    delete wb.Sheets[n];
+    wb.SheetNames = wb.SheetNames.filter((x) => x !== n);
+    return wb;
+  };
+
+  eq("קובץ תקין מיובא", importWorkbook(fresh(), "ok.xlsx").ok, true);
+
+  // רווח כפול, רווח בהתחלה ובסוף — כולם צריכים להתאים
+  {
+    const r = importWorkbook(rename(fresh(), "רשימת בנינים פעילים", "  רשימת   בנינים  פעילים  "), "s.xlsx");
+    eq("שם לשונית עם רווחים חריגים עדיין מזוהה", r.ok, true);
+    eq("והמספרים זהים", r.payload.meta.sheetTotals.income, 1088983);
+  }
+
+  // גיליונות משניים חסרים → ממשיכים ומדווחים, לא נופלים
+  for (const [label, name, probe] of [
+    ["עובדים", "רשימת  בנינים בחלוקה לעובדים ", (p) => p.employees.length === 0],
+    ["ילמ", "רשימת ביניינים ילמ", (p) => p.buildings.every((b) => !b.inIlm)],
+    ["לא-פעילים", "רשימת בנינים לא פעילים", (p) => p.buildings.every((b) => b.status === "active")],
+  ]) {
+    const r = importWorkbook(drop(fresh(), name), "x.xlsx");
+    ok(`גיליון ${label} חסר — הייבוא ממשיך`, r.ok === true);
+    ok(`וגם מדווח על החוסר (${label})`, r.ok && probe(r.payload));
+    if (r.ok) eq(`ההכנסה לא נפגעה (${label})`, r.payload.meta.sheetTotals.income, 1088983);
+  }
+
+  // הגיליון הפעיל חסר → כישלון מפורש שאומר מה כן נמצא
+  {
+    const r = importWorkbook(drop(fresh(), "רשימת בנינים פעילים"), "x.xlsx");
+    eq("הגיליון הפעיל חסר — הייבוא נכשל", r.ok, false);
+    eq("ולא מייצר payload חלקי", r.payload, null);
+    ok("השגיאה מונה את הגיליונות שכן נמצאו", /רשימת ביניינים ילמ/.test(r.error || ""),
+      "בלי זה המשתמש רואה קריסה במקום סיבה");
+  }
+
+  // חוברת ריקה לגמרי
+  {
+    const r = importWorkbook({ SheetNames: [], Sheets: {}, files: {} }, "empty.xlsx");
+    eq("חוברת ריקה נכשלת בנקיות", r.ok, false);
+    ok("עם הודעה ולא עם חריגה", typeof r.error === "string" && r.error.length > 0);
+  }
+
+  // ספירות ספציפיות-לקובץ אינן חוסמות
+  {
+    const r = importWorkbook(fresh(), "ok.xlsx");
+    const blocking = r.checks.filter((c) => !c.informational);
+    const infos = r.checks.filter((c) => c.informational);
+    ok("יש מבחנים חוסמים", blocking.length >= 4);
+    ok("וגם מבחני-לידיעה", infos.length >= 2);
+    ok("ספירת הבניינים אינה חוסמת",
+      infos.some((c) => c.name.includes("מספר בניינים פעילים")),
+      "אחרת הוספת בניין אחת הייתה דוחה ייבוא תקין");
+  }
+}
+
+// ============================================================================
+// 20. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
