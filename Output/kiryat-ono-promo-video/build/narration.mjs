@@ -61,6 +61,9 @@ const dur = async (f) => {
 const tc = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 
 function keyFor(step) {
+  // `vo` גובר על הכל: יש קטעים שהכתובית שלהם היא הצהרה משפטית ולא מסר שיווקי
+  // (הצהרת נתוני הדמו), והקריינות שם חייבת לדבר על מה שרואים.
+  if (step.vo) return { literal: step.vo };
   if (step.card) return step.card;
   if (step.proof) return step.proof;
   if (step.whatsapp) return "whatsapp";
@@ -84,7 +87,7 @@ for (const [name, cut] of Object.entries(cuts)) {
   for (const [i, f] of files.entries()) {
     const d = await dur(path.join("work/seg", name, f));
     const key = keyFor(steps[i] || {});
-    const line = (key && LINES[key]) || "";
+    const line = key && key.literal ? key.literal : (key && LINES[key]) || "";
     if (line) {
       const w = line.split(/\s+/).filter(Boolean).length;
       const budget = Math.floor(d * WPS);
