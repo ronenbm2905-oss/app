@@ -89,6 +89,18 @@ await t("the manager marks it read without owning it", async () => {
     readAt: "2026-12-31T00:00:00.000Z",
   }));
 });
+await t("...and by the path the app actually takes — a whole-document setDoc", async () => {
+  // `usePlayerProgress.saveProgress` writes the entire document, not a field patch. Testing
+  // only `updateDoc` would leave the code path the app runs unexercised: `canChange` sees a
+  // full incoming document, and a manager passes on `isClubAdmin` before ownership is even
+  // consulted. Worth asserting rather than assuming.
+  const snap = await getDoc(doc(as(MANAGER), `clubs/main/playerProgress/${MINE}`));
+  await assertSucceeds(setDoc(doc(as(MANAGER), `clubs/main/playerProgress/${MINE}`), {
+    ...snap.data(), readAt: "2026-12-31T12:00:00.000Z",
+  }));
+  const after = await getDoc(doc(as(MANAGER), `clubs/main/playerProgress/${MINE}`));
+  if (after.data().authorEmail !== COACH) throw new Error("markRead must not re-stamp ownership");
+});
 
 console.log("— writing —");
 

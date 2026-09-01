@@ -95,6 +95,7 @@ export function PlayerProgressCard({
     return (
       <button
         onClick={() => setOpen(true)}
+        aria-expanded={false}
         disabled={readOnly && !written}
         className={`w-full text-right border rounded-lg px-3 py-2.5 flex items-center justify-between gap-2 disabled:opacity-60 ${
           written ? "border-stone-200 bg-stone-50 hover:bg-stone-100" : "border-stone-200 bg-white hover:bg-brand-50/60"
@@ -123,10 +124,11 @@ export function PlayerProgressCard({
               mind; a question collects an answer. This is the control that keeps a field
               about a child professional — the same problem that blocked an earlier review
               over a placeholder that mentioned injuries. */}
-          <label className="block text-xs font-medium text-stone-600">
+          <label htmlFor={`progress-${player.id}`} className="block text-xs font-medium text-stone-600">
             מה התקדם אצל השחקן/ית בחציון הזה, ומה היעד המקצועי לחציון הבא?
           </label>
           <textarea
+            id={`progress-${player.id}`}
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, MAX_LEN))}
             rows={4}
@@ -134,13 +136,21 @@ export function PlayerProgressCard({
             placeholder="התקדמות מקצועית בלבד — מיומנויות, מוטיבציה, עבודת צוות. בלי מידע רפואי, אבחנות או פציעות, ובלי נושאים אישיים או משפחתיים."
             className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            {/* Three facts in one line, and each of them is true: who reads it, how long it
-                is kept, how often it is written. */}
-            <p className="text-xs text-stone-600">
-              נקרא על ידי המנהל המקצועי ועל ידך בלבד · נמחק בתום העונה
-            </p>
-            <span className="text-xs text-stone-500 tabular-nums">{text.length}/{MAX_LEN}</span>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            {/* Two lines, and the second is what makes the first honest. "Only the managers
+                and you" is true of everyone who uses this service — and it is NOT true of a
+                parent, who has a statutory right to see what was written about their child.
+                Saying only the first half would be a promise of confidentiality the club
+                cannot keep, made to a coach at the moment they are relying on it. */}
+            <div className="space-y-0.5 min-w-[14rem] flex-1">
+              <p className="text-xs text-stone-600">
+                נקרא על ידי מנהלי המועדון (הרשאת ניהול) ועל ידך בלבד · נמחק בתום העונה
+              </p>
+              <p className="text-xs text-stone-600">
+                כתוב/י כפי שהיית כותב/ת בידיעה ש<strong>הורה רשאי לבקש לעיין בכתוב</strong> — משום שהוא רשאי.
+              </p>
+            </div>
+            <span className="text-xs text-stone-500 tabular-nums shrink-0">{text.length}/{MAX_LEN}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -150,7 +160,7 @@ export function PlayerProgressCard({
             >
               <IconCheck size={15} /> שמור
             </button>
-            {saved && <span className="text-xs text-emerald-700">נשמר</span>}
+            {saved && <span role="status" className="text-xs text-emerald-700">נשמר</span>}
             {entry?.updatedAt && !dirty && (
               <span className="text-xs text-stone-500">עודכן {when(entry.updatedAt)}</span>
             )}

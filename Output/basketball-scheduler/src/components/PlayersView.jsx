@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { progressCountFor } from "../utils/playerProgress";
 import { uid } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import {
@@ -99,7 +100,7 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
   );
 }
 
-export function PlayersView({ data, save, canEdit }) {
+export function PlayersView({ data, save, canEdit, progress }) {
   const players = data.players || [];
   const [teamId, setTeamId] = useState(data.teams[0]?.id || "");
   const [editing, setEditing] = useState(null); // player id | "new" | null
@@ -125,7 +126,25 @@ export function PlayersView({ data, save, canEdit }) {
     setEditing(null);
   };
 
+  // A player may not be removed while a progress note about them survives.
+  //
+  // The note is filed under the player's id and deliberately does not carry their name, so
+  // taking the roster entry away severs the only link between the record and the child —
+  // and from that moment a parent's request to see or delete what was written cannot be
+  // answered at all. The same guard already protects coaches and halls from being deleted
+  // out from under their records; it was simply never applied to players.
   const handleDelete = (id) => {
+    const n = progressCountFor(progress, id);
+    if (n > 0) {
+      window.alert(
+        `לשחקן/ית זה/זו ${n === 1 ? "הערכת התקדמות אחת" : `${n} הערכות התקדמות`}. יש למחוק אותן תחילה — ` +
+        "לאחר ההסרה מהרשימה לא ניתן לקשר בין הרשומות לבין השחקן/ית, ולא נוכל לענות על בקשת עיון או מחיקה של הורה."
+      );
+      return;
+    }
+    // No confirmation existed here at all, while deleting a coach or a hall has always
+    // asked. One misplaced tap removed a child's record with nothing in between.
+    if (!window.confirm("למחוק את השחקן/ית מהרשימה?")) return;
     save({ ...data, players: players.filter((p) => p.id !== id) });
   };
 

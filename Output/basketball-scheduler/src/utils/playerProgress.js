@@ -10,8 +10,14 @@
 // once, on the club document, and copying it into a second place would put a minor's
 // details somewhere else to find and somewhere else to forget. It also makes a parent's
 // deletion request a single lookup by id, instead of the roster-scan the deletion
-// procedure has to prescribe for `gameNotes`. The cost — a note whose player has left the
-// club shows no name — is the behaviour we want: the record goes anonymous by itself.
+// procedure has to prescribe for `gameNotes`.
+//
+// **What it is NOT is anonymisation, and calling it that was the mistake.** A record left
+// behind after its roster entry is gone still carries a squad, a half, the author's
+// address and a free paragraph a coach will recognise on sight — it survives as
+// pseudonymous data we can no longer locate by name, which is the worst of both. That is
+// precisely why deletion has to happen BEFORE the roster entry goes, and why `PlayersView`
+// refuses to remove a player who still has one.
 //
 // **No rating, no scale, no tags.** A number on a child is a profile; a paragraph is a
 // conversation, and a conversation between the coach and the manager is the whole point.
@@ -193,4 +199,31 @@ export function missingFor(roster, map, period) {
 
 export function writtenCount(roster, map, period) {
   return arr(roster).length - missingFor(roster, map, period).length;
+}
+
+// How many notes exist for one player, whichever half. The roster screen asks before it
+// lets a manager remove someone: the note does not carry their name, so removing the
+// roster entry severs the only link between the record and the child — and from that
+// moment a parent's request cannot be answered.
+export function progressCountFor(map, playerId) {
+  const id = str(playerId);
+  if (!id) return 0;
+  return Object.keys(map || {}).filter((k) => k.startsWith(`${id}__`)).length;
+}
+
+// Seasons still sitting in the collection other than the current one.
+//
+// The screen only ever offers the current season's two halves, so from the first of August
+// last season's records are present in Firestore and visible to nobody. Hiding is not
+// deleting, and a record nobody can see is a record nobody remembers to delete — so the
+// manager gets told rather than left to remember.
+export function staleSeasons(map, currentSeason) {
+  const now = str(currentSeason);
+  const seen = new Set();
+  Object.keys(map || {}).forEach((k) => {
+    const parsed = parseProgressKey(k);
+    const season = parsed ? seasonOfPeriod(parsed.period) : "";
+    if (season && season !== now) seen.add(season);
+  });
+  return [...seen].sort();
 }
