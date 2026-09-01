@@ -9,7 +9,7 @@
 // depends on) can still be exercised by the project's plain-Node unit tests.
 // The logo, which needs Vite's asset pipeline, lives in ./clubLogo.js.
 
-import { DEFAULT_SETTINGS } from "../constants";
+import { DEFAULT_SETTINGS } from "../constants.js";
 
 const settingsOf = (data) => (data && data.settings) || DEFAULT_SETTINGS;
 

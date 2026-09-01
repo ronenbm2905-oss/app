@@ -1,4 +1,4 @@
-import { DAYS } from "../constants";
+import { DAYS } from "../constants.js";
 
 export function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -121,4 +121,64 @@ export function formatWeekRange(sundayIso) {
   end.setDate(start.getDate() + 6);
   const dm = (x) => `${String(x.getDate()).padStart(2, "0")}/${String(x.getMonth() + 1).padStart(2, "0")}`;
   return `${dm(start)}–${dm(end)}/${end.getFullYear()}`;
+}
+
+// ---- Month helpers ----
+// Ported with the availability screen: a dated absence is entered on a month grid, not
+// on the Sunday-anchored week the rest of the app navigates by.
+// Lived in ReportView until the availability screen needed the same four functions.
+// Two copies of "which month is it" is how one screen ends up a month behind the other.
+
+export function currentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// Shift a "YYYY-MM" by whole months. Day 1 is used deliberately: rolling from the 31st
+// would land on the wrong month whenever the next one is shorter.
+export function shiftMonth(ym, delta) {
+  const [y, m] = String(ym).split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function monthLabel(ym) {
+  const [y, m] = String(ym).split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("he-IL", { month: "long", year: "numeric" });
+}
+
+// "YYYY-MM-DD" -> "YYYY-MM".
+export function monthOf(iso) {
+  return String(iso).slice(0, 7);
+}
+
+// The calendar grid for a month: whole Sunday→Saturday weeks covering it, so every row
+// has seven cells and the columns line up with DAYS. Days spilling in from the
+// neighbouring months are kept (marked `inMonth: false`) rather than blanked — a Tuesday
+// that is the 1st still belongs in the Tuesday column, and an empty cell there reads as
+// "nothing scheduled" instead of "not this month".
+export function monthGrid(ym) {
+  const [y, m] = String(ym).split("-").map(Number);
+  if (!y || !m) return [];
+  const first = new Date(y, m - 1, 1);
+  const cursor = new Date(first);
+  cursor.setDate(1 - first.getDay()); // back to that week's Sunday
+  const last = new Date(y, m, 0); // day 0 of next month = last day of this one
+  const weeks = [];
+  // `cursor` starts on a Sunday and advances a whole week at a time, so the loop ends on
+  // its own once the month is covered — between 4 and 6 rows, never a partial one.
+  while (cursor <= last) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      week.push({
+        iso: toISODate(cursor),
+        date: new Date(cursor),
+        dayNum: cursor.getDate(),
+        inMonth: cursor.getMonth() === m - 1 && cursor.getFullYear() === y,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
 }

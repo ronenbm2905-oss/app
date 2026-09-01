@@ -22,6 +22,7 @@ export {
   Ban as IconBan,
   UserX as IconUserX,
   Building2 as IconBuilding,
+  CalendarX2 as IconCalendarX,
   UserPlus as IconUserPlus,
   Settings as IconSettings,
   Trophy as IconTrophy,

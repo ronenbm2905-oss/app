@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { flushSync } from "react-dom";
 import { DAYS, DEFAULT_SESSION_TYPE, DAY_BG_COLORS } from "../constants";
-import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
+import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate} from "../utils/dates";
 import { colorFor, colorForTeamByCoach } from "../utils/colors";
 import { clubSessionTypes, sessionTypeColor } from "../utils/sessionTypes";
 import { holidayNameOn } from "../utils/holidays";
+import { findAbsenceHits, absenceLabel, isHallClosure, hallClosuresOn, isAllDay } from "../utils/availability";
 import {
   findHallClashes,
   findCoachClashes,
@@ -34,6 +35,12 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
   // what leaves the building is the decision, not the working notes.
   const [hideWarningMarks, setHideWarningMarks] = useState(true);
   const [suppressWarnings, setSuppressWarnings] = useState(false); // on only while exporting/printing
+  // The absence mark is NOT covered by the toggle above, and that is the point. A clash is
+  // a scheduling note about the board; "מאמן X לא זמין" is a statement about a person's
+  // week, and an exported board travels — to coaches, to parents on WhatsApp, and on a
+  // multi-club deployment out of the club that wrote it. So it comes off every capture and
+  // every print, whether or not the manager chose to keep the other marks in.
+  const [exporting, setExporting] = useState(false);
   const [editingSession, setEditingSession] = useState(null); // click a board cell to edit/move that session
   const [justPublished, setJustPublished] = useState(false);
   const [addingCell, setAddingCell] = useState(null); // click an empty cell → prefilled new-session initial
@@ -55,10 +62,17 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
   // Ctrl+P goes through the browser rather than our export buttons, so it needs the same
   // treatment. beforeprint fires before the page is snapshotted, and flushSync makes the
   // re-render land inside that window — a queued update would not.
+  // No early return on `hideWarningMarks`: `exporting` has to flip even when the manager
+  // has chosen to keep the warning marks in, because the absence mark comes off regardless.
   useEffect(() => {
-    if (!hideWarningMarks) return;
-    const before = () => flushSync(() => setSuppressWarnings(true));
-    const after = () => flushSync(() => setSuppressWarnings(false));
+    const before = () => flushSync(() => {
+      setExporting(true);
+      if (hideWarningMarks) setSuppressWarnings(true);
+    });
+    const after = () => flushSync(() => {
+      setExporting(false);
+      if (hideWarningMarks) setSuppressWarnings(false);
+    });
     window.addEventListener("beforeprint", before);
     window.addEventListener("afterprint", after);
     return () => {
@@ -76,7 +90,10 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
     // flushSync, not a plain setState: html2canvas reads the DOM on the very next line, and
     // a normal React update would still be queued at that point — the markers would land in
     // the image anyway, intermittently, which is the worst kind of bug to chase.
-    if (hideWarningMarks) flushSync(() => setSuppressWarnings(true));
+    flushSync(() => {
+      setExporting(true);
+      if (hideWarningMarks) setSuppressWarnings(true);
+    });
     try {
       return await renderNodeCanvas(node, {
         logoSrc: logoDataUrl || clubLogo,
@@ -91,7 +108,10 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
       });
     } finally {
       node.classList.remove("capturing"); // restore the interactive view immediately
-      if (hideWarningMarks) flushSync(() => setSuppressWarnings(false));
+      flushSync(() => {
+        setExporting(false);
+        if (hideWarningMarks) setSuppressWarnings(false);
+      });
     }
   }
 
@@ -252,6 +272,91 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
     () => findConstraintViolations(weekSessions, data.constraints || []),
     [weekSessions, data.constraints]
   );
+  // Sessions whose coach is marked unavailable on that actual date, or whose hall is shut → ⛔.
+  //
+  // Deliberately not folded into `violations`: a constraint says the slot is awkward, an
+  // absence says nobody is coming. They are also dated differently — a constraint repeats
+  // every week, this one lands on one square of the calendar — so the same Wednesday cell
+  // is flagged this week and clean the next.
+  const absenceHits = useMemo(
+    () => findAbsenceHits(weekSessions, (s) => (weekDates[s.day] ? toISODate(weekDates[s.day]) : ""), data.absences || []),
+    [weekSessions, weekStart, data.absences]
+  );
+  // Named at the source, because one session can be hit by two different things and
+  // "לא זמין כל היום" on its own does not say which. The name in front is the coach for an
+  // absence and the hall for a closure — attributing a closed building to the coach who
+  // happened to be booked into it is the mistake this avoids.
+  //
+  // `withNote` is passed only where a manager is already looking at an editable cell. The
+  // hall report below is open to every coach, so it asks for the bare label.
+  const absenceText = (id, withNote = false) =>
+    (absenceHits[id] || [])
+      .map((a) =>
+        isHallClosure(a)
+          ? `${nameOf(data.halls, a.hallId)}: ${absenceLabel(a)}`
+          : `${nameOf(data.coaches, a.coachId)}: ${absenceLabel(a, withNote)}`
+      )
+      .join(" · ");
+
+  // Who is out this week, by day — independent of whether anything is scheduled yet, which
+  // is the whole point: you mark someone out weeks ahead so you can see it while building
+  // that week, and at that moment the week is still empty. Honours the coach filter.
+  const weekAbsences = useMemo(() => {
+    const list = data.absences || [];
+    if (!list.length) return [];
+    return DAYS.filter((day) => filterDays.includes(day))
+      .map((day) => {
+        const date = weekDates[day];
+        if (!date) return null;
+        const iso = toISODate(date);
+        const names = [
+          ...new Set(
+            list
+              .filter((a) => a && a.date === iso && !isHallClosure(a))
+              .filter((a) => !filterCoachIds.length || filterCoachIds.includes(a.coachId))
+              .map((a) => nameOf(data.coaches, a.coachId))
+          ),
+        ].sort((x, y) => x.localeCompare(y, "he"));
+        if (!names.length) return null;
+        return {
+          day,
+          dateLabel: `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`,
+          names: names.join(", "),
+        };
+      })
+      .filter(Boolean);
+  }, [data.absences, data.coaches, weekStart, filterDays, filterCoachIds]);
+
+  // Halls taken this week, by day. Its own strip rather than a third name on the line
+  // above, for two reasons that point the same way: a closed hall is not filtered by the
+  // coach picker — the building is shut for whoever was in it — and unlike a coach absence
+  // it is shown to everyone, because the coach who drives to a locked door needed to know.
+  const weekHallClosures = useMemo(() => {
+    const list = data.absences || [];
+    if (!list.length) return [];
+    return DAYS.filter((day) => filterDays.includes(day))
+      .map((day) => {
+        const date = weekDates[day];
+        if (!date) return null;
+        const iso = toISODate(date);
+        const halls = [
+          ...new Set(
+            hallClosuresOn(list, iso).map((a) => {
+              const name = nameOf(data.halls, a.hallId);
+              return isAllDay(a) ? name : `${name} ${a.start}–${a.end}`;
+            })
+          ),
+        ].sort((x, y) => x.localeCompare(y, "he"));
+        if (!halls.length) return null;
+        return {
+          day,
+          dateLabel: `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`,
+          halls: halls.join(", "),
+        };
+      })
+      .filter(Boolean);
+  }, [data.absences, data.halls, weekStart, filterDays]);
+
   // Which constraint kinds a session violates, as a Hebrew label ("מאמן", "אולם", "מאמן ואולם").
   const violationLabel = (id) => {
     const list = violations[id];
@@ -421,6 +526,28 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
             </button>
           </div>
         )}
+        {weekHallClosures.length > 0 && (
+          <div className="text-xs rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-semibold shrink-0">🏟 אולמות תפוסים השבוע:</span>
+            {weekHallClosures.map((d) => (
+              <span key={d.day}>
+                <span className="font-medium">{d.day} {d.dateLabel}</span>
+                <span className="text-amber-800"> — {d.halls}</span>
+              </span>
+            ))}
+          </div>
+        )}
+        {canEdit && weekAbsences.length > 0 && (
+          <div className="text-xs rounded-lg border border-red-200 bg-red-50 text-red-800 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-semibold shrink-0">⛔ לא זמינים השבוע:</span>
+            {weekAbsences.map((d) => (
+              <span key={d.day}>
+                <span className="font-medium">{d.day} {d.dateLabel}</span>
+                <span className="text-red-700"> — {d.names}</span>
+              </span>
+            ))}
+          </div>
+        )}
         <p className="text-xs text-stone-600">לשליחה בווטאפ: "שיתוף / שמירת תמונה" (תמונה אחת לרוחב) או "שמירת PDF" (עמוד אחד לרוחב עם הכותרת למעלה). שניהם עובדים גם בנייד — בלי בעיות כיוון או כותרות שנעלמות בין עמודים.</p>
       </div>
 
@@ -511,9 +638,20 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                                     const coachClash = coachClashes.has(s.id) && !suppressWarnings; // one coach, two places
                                     const clash = hallClash || coachClash;
                                     const violates = !!violations[s.id] && !suppressWarnings;
+                                    // Not folded into `clash`: a clash means two things booked at
+                                    // once and a constraint still happens, this one has nobody to
+                                    // run it. Split by subject — the badge names the coach, and a
+                                    // hall taken by the municipality is not something the coach
+                                    // did. Both can land on one session, and then both show:
+                                    // finding another coach does not open the building.
+                                    const hits = !suppressWarnings && !exporting ? absenceHits[s.id] || [] : [];
+                                    const coachAway = hits.some((a) => !isHallClosure(a));
+                                    const hallShut = hits.some(isHallClosure);
+                                    const absent = hits.length > 0;
+                                    const alarm = clash || absent; // red treatment
                                     const cellStyle = {
-                                      backgroundColor: clash ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
-                                      borderRight: `3px solid ${clash ? "#DC2626" : violates ? "#D97706" : color}`,
+                                      backgroundColor: alarm ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
+                                      borderRight: `3px solid ${alarm ? "#DC2626" : violates ? "#D97706" : color}`,
                                     };
                                     const inner = (
                                       <>
@@ -525,9 +663,19 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                                             ⚠ חפיפת מאמן{s.coachId ? ` — ${nameOf(data.coaches, s.coachId)}` : ""}
                                           </div>
                                         )}
+                                        {coachAway && (
+                                          <div className="font-bold text-red-700 flex items-center gap-0.5">
+                                            ⛔ {s.coachId ? `${nameOf(data.coaches, s.coachId)} ` : ""}לא זמין
+                                          </div>
+                                        )}
+                                        {hallShut && (
+                                          <div className="font-bold text-red-700 flex items-center gap-0.5">
+                                            ⛔ {nameOf(data.halls, s.hallId)} תפוס
+                                          </div>
+                                        )}
                                         {violates && <div className="font-bold text-amber-700 flex items-center gap-0.5">⚠ אילוץ {violationLabel(s.id)}</div>}
-                                        <div className="font-semibold tabular-nums" style={{ color: clash ? "#B91C1C" : violates ? "#B45309" : color }}><span dir="ltr">{s.start}–{s.end}</span></div>
-                                        <div className={`mt-0.5 ${clash ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
+                                        <div className="font-semibold tabular-nums" style={{ color: alarm ? "#B91C1C" : violates ? "#B45309" : color }}><span dir="ltr">{s.start}–{s.end}</span></div>
+                                        <div className={`mt-0.5 ${alarm ? "text-red-700 font-medium" : violates ? "text-amber-800 font-medium" : "text-stone-600"}`}>{nameOf(data.halls, s.hallId)}</div>
                                         {s.type && s.type !== DEFAULT_SESSION_TYPE && <div className="font-medium mt-0.5" style={{ color }}>{s.type}</div>}
                                         {s.notes && <div className="text-stone-600 mt-0.5">{s.notes}</div>}
                                       </>
@@ -537,11 +685,12 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                                         key={s.id}
                                         onClick={() => setEditingSession(s)}
                                         title={
-                                          clash
+                                          alarm
                                             ? [
                                                 hallClash && "חפיפת אולם! שתי קבוצות באותו אולם באותו זמן",
                                                 coachClash &&
                                                   `חפיפת מאמן! ${nameOf(data.coaches, s.coachId)} משובץ ליותר מקבוצה אחת באותו זמן`,
+                                                absent && absenceText(s.id, canEdit),
                                               ]
                                                 .filter(Boolean)
                                                 .join(" · ") + " — לחץ לעריכה"
@@ -549,13 +698,13 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                                             ? `אילוץ פעיל (${violationLabel(s.id)}) בזמן הזה — לחץ לעריכה`
                                             : "לחץ לעריכה / הזזת האימון"
                                         }
-                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
+                                        className={`block w-full text-right rounded px-1.5 py-1 text-xs leading-tight cursor-pointer hover:ring-2 hover:ring-brand-400 ${alarm ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`}
                                         style={cellStyle}
                                       >
                                         {inner}
                                       </button>
                                     ) : (
-                                      <div key={s.id} className={`rounded px-1.5 py-1 text-xs leading-tight ${clash ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`} style={cellStyle}>
+                                      <div key={s.id} className={`rounded px-1.5 py-1 text-xs leading-tight ${alarm ? "ring-2 ring-red-500" : violates ? "ring-2 ring-amber-500" : ""}`} style={cellStyle}>
                                         {inner}
                                       </div>
                                     );
@@ -687,6 +836,10 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                     // out too, and a stripe means nothing to someone who cannot act on it.
                     const clash = hallClashes.has(s.id) && !suppressWarnings; // two teams here at once
                     const violates = !!violations[s.id] && !suppressWarnings; // collides with a constraint
+                    // `exporting` on top of `suppressWarnings`: this report is handed out
+                    // too, and who is unavailable is not the reader's business.
+                    const absent = !!absenceHits[s.id] && !suppressWarnings && !exporting;
+                    const alarm = clash || absent;
                     // The day colour always wins the row background — it is what makes this
                     // report readable as bands of days. Warnings used to REPLACE it, which
                     // both broke a day into two colours and, worse, disguised the day: the
@@ -694,7 +847,7 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                     // for Friday's. A warning now shows as a stripe down the row's edge, so
                     // both signals are readable at once instead of competing.
                     const bg = DAY_BG_COLORS[dayIdx] || "#ffffff";
-                    const stripe = clash ? "#DC2626" : violates ? "#D97706" : "";
+                    const stripe = alarm ? "#DC2626" : violates ? "#D97706" : "";
                     const date = weekDates[s.day];
                     return (
                       <tr key={s.id || i} style={{ backgroundColor: bg }}>
@@ -714,10 +867,13 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                             <span className="text-sm font-medium text-stone-700">{nameOf(data.teams, s.teamId)}</span>
                           </div>
                         </td>
-                        <td className="border border-stone-200 px-3 py-2 text-sm text-stone-600">{nameOf(data.coaches, s.coachId)}</td>
-                        <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${clash ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
+                        <td className={`border border-stone-200 px-3 py-2 text-sm ${absent ? "text-red-700 font-medium" : "text-stone-600"}`}>
+                          {absent && <span title={absenceText(s.id)}>⛔ </span>}
+                          {nameOf(data.coaches, s.coachId)}
+                        </td>
+                        <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${alarm ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
                           {clash && <span title="חפיפת אולם — שתי קבוצות באותו זמן">⚠ </span>}
-                          {!clash && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
+                          {!alarm && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
                           <span dir="ltr">{s.start}–{s.end}</span>
                         </td>
                         <td

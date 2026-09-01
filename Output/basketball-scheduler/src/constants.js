@@ -117,6 +117,9 @@ export const EMPTY = {
   halls: [],
   sessions: [],
   constraints: [],
+  // Dated unavailability — one-off, unlike `constraints`, which repeat by weekday.
+  // { id, coachId? | hallId?, date: "YYYY-MM-DD", start?, end?, note? }
+  absences: [],
   games: [],
   gameMapping: [],
   players: [],  // { id, teamId, name, phone, birthDate, shirtSize, pantsSize, sweaterSize, jerseyNumber }

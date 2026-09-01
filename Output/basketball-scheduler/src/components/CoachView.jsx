@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { DAYS, DEFAULT_SESSION_TYPE } from "../constants";
-import { timeToMinutes, getWeekDates, formatDate, formatWeekRange } from "../utils/dates";
+import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate } from "../utils/dates";
+import { absencesOn, absenceLabel, absenceCoversSession, hallClosuresOn } from "../utils/availability";
 import { colorFor } from "../utils/colors";
 import { clubSessionTypes, sessionTypeColor } from "../utils/sessionTypes";
 import { sessionViolatesConstraints } from "../utils/conflicts";
@@ -158,16 +159,44 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
         <div className="space-y-5">
           {DAYS.filter((d) => !day || d === day).map((d) => {
             const mySessions = myFor(d);
-            if (mySessions.length === 0 && day !== d) return null;
             const hallRows = hallActivityFor(d);
-            const anyActivity = mySessions.length > 0 || hallRows.some((h) => h.sessions.length > 0);
+            const dayIso = weekDates[d] ? toISODate(weekDates[d]) : "";
+            // The day is shown when the selected coach is marked out even if nothing is
+            // scheduled — being out IS the day's news, and a day that renders nothing
+            // reads as "you have no trainings", which is a different sentence.
+            const dayAbsences = absencesOn(data.absences, coachId, dayIso);
+            // A closed hall is shown to every coach, not only to the one who is out: the
+            // person who drives to a locked door is the one who needed to know.
+            const dayClosures = hallClosuresOn(data.absences, dayIso);
+            const closuresFor = (s) =>
+              dayClosures.filter((a) => a.hallId === s.hallId && absenceCoversSession(a, s));
+            if (mySessions.length === 0 && dayAbsences.length === 0 && day !== d) return null;
+            const anyActivity =
+              mySessions.length > 0 || dayAbsences.length > 0 || hallRows.some((h) => h.sessions.length > 0);
             if (!anyActivity) return null;
 
             return (
               <div key={d} className="bg-white rounded-xl border border-stone-200 overflow-hidden">
-                <div className="bg-stone-50 px-4 py-2 border-b border-stone-200 flex items-center gap-2">
-                  <IconCalendar size={14} className="text-stone-500" />
+                <div className={`px-4 py-2 border-b flex items-center gap-2 flex-wrap ${dayAbsences.length ? "bg-rose-50 border-rose-200" : "bg-stone-50 border-stone-200"}`}>
+                  <IconCalendar size={14} className={dayAbsences.length ? "text-rose-500" : "text-stone-500"} />
                   <h3 className="text-sm font-semibold text-stone-700">יום {d}</h3>
+                  {/* The reason is withheld. It is written by a manager ABOUT this coach,
+                      and this screen has no way to know it is the coach themselves reading
+                      it — the single-club branch can, because it pins an identity through
+                      `fixedCoachId`. Until that is ported, silence is the safe default and
+                      `absenceLabel` gives it by not being asked for the note. */}
+                  {dayAbsences.map((a) => (
+                    <span key={a.id} className="text-xs font-medium text-rose-700">
+                      ⛔ {absenceLabel(a, Boolean(fixedCoachId) && coachId === fixedCoachId)}
+                    </span>
+                  ))}
+                  {/* A hall closure carries its reason for everyone — it is a fact about a
+                      building, not about a person. See the note on `absenceLabel`. */}
+                  {dayClosures.map((a) => (
+                    <span key={a.id} className="text-xs font-medium text-amber-700">
+                      🏟 {nameOf(data.halls, a.hallId)} — {absenceLabel(a)}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="p-4 space-y-4">
@@ -179,11 +208,15 @@ export function CoachView({ data, fixedCoachId, weekStart, setWeekStart }) {
                       <div className="space-y-1.5">
                         {mySessions.map((s) => {
                           const violated = sessionViolatesConstraints(s, data.constraints || []);
+                          const uncovered =
+                            dayAbsences.some((a) => absenceCoversSession(a, s)) || closuresFor(s).length > 0;
                           return (
                             <div
                               key={s.id}
                               className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${
-                                violated.length > 0 ? "bg-red-50 border-red-200" : "bg-brand-50 border-brand-200"
+                                uncovered
+                                  ? "bg-rose-50 border-rose-300"
+                                  : violated.length > 0 ? "bg-red-50 border-red-200" : "bg-brand-50 border-brand-200"
                               }`}
                             >
                               <div className="flex items-center gap-2 flex-wrap">

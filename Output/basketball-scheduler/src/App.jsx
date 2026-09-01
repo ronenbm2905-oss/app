@@ -8,6 +8,7 @@ import { LoginPage } from "./components/LoginPage";
 import { RostersView } from "./components/RostersView";
 import { ManagerView } from "./components/ManagerView";
 import { ConstraintsView } from "./components/ConstraintsView";
+import { AvailabilityView } from "./components/AvailabilityView";
 import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
@@ -24,7 +25,7 @@ import { HomeView } from "./components/HomeView";
 import {
   IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
-  IconCalendarDays, IconUser, IconUsers, IconClock, IconSettings,
+  IconCalendarDays, IconUser, IconUsers, IconClock, IconSettings, IconCalendarX,
 } from "./components/ui/icons";
 import { clubName as clubNameOf } from "./utils/club";
 // Read from the club's own settings at runtime — one build serves every club, so there
@@ -45,6 +46,7 @@ const TABS = [
   { id: "rosters", label: "קבוצות ואולמות", Icon: IconBuilding },
   { id: "manager", label: "ניהול", Icon: IconClipboard },
   { id: "constraints", label: "אילוצים", Icon: IconBan },
+  { id: "availability", label: "זמינות", Icon: IconCalendarX },
   { id: "games", label: "משחקים", Icon: IconTrophy },
   { id: "weekly", label: "לוח שבועי", Icon: IconCalendarDays },
   { id: "coach", label: "תצוגת מאמן", Icon: IconUser },
@@ -68,7 +70,7 @@ const TABS = [
 // This hides screens; it is NOT a security boundary. Access to the club's data is decided
 // by the Firestore rules and the admins/members lists, and every write still goes through
 // the same check. Hiding a tab keeps the app uncluttered — it does not protect anything.
-const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "report", "settings"]);
+const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "availability", "report", "settings"]);
 
 function Loading() {
   return (
@@ -272,6 +274,8 @@ export default function App({ clubId }) {
           <ManagerView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "constraints" ? (
           <ConstraintsView data={data} save={save} canEdit={canEdit} />
+        ) : activeTab === "availability" ? (
+          <AvailabilityView data={data} save={save} canEdit={canEdit} />
         ) : activeTab === "games" ? (
           <GamesView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "weekly" ? (

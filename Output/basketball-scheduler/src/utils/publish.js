@@ -11,9 +11,9 @@
 // so a new field added to a session or game elsewhere in the app cannot silently leak
 // here. Keep it that way.
 
-import { DAYS } from "../constants";
-import { getWeekDates, toISODate, formatDate, weekStartOfDMY } from "./dates";
-import { clubName, clubLegal } from "./club";
+import { DAYS } from "../constants.js";
+import { getWeekDates, toISODate, formatDate, weekStartOfDMY } from "./dates.js";
+import { clubName, clubLegal } from "./club.js";
 
 // Effective address of a game: a manual override wins over the federation file's value.
 const gameAddress = (g) => (g.addressOverride || g.venue || "");
@@ -152,8 +152,13 @@ export const publishableTeamIds = (data) =>
 
 // Fields that must never appear anywhere in a published document. Used by the tests,
 // and cheap enough to keep as a runtime guard before writing.
+// `absences` sits here for the same reason as `constraints`, and one more: an absence
+// carries a free-text `note` written by a MANAGER about a COACH, who did not write it and
+// may not know it exists ("מילואים", "ניתוח"). `availability.js` already defaults to
+// hiding that note inside the app; this list makes the parent-facing document unable to
+// carry the record at all, whatever a future field addition does upstream.
 export const FORBIDDEN_KEYS = [
-  "players", "admins", "members", "phone", "birthDate", "constraints",
+  "players", "admins", "members", "phone", "birthDate", "constraints", "absences",
   "gameMapping", "weeklyAssignments", "jerseyNumber", "joinCode",
 ];
 

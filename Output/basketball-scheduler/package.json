@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:offline": "vite --mode offline",
+    "test": "node tests/run.mjs",
     "dev:saas": "vite --mode saas",
     "build:saas": "vite build --mode saas",
     "deploy:saas": "node ./node_modules/firebase-tools/lib/bin/firebase.js deploy --project saas",
