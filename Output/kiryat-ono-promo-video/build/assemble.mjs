@@ -131,9 +131,10 @@ async function buildCut(name) {
       const png = path.join(cards, `${step.card}-${ratio}.png`);
       if (!existsSync(png)) { console.log(`  · דילוג על כרטיס חסר ${step.card}`); continue; }
       await stillSegment(png, ratio, step.hold ?? 2.2, seg);
-    } else if (step.whatsapp) {
-      const png = path.join(WORK, "proof", `whatsapp-${ratio}.png`);
-      if (!existsSync(png)) { console.log("  · אין דף הוכחת שיתוף — מדלגת"); continue; }
+    } else if (step.whatsapp || step.proof) {
+      const id = step.proof || "whatsapp";
+      const png = path.join(WORK, "proof", `${id}-${ratio}.png`);
+      if (!existsSync(png)) { console.log(`  · אין הוכחה ${id} — מדלגת`); continue; }
       await stillSegment(png, ratio, step.hold ?? 3.5, seg, { fadeIn: 0.4, fadeOut: 0.4 });
     } else if (step.clip || step.over) {
       const clip = step.clip || step.over;
@@ -160,14 +161,30 @@ async function buildCut(name) {
 
   const [W, H] = DELIVER[ratio];
   const out = path.join(FINAL, `${cut.title}.mp4`);
-  await sh([
+
+  // קריינות: מחפשים audio/<שם-החתך>.(m4a|mp3|wav|aac|ogg). אם יש — ממסכנים אותה
+  // לתוך הקובץ הסופי; אם אין — הסרטון יוצא שקט, בדיוק כמו קודם. כך אפשר להקליט
+  // את הקול פעם אחת ולקבל את הגרסה המדוברת בפקודה אחת, בלי לצלם מחדש.
+  const audio = ["m4a", "mp3", "wav", "aac", "ogg"]
+    .map((e) => path.join(ROOT, "audio", `${name}.${e}`))
+    .find((f) => existsSync(f));
+
+  const vArgs = [
     "-f", "concat", "-safe", "0", "-i", listFile,
+    ...(audio ? ["-i", audio] : []),
     "-vf", `scale=${W}:${H},setsar=1,format=yuv420p`,
     "-c:v", "libx264", "-profile:v", "high", "-level", "4.2",
     "-preset", "slow", "-crf", "20",
     "-r", String(FPS), "-g", "60", "-keyint_min", "60", "-sc_threshold", "0",
-    "-movflags", "+faststart", "-an", out,
-  ], `קידוד סופי ${name}`);
+    "-movflags", "+faststart",
+  ];
+  // -shortest חותך לאורך הווידאו: קריינות ארוכה מדי לא תמתח את הסרטון, וקצרה
+  // מדי פשוט תיגמר מוקדם. אין כאן ניסיון "למתוח" — התסריט מתוזמן לחתך.
+  const aArgs = audio
+    ? ["-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "48000", "-shortest"]
+    : ["-an"];
+  await sh([...vArgs, ...aArgs, out], `קידוד סופי ${name}`);
+  if (audio) console.log(`  ♪ קריינות: ${path.relative(ROOT, audio)}`);
 
   // פוסטר לדף נחיתה / תצוגה מקדימה בפיד
   await sh(["-ss", "2.2", "-i", out, "-frames:v", "1", "-q:v", "2",

@@ -44,10 +44,33 @@ node build/render-proof.mjs       # -> work/proof/
 # 5. הרכבה
 node build/assemble.mjs           # -> final/
 node build/captions.mjs           # -> final/*.he.srt
+node build/narration.mjs          # -> work/narration.md (תסריט קריינות מתוזמן)
 ```
 
 הרצה של סצנה אחת בלבד: `node harness/record.mjs --only=02-weekly`.
 הרכבה של חתך אחד בלבד: `node build/assemble.mjs short`.
+
+---
+
+## קריינות
+
+הסרטון נבנה שקט, אבל אם קיים קובץ אודיו בשם החתך תחת `audio/` — הוא ממוסכן
+אוטומטית לקובץ הסופי:
+
+| קובץ | נכנס ל |
+|---|---|
+| `audio/demo.m4a` | הדמו המלא |
+| `audio/short.m4a` | החתך של 16:9 |
+| `audio/vertical.m4a` | האנכי |
+
+התסריט המתוזמן נוצר מהקטעים שנבנו בפועל, ולא נכתב ביד:
+
+```bash
+node build/narration.mjs      # -> work/narration.md
+```
+
+הוא נותן לכל שורה חלון זמן אמיתי ותקציב מילים, ומסמן שורות צפופות. אחרי שיש
+הקלטה — `node build/assemble.mjs` ותו לא. **אין צורך לצלם מחדש.**
 
 ---
 

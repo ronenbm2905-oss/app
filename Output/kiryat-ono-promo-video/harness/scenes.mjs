@@ -176,7 +176,7 @@ export async function sceneGames(page, cue, ctx = {}) {
 }
 
 // ---------- 04 — תצוגת מאמן, תוכנית אימון, סקיצת מגרש ----------
-export async function sceneCoach(page, cue) {
+export async function sceneCoach(page, cue, ctx = {}) {
   await openTile(page, "תצוגת מאמן");
   cue.mark("coach:open");
   await wait(1000);
@@ -228,6 +228,46 @@ export async function sceneCoach(page, cue) {
       await wait(1000);
       await drawOnCourt(page, cue);
     }
+  }
+
+  // סוגרים את הסקיצה ואת מערך האימון לפני שממשיכים. בלי זה המודאל נשאר פתוח,
+  // חוסם את שאר המסך — והקליק על הדוח נופל ב-timeout.
+  const finishSketch = page.getByRole("button", { name: "סיום" }).first();
+  if (await finishSketch.count()) { await click(page, finishSketch, { after: 900 }); }
+  const savePlan = page.getByRole("button", { name: "שמור" }).first();
+  if (await savePlan.count()) { await click(page, savePlan, { after: 1100 }); }
+  const closePlan = page.getByRole("button", { name: "סגור" }).first();
+  if (await closePlan.count()) { await click(page, closePlan, { after: 900 }); }
+  cue.mark("coach:plan-saved");
+  await settle(page, 500);
+
+  // כפתור הדוח נעול עד שנבחרת קבוצה (title="בחר קבוצה"). אחרי בחירת המאמן,
+  // ה-select הראשון הוא כבר בורר הקבוצות ולא בורר המאמנים.
+  const teamSel = page.locator("select").first();
+  if (await teamSel.count()) {
+    const opts = await teamSel.locator("option").allTextContents();
+    const team = opts.find((o, i) => i > 0 && o.trim());
+    if (team) {
+      await glide(page, teamSel, { hold: 320 });
+      await teamSel.selectOption({ label: team }).catch(() => {});
+      await settle(page, 700);
+      cue.mark("coach:team-picked");
+      await wait(1100);
+    }
+  }
+
+  // הדוח שיוצא לשחקנים ולהורים — זה מה שהופך את המסך הזה לדבר שנשלח החוצה
+  // ולא רק נצפה. התוצר יורד כקובץ ומוצג אחר כך כהוכחה.
+  const report = page.getByRole("button", { name: /שיתוף \/ הורדת דוח/ }).first();
+  if (await report.count()) {
+    await glide(page, report, { hold: 400 });
+    cue.mark("coach:report-hover");
+    // קליק דרך ה-locator ולא באירועי עכבר גולמיים: בחירת הקבוצה מרנדרת את האזור
+    // מחדש, והכפתור זז בין ה-glide ללחיצה — כך ההורדה פשוט לא נורתה.
+    const f = await grabDownload(page, () => report.click(), "coach-report.png");
+    ctx.coachReport = f;
+    cue.mark("coach:report-export");
+    await wait(2200);
   }
 
   await goHome(page);
@@ -306,6 +346,63 @@ async function drawOnCourt(page, cue) {
   await wait(1500);
 }
 
+
+// ---------- 06 — אילוצים: איך רושמים אילוץ קבוע ----------
+// זה המסך שעונה על "למה המערכת יודעת שהמאמן לא פנוי". רושמים אותו פעם אחת,
+// והוא חוזר כל שבוע — ולכן ההתנגשות נתפסת לפני שהלו"ז נשלח.
+export async function sceneConstraints(page, cue) {
+  await openTile(page, "אילוצים");
+  cue.mark("constraints:open");
+  await wait(1400);
+
+  // הרשימה הקיימת — כדי שרואים שזה פנקס חי ולא טופס ריק
+  await smoothScroll(page, 300, 850);
+  cue.mark("constraints:list");
+  await wait(1500);
+  await smoothScroll(page, -300, 650);
+
+  const add = page.getByRole("button", { name: "אילוץ חדש" }).first();
+  if (!(await add.count())) { cue.mark("constraints:end"); return; }
+  await click(page, add, { after: 1100 });
+  cue.mark("constraints:form");
+  await wait(900);
+
+  // סוג האילוץ (מאמן / אולם), ואז מי, ואז היום
+  const selects = page.locator("select");
+  const n = await selects.count();
+  for (let i = 0; i < Math.min(n, 3); i++) {
+    const sel = selects.nth(i);
+    const opts = await sel.locator("option").allTextContents();
+    const pick = opts.find((o, j) => j > 0 && o.trim());
+    if (!pick) continue;
+    await glide(page, sel, { hold: 300 });
+    await sel.selectOption({ label: pick }).catch(() => {});
+    await wait(650);
+  }
+  cue.mark("constraints:picked");
+
+  // שעות
+  const times = page.locator('input[type="time"]');
+  if (await times.count()) {
+    await times.nth(0).fill("16:00");
+    await wait(500);
+    if ((await times.count()) > 1) { await times.nth(1).fill("19:00"); await wait(500); }
+  }
+  const note = page.getByPlaceholder(/עבודה אחרת|אחזקת אולם/).first();
+  if (await note.count()) await type(page, note, "לימודים", { delay: 65 });
+  cue.mark("constraints:filled");
+  await wait(700);
+
+  const save = page.getByRole("button", { name: "שמור אילוץ" }).first();
+  if (await save.count()) {
+    await click(page, save, { after: 1300 });
+    cue.mark("constraints:saved");
+    await wait(1600);
+  }
+  await goHome(page);
+  cue.mark("constraints:end");
+}
+
 // ---------- 05 — ניהול: שחקנים, זמינות, דו"ח שעות ----------
 export async function sceneAdmin(page, cue) {
   await openTile(page, "שחקנים");
@@ -339,4 +436,5 @@ export const SCENES = {
   "03-games": sceneGames,
   "04-coach": sceneCoach,
   "05-admin": sceneAdmin,
+  "06-constraints": sceneConstraints,
 };

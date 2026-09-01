@@ -11,24 +11,27 @@ import { buildSeed, KEYS } from "./seed-data.mjs";
 
 export const BASE_URL = process.env.PROMO_BASE_URL || "http://localhost:4173";
 
-// Playwright לא מותח את ה-viewport לגודל ההקלטה — הוא ממקם אותו בפינה וממלא את
-// השאר באפור. גודל ההקלטה חייב להיות זהה ל-viewport, וההגדלה לרזולוציית המסירה
-// נעשית ב-ffmpeg. אימתתי את זה על קליפ אמיתי: viewport 1280×720 עם recordSize
-// 1920×1080 הוציא פריים שבו שליש מהתמונה אפור.
+// שני דברים נלמדו כאן בניסוי, ולא מהתיעוד:
+//
+// 1. `recordVideo.size` **לא** מותח את ה-viewport. Playwright ממקם אותו בפינה וממלא
+//    את השאר באפור. גודל ההקלטה חייב להיות זהה לגודל ה-viewport בפיקסלי מכשיר.
+// 2. `deviceScaleFactor` ברמת ה-context **מתעלמים ממנו** ב-screencast — הפריים עדיין
+//    נלכד ב-CSS px. מה שכן עובד הוא הדגל `--force-device-scale-factor` ברמת הדפדפן:
+//    הוא מרנדר את כל העמוד ב-DPI גבוה, וההקלטה יוצאת ברזולוציה המלאה.
+//
+// לכן `dsf` הוא דגל שיגור, וכל preset דורש שיגור דפדפן משלו. זה מה שנותן טקסט חד
+// ברזולוציית המסירה בלי שום הגדלה ב-ffmpeg.
 export const PRESETS = {
   landscape: {
     viewport: { width: 1280, height: 720 },
-    deviceScaleFactor: 1,
-    recordSize: { width: 1280, height: 720 },
-    deliver: { width: 1920, height: 1080 },
+    dsf: 1.5,
+    recordSize: { width: 1920, height: 1080 },
   },
   vertical: {
     // מתחת ל-breakpoint של sm (640) — הלייאאוט המובייל האמיתי של האפליקציה.
     viewport: { width: 600, height: 1067 },
-    deviceScaleFactor: 1,
-    recordSize: { width: 600, height: 1067 },
-    deliver: { width: 1080, height: 1920 },
-    isMobile: false,
+    dsf: 1.8,
+    recordSize: { width: 1080, height: 1920 },
     hasTouch: true,
   },
 };
@@ -161,9 +164,11 @@ function injectedCursor() {
 }
 
 // ---------- הקשר דפדפן ----------
-export async function launch() {
+export async function launch(preset = "landscape") {
+  const p = PRESETS[preset];
   return chromium.launch({
     args: [
+      `--force-device-scale-factor=${p.dsf}`,
       "--hide-scrollbars",
       "--force-color-profile=srgb",
       "--disable-lcd-text",            // subpixel AA מייצר שוליים צבעוניים תחת H.264
@@ -182,8 +187,7 @@ export async function newClip(browser, { preset = "landscape", outDir, name, see
 
   const context = await browser.newContext({
     viewport: p.viewport,
-    deviceScaleFactor: p.deviceScaleFactor,
-    isMobile: p.isMobile ?? false,
+    isMobile: false,
     hasTouch: p.hasTouch ?? false,
     locale: "he-IL",
     timezoneId: "Asia/Jerusalem",

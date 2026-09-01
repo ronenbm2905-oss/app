@@ -33,8 +33,9 @@ async function goHome(page) {
   }
 }
 
-const browser = await launch();
-const preset = process.argv.includes("--vertical") ? "vertical" : "landscape";
+const preset0 = process.argv.includes("--vertical") ? "vertical" : "landscape";
+const browser = await launch(preset0);
+const preset = preset0;
 const { context, page } = await newClip(browser, { preset, outDir: OUT, name: "smoke" });
 
 await mkdir(OUT, { recursive: true });

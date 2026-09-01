@@ -17,6 +17,18 @@
         "lt": "pain-1"
       },
       {
+        "clip": "06-constraints",
+        "from": "constraints:open",
+        "to": "constraints:form",
+        "lt": "lt-constraints-1"
+      },
+      {
+        "clip": "06-constraints",
+        "from": "constraints:form",
+        "to": "constraints:end",
+        "lt": "lt-constraints-2"
+      },
+      {
         "card": "beat-1",
         "hold": 1.7
       },
@@ -89,8 +101,18 @@
       {
         "clip": "04-coach",
         "from": "coach:sketch-open",
-        "to": "coach:end",
+        "to": "coach:plan-saved",
         "lt": "lt-sketch"
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:team-picked",
+        "to": "coach:report-export",
+        "lt": "lt-coach-report"
+      },
+      {
+        "proof": "coach-report",
+        "hold": 4.0
       },
       {
         "card": "beat-4",
@@ -176,6 +198,24 @@
         "max": 9
       },
       {
+        "clip": "06-constraints",
+        "from": "constraints:form",
+        "to": "constraints:saved",
+        "lt": "lt-constraints-2",
+        "max": 9
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:team-picked",
+        "to": "coach:report-export",
+        "lt": "lt-coach-report",
+        "max": 7
+      },
+      {
+        "proof": "coach-report",
+        "hold": 3.4
+      },
+      {
         "clip": "04-coach",
         "from": "coach:sketch-open",
         "to": "coach:sketch-passes",
@@ -242,6 +282,17 @@
         "to": "coach:sketch-passes",
         "lt": "lt-sketch",
         "max": 9
+      },
+      {
+        "clip": "04-coach",
+        "from": "coach:team-picked",
+        "to": "coach:report-export",
+        "lt": "lt-coach-report",
+        "max": 7
+      },
+      {
+        "proof": "coach-report",
+        "hold": 3.6
       },
       {
         "card": "end",

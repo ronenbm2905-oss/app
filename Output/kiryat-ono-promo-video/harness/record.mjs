@@ -23,7 +23,7 @@ await mkdir(RAW, { recursive: true });
 await mkdir(CUES, { recursive: true });
 
 const names = only ? [only] : Object.keys(SCENES);
-const browser = await launch();
+const browser = await launch(preset); // הדגל DSF הוא ברמת הדפדפן, לכן שיגור לכל preset
 const ctx = {};
 
 for (const name of names) {
