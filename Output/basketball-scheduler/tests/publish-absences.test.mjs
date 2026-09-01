@@ -23,10 +23,12 @@ const WEEK = "2026-09-06"; // a Sunday
 
 const NOTE = "מילואים";
 
+const COACH_EMAIL = "dana.coach@gmail.com";
+
 const club = {
-  settings: { name: "מכבי בדיקה" },
-  teams: [{ id: "t1", name: "נוער א" }],
-  coaches: [{ id: "c1", name: "דנה" }],
+  settings: { name: "מכבי בדיקה", legal: { operator: "מכבי בדיקה", email: "office@club.org" } },
+  teams: [{ id: "t1", name: "נוער א", coachId: "c1" }],
+  coaches: [{ id: "c1", name: "דנה", phone: "050-1111111", email: COACH_EMAIL }],
   halls: [{ id: "h1", name: "אולם מרכזי" }],
   sessions: [
     {
@@ -60,6 +62,38 @@ for (const [label, doc] of [
 // The week that IS published still works — a test that only proves emptiness proves nothing.
 assert.equal(buildTeamWeek(club, WEEK, "t1", 0).sessions.length, 1, "the session itself stopped being published");
 
+// ---- 1b. A coach's own address never reaches a parent ----
+//
+// `coaches[].email` is how the app tells which coach is signed in, and the publish
+// allowlist copies a coach's NAME only. Note what cannot be used to enforce this:
+// "email" must NOT go on FORBIDDEN_KEYS, because the club's own contact address is
+// published on purpose — `legal.email` is what lets a parent exercise access or erasure.
+// A blanket key ban would block every publish, so the guard is this assertion.
+for (const [label, doc] of [
+  ["buildPublicWeek", buildPublicWeek(club, WEEK, 0)],
+  ["buildSharedWeek", buildSharedWeek(club, WEEK, 0)],
+  ["buildTeamWeek", buildTeamWeek(club, WEEK, "t1", 0)],
+]) {
+  const text = asText(doc);
+  assert.ok(!text.includes(COACH_EMAIL), `${label}: a coach's sign-in address reached the parent document`);
+  assert.ok(!text.includes("050-1111111"), `${label}: a coach's phone reached the parent document`);
+}
+// The coach's NAME is published on purpose, so the parent knows who takes the training.
+// Asserted on the two documents that carry a team's week — the shared document deliberately
+// carries team names and nothing else, and asserting a name there would be asserting a bug.
+for (const [label, doc] of [
+  ["buildPublicWeek", buildPublicWeek(club, WEEK, 0)],
+  ["buildTeamWeek", buildTeamWeek(club, WEEK, "t1", 0)],
+]) {
+  assert.ok(asText(doc).includes("דנה"), `${label}: the coach's name stopped being published`);
+}
+assert.ok(!asText(buildSharedWeek(club, WEEK, 0)).includes("דנה"),
+  "the shared document should carry team names only, not who coaches them");
+// ...while the club's own contact address must still get through, or the footer's privacy
+// policy has no one to write to.
+assert.ok(asText(buildSharedWeek(club, WEEK, 0)).includes("office@club.org"),
+  "the club's contact address stopped reaching the portal");
+
 // ---- 2. The detector actually detects ----
 // Without this, every assertion above would keep passing if `findLeakedKeys` were broken
 // or `absences` were quietly dropped from the list. This project has shipped a dead
@@ -73,4 +107,4 @@ const nested = buildTeamWeek(club, WEEK, "t1", 0);
 nested.sessions[0].absences = [club.absences[0]];
 assert.deepEqual(findLeakedKeys(nested), ["$.sessions[0].absences"], "a nested absences block was not caught");
 
-console.log("publish-absences: 15 assertions passed");
+console.log("publish boundary: 28 assertions passed");

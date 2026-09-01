@@ -17,9 +17,13 @@ function birthLabel(iso) {
 
 // `withPhone` adds a phone field (used for coaches — feeds the transport export's contact column).
 // `withBirthDate` adds a birthday field (used for coaches — feeds the birthday reminder on the notice board).
-function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups, onSave, onCancel }) {
+// `withEmail` adds the Google address the coach signs in with — the only key that ties a
+// signed-in account to a coach record. Without it the app cannot tell which of a club's
+// coaches is looking at the screen, and every personal view falls back to the club-wide one.
+function NameForm({ initial, label, withPhone, withBirthDate, withEmail, withParallelGroups, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [phone, setPhone] = useState(initial?.phone || "");
+  const [email, setEmail] = useState(initial?.email || "");
   const [birthDate, setBirthDate] = useState(initial?.birthDate || "");
   const [parallelGroups, setParallelGroups] = useState(!!initial?.parallelGroups);
   const valid = name.trim().length > 0;
@@ -48,6 +52,23 @@ function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups
             className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
             dir="ltr"
           />
+        </div>
+      )}
+      {withEmail && (
+        <div>
+          <label className="text-xs text-stone-500 mb-1 block">דוא"ל Google (לזיהוי בכניסה למערכת)</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="coach@gmail.com"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+            dir="ltr"
+          />
+          <span className="block text-xs text-stone-500 mt-1">
+            הכתובת שאיתה המאמן/ת מתחבר/ת, כדי שהמערכת תזהה מי מולה. <strong>לא נשלחת אליה
+            הודעה, ואין לה קשר להרשאות</strong> — מי נכנס נקבע ברשימת המורשים שבמסך ההגדרות.
+          </span>
         </div>
       )}
       {withBirthDate && (
@@ -89,6 +110,10 @@ function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups
               id: initial?.id || uid(),
               name: name.trim(),
               ...(withPhone ? { phone: phone.trim() } : {}),
+              // Lower-cased on the way in, like every other address in this app: the
+              // comparison against the signed-in account is exact, and a capital letter
+              // would silently mean "this is not you".
+              ...(withEmail ? { email: email.trim().toLowerCase() } : {}),
               ...(withBirthDate ? { birthDate } : {}),
               ...(withParallelGroups ? { parallelGroups } : {}),
             })
@@ -102,7 +127,7 @@ function NameForm({ initial, label, withPhone, withBirthDate, withParallelGroups
   );
 }
 
-function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone, withBirthDate, withParallelGroups }) {
+function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, canEdit, withPhone, withBirthDate, withEmail, withParallelGroups }) {
   const [editingId, setEditingId] = useState(null);
 
   const handleSave = (item) => {
@@ -129,7 +154,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
 
       {canEdit && editingId === "new" && (
         <div className="p-3 border-b border-stone-100">
-          <NameForm label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
+          <NameForm label={label} withPhone={withPhone} withBirthDate={withBirthDate} withEmail={withEmail} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
         </div>
       )}
 
@@ -146,7 +171,7 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
               <div key={item.id}>
                 {canEdit && isEditing ? (
                   <div className="p-3">
-                    <NameForm initial={item} label={label} withPhone={withPhone} withBirthDate={withBirthDate} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
+                    <NameForm initial={item} label={label} withPhone={withPhone} withBirthDate={withBirthDate} withEmail={withEmail} withParallelGroups={withParallelGroups} onSave={handleSave} onCancel={() => setEditingId(null)} />
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 px-4 py-2.5">
@@ -154,6 +179,9 @@ function RosterList({ title, icon, items, label, usageCount, onSave, onDelete, c
                       {item.name}
                       {withPhone && item.phone && (
                         <span className="text-xs text-stone-500 mr-2" dir="ltr">{item.phone}</span>
+                      )}
+                      {withEmail && item.email && (
+                        <span className="text-xs text-stone-500 mr-2 break-all" dir="ltr">{item.email}</span>
                       )}
                       {withBirthDate && item.birthDate && (
                         <span className="text-xs text-stone-500 mr-2">🎂 {birthLabel(item.birthDate)}</span>
@@ -416,7 +444,7 @@ export function RostersView({ data, save, canEdit }) {
       )}
       <div className="grid sm:grid-cols-3 gap-4">
         <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
-        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withBirthDate withParallelGroups />
+        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withBirthDate withEmail withParallelGroups />
         <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} />
       </div>
     </div>

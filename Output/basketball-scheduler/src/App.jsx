@@ -28,6 +28,7 @@ import {
   IconCalendarDays, IconUser, IconUsers, IconClock, IconSettings, IconCalendarX,
 } from "./components/ui/icons";
 import { clubName as clubNameOf } from "./utils/club";
+import { coachIdForUser } from "./utils/coachIdentity";
 // Read from the club's own settings at runtime — one build serves every club, so there
 // is no bundled crest here the way the single-club branch has one.
 import { clubLogoSrc } from "./utils/clubLogo";
@@ -113,6 +114,11 @@ export default function App({ clubId }) {
   // is DEFAULT_SETTINGS, and writing its placeholder name to the tab title would flash
   // "מועדון ללא שם" over every club's login screen before their own name arrives.
   const settings = data.settings;
+  // Which of THIS club's coaches is signed in, if the club filled in their address.
+  // Empty when unknown, and every consumer falls back to the club-wide view — the
+  // behaviour the app had before the field existed.
+  const myCoachId = coachIdForUser(user, data.coaches);
+
   const identityKnown = (!isFirebaseConfigured || Boolean(user)) && loaded && !error;
   useEffect(() => {
     applyTheme(settings);
@@ -281,7 +287,7 @@ export default function App({ clubId }) {
         ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} publish={publish} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "coach" ? (
-          <CoachView data={data} weekStart={weekStart} setWeekStart={setWeekStart} />
+          <CoachView data={data} fixedCoachId={myCoachId} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />
         ) : activeTab === "settings" ? (
