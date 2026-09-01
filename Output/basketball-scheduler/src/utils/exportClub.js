@@ -12,6 +12,16 @@
 // re-publishing regenerates them, and including them would imply the export is
 // incomplete without them.
 //
+// Game notes are the exception to "the club document is everything": they live in their
+// own subcollection and are NOT derived from anything, so leaving them out would hand a
+// departing club an incomplete copy of records its coaches wrote. They are passed in.
+//
+// One coupling worth stating, because it is invisible from here: a COACH only ever
+// receives their own notes (the rules scope their listen by `authorEmail`), so an export
+// built from a coach's session would silently be partial while calling itself complete.
+// The export lives on the settings screen, which is admin-only, and an admin's listen is
+// unscoped. If that screen ever opens to coaches, this has to be revisited.
+//
 // Pure on purpose: no Firestore, no DOM. The download plumbing lives at the call site.
 
 import { DAYS } from "../constants";
@@ -21,17 +31,19 @@ import { DAYS } from "../constants";
 // internal field has an obvious place to be excluded rather than shipping by accident.
 const INTERNAL_KEYS = [];
 
-export function buildClubExport(data, { clubId, exportedAt }) {
+export function buildClubExport(data, { clubId, exportedAt, gameNotes }) {
   const club = { ...(data || {}) };
   INTERNAL_KEYS.forEach((k) => delete club[k]);
+  const notes = gameNotes && typeof gameNotes === "object" ? gameNotes : {};
   return {
     _format: "basketball-scheduler/club-export",
     _version: 1,
     _clubId: clubId || "",
     _exportedAt: exportedAt || "",
     _note:
-      "קובץ זה מכיל את כל נתוני המועדון כפי שהם שמורים במערכת. לוחות שפורסמו לפורטל ההורים נגזרים מהנתונים האלה ואינם כלולים.",
+      "קובץ זה מכיל את כל נתוני המועדון כפי שהם שמורים במערכת, כולל הערות המאמנים אחרי משחקים. לוחות שפורסמו לפורטל ההורים נגזרים מהנתונים האלה ואינם כלולים.",
     club,
+    gameNotes: notes,
   };
 }
 
@@ -57,8 +69,9 @@ const nameOf = (list, id) => (list || []).find((x) => x.id === id)?.name || "";
 
 // The tabular parts, resolved from ids into names. An export full of "t7f3k" is a
 // backup, not a copy of your records.
-export function csvSheets(data) {
+export function csvSheets(data, gameNotes) {
   const d = data || {};
+  const notes = gameNotes && typeof gameNotes === "object" ? gameNotes : {};
   return {
     teams: toCsv(d.teams, [
       { label: "שם קבוצה", get: (t) => t.name },
@@ -96,6 +109,23 @@ export function csvSheets(data) {
         { label: "אולם", get: (s) => nameOf(d.halls, s.hallId) },
         { label: "סוג", get: (s) => s.type || "" },
         { label: "הערות", get: (s) => s.notes || "" },
+      ]
+    ),
+    gameNotes: toCsv(
+      Object.entries(notes)
+        .map(([key, n]) => ({ key, ...(n || {}) }))
+        // The game a note belongs to is matched on the same key the app stores it under —
+        // a federation code where there is one, the game's own id otherwise.
+        .map((n) => ({ ...n, game: (d.games || []).find((g) => (g.federationCode || g.id) === n.key) || null }))
+        .sort((a, b) => String(a.game?.date || "").localeCompare(String(b.game?.date || ""))),
+      [
+        { label: "תאריך", get: (n) => n.game?.date || "" },
+        { label: "קבוצה", get: (n) => nameOf(d.teams, n.game?.teamId) },
+        { label: "יריבה", get: (n) => n.game?.opponent || "" },
+        { label: "תוצאה", get: (n) => (n.ourScore != null && n.theirScore != null ? `${n.ourScore}:${n.theirScore}` : "") },
+        { label: "נכתב ע\"י", get: (n) => n.author || "" },
+        { label: "עודכן", get: (n) => n.updatedAt || "" },
+        { label: "הערה", get: (n) => n.text || "" },
       ]
     ),
     games: toCsv(d.games, [

@@ -23,8 +23,8 @@ const TONES = {
   report: "bg-stone-100 text-stone-600 ring-stone-200",
 };
 
-export function HomeView({ tabs, data, weekStart, onOpen }) {
-  const stats = homeStats(data, weekStart);
+export function HomeView({ tabs, data, weekStart, onOpen, canEdit, gameNotes }) {
+  const stats = homeStats(data, weekStart, canEdit, gameNotes);
 
   return (
     <div dir="rtl">

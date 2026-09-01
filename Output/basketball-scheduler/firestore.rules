@@ -104,6 +104,60 @@ service cloud.firestore {
         'admins' in clubData(clubId) &&
         authEmail() in clubData(clubId).admins;
     }
+    // ---- A coach's own writing ----
+    //
+    // Records a coach authors about their own work. Every one carries `authorEmail`, and
+    // that field is the only thing a rule can match a signed-in person against — `author`
+    // beside it is a display name.
+    //
+    // These helpers sit beside the club-scoped ones below rather than reusing `isAdmin()`
+    // and `isMember()` above: those read `resource.data`, which inside a subcollection is
+    // the SUBCOLLECTION document, not the club. That difference looks like nothing and
+    // fails only at runtime.
+    //
+    // `authEmail()` is already lower-cased, and the client writes `authorEmail`
+    // lower-cased too (see utils/access.js). The comparison is exact, so a capital letter
+    // on either side locks a coach out of their own writing with nothing on screen to
+    // explain it.
+    function ownsExisting() {
+      return signedIn() &&
+        'authorEmail' in resource.data &&
+        resource.data.authorEmail == authEmail();
+    }
+    function ownsIncoming() {
+      return signedIn() &&
+        'authorEmail' in request.resource.data &&
+        request.resource.data.authorEmail == authEmail();
+    }
+
+    // A coach reads and writes only their own records; the club's manager reads all of
+    // them, and may update one without owning it — marking a note read is the manager's
+    // job, not the author's.
+    //
+    // A collection LISTEN is refused outright unless the query is provably inside the
+    // rule, so the client has to filter by `authorEmail` for a coach. See
+    // hooks/useGameNotes.js — get this wrong and the symptom is an empty screen, not a
+    // missing record.
+    function ownRead(clubId) {
+      return isClubAdmin(clubId) || (isClubStaff(clubId) && ownsExisting());
+    }
+    function ownCreate(clubId) {
+      return isClubAdmin(clubId) || (isClubStaff(clubId) && ownsIncoming());
+    }
+    function ownChange(clubId) {
+      return isClubAdmin(clubId) || (isClubStaff(clubId) && ownsExisting() && ownsIncoming());
+    }
+
+    // Notes a coach writes after a game. Their own documents rather than fields on the
+    // club document: free text per game is the first thing here that grows without bound,
+    // and the club document has a 1 MiB ceiling it already fits a whole season into.
+    match /clubs/{clubId}/gameNotes/{gameKey} {
+      allow read: if ownRead(clubId);
+      allow create: if ownCreate(clubId);
+      allow update: if ownChange(clubId);
+      allow delete: if isClubAdmin(clubId) || (isClubStaff(clubId) && ownsExisting());
+    }
+
     function portalUser() {
       return get(/databases/$(database)/documents/portalUsers/$(request.auth.uid)).data;
     }

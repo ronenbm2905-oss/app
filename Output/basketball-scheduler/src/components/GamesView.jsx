@@ -3,6 +3,7 @@ import { uid, formatDateHe } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/games";
 import { TransportExport } from "./TransportExport";
+import { GameNote } from "./GameNote";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
 import { Pill } from "./ui/Pill";
@@ -191,7 +192,14 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
   );
 }
 
-export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
+export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes, saveNote, authorName, authorEmail, myCoachId }) {
+  // Whose game this is. A manager sees the report box on every game; a coach only on the
+  // games of the teams they take — and only when the club filled in their address, which
+  // is what `myCoachId` comes from. Unknown identity means no box rather than a box on
+  // every game: writing a report onto someone else's fixture is a mess to undo.
+  const isMyGame = (g) =>
+    canEdit || (Boolean(myCoachId) && data.teams.find((t) => t.id === g.teamId)?.coachId === myCoachId);
+
   const [subTab, setSubTab] = useState("games"); // "games" | "mapping"
   const [importMsg, setImportMsg] = useState(null);
   const [filterTeam, setFilterTeam] = useState("");
@@ -475,7 +483,8 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                     );
                   }
                   return (
-                    <div key={g.federationCode || i} className="flex items-center gap-3 px-4 py-3 flex-wrap">
+                    <div key={g.federationCode || i} className="px-4 py-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <div className="w-28 shrink-0">
                         <div className="text-xs font-medium text-stone-700">{formatDateHe(g.date)}</div>
                         <div className="text-xs text-stone-600">{g.time}</div>
@@ -537,6 +546,20 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart }) {
                         >
                           <IconPencil size={14} />
                         </button>
+                      )}
+                    </div>
+                      {/* Written by the coach after the game, read by the club's manager.
+                          Sits with the game rather than on a screen of its own — a report
+                          nobody walks past is a report nobody writes. */}
+                      {isMyGame(g) && (
+                        <GameNote
+                          game={g}
+                          notes={notes}
+                          saveNote={saveNote}
+                          canEdit={canEdit}
+                          authorName={authorName}
+                          authorEmail={authorEmail}
+                        />
                       )}
                     </div>
                   );

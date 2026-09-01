@@ -15,7 +15,7 @@ import {
   assertFails,
   assertSucceeds,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, getDocs, collection, query, where } from "firebase/firestore";
 
 const CLUB = "demo";
 const WEEK = "2026-08-16";
@@ -61,6 +61,13 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, "clubs", CLUB, "published", WEEK, "teams", TEAM_A), { teamId: TEAM_A, sessions: [] });
   await setDoc(doc(db, "clubs", CLUB, "published", WEEK, "teams", TEAM_B), { teamId: TEAM_B, sessions: [] });
 
+  await setDoc(doc(db, "clubs", CLUB, "gameNotes", "G-1"), {
+    text: "שיחקנו טוב", authorEmail: "coach@club.org", author: "מאמן", updatedAt: "2026-09-01",
+  });
+  await setDoc(doc(db, "clubs", CLUB, "gameNotes", "G-2"), {
+    text: "של מישהו אחר", authorEmail: "other@club.org", author: "אחר", updatedAt: "2026-09-01",
+  });
+
   // A parent of team A only.
   await setDoc(doc(db, "portalUsers", "parentA"), {
     clubId: CLUB, teams: { [TEAM_A]: CODE_A }, joinCode: CODE_A, email: "a@p.com",
@@ -81,6 +88,7 @@ const asLegacy = testEnv.authenticatedContext("legacy", { email: "l@p.com" }).fi
 const asStranger = testEnv.authenticatedContext("nobody", { email: "x@x.com" }).firestore();
 const asCoach = testEnv.authenticatedContext("coach", { email: "coach@club.org" }).firestore();
 const asAdmin = testEnv.authenticatedContext("admin", { email: "admin@club.org" }).firestore();
+const asOther = testEnv.authenticatedContext("other", { email: "other@club.org" }).firestore();
 
 const teamDoc = (db, team) => doc(db, "clubs", CLUB, "published", WEEK, "teams", team);
 const weekDoc = (db) => doc(db, "clubs", CLUB, "published", WEEK);
@@ -135,6 +143,47 @@ await check("...nor replace it with something that is not a list",
   assertFails(setDoc(clubDoc(asAdmin), { ...CLUB_BODY, admins: "admin@club.org" })));
 await check("a coach still cannot edit the club at all",
   assertFails(setDoc(clubDoc(asCoach), { ...CLUB_BODY, admins: ["coach@club.org"] })));
+
+console.log("\nA coach's own writing:");
+const note = (db, id) => doc(db, "clubs", CLUB, "gameNotes", id);
+const mine = { text: "עודכן", authorEmail: "coach@club.org", author: "מאמן", updatedAt: "2026-09-02" };
+
+await check("a coach reads their own note", assertSucceeds(getDoc(note(asCoach, "G-1"))));
+await check("a coach CANNOT read another coach's note", assertFails(getDoc(note(asCoach, "G-2"))));
+await check("a coach updates their own note", assertSucceeds(setDoc(note(asCoach, "G-1"), mine)));
+await check("a coach CANNOT overwrite another coach's note",
+  assertFails(setDoc(note(asCoach, "G-2"), mine)));
+// The give-it-away case: writing someone else's address onto a new record would let a
+// coach plant a note in a colleague's name, and would put it out of their own reach.
+await check("a coach CANNOT create a note owned by someone else",
+  assertFails(setDoc(note(asCoach, "G-9"), { ...mine, authorEmail: "other@club.org" })));
+await check("a coach CANNOT hand their own note to someone else",
+  assertFails(setDoc(note(asCoach, "G-1"), { ...mine, authorEmail: "other@club.org" })));
+await check("a note with no authorEmail at all is refused",
+  assertFails(setDoc(note(asCoach, "G-8"), { text: "אנונימי" })));
+await check("a coach creates a new note of their own",
+  assertSucceeds(setDoc(note(asCoach, "G-7"), mine)));
+
+await check("the manager reads every note", assertSucceeds(getDoc(note(asAdmin, "G-2"))));
+// Marking a note read is the manager's job, and they do not own the record.
+await check("the manager marks someone else's note read",
+  assertSucceeds(setDoc(note(asAdmin, "G-2"),
+    { text: "של מישהו אחר", authorEmail: "other@club.org", author: "אחר", updatedAt: "2026-09-01", readAt: "2026-09-03" })));
+await check("the manager deletes a note they do not own", assertSucceeds(deleteDoc(note(asAdmin, "G-7"))));
+
+await check("an outsider cannot read a note", assertFails(getDoc(note(asStranger, "G-1"))));
+await check("a portal parent cannot read a note", assertFails(getDoc(note(asParentA, "G-1"))));
+
+console.log("\nListening to the collection:");
+const notes = (db) => collection(db, "clubs", CLUB, "gameNotes");
+// Rules do not FILTER a listen — they refuse it unless the query is provably inside the
+// rule. This is the pair of assertions the client's scoped/unscoped split depends on.
+await check("a coach CANNOT list the whole collection", assertFails(getDocs(notes(asCoach))));
+await check("a coach CAN list their own, scoped by authorEmail",
+  assertSucceeds(getDocs(query(notes(asCoach), where("authorEmail", "==", "coach@club.org")))));
+await check("a coach CANNOT list under someone else's address",
+  assertFails(getDocs(query(notes(asCoach), where("authorEmail", "==", "other@club.org")))));
+await check("the manager lists the whole collection", assertSucceeds(getDocs(notes(asAdmin))));
 
 await testEnv.cleanup();
 console.log(`\n${passed} passed, ${failed} failed\n`);

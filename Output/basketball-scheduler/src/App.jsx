@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
+import { useGameNotes } from "./hooks/useGameNotes";
 import { todayWeekStart } from "./utils/dates";
 import { applyTheme } from "./utils/theme";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
@@ -114,6 +115,12 @@ export default function App({ clubId }) {
   // is DEFAULT_SETTINGS, and writing its placeholder name to the tab title would flash
   // "מועדון ללא שם" over every club's login screen before their own name arrives.
   const settings = data.settings;
+  // Scoped by role: a manager listens to every note, a coach only to their own. Not
+  // cosmetic — a coach's unscoped listen is refused outright by the rules, and the symptom
+  // is an empty screen rather than an error.
+  const myEmail = user?.email || "";
+  const { notes, saveNote } = useGameNotes(user, isAdmin, myEmail, clubId);
+
   // Which of THIS club's coaches is signed in, if the club filled in their address.
   // Empty when unknown, and every consumer falls back to the club-wide view — the
   // behaviour the app had before the field existed.
@@ -271,6 +278,8 @@ export default function App({ clubId }) {
             data={data}
             weekStart={weekStart}
             onOpen={setTab}
+            canEdit={canEdit}
+            gameNotes={notes}
           />
         ) : activeTab === "announcements" ? (
           <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
@@ -283,7 +292,18 @@ export default function App({ clubId }) {
         ) : activeTab === "availability" ? (
           <AvailabilityView data={data} save={save} canEdit={canEdit} />
         ) : activeTab === "games" ? (
-          <GamesView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
+          <GamesView
+            data={data}
+            save={save}
+            canEdit={canEdit}
+            weekStart={weekStart}
+            setWeekStart={setWeekStart}
+            notes={notes}
+            saveNote={saveNote}
+            authorName={user?.displayName || myEmail}
+            authorEmail={myEmail}
+            myCoachId={myCoachId}
+          />
         ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} publish={publish} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "coach" ? (
@@ -299,7 +319,8 @@ export default function App({ clubId }) {
             clubId={clubId}
             subscription={subscription}
             isAdmin={isAdmin}
-            currentEmail={user?.email || ""}
+            currentEmail={myEmail}
+            gameNotes={notes}
           />
         ) : (
           <ReportView data={data} />

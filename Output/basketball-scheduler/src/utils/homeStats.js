@@ -1,5 +1,6 @@
 import { weekStartOfDMY } from "./dates";
 import { upcomingAbsences, subjectOf } from "./availability.js";
+import { unreadCount } from "./gameNotes.js";
 
 // One live line per tile on the home screen.
 //
@@ -21,7 +22,7 @@ function plural(n, one, many) {
   return `${n} ${many}`;
 }
 
-export function homeStats(data, weekStart) {
+export function homeStats(data, weekStart, canEdit = true, notes) {
   const d = data || {};
   const sessions = arr(d.sessions).filter((s) => s && (s.weekOf || "") === weekStart);
   const games = arr(d.games).filter((g) => g && g.date && weekStartOfDMY(g.date) === weekStart);
@@ -34,7 +35,17 @@ export function homeStats(data, weekStart) {
     rosters: `${plural(count(d.teams), "קבוצה אחת", "קבוצות")} · ${plural(count(d.halls), "אולם אחד", "אולמות")}`,
     manager: plural(sessions.length, "אימון אחד השבוע", "אימונים השבוע"),
     constraints: plural(count(d.constraints), "אילוץ אחד", "אילוצים"),
-    games: plural(games.length, "משחק אחד השבוע", "משחקים השבוע"),
+    // `canEdit` shapes this one: unread reports are the manager's inbox, and the coach
+    // who wrote one is not waiting to read it.
+    games: (() => {
+      const waiting = canEdit ? unreadCount(notes) : 0;
+      const fixtures = plural(games.length, "משחק אחד השבוע", "משחקים השבוע");
+      // A manager with reports waiting is being asked to do something; the fixture count
+      // is only background, so it steps aside rather than sharing the line.
+      return waiting
+        ? `${waiting === 1 ? "הערה אחת חדשה" : `${waiting} הערות חדשות`} · ${fixtures}`
+        : fixtures;
+    })(),
     weekly: d.schedulePublished?.weekOf === weekStart ? "הלו״ז פורסם" : "טרם פורסם",
     coach: "הלו״ז שלך, לשליחה בוואטסאפ",
     availability: (() => {

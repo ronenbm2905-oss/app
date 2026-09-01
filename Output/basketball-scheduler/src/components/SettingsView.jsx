@@ -135,7 +135,7 @@ function SubscriptionCard({ data, save, subscription, isAdmin }) {
 
 // Taking the club's data out, in both formats it might be wanted in: JSON, which is the
 // faithful copy, and CSV, which is the one that opens.
-function ExportCard({ data, clubId }) {
+function ExportCard({ data, clubId, gameNotes }) {
   const [msg, setMsg] = useState("");
 
   const download = (content, filename, mime) => {
@@ -155,7 +155,7 @@ function ExportCard({ data, clubId }) {
 
   const exportJson = () => {
     download(
-      JSON.stringify(buildClubExport(data, { clubId, exportedAt: at }), null, 2),
+      JSON.stringify(buildClubExport(data, { clubId, exportedAt: at, gameNotes }), null, 2),
       exportFileName(clubId, at, "json"),
       "application/json"
     );
@@ -163,7 +163,7 @@ function ExportCard({ data, clubId }) {
   };
 
   const exportCsv = () => {
-    const sheets = csvSheets(data);
+    const sheets = csvSheets(data, gameNotes);
     Object.entries(sheets).forEach(([name, csv]) =>
       download(csv, exportFileName(`${clubId}-${name}`, at, "csv"), "text/csv;charset=utf-8")
     );
@@ -294,7 +294,7 @@ function PortalCard({ data, save, syncJoinCode, clubId, canEdit }) {
   );
 }
 
-export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscription, isAdmin, currentEmail }) {
+export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscription, isAdmin, currentEmail, gameNotes }) {
   const saved = clubSettings(data);
   const [draft, setDraft] = useState(saved);
   const [logoMsg, setLogoMsg] = useState("");
@@ -667,7 +667,7 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
           from a club in a billing dispute turns a payment reminder into leverage over
           their records — including minors' — which is the opposite of what a data
           return obligation is for. */}
-      <ExportCard data={data} clubId={clubId} />
+      <ExportCard data={data} clubId={clubId} gameNotes={gameNotes} />
 
       <Card title="מידע טכני" hint="כל נתוני המועדון נשמרים במסמך אחד, שמוגבל ל-1 MB.">
         <div className="flex items-center gap-3">
