@@ -8,6 +8,7 @@ export {
   AlertTriangle as IconAlert,
   X as IconX,
   Download as IconDownload,
+  FileSpreadsheet as IconFileSpreadsheet,
   Users as IconUsers,
   MapPin as IconMapPin,
   Calendar as IconCalendar,
