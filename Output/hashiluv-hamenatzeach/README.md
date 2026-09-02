@@ -3,7 +3,7 @@
 **חי בכתובת: https://doritplus-shilluv.netlify.app**
 
 דף נחיתה **חדש ונפרד** לקמפיין ממומן (פייסבוק/אינסטגרם) למוצר "השילוב המנצח":
-ערכת הקלפים *הדרך למילים* + מארז 54 מדבקות מחזקות, **169 ₪ כולל משלוח לנקודת איסוף**.
+ערכת הקלפים *הדרך למילים* + מארז 54 מדבקות מחזקות, **179 ₪ כולל משלוח לנקודת איסוף** (מבצע לחג).
 
 - קובץ יחיד: `index.html` (HTML/CSS/JS, בלי build ובלי תלויות חוץ מ-Google Fonts).
 - נכסים: `assets/`.
@@ -46,10 +46,12 @@ font-stack מקומי כ-fallback אם אין רשת.
 
 | קובץ | מקור |
 |---|---|
-| `bundle-final.jpg` | תמונת השילוב השיווקית של דורית (מקור `5.jpg`) |
+| `bundle-final.jpg` | תמונת "השילוב המנצח לחג" של דורית — 179 ₪ (מקור `8.jpg`; החליפה את גרסת ה-169 ₪) |
+| `stickers-lunchboxes.jpg`, `stickers-bread-bottle.jpg`, `stickers-bottle-hearts.jpg` | צילומי מדבקות בשימוש (מקור `9/11/10.jpg`) — משתי הראשונות הוסרה מסגרת צילום-המסך של הצ'אט |
 | `cards-box.jpg` | חיתוך הערכה והקלפים מתוך `bundle-final.jpg` — החליף את צילום הקרטון |
 | `cards-open.jpg`, `cards-kids-playing.jpg`, `cards-shared.jpg` | צילומים שדורית/רונן העלו ב-19.8.2026 (מקור: `itai/Outputs/2026-08-19-shiluv-uploads/`) |
-| `stickers-pink-lunchbox.jpg`, `stickers-yogurt.jpg` | צילומי מדבקות בשימוש שהועלו ב-19.8.2026 (מקור `6.jpg`, `7.jpg`) |
+| `stickers-pink-lunchbox.jpg` | צילום מדבקה על קופסת אוכל (מקור `6.jpg`) |
+| `stickers-yogurt.jpg` | גביע היוגורט — **הוסר מהדף** לבקשת דורית, נשמר כחלופה |
 | `cards-in-hands.jpg` | צילום מוצר מתוך מצגת ההשקה — **לא בשימוש בדף**, נשמר כחלופה |
 | `cards-illustration-1..4.jpg` | קלפי האיורים המקוריים של הערכה (`Output/haderech-lamilim/public/cards/`) |
 | `cards-sentence-1..3.jpg` | קלפי המשפטים המנוקדים, מרונדרים מקובץ הדפוס המקורי `Briefs/haderech/klafim_text_bizua_shtanz.pdf` |
@@ -57,6 +59,12 @@ font-stack מקומי כ-fallback אם אין רשת.
 | `recommendations.mp4` + `-poster.jpg` | סרטון ההמלצות של דורית — נדחס מ-7.9MB ל-1.2MB (H.264, 24fps, faststart) מתוך `itai/Outputs/2026-08-19-shiluv-uploads/5.mp4` |
 | `logo-haderech.jpg` | לוגו המותג |
 | `stickers-sandwich.jpg`, `stickers-sandwich-wrap.jpg` | צילומי הכריך — **הוסרו מהדף** לבקשת דורית, נשמרים כחלופה |
+
+## ⚠️ מחיר — לוודא בטרנזילה
+
+הדף מציג **179 ₪**. עמוד התשלום בטרנזילה הוגדר בזמנו ל-169 ₪ ו**אין לי דרך לבדוק אותו מכאן**.
+לפני שמפעילים קמפיין — לפתוח את קישור התשלום ולוודא שהסכום שם 179 ₪, אחרת הגולש רואה
+מחיר אחד ומחויב באחר. אם צריך קישור טרנזילה חדש — להחליף אותו בשני הכפתורים.
 
 ## Meta Pixel
 
@@ -67,8 +75,11 @@ font-stack מקומי כ-fallback אם אין רשת.
 | אירוע | מתי | פרמטרים |
 |---|---|---|
 | `PageView` | בטעינת הדף | — |
-| `ViewContent` | כשאזור "השילוב המנצח" מוצג (IntersectionObserver; גיבוי אחרי 2 שניות כדי שייספר גם בכניסה לדף) | `content_name: השילוב המנצח`, `content_ids: ["winning_bundle_169"]`, `content_type: product`, `value: 169`, `currency: ILS` |
+| `ViewContent` | כשאזור "השילוב המנצח" מוצג (IntersectionObserver; גיבוי אחרי 2 שניות כדי שייספר גם בכניסה לדף) | `content_name: השילוב המנצח`, `content_ids: ["winning_bundle_169"]`, `content_type: product`, `value: 179`, `currency: ILS` |
 | `InitiateCheckout` | **רק** בלחיצה ממשית על אחד משני כפתורי ההזמנה | כנ"ל + `num_items: 1` |
+
+`value` עודכן ל-**179**. `content_ids` נשאר `winning_bundle_169` בכוונה — מזהה מוצר אמור
+להיות יציב ולא לקודד מחיר משתנה; החלפה שלו מפצלת דיווח ורימרקטינג בין שתי זהויות.
 
 מנגנוני הגנה מפני כפילות: דגל `viewSent` ל-`ViewContent`, ודגל `checkoutFired`
 ל-`InitiateCheckout` (לחיצה = אירוע אחד, גם בלחיצות חוזרות מהירות).
