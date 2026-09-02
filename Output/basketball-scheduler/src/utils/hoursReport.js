@@ -22,8 +22,45 @@ export const excludedLabel = EXCLUDED_TYPES.map((t) => `"${t}"`).join(", ");
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 
-export function countsToward(session) {
-  return Boolean(session) && !EXCLUDED_TYPES.includes(session.type);
+// Teams whose sessions never reach this report. The basketball school is paid on its own
+// arrangement, and its blocks are three and four hours long — counted as units they would
+// be wrong in one direction, counted by the clock they would be wrong in the other. They
+// simply do not belong here.
+//
+// **Read from an explicit flag, never from the team's name.** Matching "בית ספר" would mean
+// that renaming a team silently changes what somebody is paid, months later, with nothing
+// on screen to connect the two. The name is used once, by a button in the roster screen
+// that offers to tick the flag — a suggestion a person accepts, not a rule.
+export function isHoursExempt(team) {
+  return Boolean(team && team.noHours);
+}
+
+export function exemptTeamIds(teams) {
+  return new Set(arr(teams).filter(isHoursExempt).map((t) => t.id));
+}
+
+export function exemptTeamNames(teams) {
+  return arr(teams).filter(isHoursExempt).map((t) => String(t.name || "").trim()).filter(Boolean);
+}
+
+// Only for the roster screen's one-time offer. Never consulted by the report itself.
+export function looksLikeSchoolTeam(team) {
+  return /בית\s*ספר/.test(String(team?.name || ""));
+}
+
+export function countsToward(session, exemptIds) {
+  if (!session) return false;
+  if (EXCLUDED_TYPES.includes(session.type)) return false;
+  if (exemptIds && typeof exemptIds.has === "function" && exemptIds.has(session.teamId)) return false;
+  return true;
+}
+
+// The one filter both the rows and the totals go through, so they cannot disagree about
+// what the month contains.
+export function countedSessions(data, month) {
+  if (!month) return [];
+  const exempt = exemptTeamIds(data?.teams);
+  return arr(data?.sessions).filter((s) => countsToward(s, exempt) && monthOfSession(s) === month);
 }
 
 // "YYYY-MM" for a session, from the week it sits in plus its weekday. Returns "" for a
@@ -42,7 +79,7 @@ export function monthOfSession(session) {
 export function hoursRows(data, month) {
   const d = data || {};
   if (!month) return [];
-  const counted = arr(d.sessions).filter((s) => countsToward(s) && monthOfSession(s) === month);
+  const counted = countedSessions(d, month);
   return arr(d.coaches)
     .map((coach) => {
       const mine = counted.filter((s) => s.coachId === coach.id);
@@ -63,7 +100,7 @@ export function hoursRows(data, month) {
 export function hoursTotals(rows, data, month) {
   const list = arr(rows);
   const units = list.reduce((n, r) => n + r.units, 0);
-  const counted = arr(data?.sessions).filter((s) => countsToward(s) && monthOfSession(s) === month);
+  const counted = countedSessions(data, month);
   return {
     units,
     hours: units * HOURS_PER_UNIT,

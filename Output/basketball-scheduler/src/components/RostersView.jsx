@@ -3,6 +3,7 @@ import { VEHICLE_TYPES } from "../constants";
 import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
 import { looksIndoor } from "../utils/indoorBalance";
+import { looksLikeSchoolTeam, isHoursExempt } from "../utils/hoursReport";
 import { AccessCard } from "./AccessCard";
 import { sortByName } from "../utils/names";
 import { Select } from "./ui/Select";
@@ -257,6 +258,7 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
   const [coachId, setCoachId] = useState(initial?.coachId || "");
   const [vehicleType, setVehicleType] = useState(initial?.vehicleType || "");
   const [weekly, setWeekly] = useState(!!initial?.weekly);
+  const [noHours, setNoHours] = useState(!!initial?.noHours);
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -301,13 +303,29 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
           </span>
         </span>
       </label>
+      {/* Its own flag rather than a reading of the team's name: renaming a team must never
+          change quietly what somebody is paid. */}
+      <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={noHours}
+          onChange={(e) => setNoHours(e.target.checked)}
+          className="w-4 h-4 accent-brand-600 mt-0.5"
+        />
+        <span>
+          לא נספרת בדו״ח השעות
+          <span className="block text-xs text-stone-500">
+            לבית הספר לכדורסל ולכל מסגרת שהתשלום עליה נקבע בנפרד. האימונים ימשיכו להופיע בלוח כרגיל.
+          </span>
+        </span>
+      </label>
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
         </button>
         <button
           disabled={!valid}
-          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "", weekly })}
+          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "", weekly, noHours })}
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
@@ -317,7 +335,7 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
   );
 }
 
-function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, canEdit }) {
+function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, canEdit, headerExtra }) {
   const [editingId, setEditingId] = useState(null);
   const coachName = (id) => coaches.find((c) => c.id === id)?.name || "—";
 
@@ -333,14 +351,17 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
         <div className="flex items-center gap-2 text-stone-700 font-semibold text-sm">
           <IconUsers size={16} /> קבוצות
         </div>
-        {canEdit && (
-          <button
-            onClick={() => setEditingId("new")}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
-          >
-            <IconPlus size={13} /> הוסף קבוצה
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canEdit && headerExtra}
+          {canEdit && (
+            <button
+              onClick={() => setEditingId("new")}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <IconPlus size={13} /> הוסף קבוצה
+            </button>
+          )}
+        </div>
       </div>
 
       {canEdit && editingId === "new" && (
@@ -369,6 +390,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
                       <div className="text-sm text-stone-700">{item.name}</div>
                       {item.coachId && <div className="text-xs text-stone-600">מאמן: {coachName(item.coachId)}</div>}
                       {item.weekly && <div className="text-xs text-brand-700 font-medium">🔁 קבועה — חוזרת כל שבוע</div>}
+                      {item.noHours && <div className="text-xs text-stone-600 font-medium">🚫 לא נספרת בדו״ח השעות</div>}
                     </div>
                     {canEdit && inUse > 0 && <span className="text-xs text-stone-600">{inUse} אימונים</span>}
                     {canEdit && (
@@ -432,6 +454,30 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
       halls: (data.halls || []).map((h) => (looksIndoor(h) && !h.indoor ? { ...h, indoor: true } : h)),
     });
   };
+  // One-time offer for a club whose school squads are already named "בית ספר …": tick the
+  // flag on all of them at once. It only ever ADDS the flag, so a team excluded by hand
+  // cannot be brought back by pressing this, and the report itself never reads a name.
+  const unflaggedSchool = (data.teams || []).filter((t) => looksLikeSchoolTeam(t) && !isHoursExempt(t));
+  const markNoHoursByName = () => {
+    save({
+      ...data,
+      teams: (data.teams || []).map((t) =>
+        looksLikeSchoolTeam(t) && !isHoursExempt(t) ? { ...t, noHours: true } : t
+      ),
+    });
+  };
+  const noHoursHelper = unflaggedSchool.length ? (
+    <button
+      onClick={markNoHoursByName}
+      title={unflaggedSchool.map((t) => t.name).join(", ")}
+      className="px-2.5 py-1 text-xs rounded-lg border border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
+    >
+      {unflaggedSchool.length === 1
+        ? "הוצא קבוצת בית ספר אחת מדו״ח השעות"
+        : `הוצא ${unflaggedSchool.length} קבוצות בית ספר מדו״ח השעות`}
+    </button>
+  ) : null;
+
   const indoorHelper = unmarkedIndoor.length ? (
     <button
       onClick={markIndoorByName}
@@ -514,7 +560,8 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
         </div>
       )}
       <div className={`grid gap-4 ${canEdit ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-        <TeamRosterList items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
+        <TeamRosterList
+          headerExtra={noHoursHelper} items={data.teams} coaches={data.coaches} usageCount={teamUsage} onSave={handleSaveTeam} onDelete={handleDeleteTeam} onMove={handleMoveTeam} canEdit={canEdit} />
         {/* Alphabetical, not entry order: with two dozen coaches, "where did I type it"
             is not a way to find a name. Display only — the stored array keeps its order,
             and every row still edits and deletes by id. Teams are left alone; their order

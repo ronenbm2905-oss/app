@@ -5,6 +5,7 @@ import { currentMonth, shiftMonth, monthLabel } from "../utils/dates";
 // board itself looked wrong.
 import {
   hoursRows, hoursTotals, fmtHours, excludedLabel, exportHoursXlsx, HOURS_PER_UNIT,
+  exemptTeamNames,
 } from "../utils/hoursReport";
 import { IconDownload, IconChevronRight, IconChevronLeft, IconFileSpreadsheet } from "./ui/icons";
 import { IndoorBalanceCard } from "./IndoorBalanceCard";
@@ -13,6 +14,9 @@ export function ReportView({ data, weekStart }) {
   const [month, setMonth] = useState(currentMonth());
 
   const rows = useMemo(() => hoursRows(data, month), [data, month]);
+  // Named, not merely omitted. A report that quietly drops squads is a report nobody can
+  // check — and this one decides what people are paid.
+  const exempt = useMemo(() => exemptTeamNames(data?.teams), [data?.teams]);
   const totals = useMemo(() => hoursTotals(rows, data, month), [rows, data, month]);
 
   return (
@@ -72,6 +76,11 @@ export function ReportView({ data, weekStart }) {
           <p className="text-xs text-stone-500 mt-0.5">
             {monthLabel(month)} · כל יחידת אימון = {HOURS_PER_UNIT} שעות · {excludedLabel} אינם נספרים
           </p>
+          {/* Named, not merely omitted. A payroll report that quietly drops squads is one
+              nobody can check — least of all the coach it shortchanges. */}
+          {exempt.length > 0 && (
+            <p className="text-xs text-stone-500 mt-0.5">לא נספרות בדוח: {exempt.join(" · ")}</p>
+          )}
         </div>
 
         {rows.length === 0 ? (

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   HOURS_PER_UNIT, EXCLUDED_TYPES, excludedLabel, countsToward, monthOfSession,
   hoursRows, hoursTotals, fmtHours, HOURS_HEADERS, hoursRowToCells, hoursSheetAoa,
+  exemptTeamNames, looksLikeSchoolTeam,
 } from "../src/utils/hoursReport.js";
 
 let pass = 0;
@@ -184,6 +185,64 @@ t("numbers reach Excel as numbers, not as strings", () => {
   // difference between a file you can total and a file you have to retype.
   const cells = hoursRowToCells({ name: "טל", days: 3, units: 5, hours: 7.5 });
   cells.slice(1).forEach((c) => assert.equal(typeof c, "number"));
+});
+
+console.log("- teams that never reach this report -");
+// The basketball school is settled on its own arrangement. Its blocks are three and four
+// hours long, so as units they under-report badly and by the clock they would change the
+// basis for everyone — Ronen's call was that they simply do not belong here.
+const withSchool = {
+  coaches,
+  teams: [{ id: "t1", name: "נערים א" }, { id: "tS", name: "בית ספר לכדורסל שרת", noHours: true }],
+  sessions: [
+    s("a", "c1", W2, "שני"),
+    { ...s("b", "c1", W2, "רביעי"), teamId: "tS", start: "15:00", end: "18:00" },
+    { ...s("c", "c1", W2, "חמישי"), teamId: "tS", start: "14:15", end: "18:00" },
+  ],
+};
+t("a flagged team's sessions are not counted at all", () => {
+  const [row] = hoursRows(withSchool, "2026-09");
+  assert.equal(row.units, 1, "only the league session");
+  assert.equal(row.hours, 1.5);
+});
+t("and they add no DAYS either — the coach was there, but not on this report", () => {
+  const [row] = hoursRows(withSchool, "2026-09");
+  assert.equal(row.days, 1, "Wednesday and Thursday were school-only days");
+});
+t("a coach who ONLY has flagged sessions disappears from the report", () => {
+  const only = { ...withSchool, sessions: withSchool.sessions.slice(1) };
+  assert.deepEqual(hoursRows(only, "2026-09"), []);
+});
+t("the club-day count ignores them too", () => {
+  const rows = hoursRows(withSchool, "2026-09");
+  assert.equal(hoursTotals(rows, withSchool, "2026-09").clubDays, 1);
+});
+t("THE FLAG, NOT THE NAME: a team called בית ספר but unflagged still counts", () => {
+  // Reading the name would mean renaming a team silently changes somebody's pay months
+  // later, with nothing on screen connecting the two.
+  const unflagged = {
+    ...withSchool,
+    teams: [{ id: "t1", name: "נערים א" }, { id: "tS", name: "בית ספר לכדורסל שרת" }],
+  };
+  assert.equal(hoursRows(unflagged, "2026-09")[0].units, 3);
+});
+t("...and a flagged team with an ordinary name is excluded all the same", () => {
+  const odd = {
+    ...withSchool,
+    teams: [{ id: "t1", name: "נערים א" }, { id: "tS", name: "קבוצת בוקר", noHours: true }],
+  };
+  assert.equal(hoursRows(odd, "2026-09")[0].units, 1);
+});
+t("the report can say which teams it left out", () => {
+  assert.deepEqual(exemptTeamNames(withSchool.teams), ["בית ספר לכדורסל שרת"]);
+  assert.deepEqual(exemptTeamNames([{ id: "t1", name: "נערים א" }]), []);
+  assert.deepEqual(exemptTeamNames(null), []);
+});
+t("the name test exists only for the roster screen's one-time offer", () => {
+  assert.equal(looksLikeSchoolTeam({ name: "בית ספר לכדורסל ברק" }), true);
+  assert.equal(looksLikeSchoolTeam({ name: "בית  ספר לכדורסל" }), true);
+  assert.equal(looksLikeSchoolTeam({ name: "נערים א" }), false);
+  assert.equal(looksLikeSchoolTeam(null), false);
 });
 
 console.log("\n" + pass + " tests passed");
