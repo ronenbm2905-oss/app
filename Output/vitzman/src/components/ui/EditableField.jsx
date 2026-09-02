@@ -8,6 +8,10 @@ import { useEffect, useRef, useState } from "react";
  * מסכי-עריכה נפרדים אם כל שינוי דורש טופס.
  *
  * `readOnly` נאכף כאן ולא רק בקורא: כשמסתכלים על תאריך עבר, שום שדה לא נפתח.
+ *
+ * ⚠ **הזמנה ויזואלית היא חלק מהתפקוד.** שדה שנראה כמו טקסט רגיל הוא שדה שאיש
+ * לא ילחץ עליו — ולכן לטקסט יש קו תחתון מקווקו, ולבחירה מסגרת של ממש. הגרסה
+ * הראשונה הייתה שקופה לגמרי ורונן דיווח שאי אפשר לשנות את העובד האחראי.
  */
 export function EditableField({
   value,
@@ -46,9 +50,9 @@ export function EditableField({
         disabled={readOnly}
         title={title}
         onChange={(e) => onSave(e.target.value || null)}
-        className={`rounded border border-transparent bg-transparent px-1.5 py-0.5 text-sm
-          hover:border-slate-300 hover:bg-white focus:border-slate-400 focus:bg-white focus:outline-none
-          disabled:cursor-not-allowed disabled:hover:border-transparent ${className}`}
+        className={`cursor-pointer rounded border border-slate-300 bg-white px-1.5 py-0.5 text-sm
+          hover:border-slate-500 focus:border-slate-500 focus:outline-none
+          disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 ${className}`}
       >
         <option value="">{placeholder}</option>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -73,8 +77,9 @@ export function EditableField({
         disabled={readOnly}
         title={title || (readOnly ? "צפייה בתאריך עבר — קריאה בלבד" : "לחץ לעריכה")}
         onClick={() => setEditing(true)}
-        className={`rounded border border-transparent px-1.5 py-0.5 text-right text-sm
-          hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:hover:border-transparent
+        className={`rounded border border-transparent border-b-slate-300 border-b-dashed px-1.5 py-0.5 text-right text-sm
+          hover:border-slate-300 hover:border-b-slate-400 hover:bg-white
+          disabled:cursor-not-allowed disabled:border-b-transparent disabled:hover:border-transparent
           ${value ? "" : "text-slate-400"} ${className}`}
       >
         {value || placeholder}

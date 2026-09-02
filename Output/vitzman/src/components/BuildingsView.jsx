@@ -5,6 +5,7 @@ import { fmtILS, fmtILSExact, fmtPct } from "../utils/money.js";
 import { buildingProfit, unassignedBuildings } from "../utils/profitability.js";
 import { addressKey } from "../utils/id.js";
 import { makeBuilding } from "../schema.js";
+import { EditableField } from "./ui/EditableField.jsx";
 import { validateAddress } from "../utils/entities.js";
 
 const SORTS = {
@@ -15,7 +16,7 @@ const SORTS = {
   cost: (a, b) => b.cost - a.cost,
 };
 
-export default function BuildingsView({ data, contractIndex, feeIndex, asOf, readOnly = false, add, onOpenBuilding }) {
+export default function BuildingsView({ data, contractIndex, feeIndex, asOf, readOnly = false, add, update, onOpenBuilding }) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("profit");
   const [filter, setFilter] = useState("active");
@@ -35,8 +36,12 @@ export default function BuildingsView({ data, contractIndex, feeIndex, asOf, rea
     onOpenBuilding(b.id);
   };
 
-  const empById = useMemo(
-    () => new Map(data.employees.map((e) => [e.id, e.name])),
+  /**
+   * ⚠ עובד לא-פעיל **נשאר ברשימה**, מסומן ככזה. אילו סיננו אותו, בניין
+   * שמשויך אליו היה מציג בורר ריק — כלומר נראה כאילו איבד את השיוך שלו.
+   */
+  const empOptions = useMemo(
+    () => data.employees.map((e) => ({ value: e.id, label: e.active ? e.name : `${e.name} (לא פעיל)` })),
     [data.employees]
   );
 
@@ -146,10 +151,22 @@ export default function BuildingsView({ data, contractIndex, feeIndex, asOf, rea
                       </span>
                     )}
                   </td>
-                  <td className="td text-slate-600">
-                    {r.assignedEmployeeId
-                      ? empById.get(r.assignedEmployeeId)
-                      : <span className="text-amber-700">— לא משויך</span>}
+                  {/*
+                    ⚠ שיוך העובד נערך **כאן**, ברשימה, ולא רק בדף הבניין.
+                    הבאנר מסנן ל-35 הבניינים ללא עובד אחראי — וזו בדיוק הרשימה
+                    שרוצים לרוץ עליה ולשייך אחד-אחרי-השני. `stopPropagation`
+                    מונע מהלחיצה על הבורר לפתוח את הבניין ולזרוק אותך מהרשימה.
+                  */}
+                  <td className="td text-slate-600" onClick={(e) => e.stopPropagation()}>
+                    <EditableField
+                      type="select"
+                      value={r.assignedEmployeeId || ""}
+                      readOnly={readOnly}
+                      placeholder="— לא משויך"
+                      options={empOptions}
+                      className={r.assignedEmployeeId ? "" : "border-amber-400 text-amber-800"}
+                      onSave={(v) => update("buildings", r.buildingId, { assignedEmployeeId: v })}
+                    />
                   </td>
                   <td className="td tnum">{fmtILS(r.income)}</td>
                   <td className="td tnum">{fmtILS(r.cost)}</td>

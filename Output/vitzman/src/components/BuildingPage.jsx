@@ -143,7 +143,7 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
             <Labelled label="עובד אחראי">
               <EditableField type="select" value={building.assignedEmployeeId || ""} readOnly={readOnly}
                 placeholder="— לא משויך"
-                options={data.employees.map((e) => ({ value: e.id, label: e.name }))}
+                options={data.employees.map((e) => ({ value: e.id, label: e.active ? e.name : `${e.name} (לא פעיל)` }))}
                 onSave={(v) => update("buildings", buildingId, { assignedEmployeeId: v })} />
             </Labelled>
             <Labelled label="אחראי איזור">

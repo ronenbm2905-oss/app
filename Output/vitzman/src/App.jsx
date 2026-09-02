@@ -126,6 +126,7 @@ export default function App() {
               asOf={asOf}
               readOnly={isHistorical}
               add={add}
+              update={update}
               onOpenBuilding={setOpenBuildingId}
             />
           ))}
