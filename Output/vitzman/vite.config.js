@@ -33,6 +33,17 @@ const STUB = fileURLToPath(new URL("./src/firebase-stub.js", import.meta.url));
 export default defineConfig(({ mode }) => ({
   plugins: [react(), ...(mode === "standalone" || mode === "cloudfile" ? [viteSingleFile()] : [])],
   server: { port: 5193 },
+  /**
+   * ⚠ **הדגל הזה מונע קריסה, לא סתם מייעל.**
+   *
+   * Vite טוען את `.env` **בכל המצבים**, ולכן ברגע שנוצר `.env` עם ה-config של
+   * רונן, גם הבנייה העצמאית קיבלה `isFirebaseConfigured === true` — בזמן
+   * ש-Firebase שם מוחלף ב-stub שזורק. התוצאה הייתה **מסך לבן** בקובץ שרונן
+   * פותח בלחיצה כפולה, בלי שום הודעה.
+   *
+   * נתפס בבדיקה שחיפשה את מפתח ה-API בתוך `dist-standalone`.
+   */
+  define: { __CLOUD_ENABLED__: JSON.stringify(mode !== "standalone") },
   resolve: mode === "standalone"
     ? { alias: { "firebase/app": STUB, "firebase/firestore": STUB, "firebase/auth": STUB } }
     : {},

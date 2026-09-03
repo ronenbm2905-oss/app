@@ -29,7 +29,12 @@ const cfg = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-export const isFirebaseConfigured = Boolean(cfg.apiKey && cfg.projectId);
+/**
+ * ⚠ `__CLOUD_ENABLED__` הוא `false` **רק בבנייה העצמאית**, שבה Firebase מוחלף
+ * ב-stub. בלי התנאי הזה, קיומו של `.env` היה מפעיל את מסלול הענן גם שם —
+ * ו-`initializeApp` של ה-stub זורק, כלומר מסך לבן בלי הודעה.
+ */
+export const isFirebaseConfigured = __CLOUD_ENABLED__ && Boolean(cfg.apiKey && cfg.projectId);
 export const firebaseConfig = cfg;
 
 /** מזהה הארגון. ארגון אחד — ויצמן. הנתיב מוכן לשני, אם אי־פעם יהיה. */
