@@ -86,6 +86,13 @@ await check("⚠ חבר לא מסיר את עצמו — זה היה נועל א�
   assertFails(updateDoc(doc(asRonen, "orgs", ORG), { members: ["andrei@example.com"] })));
 await check("⚠ ורשימה ריקה נחסמת",
   assertFails(updateDoc(doc(asRonen, "orgs", ORG), { members: [] })));
+await check("⚠ שלושה מורשים מותרים",
+  assertSucceeds(updateDoc(doc(asRonen, "orgs", ORG), {
+    members: ["ronen@example.com", "andrei@example.com", "third@example.com"] })));
+await check("⚠ רביעי נחסם — ״מאגר המנוהל בידי יחיד״ מוגבל ל-3",
+  assertFails(updateDoc(doc(asRonen, "orgs", ORG), {
+    members: ["ronen@example.com", "andrei@example.com", "third@example.com", "fourth@example.com"] })),
+  "הרביעי מוציא את המאגר מהקטגוריה המקלה בתקנות אבטחת מידע");
 await check("אי אפשר למחוק את מסמך הארגון", assertFails(deleteDoc(doc(asRonen, "orgs", ORG))));
 await check("אי אפשר ליצור ארגון שני", assertFails(setDoc(doc(asRonen, "orgs", "other"), { members: ["stranger@example.com"] })));
 

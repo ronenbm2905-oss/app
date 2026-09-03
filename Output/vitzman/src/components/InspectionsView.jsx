@@ -98,6 +98,34 @@ export default function InspectionsView({ data, applyBatch, asOf = todayISO(), r
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 px-4 py-6">
+      {/*
+        ⚠ M3 (עדי, חובה לתקן): ״בתוקף״ נראה כמו אישור תקינות ואינו כזה — הוא
+        נגזר מתאריך שהוקלד ידנית ומתדירות ברירת מחדל. המערכת לא ראתה תעודה, לא
+        יודעת אם הבדיקה עברה, ולא יודעת אם הבודק מוסמך. ו״פג תוקף״ הוא תיעוד
+        כתוב ומתוארך לכך שהחברה ידעה.
+        עיקרון הניסוח: disclaimer שאיש לא קורא אינו שווה כלום — ולכן שורה
+        קבועה קצרה, והפירוט מאחורי ״מידע נוסף״.
+      */}
+      <details className="card border-slate-200 px-4 py-2.5 text-sm text-slate-600">
+        <summary className="cursor-pointer list-none">
+          המסך מתעד ביקורות שדווחו — הוא <b>אינו אישור תקינות</b> ואינו תחליף
+          לבדיקת בעל מקצוע מוסמך.
+          <span className="mr-2 text-xs text-slate-400 underline">מידע נוסף</span>
+        </summary>
+        <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600">
+          <p className="font-semibold text-slate-700">מה המסך הזה כן אומר, ומה הוא לא</p>
+          <p>
+            המערכת מציגה את מה שהוזן בה: מתי דווחה הביקורת האחרונה, ומתי היא
+            צפויה לפי התדירות שנקבעה. <b>היא אינה בודקת דבר בפועל.</b>
+          </p>
+          <ul className="list-inside list-disc space-y-1">
+            <li>״בתוקף״ פירושו שהמועד הבא לפי הרישום טרם הגיע — לא שהמערכת תקינה ולא שהבדיקה עברה בהצלחה.</li>
+            <li>״מעולם לא תועד״ אינו אומר שלא בוצעה בדיקה. הוא אומר שהיא לא נרשמה כאן.</li>
+            <li>התדירויות הן ברירות מחדל מקובלות, <b>לא קביעה משפטית</b>. התדירות המחייבת נקבעת לפי הדין, לפי דרישות רשות הכבאות והמבטח, ולפי הוראות היצרן — וניתן להתאים אותה לכל בניין בנפרד.</li>
+            <li>רק בעל מקצוע מוסמך רשאי לבצע את הבדיקות ולהנפיק אישור. <b>תעודת הבדיקה שלו — ולא המסך הזה — היא המסמך הקובע.</b></li>
+          </ul>
+        </div>
+      </details>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile label="פג תוקף" value={summary.counts.overdue} tone={summary.counts.overdue ? "bad" : "good"}
           hint="בוצעה בעבר, ועבר מועדה" />

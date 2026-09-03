@@ -66,9 +66,14 @@ export default function SettingsView({ data, contractIndex, asOf = todayISO(), r
       setMemberError(`עדכון המורשים נכשל: ${e.message}`);
     }
   };
+  const MEMBER_CAP = 3;
   const addMember = () => {
     const email = newMember.trim().toLowerCase();
     if (!email) return;
+    if (auth.members.length >= MEMBER_CAP) {
+      setMemberError(`הרשימה מלאה (${MEMBER_CAP}). הסר מישהו לפני שתוסיף.`);
+      return;
+    }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setMemberError("כתובת מייל לא תקינה"); return; }
     if (auth.members.includes(email)) { setMemberError("הכתובת כבר ברשימה"); return; }
     saveMembers([...auth.members, email]);
@@ -126,7 +131,7 @@ export default function SettingsView({ data, contractIndex, asOf = todayISO(), r
           <div className="flex flex-wrap items-baseline gap-2 border-b border-slate-200 px-4 py-3">
             <IconCog className="h-4 w-4 text-slate-500" />
             <h2 className="text-sm font-semibold text-slate-700">
-              גישה למערכת ({auth.members.length})
+              גישה למערכת ({auth.members.length} מתוך 3)
             </h2>
             <span className="text-xs text-slate-500">
               כל מי שברשימה רואה וכותב הכול — אין הסתרה ואין תפקידים
@@ -158,12 +163,30 @@ export default function SettingsView({ data, contractIndex, asOf = todayISO(), r
               placeholder="כתובת Gmail של חבר צוות…"
               className="min-w-[16rem] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
             />
-            <Button disabled={!newMember.trim()} onClick={addMember}><IconPlus /> הוספה</Button>
+            <Button disabled={!newMember.trim() || auth.members.length >= 3} onClick={addMember}>
+              <IconPlus /> הוספה
+            </Button>
             {memberError && <span className="text-xs text-red-700">{memberError}</span>}
           </div>
           <p className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs leading-relaxed text-slate-500">
             ⚠ הכתובת חייבת להיות זו שאיתה הוא מתחבר ל-Google. אחרי ההוספה הוא
             נכנס לאותה כתובת אתר ומתחבר — אין הזמנה במייל ואין סיסמה.
+          </p>
+          {/*
+            ⚠ התקרה אינה שרירותית והיא נאכפת גם ב-`firestore.rules`. תקנות אבטחת
+            מידע מכירות ב״מאגר המנוהל בידי יחיד״ — הקטגוריה עם החובות המצומצמות
+            ביותר — ואחד מתנאיה הוא היחיד + לכל היותר שני בעלי הרשאה נוספים.
+          */}
+          <p className={`border-t px-4 py-2 text-xs leading-relaxed ${
+            auth.members.length >= 3
+              ? "border-amber-200 bg-amber-50 text-amber-900"
+              : "border-slate-100 bg-slate-50 text-slate-500"}`}>
+            {auth.members.length >= 3 ? <b>הרשימה מלאה. </b> : null}
+            המערכת מוגבלת ל-3 מורשים. זו אינה מגבלה טכנית אלא <b>קו משפטי</b>:
+            מאגר בניהול יחיד עם עד שני בעלי הרשאה נוספים נהנה מהחובות
+            המצומצמות ביותר בתקנות אבטחת מידע. מורשה רביעי מוציא את המאגר
+            מהקטגוריה ומחייב נוהל אבטחה כתוב, תיעוד גישה, הדרכות וביקורת
+            תקופתית. אם באמת צריך רביעי — זו שיחה עם עורך דין, לא שינוי הגדרה.
           </p>
         </div>
       )}
@@ -236,9 +259,27 @@ export default function SettingsView({ data, contractIndex, asOf = todayISO(), r
                       <EditableField value={v.name} readOnly={readOnly}
                         onSave={(x) => update("vendors", v.id, { name: x })} />
                     </td>
+                    {/*
+                      ⚠ M2 (עדי): ספק שמשויך לחוזים אינו ניתן למחיקה — נכון,
+                      כי מחיקה הייתה שוברת את ההיסטוריה. אבל **ההיסטוריה צריכה
+                      את השם, לא את הטלפון.** בלי הכפתור הזה טלפון של ספק
+                      לא-פעיל היה נשמר לנצח בלי שום דרך להסירו — וזה הביטוי
+                      המעשי היחיד של צמצום מידע במערכת.
+                    */}
                     <td className="td tnum text-slate-600">
-                      <EditableField value={v.phone} readOnly={readOnly} placeholder="—"
-                        onSave={(x) => update("vendors", v.id, { phone: x })} />
+                      <div className="flex items-center gap-1">
+                        <EditableField value={v.phone} readOnly={readOnly} placeholder="—"
+                          onSave={(x) => update("vendors", v.id, { phone: x })} />
+                        {v.phone && !readOnly && (
+                          <button
+                            onClick={() => update("vendors", v.id, { phone: "" })}
+                            title="ניקוי הטלפון — השם וההיסטוריה נשמרים"
+                            className="text-xs text-slate-400 hover:text-red-600"
+                          >
+                            ניקוי
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="td tnum text-slate-600">{s?.buildingCount ?? 0}</td>
                     <td className="td tnum">{s ? fmtILS(s.monthlySpend) : <span className="text-slate-300">—</span>}</td>

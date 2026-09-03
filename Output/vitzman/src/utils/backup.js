@@ -104,6 +104,17 @@ export function profitabilityCsv(data, asOf = todayISO()) {
 }
 
 /** דוח ביקורות: שורה לכל בניין×סוג, עם הסטטוס והמועד הבא. */
+/**
+ * ⚠ שורת סיום, לא שורת פתיח.
+ *
+ * קובץ הביקורות **יוצא מהמסך ומאבד את ההקשר** — קובץ שנשלח לוועד בית או
+ * למבטח וכותרתו ״ביקורות תקופתיות״ הוא מצג כלפי צד שלישי, וזה סיכון אחר
+ * לגמרי מהצגה פנימית. שורת פתיח הייתה בולטת יותר אבל שוברת קריאת CSV בכלים
+ * אוטומטיים; שורה אחרונה עם תא בודד אקסל בולע בשקט, והיא נוסעת עם הקובץ.
+ */
+export const INSPECTIONS_CSV_NOTICE =
+  "* רישום פנימי בלבד. אינו אישור תקינות ואינו תחליף לבדיקת בעל מקצוע מוסמך.";
+
 export function inspectionsCsv(data, asOf = todayISO()) {
   const idx = indexInspections(data.inspections);
   const active = data.buildings.filter((b) => b.status === "active");
@@ -121,7 +132,7 @@ export function inspectionsCsv(data, asOf = todayISO()) {
       ]);
     }
   }
-  return toCsv([header, ...rows]);
+  return toCsv([header, ...rows, [INSPECTIONS_CSV_NOTICE]]);
 }
 
 /** היסטוריית מחירים: כל שורת מחיר של כל חוזה + דמי הניהול. */

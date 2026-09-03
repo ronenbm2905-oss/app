@@ -11,19 +11,21 @@ import InspectionsView from "./components/InspectionsView.jsx";
 import VendorsView from "./components/VendorsView.jsx";
 import SettingsView from "./components/SettingsView.jsx";
 import AssignmentsView from "./components/AssignmentsView.jsx";
+import NotesReview from "./components/NotesReview.jsx";
 import AsOfBar from "./components/AsOfBar.jsx";
 import BackupBar from "./components/BackupBar.jsx";
 import { Button } from "./components/ui/Button.jsx";
-import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog, IconList } from "./components/ui/icons.jsx";
+import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog, IconList, IconNote } from "./components/ui/icons.jsx";
 import { todayISO, isISODate } from "./utils/dates.js";
 
 const TABS = [
   { id: "dashboard", label: "רווחיות", Icon: IconChart },
   { id: "buildings", label: "רווחיות לפי בניין", Icon: IconBuilding },
   { id: "assignments", label: "רשימת בניינים", Icon: IconList },
-  { id: "inspections", label: "ביקורות", Icon: IconShield },
+  { id: "inspections", label: "רישום ביקורות", Icon: IconShield },
   { id: "vendors", label: "ספקים", Icon: IconUsers },
   { id: "findings", label: "ממצאים בגיליון", Icon: IconWarning },
+  { id: "notes", label: "הערות", Icon: IconNote },
   { id: "settings", label: "ניהול", Icon: IconCog },
   { id: "backup", label: "גיבוי", Icon: IconDatabase },
 ];
@@ -202,6 +204,16 @@ export default function App() {
             asOf={asOf}
             readOnly={isHistorical}
             update={update}
+            applyBatch={applyBatch}
+            onOpenBuilding={openBuilding}
+          />
+        )}
+        {tab === "notes" && (
+          <NotesReview
+            data={data}
+            readOnly={isHistorical}
+            update={update}
+            remove={remove}
             applyBatch={applyBatch}
             onOpenBuilding={openBuilding}
           />

@@ -31,11 +31,14 @@ import { importWorkbook } from "../src/utils/importWorkbook.js";
 import { addMonths, daysBetween, fmtDate, todayISO } from "../src/utils/dates.js";
 import {
   makeBackup, validateBackup, backupFilename, toCsv, BOM,
-  profitabilityCsv, inspectionsCsv, priceHistoryCsv,
+  profitabilityCsv, inspectionsCsv, priceHistoryCsv, INSPECTIONS_CSV_NOTICE,
 } from "../src/utils/backup.js";
 import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
 import { addressKey } from "../src/utils/id.js";
 import { managerLoad, managerConflicts, knownManagers } from "../src/utils/managers.js";
+import {
+  classifyNote, reviewSummary, planStripAuthorPrefixes, stripAuthorPrefix,
+} from "../src/utils/notesReview.js";
 import {
   BATCH_LIMIT, chunkOps, stripUndefined, planUpdate, planAdd,
   planApplyBatch, planRemove, planRemoveMany, planReplaceAll,
@@ -884,7 +887,51 @@ if (!existsSync(SEED_XLSX)) {
 }
 
 // ============================================================================
-// 23. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 23. סבב מיון ההערות — דגל B5 של עדי
+// ============================================================================
+{
+  // ⚠ מכוון לרגישות ולא לדיוק: עדיף לסמן הערה תמימה מאשר לפספס טלפון.
+  for (const t of ["050-1234567", "0501234567", "03-5598796", "035598796",
+                   "התקשר ל-0549299622", "גלואופאר 039601215"]) {
+    ok(`מזוהה כטלפון: ${t}`, classifyNote({ text: t, kind: "general" }).hasPhone);
+  }
+  for (const t of ["1,699 ₪", "עלה מ-3550 ל-4200", "בניין 12", "2026-01-01"]) {
+    ok(`אינו טלפון: ${t}`, !classifyNote({ text: t, kind: "general" }).hasPhone);
+  }
+
+  // ⚠ ״USER:״ הוא ארטיפקט של אקסל ולא תוכן — הניקוי היחיד שבטוח אוטומטית
+  eq("קידומת USER מוסרת", stripAuthorPrefix("USER: שלמה עיני"), "שלמה עיני");
+  eq("גם User: קטן", stripAuthorPrefix("User: משהו"), "משהו");
+  eq("וגם עם רווחים", stripAuthorPrefix("  USER :  טקסט  "), "טקסט");
+  eq("טקסט בלי קידומת לא נפגע", stripAuthorPrefix("שלמה עיני"), "שלמה עיני");
+  ok("״user״ באמצע המשפט לא נחתך", stripAuthorPrefix("שאל את user: מי").includes("שאל את"));
+
+  // דירוג: טלפון קודם לטקסט ארוך, וטקסט ארוך קודם לקצר
+  const phone = classifyNote({ text: "050-1234567", kind: "general" });
+  const long = classifyNote({ text: "א".repeat(80), kind: "general" });
+  const short = classifyNote({ text: "בסדר", kind: "priceChange" });
+  eq("טלפון = חומרה 2", phone.severity, 2);
+  eq("טקסט חופשי ארוך = 1", long.severity, 1);
+  eq("קצר ומובנה = 0", short.severity, 0);
+  ok("הערה מובנית ארוכה אינה מסומנת כטקסט חופשי",
+    classifyNote({ text: "א".repeat(80), kind: "priceChange" }).severity === 0,
+    "priceChange נגזר ממבנה הגיליון, לא נכתב חופשית");
+
+  // תוכנית הניקוי היא תוכנית — לא ביצוע
+  const plan = planStripAuthorPrefixes([
+    { id: "n1", text: "USER: א", kind: "general" },
+    { id: "n2", text: "ב", kind: "general" },
+  ]);
+  eq("רק ההערה עם הקידומת נכנסת לתוכנית", plan.updates.length, 1);
+  eq("והיא מנוקה", plan.updates[0].patch.text, "א");
+  eq("התוכנית לא יוצרת כלום", plan.creates.length, 0);
+
+  eq("סיכום על רשימה ריקה לא מפיל", reviewSummary([]).total, 0);
+  eq("undefined לא מפיל", reviewSummary(undefined).total, 0);
+}
+
+// ============================================================================
+// 24. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
@@ -932,7 +979,13 @@ if (!existsSync(SEED)) {
     const prof = profitabilityCsv(data, "2026-08-30").split("\n");
     eq("דוח הרווחיות: שורה לכל בניין פעיל", prof.length - 1, 131);
     const insp = inspectionsCsv(data, "2026-08-30").split("\n");
-    eq("דוח הביקורות: שורה לכל בניין×סוג", insp.length - 1, 524);
+    // ⚠ 524 שורות + שורת ה-disclaimer שנוסעת עם הקובץ (M3, עדי)
+    eq("דוח הביקורות: שורה לכל בניין×סוג", insp.length - 2, 524);
+    ok("⚠ ושורת הסיום מבהירה שזה אינו אישור תקינות",
+      insp[insp.length - 1].includes("אינו אישור תקינות"),
+      "הקובץ יוצא מהמסך ומאבד את ההקשר — הוא מצג כלפי צד שלישי");
+    ok("דוח הרווחיות לא קיבל שורת סיום בטעות",
+      !prof[prof.length - 1].includes(INSPECTIONS_CSV_NOTICE));
     const hist = priceHistoryCsv(data).split("\n");
     eq("היסטוריית המחירים: שורה לכל חוזה והסכם",
       hist.length - 1, data.contracts.length + data.feeAgreements.length);
@@ -977,6 +1030,22 @@ if (!existsSync(SEED)) {
     ok("חסרי מנהל איזור פחותים מחסרי עובד אחראי",
       ml.unmanaged < unassignedBuildings(data.buildings).length,
       `${ml.unmanaged} מול ${unassignedBuildings(data.buildings).length}`);
+  }
+
+  // --- סבב מיון ההערות מול 212 ההערות האמיתיות ---
+  {
+    const sum = reviewSummary(data.notes);
+    eq("212 הערות בסך הכל", sum.total, 212);
+    ok("⚠ נמצאו הערות עם מספר שנראה כמו טלפון", sum.withPhone > 0,
+      "אם זה 0 — הסיווג לא עובד על הנתונים האמיתיים, ודגל B5 לא מכוסה");
+    ok("ויש הערות עם קידומת USER", sum.withAuthorPrefix > 0);
+    ok("הסכום מתחלק בלי לאבד הערות",
+      sum.clean + sum.withPhone + sum.freeformLong === sum.total,
+      `${sum.clean}+${sum.withPhone}+${sum.freeformLong} מול ${sum.total}`);
+    const plan = planStripAuthorPrefixes(data.notes);
+    eq("תוכנית הניקוי מכסה בדיוק את אלה עם הקידומת", plan.updates.length, sum.withAuthorPrefix);
+    ok("ואף טקסט מנוקה אינו ריק", plan.updates.every((u) => u.patch.text.length > 0),
+      "הערה שהופכת לריקה היא הערה שאיבדנו");
   }
 
   // --- פרוסה 2: ביקורות ---
