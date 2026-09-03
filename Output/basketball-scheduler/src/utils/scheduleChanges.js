@@ -119,10 +119,25 @@ export function trimChanges(changes, now) {
 // notice has moved, so an edit to teams, players or the allowlist writes no log at all.
 export function withScheduleChanges(prev, next, now = new Date().toISOString()) {
   if (!next || !Array.isArray(next.sessions)) return next;
-  if (prev?.sessions === next.sessions) return next; // same array — nothing touched them
-  const found = diffSessions(prev?.sessions, next.sessions, now);
-  if (found.length === 0) return next;
-  return { ...next, changes: trimChanges([...arr(next.changes), ...collapseBulk(found, now)], now) };
+
+  // Trim on EVERY save, not only on one that produced an entry.
+  //
+  // Tying the purge to "a training moved" makes deletion a function of activity rather
+  // than of the clock — and the case that breaks is exactly the one the deletion procedure
+  // gives as its example: a coach leaving at the end of the season. Nobody moves a training
+  // during the summer break, so nothing would be trimmed until August, while the log still
+  // held dated records about people who no longer work here. Costs nothing: `save` writes
+  // the whole document either way.
+  const kept = trimChanges(next.changes, now);
+  const found =
+    prev?.sessions === next.sessions ? [] : diffSessions(prev?.sessions, next.sessions, now);
+
+  if (found.length === 0) {
+    // Still return the object untouched when there was nothing to expire, so a save that
+    // touches neither sessions nor stale entries stays a no-op.
+    return arr(next.changes).length === kept.length ? next : { ...next, changes: kept };
+  }
+  return { ...next, changes: trimChanges([...kept, ...collapseBulk(found, now)], now) };
 }
 
 // ---------- reading ----------

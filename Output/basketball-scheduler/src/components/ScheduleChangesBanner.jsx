@@ -40,19 +40,23 @@ export function ScheduleChangesBanner({ data, coachId, onOpen }) {
   const fresh = changesForCoach(data?.changes, coachId, seenAt);
   if (fresh.length === 0) return null;
 
+  const names = { halls: data?.halls || [], teams: data?.teams || [] };
+  // Four is enough to tell the story; the rest are one line away on the board itself.
+  const shown = fresh.slice(0, 4);
+
   const dismiss = () => {
-    // Stamped with the newest entry's own time, not with the clock. A change saved while
-    // this banner was on screen would otherwise be marked read without ever being seen.
-    const newest = fresh[0]?.at || new Date().toISOString();
+    // Stamped with the OLDEST of the entries actually on screen, not the newest of them
+    // all. Stamping `fresh[0]` would mark a coach with nine changes as having read all nine
+    // when four were shown — the five behind "ועוד N…" would vanish unseen.
+    //
+    // Known limit: entries written in one save share an `at`, so dismissing still clears
+    // that whole batch. Hence the button says what it does rather than implying more.
+    const newest = (shown[shown.length - 1] || fresh[0])?.at || new Date().toISOString();
     try {
       window.localStorage.setItem(SEEN_KEY, JSON.stringify({ ...readSeen(), [coachId]: newest }));
     } catch { /* quota */ }
     setSeenAt(newest);
   };
-
-  const names = { halls: data?.halls || [], teams: data?.teams || [] };
-  // Four is enough to tell the story; the rest are one line away on the board itself.
-  const shown = fresh.slice(0, 4);
 
   return (
     <div className="no-print rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 flex items-start gap-2.5" dir="rtl">
@@ -69,6 +73,11 @@ export function ScheduleChangesBanner({ data, coachId, onOpen }) {
         {fresh.length > shown.length && (
           <p className="text-xs text-rose-700 mt-0.5">ועוד {fresh.length - shown.length}…</p>
         )}
+        {/* §5 of the terms does the legal work, but a coach reading this at 07:40 is not
+            reading the terms. The sentence belongs where the reliance happens. */}
+        <p className="text-xs text-rose-700 mt-1">
+          הודעה בשירות בלבד — ההודעה הרשמית מגיעה בערוץ של המועדון.
+        </p>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
         {onOpen && (
@@ -80,7 +89,7 @@ export function ScheduleChangesBanner({ data, coachId, onOpen }) {
           onClick={dismiss}
           className="text-xs text-rose-700 hover:text-rose-900 flex items-center gap-1"
         >
-          <IconCheck size={13} /> ראיתי
+          <IconCheck size={13} /> ראיתי — סימון הכל כנקרא
         </button>
       </div>
     </div>

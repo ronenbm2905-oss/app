@@ -585,9 +585,9 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
               <button
                 onClick={shareChanges}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-rose-400 text-rose-700 bg-white hover:bg-rose-50"
-                title="טקסט קצר של מה השתנה השבוע — לשליחה בוואטסאפ"
+                title="טקסט קצר של מה השתנה השבוע — לשליחה בקבוצת המאמנים. לא להורים: ההודעה נושאת שמות מאמנים ושעות עבודה"
               >
-                🔔 {copied === "shared" ? "נשלח ✓"
+                <span aria-hidden="true">🔔</span> {copied === "shared" ? "נשלח ✓"
                   : copied === "copied" ? "הועתק ✓"
                   : copied === "failed" ? "לא ניתן להעתיק"
                   : "מה השתנה — לוואטסאפ"}

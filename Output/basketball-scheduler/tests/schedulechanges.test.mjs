@@ -118,6 +118,23 @@ t("a document with no sessions array is returned untouched", () => {
   const next = { teams: [] };
   assert.equal(withScheduleChanges({ sessions: [] }, next, NOW), next);
 });
+t("GATE #11 M1: a save that touched no session STILL expires stale entries", () => {
+  // Trimming only on a save that produced an entry makes deletion a function of activity
+  // rather than of the clock — and it breaks in exactly the case the deletion procedure
+  // gives as its example: a coach leaving at the end of the season, when nobody is moving
+  // trainings and so nothing gets purged.
+  const stale = { id: "old", at: "2026-01-01T00:00:00.000Z", coachId: "c1", kind: "added" };
+  const shared = [S()];
+  const next = { sessions: shared, changes: [stale], teams: [] };
+  const out = withScheduleChanges({ sessions: shared, changes: [stale] }, next, NOW);
+  assert.deepEqual(out.changes, [], "the expired entry should be gone");
+});
+t("...and a save with nothing stale and no session change is still a no-op", () => {
+  const shared = [S()];
+  const fresh = { id: "f", at: NOW, coachId: "c1", kind: "added" };
+  const next = { sessions: shared, changes: [fresh] };
+  assert.equal(withScheduleChanges({ sessions: shared }, next, NOW), next, "same object back");
+});
 
 console.log("- the log stays bounded: it lives on a document with a 1 MB ceiling -");
 t("entries older than the window are dropped", () => {

@@ -227,7 +227,10 @@ export default function App() {
 
         {/* Only a coach sees this. The manager made the change; telling them about it is
             noise, and noise on a banner is how banners stop being read. */}
-        <div className="mb-4 empty:hidden">
+        {/* aria-live sits on the WRAPPER, which is always mounted. A live region created at
+            the same moment as its content is not announced by some screen readers — and this
+            banner arrives mid-session through onSnapshot, while the coach is on another tab. */}
+        <div className="mb-4 empty:hidden" aria-live="polite" aria-atomic="false">
           <ScheduleChangesBanner data={data} coachId={myCoachId} onOpen={() => setTab("coach")} />
         </div>
 
