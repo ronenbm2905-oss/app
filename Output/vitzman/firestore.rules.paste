@@ -1,0 +1,63 @@
+rules_version = '2';
+
+// Vitzman building budget - Firestore security rules
+// One team, one picture: whoever is on the members list reads and writes
+// everything. Nobody else reads anything.
+//
+// WARNING: "signed in with Google" is NOT "authorized". Everyone on earth has
+// a Google account. Without the members check, request.auth != null would open
+// 131 addresses, 85 vendor phone numbers and every contract amount to anyone
+// who found the URL.
+//
+// WARNING: the members list is capped at 3. This is a legal line, not a
+// technical one - an Israeli database managed by a sole owner plus at most two
+// additional authorized users falls in the lightest obligations tier of the
+// data security regulations. A fourth authorized user pulls the database out
+// of that category. Talk to a lawyer before raising it.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /orgs/{orgId} {
+      // These functions MUST live here, not at the root: $(orgId) only exists
+      // inside the match that binds it. At the root it is null, every get()
+      // returns "Null value error", and that denies EVERYONE - including the
+      // owner. Caught by the emulator tests.
+      function members() {
+        return get(/databases/$(database)/documents/orgs/$(orgId)).data.members;
+      }
+      function isMember() {
+        return request.auth != null
+          && request.auth.token.email != null
+          && request.auth.token.email.lower() in members();
+      }
+
+      // The org doc is read by someone whose authorization is not yet known -
+      // this read is what determines it. So the condition is on the requested
+      // document, not isMember(), which would be circular.
+      allow read: if request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() in resource.data.members;
+
+      // A member may add a member, but may not remove themselves and lock
+      // everyone out: the writer must remain on the list after the change.
+      allow update: if isMember()
+        && request.resource.data.members is list
+        && request.resource.data.members.size() > 0
+        && request.resource.data.members.size() <= 3
+        && request.auth.token.email.lower() in request.resource.data.members;
+
+      allow create, delete: if false;
+
+      // All the data. No roles - a member reads and writes everything.
+      match /{collection}/{docId} {
+        allow read, write: if isMember();
+      }
+    }
+
+    // Everything else is closed. Deny by default, not allow.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

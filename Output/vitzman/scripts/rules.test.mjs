@@ -18,6 +18,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+/**
+ * ⚠ `RULES_FILE` מאפשר לבדוק את **הטקסט המדויק שרונן מדביק בקונסולה**, ולא
+ * רק את הקובץ שבריפו. הגרסה להדבקה נקייה מהערות בעברית — טקסט דו-כיווני
+ * בעורך קוד בדפדפן עלול להישבר, ובלי הבדיקה הזאת היינו מגלים את זה רק
+ * כשהכללים לא מתקמפלים אצלו.
+ */
+const RULES_FILE = process.env.RULES_FILE || "firestore.rules";
 const ORG = "vitzman";
 
 const RONEN = { email: "ronen@example.com", email_verified: true };
@@ -39,7 +46,7 @@ const check = async (name, promise) => {
 
 const env = await initializeTestEnvironment({
   projectId: "vitzman-rules-test",
-  firestore: { rules: readFileSync(resolve(ROOT, "firestore.rules"), "utf8"), host: "127.0.0.1", port: 8080 },
+  firestore: { rules: readFileSync(resolve(ROOT, RULES_FILE), "utf8"), host: "127.0.0.1", port: 8080 },
 });
 
 // מצב פתיחה: הארגון קיים, רונן ואנדריי ברשימה, ויש בניין אחד.
