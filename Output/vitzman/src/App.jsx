@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useData } from "./hooks/useData.js";
+import { useAuth } from "./hooks/useAuth.js";
+import SignInScreen from "./components/SignInScreen.jsx";
 import ImportView from "./components/ImportView.jsx";
 import BuildingsView from "./components/BuildingsView.jsx";
 import BuildingPage from "./components/BuildingPage.jsx";
@@ -27,8 +29,13 @@ const TABS = [
 ];
 
 export default function App() {
-  const store = useData();
-  const { data, contractIndex, feeIndex, replaceAll, update, add, applyBatch, remove, removeMany, reset, error } = store;
+  const auth = useAuth();
+  const store = useData(auth);
+  const {
+    data, contractIndex, feeIndex, replaceAll, update, add, applyBatch,
+    remove, removeMany, reset, uploadLocalToCloud, localSnapshot,
+    cloud, loading, saving, error,
+  } = store;
   const [tab, setTab] = useState("dashboard");
   const [openBuildingId, setOpenBuildingId] = useState(null);
   const [asOf, setAsOf] = useState(todayISO);
@@ -43,7 +50,46 @@ export default function App() {
    */
   const isHistorical = isISODate(asOf) && asOf !== todayISO();
 
-  if (!data.buildings.length) return <ImportView onLoad={replaceAll} />;
+  // --- שער הכניסה: רלוונטי רק כשיש ענן. במצב מקומי אין למי להתחבר. ---
+  if (auth.cloud && !auth.allowed) {
+    const state = !auth.authReady || (auth.user && !auth.membersLoaded)
+      ? "loading"
+      : auth.user ? "denied" : "signedOut";
+    return (
+      <SignInScreen
+        state={state}
+        email={auth.email}
+        onSignIn={auth.signIn}
+        onSignOut={auth.signOut}
+        error={auth.error}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+        טוען את הנתונים מהענן…
+      </div>
+    );
+  }
+
+  /**
+   * ⚠ במצב ענן, מסד ריק אינו בהכרח "צריך לייבא" — הוא יכול להיות גם "יש
+   * נתונים מקומיים שטרם הועלו". `ImportView` מקבל את שני המסלולים כדי
+   * שרונן לא ייאלץ לגרור שוב אקסל שכבר ייבא.
+   */
+  const pendingLocal = cloud ? localSnapshot().buildings.length : 0;
+
+  if (!data.buildings.length) {
+    return (
+      <ImportView
+        onLoad={replaceAll}
+        pendingLocal={pendingLocal}
+        onUploadLocal={uploadLocalToCloud}
+      />
+    );
+  }
 
   const openBuilding = (id) => { setOpenBuildingId(id); setTab("buildings"); };
 
@@ -72,13 +118,29 @@ export default function App() {
             <span className="tnum">
               {data.buildings.filter((b) => b.status === "active").length} פעילים
             </span>
+            {cloud ? (
+              <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-emerald-700"
+                title={`מחובר כ-${auth.email} · השינויים מסתנכרנים לכל הצוות`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${saving ? "bg-amber-500" : "bg-emerald-500"}`} />
+                {saving ? "שומר…" : "ענן"}
+              </span>
+            ) : (
+              <span className="rounded bg-slate-100 px-2 py-1 text-slate-500"
+                title="הנתונים בדפדפן הזה בלבד. הגדרת .env תעביר לענן.">
+                מקומי
+              </span>
+            )}
             <Button
               onClick={() => {
-                if (confirm("לאפס את כל הנתונים בדפדפן הזה ולחזור למסך הייבוא?")) reset();
+                const where = cloud ? "בענן, לכל הצוות" : "בדפדפן הזה";
+                if (confirm(`לאפס את כל הנתונים ${where} ולחזור למסך הייבוא?`)) reset();
               }}
             >
               איפוס
             </Button>
+            {cloud && (
+              <Button onClick={auth.signOut} title={auth.email}>יציאה</Button>
+            )}
           </div>
         </div>
         {error && (
@@ -153,6 +215,7 @@ export default function App() {
             update={update}
             add={add}
             remove={remove}
+            auth={auth}
           />
         )}
         {tab === "backup" && (
@@ -164,7 +227,9 @@ export default function App() {
       </main>
 
       <footer className="mx-auto max-w-6xl px-4 py-8 text-center text-xs text-slate-400">
-        הנתונים נשמרים בדפדפן הזה בלבד. אין ענן, אין שליחה החוצה, ואין כניסה ל-git.
+        {cloud
+          ? `מחובר כ-${auth.email}. הנתונים בענן ומשותפים לכל חברי הצוות.`
+          : "הנתונים נשמרים בדפדפן הזה בלבד. אין ענן, אין שליחה החוצה, ואין כניסה ל-git."}
       </footer>
     </div>
   );

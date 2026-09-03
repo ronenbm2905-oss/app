@@ -39,3 +39,8 @@ Thumbs.db
 # --- Firebase ---
 .firebase/
 firebase-debug.log
+
+# --- אמולטור Firebase (בדיקות הכללים ושכבת הנתונים) ---
+firestore-debug.log
+ui-debug.log
+.firebase/

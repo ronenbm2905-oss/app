@@ -9,7 +9,12 @@
     "preview": "vite preview",
     "smoke": "node scripts/smoke.mjs",
     "import:vitzman": "node scripts/import-vitzman.mjs",
-    "build:standalone": "vite build --mode standalone"
+    "build:standalone": "vite build --mode standalone",
+    "fb": "firebase-tools",
+    "deploy:rules": "firebase-tools deploy --only firestore:rules",
+    "deploy:hosting": "npm run build && firebase-tools deploy --only hosting",
+    "test:rules": "firebase emulators:exec --only firestore --project vitzman-rules-test \"node scripts/rules.test.mjs\"",
+    "test:cloud": "firebase emulators:exec --only firestore --project vitzman-cloud-test \"node scripts/cloud.test.mjs\""
   },
   "dependencies": {
     "firebase": "^10.12.0",
@@ -18,8 +23,10 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.19",
+    "firebase-tools": "^15.29.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "vite": "^5.3.0",

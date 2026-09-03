@@ -1,0 +1,65 @@
+rules_version = '2';
+
+// ============================================================================
+// firestore.rules — ההגנה האמיתית. הקליינט מסתיר כפתורים; כאן חוסמים.
+//
+// המודל שרונן הכריע: **צוות אחד, תמונה אחת** — "כולם רואים אותו דבר, אין
+// הסתרה לכלום". ולכן אין תפקידים ואין בידול: מי שברשימת המורשים רואה וכותב
+// הכול; מי שאינו — לא רואה כלום.
+//
+// ⚠ ההבחנה שחייבת להישמר: **"מחובר ל-Google" אינו "מורשה".** לכל אדם בעולם
+// יש חשבון Google. בלי בדיקת ה-allowlist, `request.auth != null` היה פותח
+// 131 כתובות, 85 ספקים עם טלפונים וסכומי חוזה לכל מי שמצא את הכתובת.
+//
+// ⚠ `firebase deploy` חסום ל-Claude. הקובץ הזה **חייב** להיפרס ידנית, אחרת
+// הקונסולה מריצה ברירת מחדל (`if false` — האפליקציה לא תקרא כלום, או גרוע
+// מכך `if true` בפרויקט test-mode — הכול פתוח). ראה DEPLOY.md.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /orgs/{orgId} {
+      // ⚠ **הפונקציות חייבות לשבת כאן ולא בשורש.** `$(orgId)` קיים רק בתוך
+      // ה-`match` שקושר אותו; בשורש הוא null, וכל `get()` מחזיר "Null value
+      // error" — כלומר **חסימה של כולם**, כולל רונן. האמולטור תפס את זה; לולא
+      // הבדיקות החיוביות זה היה מגיע לייצור כ"טעינת הנתונים נכשלה".
+      function members() {
+        return get(/databases/$(database)/documents/orgs/$(orgId)).data.members;
+      }
+      function isMember() {
+        return request.auth != null
+          && request.auth.token.email != null
+          && request.auth.token.email.lower() in members();
+      }
+
+      // ⚠ מסמך הארגון נקרא **על ידי מי שעדיין לא ידוע אם הוא מורשה** — זו
+      // בדיוק הקריאה שקובעת זאת. לכן התנאי הוא על המסמך שמבקשים, ולא
+      // `isMember()` שהיה יוצר תלות מעגלית: כדי לדעת אם אתה חבר צריך לקרוא
+      // את המסמך, וכדי לקרוא אותו צריך להיות חבר.
+      allow read: if request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() in resource.data.members;
+
+      // ⚠ **חבר יכול להוסיף חבר, אבל לא להסיר את עצמו מהרשימה בטעות ולנעול
+      // את כולם החוצה.** הכלל דורש שהכותב יישאר ברשימה אחרי השינוי — כך אין
+      // מצב שבו הארגון נשאר בלי אף מורשה ואי אפשר לתקן מהממשק.
+      allow update: if isMember()
+        && request.resource.data.members is list
+        && request.resource.data.members.size() > 0
+        && request.auth.token.email.lower() in request.resource.data.members;
+
+      allow create, delete: if false;   // הארגון נוצר ידנית בקונסולה, פעם אחת.
+
+      // כל שאר הנתונים. אין תפקידים — חבר רואה וכותב הכול, לפי הכרעת רונן.
+      match /{collection}/{docId} {
+        allow read, write: if isMember();
+      }
+    }
+
+    // כל השאר סגור. ברירת מחדל של deny, ולא של allow.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

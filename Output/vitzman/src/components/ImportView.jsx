@@ -14,7 +14,7 @@ import { validateBackup } from "../utils/backup.js";
  *
  * מקבל גם קובץ גיבוי או `seed/vitzman.json`, למי שכן מריץ מהטרמינל.
  */
-export default function ImportView({ onLoad }) {
+export default function ImportView({ onLoad, pendingLocal = 0, onUploadLocal }) {
   const fileRef = useRef(null);
   const [error, setError] = useState("");
   const [checks, setChecks] = useState(null);
@@ -70,6 +70,26 @@ export default function ImportView({ onLoad }) {
             מתקבל גם קובץ גיבוי (<code>.json</code>) שנשמר קודם.
           </span>
         </p>
+
+        {/*
+          ⚠ מסד ריק בענן אינו בהכרח ״צריך לייבא״. אם באותו דפדפן כבר יושבים
+          נתונים מקומיים, גרירת האקסל מחדש הייתה מוחקת כל עריכה שנעשתה מאז
+          הייבוא — מחירים, שיוכים, ביקורות. לכן ההעלאה מוצעת **לפני** הגרירה.
+        */}
+        {pendingLocal > 0 && onUploadLocal && (
+          <div className="mt-6 rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-right">
+            <div className="text-sm font-semibold text-emerald-900">
+              נמצאו {pendingLocal} בניינים שמורים בדפדפן הזה
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-emerald-800">
+              אלה הנתונים שעבדת עליהם עד היום, כולל כל העריכות. העלה אותם לענן
+              במקום לייבא מחדש מהאקסל — ייבוא חוזר היה מוחק כל שינוי שעשית מאז.
+            </p>
+            <Button variant="primary" className="mt-3" onClick={onUploadLocal}>
+              העלאת הנתונים המקומיים לענן
+            </Button>
+          </div>
+        )}
 
         <div className="mt-6">
           <Button variant="primary" disabled={busy} onClick={() => fileRef.current?.click()}>

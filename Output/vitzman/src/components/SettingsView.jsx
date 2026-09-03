@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db, ORG_ID } from "../firebase.js";
 import { Button } from "./ui/Button.jsx";
 import { EditableField } from "./ui/EditableField.jsx";
-import { IconUsers, IconWarning, IconPlus } from "./ui/icons.jsx";
+import { IconUsers, IconWarning, IconPlus, IconCog } from "./ui/icons.jsx";
 import { fmtILS } from "../utils/money.js";
 import { todayISO } from "../utils/dates.js";
 import { makeVendor, makeEmployee } from "../schema.js";
@@ -16,7 +18,9 @@ import { canDeleteVendor, canDeleteEmployee, employeeUsage } from "../utils/enti
  * `canDeleteEmployee`) שמחזיר סיבה, והכפתור מושבת עם הסיבה כ-tooltip.
  * הכלל: אי אפשר למחוק ישות שמישהו מצביע עליה — קודם מחליפים אותה.
  */
-export default function SettingsView({ data, contractIndex, asOf = todayISO(), readOnly = false, update, add, remove }) {
+export default function SettingsView({ data, contractIndex, asOf = todayISO(), readOnly = false, update, add, remove, auth = {} }) {
+  const [newMember, setNewMember] = useState("");
+  const [memberError, setMemberError] = useState("");
   const [newVendor, setNewVendor] = useState("");
   const [newEmployee, setNewEmployee] = useState("");
   const [confirm, setConfirm] = useState(null); // { kind, id, name, reason }
@@ -45,6 +49,32 @@ export default function SettingsView({ data, contractIndex, asOf = todayISO(), r
     add("employees", makeEmployee({ name }));
     setNewEmployee("");
   };
+
+  /**
+   * ניהול המורשים. הרשימה יושבת ב-`orgs/{ORG_ID}` ונאכפת ב-`firestore.rules`;
+   * המסך הזה הוא רק הדרך הנוחה לערוך אותה.
+   *
+   * ⚠ **אי אפשר להסיר את עצמך.** לא נימוס אלא הגנה: ארגון שנשאר בלי אף מורשה
+   * אינו ניתן לתיקון מהממשק — הכללים חוסמים את מי שכבר אינו ברשימה, כולל את מי
+   * שהסיר את עצמו רגע קודם. הכלל נאכף גם ב-rules, לא רק כאן.
+   */
+  const saveMembers = async (next) => {
+    setMemberError("");
+    try {
+      await updateDoc(doc(db, "orgs", ORG_ID), { members: next });
+    } catch (e) {
+      setMemberError(`עדכון המורשים נכשל: ${e.message}`);
+    }
+  };
+  const addMember = () => {
+    const email = newMember.trim().toLowerCase();
+    if (!email) return;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setMemberError("כתובת מייל לא תקינה"); return; }
+    if (auth.members.includes(email)) { setMemberError("הכתובת כבר ברשימה"); return; }
+    saveMembers([...auth.members, email]);
+    setNewMember("");
+  };
+  const removeMember = (email) => saveMembers(auth.members.filter((m) => m !== email));
 
   const askDelete = (kind, id, name) => {
     const guard = kind === "vendors"
@@ -87,6 +117,54 @@ export default function SettingsView({ data, contractIndex, asOf = todayISO(), r
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* --- מי מורשה להיכנס למערכת --- */}
+      {auth.cloud && (
+        <div className="card overflow-hidden">
+          <div className="flex flex-wrap items-baseline gap-2 border-b border-slate-200 px-4 py-3">
+            <IconCog className="h-4 w-4 text-slate-500" />
+            <h2 className="text-sm font-semibold text-slate-700">
+              גישה למערכת ({auth.members.length})
+            </h2>
+            <span className="text-xs text-slate-500">
+              כל מי שברשימה רואה וכותב הכול — אין הסתרה ואין תפקידים
+            </span>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {auth.members.map((m) => (
+              <li key={m} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                <span className="font-medium">
+                  {m}
+                  {m === auth.email && <span className="mr-2 text-xs text-slate-400">(אתה)</span>}
+                </span>
+                <button
+                  disabled={m === auth.email}
+                  title={m === auth.email ? "אי אפשר להסיר את עצמך — זה היה נועל את כולם החוצה" : "הסרת הגישה"}
+                  onClick={() => removeMember(m)}
+                  className="text-xs text-red-600 hover:underline disabled:text-slate-300 disabled:no-underline"
+                >
+                  הסרה
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-3">
+            <input
+              value={newMember}
+              onChange={(e) => { setNewMember(e.target.value); setMemberError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && addMember()}
+              placeholder="כתובת Gmail של חבר צוות…"
+              className="min-w-[16rem] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+            <Button disabled={!newMember.trim()} onClick={addMember}><IconPlus /> הוספה</Button>
+            {memberError && <span className="text-xs text-red-700">{memberError}</span>}
+          </div>
+          <p className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs leading-relaxed text-slate-500">
+            ⚠ הכתובת חייבת להיות זו שאיתה הוא מתחבר ל-Google. אחרי ההוספה הוא
+            נכנס לאותה כתובת אתר ומתחבר — אין הזמנה במייל ואין סיסמה.
+          </p>
         </div>
       )}
 

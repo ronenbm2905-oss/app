@@ -37,6 +37,10 @@ import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
 import { addressKey } from "../src/utils/id.js";
 import { managerLoad, managerConflicts, knownManagers } from "../src/utils/managers.js";
 import {
+  BATCH_LIMIT, chunkOps, stripUndefined, planUpdate, planAdd,
+  planApplyBatch, planRemove, planRemoveMany, planReplaceAll,
+} from "../src/utils/cloudWrites.js";
+import {
   vendorUsage, canDeleteVendor, employeeUsage, canDeleteEmployee,
   buildingDeletionImpact, buildingDependentIds, validateAddress,
 } from "../src/utils/entities.js";
@@ -776,7 +780,111 @@ if (!existsSync(SEED_XLSX)) {
 }
 
 // ============================================================================
-// 22. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 22. תוכניות כתיבה לענן — נבדקות בלי Firebase, בלי רשת ובלי פרויקט
+// ============================================================================
+{
+  // --- undefined הורג כתיבה שלמה ב-Firestore; null חוקי ומשמעותי אצלנו ---
+  const cleaned = stripUndefined({ a: 1, b: undefined, c: null, d: 0, e: "" });
+  eq("undefined מסונן", "b" in cleaned, false);
+  eq("null נשמר — הוא ״הוועד משלם ישירות״", cleaned.c, null);
+  eq("אפס נשמר", cleaned.d, 0);
+  eq("מחרוזת ריקה נשמרת", cleaned.e, "");
+  eq("stripUndefined על undefined לא מפיל", Object.keys(stripUndefined(undefined)).length, 0);
+
+  // --- חיתוך למנות: המגבלה היא 500, ואנחנו עוצרים ב-450 ---
+  ok("התקרה מתחת למגבלת Firestore", BATCH_LIMIT < 500);
+  const many = Array.from({ length: 1000 }, (_, i) => ({ op: "delete", collection: "contracts", id: `c${i}` }));
+  const groups = chunkOps(many);
+  eq("1000 פעולות נחתכות ל-3 מנות", groups.length, 3);
+  ok("אף מנה לא חורגת", groups.every((g) => g.length <= BATCH_LIMIT));
+  eq("ואף פעולה לא אבדה", groups.reduce((a, g) => a + g.length, 0), 1000);
+  eq("רשימה ריקה — אפס מנות", chunkOps([]).length, 0);
+  eq("פעולה אחת — מנה אחת", chunkOps([many[0]]).length, 1);
+
+  // --- עדכון הוא merge, לא דריסה ---
+  const [u] = planUpdate("buildings", "b1", { areaManager: "אבי" });
+  eq("עדכון הוא merge", u.op, "merge");
+  ok("ורק השדה שהשתנה נשלח", Object.keys(u.data).length === 1 && u.data.areaManager === "אבי",
+    "merge עם האובייקט המלא היה דורס שינוי מקביל של אנדריי");
+
+  // --- יצירה היא set מלא ---
+  const [a] = planAdd("vendors", makeVendor({ id: "v1", name: "ספק" }));
+  eq("יצירה היא set", a.op, "set");
+  eq("עם המזהה כשם המסמך", a.id, "v1");
+  ok("המזהה נשמר גם בגוף המסמך", a.data.id === "v1",
+    "כדי שגיבוי מהענן ייראה בדיוק כמו גיבוי מקומי");
+
+  // --- applyBatch: עדכונים ויצירות יחד ---
+  const ops = planApplyBatch("contracts", {
+    updates: [{ id: "c1", patch: { vendorId: "v1" } }, { id: "c2", patch: { vendorId: null } }],
+    creates: [makeContract({ id: "c9", buildingId: "b1", categoryId: "cleaning", amount: 100 })],
+  });
+  eq("שלוש פעולות", ops.length, 3);
+  eq("עדכון = merge", ops[0].op, "merge");
+  eq("יצירה = set", ops[2].op, "set");
+  eq("null בעדכון שורד", ops[1].data.vendorId, null);
+
+  // --- מחיקה חוצת-אוספים ---
+  const rm = planRemoveMany({ contracts: ["c1", "c2"], notes: ["n1"], inspections: [] });
+  eq("שלוש מחיקות", rm.length, 3);
+  ok("כולן delete", rm.every((o) => o.op === "delete"));
+  ok("אוסף ריק לא מייצר פעולה", !rm.some((o) => o.collection === "inspections"));
+  eq("undefined לא מפיל", planRemoveMany(undefined).length, 0);
+  eq("planRemove מייצר אחת", planRemove("contracts", "c1").length, 1);
+}
+{
+  /**
+   * ⚠ המלכודת המרכזית: ייבוא לענן חייב **למחוק את מה שנעלם**, אחרת גיליון
+   * מעודכן מוסיף במקום להחליף, ובניין שנמחק נשאר במערכת לנצח.
+   */
+  const current = normalize({
+    buildings: [{ id: "b1", address: "א 1" }, { id: "b2", address: "א 2" }],
+    contracts: [makeContract({ id: "c1", buildingId: "b1", categoryId: "cleaning", amount: 100 })],
+    vendors: [makeVendor({ id: "v1", name: "ישן" })],
+  });
+  const next = normalize({
+    buildings: [{ id: "b1", address: "א 1 מעודכן", managementFee: 5000 }, { id: "b3", address: "א 3", managementFee: 4000 }],
+    contracts: [makeContract({ id: "c1", buildingId: "b1", categoryId: "cleaning", amount: 200 })],
+    vendors: [],
+  });
+  const ops = planReplaceAll(next, current);
+  const deletes = ops.filter((o) => o.op === "delete");
+  const sets = ops.filter((o) => o.op === "set");
+
+  ok("b2 נמחק — הוא לא בקלט החדש", deletes.some((o) => o.collection === "buildings" && o.id === "b2"));
+  ok("v1 נמחק", deletes.some((o) => o.collection === "vendors" && o.id === "v1"));
+  ok("b1 לא נמחק — הוא נשאר, רק השתנה", !deletes.some((o) => o.id === "b1"));
+  ok("b1 נכתב מחדש עם הכתובת החדשה",
+    sets.some((o) => o.id === "b1" && o.data.address === "א 1 מעודכן"));
+  ok("b3 נכתב", sets.some((o) => o.id === "b3"));
+  ok("c1 נכתב עם הסכום החדש", sets.some((o) => o.id === "c1" && o.data.amount === 200));
+
+  // ⚠ הסכם הניהול שנוצר בהגירה חייב להיכתב גם הוא, אחרת ההכנסה בענן היא אפס
+  ok("feeAgreements שנוצרו ב-normalize נכתבים",
+    sets.some((o) => o.collection === "feeAgreements"),
+    "בלי זה ההכנסה בענן הייתה 0 — היא נגזרת מההסכמים, לא מ-managementFee");
+
+  // מצב התחלתי ריק: הכל יצירה, אפס מחיקות
+  const fresh = planReplaceAll(next, normalize({}));
+  eq("ענן ריק — אפס מחיקות", fresh.filter((o) => o.op === "delete").length, 0);
+  ok("וכל הישויות נכתבות", fresh.length === sets.length);
+
+  // איפוס: הכל נמחק, שום דבר לא נכתב
+  const wipe = planReplaceAll(normalize({}), current);
+  ok("איפוס מוחק הכל", wipe.length > 0 && wipe.every((o) => o.op === "delete"));
+
+  // ⚠ הייבוא האמיתי חורג ממגבלת ה-batch פי כמה — זו הסיבה ל-chunkOps
+  ok("ייבוא אמיתי היה חורג ממנה אחת",
+    chunkOps(planReplaceAll(normalize({
+      buildings: Array.from({ length: 186 }, (_, i) => ({ id: `b${i}`, address: `א ${i}` })),
+      contracts: Array.from({ length: 2715 }, (_, i) =>
+        makeContract({ id: `c${i}`, buildingId: "b1", categoryId: "cleaning", amount: 1 })),
+    }), normalize({}))).length > 1,
+    "בלי חיתוך, הייבוא היה נכשל כולו על מגבלת 500");
+}
+
+// ============================================================================
+// 23. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
