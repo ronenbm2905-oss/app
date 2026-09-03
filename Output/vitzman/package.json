@@ -14,7 +14,8 @@
     "deploy:rules": "firebase-tools deploy --only firestore:rules",
     "deploy:hosting": "npm run build && firebase-tools deploy --only hosting",
     "test:rules": "firebase emulators:exec --only firestore --project vitzman-rules-test \"node scripts/rules.test.mjs\"",
-    "test:cloud": "firebase emulators:exec --only firestore --project vitzman-cloud-test \"node scripts/cloud.test.mjs\""
+    "test:cloud": "firebase emulators:exec --only firestore --project vitzman-cloud-test \"node scripts/cloud.test.mjs\"",
+    "build:cloudfile": "vite build --mode cloudfile"
   },
   "dependencies": {
     "firebase": "^10.12.0",
