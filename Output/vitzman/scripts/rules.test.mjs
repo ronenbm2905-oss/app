@@ -55,6 +55,11 @@ await env.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, "orgs", ORG), { members: ["ronen@example.com", "andrei@example.com"] });
   await setDoc(doc(db, "orgs", ORG, "buildings", "b1"), { id: "b1", address: "אהרוני 10" });
   await setDoc(doc(db, "orgs", ORG, "vendors", "v1"), { id: "v1", name: "ספק", phone: "050-1234567" });
+
+  // ⚠ ארגון שני שבו `members` נשמר כ**מחרוזת** ולא כמערך — הטעות שקל לעשות
+  // בקונסולה, שנראית זהה, וחוסמת את הבעלים מהמערכת שלו.
+  await setDoc(doc(db, "orgs", "strorg"), { members: "ronen@example.com" });
+  await setDoc(doc(db, "orgs", "strorg", "buildings", "b1"), { id: "b1" });
 });
 
 const asRonen = env.authenticatedContext("u_ronen", RONEN).firestore();
@@ -107,6 +112,14 @@ console.log("\n--- ⚠ אותיות גדולות במייל ---");
 await check("Ronen@Example.COM מזוהה כרונן",
   assertSucceeds(getDoc(doc(asUpper, "orgs", ORG, "buildings", "b1"))),
   "Google מחזיר את המייל כפי שנרשם; בלי lower() רונן היה ננעל החוצה מהחשבון שלו");
+
+console.log("\n--- ⚠ members מסוג string במקום array ---");
+// זו הטעות שרונן עשה בקונסולה: השדה נשמר, נראה זהה, וחוסם את הבעלים.
+await check("⚠ members כמחרוזת חוסם גם את מי שכתוב בו",
+  assertFails(getDoc(doc(asRonen, "orgs", "strorg", "buildings", "b1"))),
+  "בקונסולה השדה נראה זהה למערך — ולכן הקליינט מציג הודעה מפורשת");
+await check("וגם קריאת מסמך הארגון עצמו נחסמת",
+  assertFails(getDoc(doc(asRonen, "orgs", "strorg"))));
 
 console.log("\n--- מחוץ לארגון: deny by default ---");
 await check("אוסף שורש אחר חסום", assertFails(getDoc(doc(asRonen, "whatever", "x"))));

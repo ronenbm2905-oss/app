@@ -17,6 +17,23 @@ import { auth, db, googleProvider, isFirebaseConfigured, ORG_ID } from "../fireb
 
 const normalizeEmail = (e) => String(e || "").trim().toLowerCase();
 
+/**
+ * ⚠ `members` **חייב להיות מערך** ב-Firestore, ולא מחרוזת.
+ *
+ * בקונסולה קל מאוד לבחור type=string במקום type=array — הערך נראה זהה, והשדה
+ * נשמר. אבל `.map()` על מחרוזת זורק, כלומר **מסך לבן**, וב-rules `x in y` על
+ * מחרוזת נכשל, כלומר **חסימה של הבעלים מהמערכת שלו**.
+ *
+ * הפונקציה מחזירה `{ list, wrongType }` — ולא זורקת ולא מתקנת בשקט. מחרוזת
+ * אינה מקובלת כרשימה בעלת איש אחד: זו טעות קונפיגורציה שעדיף לומר עליה
+ * במסך, כי הכללים בשרת ידחו אותה בכל מקרה והמשתמש היה נשאר בלי הסבר.
+ */
+function readMembers(raw) {
+  if (Array.isArray(raw)) return { list: raw.map(normalizeEmail).filter(Boolean), wrongType: false };
+  if (raw === undefined || raw === null) return { list: [], wrongType: false };
+  return { list: [], wrongType: true };
+}
+
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(!isFirebaseConfigured);
@@ -39,9 +56,12 @@ export function useAuth() {
     return onSnapshot(
       doc(db, "orgs", ORG_ID),
       (snap) => {
-        const list = snap.exists() ? snap.data().members : [];
-        setMembers((list || []).map(normalizeEmail));
-        setError("");
+        const { list, wrongType } = readMembers(snap.exists() ? snap.data().members : []);
+        setMembers(list);
+        setError(wrongType
+          ? "השדה members במסמך הארגון אינו מערך. בקונסולת Firebase: מחק אותו " +
+            "והוסף מחדש עם type=array (לא string), עם כתובת אחת בכל שורה."
+          : "");
       },
       (err) => {
         // כשל קריאה כאן פירושו כמעט תמיד "אינך ברשימה" — הכללים חסמו.
