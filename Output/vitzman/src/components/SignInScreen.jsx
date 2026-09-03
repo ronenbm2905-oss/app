@@ -9,7 +9,7 @@ import { IconBuilding, IconWarning, IconUsers } from "./ui/icons.jsx";
  * ברשימה חייב לראות הסבר ברור ולא מסך ריק שנראה כמו תקלה — אחרת הוא ינסה שוב,
  * יחשוב שהמערכת שבורה, ויתקשר.
  */
-export default function SignInScreen({ state, email, onSignIn, onSignOut, error }) {
+export default function SignInScreen({ state, email, onSignIn, onSignOut, error, localFileWarning = "" }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="card w-full max-w-md p-8 text-center">
@@ -25,6 +25,12 @@ export default function SignInScreen({ state, email, onSignIn, onSignOut, error 
             <p className="mt-2 text-sm text-slate-500">
               המערכת פתוחה לחברי הצוות בלבד. התחבר כדי להמשיך.
             </p>
+            {localFileWarning && (
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-right text-sm text-amber-900">
+                <IconWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{localFileWarning}</span>
+              </div>
+            )}
             <Button variant="primary" className="mx-auto mt-6" onClick={onSignIn}>
               התחברות עם Google
             </Button>

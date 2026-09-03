@@ -64,6 +64,7 @@ export default function App() {
         onSignIn={auth.signIn}
         onSignOut={auth.signOut}
         error={auth.error}
+        localFileWarning={auth.localFileWarning}
       />
     );
   }

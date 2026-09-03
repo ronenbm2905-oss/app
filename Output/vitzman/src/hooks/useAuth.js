@@ -34,6 +34,42 @@ function readMembers(raw) {
   return { list: [], wrongType: true };
 }
 
+/**
+ * ⚠ **הקובץ פתוח מהדיסק?** ל-`file://` אין דומיין, ולכן Google מסרב לפתוח
+ * חלון התחברות — לנצח, ולא בגלל הגדרה חסרה. עדיף לומר את זה **לפני** הלחיצה
+ * מאשר להחזיר שגיאה אחריה.
+ */
+const isLocalFile = typeof location !== "undefined" && location.protocol === "file:";
+
+/**
+ * תרגום שגיאות Firebase לעברית מעשית.
+ *
+ * `auth/unauthorized-domain` הוא הכשל הראשון שרונן פגש בהקמה, וההודעה הגולמית
+ * ("Firebase: Error (auth/unauthorized-domain)") אינה אומרת מה לעשות. שתי
+ * הסיבות שלו שונות לגמרי — קובץ מהדיסק לעומת דומיין שלא נרשם — ולכן ההודעה
+ * מפצלת ביניהן לפי הפרוטוקול, ולא משאירה את המשתמש לנחש.
+ */
+function authErrorMessage(code, host) {
+  switch (code) {
+    case "auth/unauthorized-domain":
+      return isLocalFile
+        ? "הקובץ פתוח מהדיסק (file://), ולהתחברות Google צריך כתובת אינטרנט. " +
+          "זו לא הגדרה חסרה — פתח את הכתובת שקיבלת מהאחסון."
+        : `הדומיין ${host} אינו מאושר ב-Firebase. בקונסולה: ` +
+          `Authentication → Settings → Authorized domains → Add domain, ` +
+          `והדבק ${host} בלי https ובלי / בסוף.`;
+    case "auth/operation-not-allowed":
+      return "התחברות Google אינה מופעלת בפרויקט. בקונסולה: " +
+        "Authentication → Sign-in method → Google → Enable.";
+    case "auth/popup-blocked":
+      return "הדפדפן חסם את חלון ההתחברות. אשר חלונות קופצים לאתר הזה ונסה שוב.";
+    case "auth/network-request-failed":
+      return "אין חיבור לרשת, או שחומת אש חוסמת את Google.";
+    default:
+      return null;
+  }
+}
+
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(!isFirebaseConfigured);
@@ -76,8 +112,10 @@ export function useAuth() {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (e) {
+      // סגירת החלון בידי המשתמש אינה שגיאה — היא ביטול.
       if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") return;
-      setError(`ההתחברות נכשלה: ${e.message}`);
+      const host = typeof location !== "undefined" ? location.hostname : "";
+      setError(authErrorMessage(e.code, host) || `ההתחברות נכשלה: ${e.message}`);
     }
   }, []);
 
@@ -98,6 +136,10 @@ export function useAuth() {
     allowed,
     signIn,
     signOut: signOutNow,
+    // אזהרה מקדימה, לפני שהמשתמש לוחץ ומקבל שגיאה שלא אומרת לו מה לעשות.
+    localFileWarning: isLocalFile
+      ? "הקובץ פתוח מהדיסק. התחברות Google דורשת כתובת אינטרנט — פתח את הכתובת שקיבלת מהאחסון."
+      : "",
     error,
   };
 }
