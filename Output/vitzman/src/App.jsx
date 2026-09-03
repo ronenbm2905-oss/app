@@ -8,15 +8,17 @@ import DiscrepancyReport from "./components/DiscrepancyReport.jsx";
 import InspectionsView from "./components/InspectionsView.jsx";
 import VendorsView from "./components/VendorsView.jsx";
 import SettingsView from "./components/SettingsView.jsx";
+import AssignmentsView from "./components/AssignmentsView.jsx";
 import AsOfBar from "./components/AsOfBar.jsx";
 import BackupBar from "./components/BackupBar.jsx";
 import { Button } from "./components/ui/Button.jsx";
-import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog } from "./components/ui/icons.jsx";
+import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog, IconList } from "./components/ui/icons.jsx";
 import { todayISO, isISODate } from "./utils/dates.js";
 
 const TABS = [
   { id: "dashboard", label: "רווחיות", Icon: IconChart },
-  { id: "buildings", label: "בניינים", Icon: IconBuilding },
+  { id: "buildings", label: "רווחיות לפי בניין", Icon: IconBuilding },
+  { id: "assignments", label: "רשימת בניינים", Icon: IconList },
   { id: "inspections", label: "ביקורות", Icon: IconShield },
   { id: "vendors", label: "ספקים", Icon: IconUsers },
   { id: "findings", label: "ממצאים בגיליון", Icon: IconWarning },
@@ -130,6 +132,18 @@ export default function App() {
               onOpenBuilding={setOpenBuildingId}
             />
           ))}
+        {tab === "assignments" && (
+          <AssignmentsView
+            data={data}
+            contractIndex={contractIndex}
+            feeIndex={feeIndex}
+            asOf={asOf}
+            readOnly={isHistorical}
+            update={update}
+            applyBatch={applyBatch}
+            onOpenBuilding={openBuilding}
+          />
+        )}
         {tab === "settings" && (
           <SettingsView
             data={data}

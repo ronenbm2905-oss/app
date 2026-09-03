@@ -14,7 +14,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { makeBuilding, makeContract, makeInspection, makeVendor, makeFeeAgreement, normalize } from "../src/schema.js";
+import { makeBuilding, makeContract, makeInspection, makeVendor, makeEmployee, makeFeeAgreement, normalize } from "../src/schema.js";
 import {
   indexContracts, buildingProfit, portfolioTotals, categoryBreakdown,
   activeContract, priceHistory, unassignedBuildings, imputedVatIncluded,
@@ -35,6 +35,7 @@ import {
 } from "../src/utils/backup.js";
 import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
 import { addressKey } from "../src/utils/id.js";
+import { managerLoad, managerConflicts, knownManagers } from "../src/utils/managers.js";
 import {
   vendorUsage, canDeleteVendor, employeeUsage, canDeleteEmployee,
   buildingDeletionImpact, buildingDependentIds, validateAddress,
@@ -719,7 +720,63 @@ if (!existsSync(SEED_XLSX)) {
 }
 
 // ============================================================================
-// 21. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 21. מי מנהל את הבניין — שתי עמודות חלוקות
+// ============================================================================
+{
+  const employees = [makeEmployee({ id: "e1", name: "אהרון" }), makeEmployee({ id: "e2", name: "אנדריי" })];
+  const buildings = [
+    // שתי העמודות מסכימות
+    makeBuilding({ id: "b1", address: "א 1", areaManager: "אהרון", assignedEmployeeId: "e1" }),
+    // שתיהן מלאות ושונות — זו סתירה
+    makeBuilding({ id: "b2", address: "א 2", areaManager: "אבי", assignedEmployeeId: "e2" }),
+    makeBuilding({ id: "b3", address: "א 3", areaManager: "אבי", assignedEmployeeId: "e2" }),
+    // מנהל איזור בלי עובד — **לא** סתירה, רק חוסר
+    makeBuilding({ id: "b4", address: "א 4", areaManager: "אסף", assignedEmployeeId: null }),
+    // בלי אף שיוך
+    makeBuilding({ id: "b5", address: "א 5", areaManager: "", assignedEmployeeId: null }),
+    // רווחים מיותרים אינם מנהל אחר
+    makeBuilding({ id: "b6", address: "א 6", areaManager: "  אהרון  ", assignedEmployeeId: "e1" }),
+  ];
+  const idx = indexContracts([]);
+
+  const load = managerLoad(buildings, employees, idx, "2026-09-01");
+  eq("שלושה מנהלי איזור", load.managers.length, 3);
+  eq("אהרון מנהל שניים (הרווח נוקה)", load.managers.find((m) => m.name === "אהרון").buildingCount, 2);
+  eq("בניין אחד בלי מנהל איזור", load.unmanaged, 1);
+  eq("אחד בלי אף שיוך", load.orphans, 1);
+  ok("המנהלים ממוינים לפי עומס",
+    load.managers[0].buildingCount >= load.managers[load.managers.length - 1].buildingCount);
+
+  const c = managerConflicts(buildings, employees);
+  eq("שתי סתירות", c.rows.length, 2);
+  ok("מנהל איזור בלי עובד אינו סתירה",
+    !c.rows.some((r) => r.buildingId === "b4"),
+    "אחרת כל גיליון חסר נספר כמחלוקת");
+  ok("הסכמה אינה סתירה", !c.rows.some((r) => r.buildingId === "b1"));
+  eq("הצמד הגדול מזוהה", c.topPair.label, "אבי ≠ אנדריי");
+  eq("ונספר נכון", c.topPair.count, 2);
+
+  const known = knownManagers(buildings, employees);
+  ok("ההצעות כוללות שם שקיים רק כמנהל איזור", known.includes("אבי") && known.includes("אסף"));
+  ok("וגם שם שקיים רק כעובד", known.includes("אנדריי"),
+    "אחרת שיוך לעובד לא יוצע כמנהל איזור");
+  eq("בלי כפילויות ובלי ריקים", known.length, new Set(known).size);
+  ok("בלי רווחים תלויים", known.every((n) => n === n.trim()));
+
+  // ⚠ בניין לא-פעיל תורם להצעות אבל לא לעומס
+  const withInactive = [...buildings, makeBuilding({ id: "b7", address: "א 7", areaManager: "יוסי", status: "inactive" })];
+  ok("שם מבניין לא-פעיל עדיין מוצע", knownManagers(withInactive, employees).includes("יוסי"));
+  eq("אבל אינו נספר בעומס (הקורא מסנן לפעילים)",
+    managerLoad(withInactive.filter((b) => b.status === "active"), employees, idx, "2026-09-01").managers.length, 3);
+
+  // רשימות ריקות לא מפילות
+  eq("ללא בניינים — אפס מנהלים", managerLoad([], [], idx, "2026-09-01").managers.length, 0);
+  eq("ללא בניינים — אפס סתירות", managerConflicts([], []).rows.length, 0);
+  eq("ללא כלום — אפס הצעות", knownManagers(undefined, undefined).length, 0);
+}
+
+// ============================================================================
+// 22. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
@@ -794,6 +851,24 @@ if (!existsSync(SEED)) {
     eq("קטגוריית הגבייה מסתכמת לסכום המלא", collection.actual, 32950);
   } else {
     skip("בדיקת הטווח הקטוע", "meta.sheetFindings.truncatedRanges חסר");
+  }
+
+  // --- מי מנהל את הבניין: שתי העמודות מול הנתונים האמיתיים ---
+  {
+    const act = data.buildings.filter((b) => b.status === "active");
+    const ml = managerLoad(act, data.employees, idx, "2026-09-01");
+    const mc = managerConflicts(act, data.employees);
+    eq("4 מנהלי איזור בגיליון הראשי", ml.managers.length, 4);
+    eq("10 בניינים פעילים בלי אף שיוך", ml.orphans, 10);
+    eq("38 בניינים שבהם שתי העמודות חלוקות", mc.rows.length, 38);
+    eq("הפער הגדול: אבי ≠ אנדריי", mc.topPair.label, "אבי ≠ אנדריי");
+    eq("ב-22 בניינים", mc.topPair.count, 22);
+    ok("סך הבניינים של המנהלים + חסרי המנהל = כל הפעילים",
+      ml.managers.reduce((a, m) => a + m.buildingCount, 0) + ml.unmanaged === act.length);
+    // ⚠ הבאנר הישן ספר את העמודה השנייה. לפי הראשית — הרבה פחות חסרים.
+    ok("חסרי מנהל איזור פחותים מחסרי עובד אחראי",
+      ml.unmanaged < unassignedBuildings(data.buildings).length,
+      `${ml.unmanaged} מול ${unassignedBuildings(data.buildings).length}`);
   }
 
   // --- פרוסה 2: ביקורות ---

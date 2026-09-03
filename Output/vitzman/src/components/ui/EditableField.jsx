@@ -21,9 +21,11 @@ export function EditableField({
   placeholder = "—",
   readOnly = false,
   validate,               // (v) => { ok, reason }
+  suggestions = null,     // ל-text: רשימת ערכים מוכרים, בלי לחסום ערך חדש
   className = "",
   title,
 }) {
+  const listId = suggestions ? `sug-${suggestions.join("|").length}-${suggestions.length}` : undefined;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const [error, setError] = useState("");
@@ -91,6 +93,7 @@ export function EditableField({
     <span className="inline-flex flex-col">
       <input
         ref={ref}
+        list={listId}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
@@ -100,6 +103,11 @@ export function EditableField({
         }}
         className={`rounded border border-slate-400 px-1.5 py-0.5 text-sm ${type === "number" ? "tnum" : ""} ${className}`}
       />
+      {suggestions && (
+        <datalist id={listId}>
+          {suggestions.map((v) => <option key={v} value={v} />)}
+        </datalist>
+      )}
       {error && <span className="mt-0.5 text-[11px] text-red-700">{error}</span>}
     </span>
   );
