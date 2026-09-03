@@ -5,6 +5,7 @@ import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate, ui
 import { colorFor, colorForTeamByCoach, sessionTypeColor } from "../utils/colors";
 import { holidayNameOn } from "../utils/holidays";
 import { findAbsenceHits, absenceLabel, isHallClosure, hallClosuresOn, isAllDay } from "../utils/availability";
+import { changesMessage } from "../utils/scheduleChanges";
 import {
   findHallClashes,
   findCoachClashes,
@@ -207,6 +208,35 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     setJustPublished(true);
     setTimeout(() => setJustPublished(false), 2500);
   };
+
+  // The other half of "tell the coach". The banner catches whoever opens the app; this
+  // catches everyone, in the channel they already read.
+  //
+  // Text and not a picture, deliberately: the board is already shared as an image, and an
+  // image is the worst possible way to say "this one line moved". Text is short, searchable
+  // in the chat, and a coach can quote a line back to ask about it.
+  const [copied, setCopied] = useState("");
+  const shareChanges = async () => {
+    const msg = changesMessage(
+      data.changes, weekStart, formatWeekRange(weekStart),
+      { coaches: data.coaches, halls: data.halls, teams: data.teams }
+    );
+    if (!msg) return;
+    try {
+      // The share sheet on a phone puts it straight into WhatsApp; the clipboard is the
+      // desktop fallback. Both can be refused, and then we say so rather than pretending.
+      if (navigator.share) await navigator.share({ text: msg });
+      else await navigator.clipboard.writeText(msg);
+      setCopied(navigator.share ? "shared" : "copied");
+    } catch {
+      setCopied("failed");
+    }
+    setTimeout(() => setCopied(""), 2500);
+  };
+  const changeCount = changesMessage(
+    data.changes, weekStart, "x",
+    { coaches: data.coaches, halls: data.halls, teams: data.teams }
+  ) ? 1 : 0;
 
   // Add or edit straight from the board — append a new training or replace an edited one (same as ManagerView).
   const handleSaveSession = (session) => {
@@ -549,6 +579,18 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 title="סמן שהלו״ז לשבוע זה מוכן — יופיע באנר לכל המאמנים"
               >
                 <IconCheck size={15} /> {justPublished ? "פורסם ✓" : "פרסם לו״ז לשבוע"}
+              </button>
+            )}
+            {canEdit && changeCount > 0 && (
+              <button
+                onClick={shareChanges}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-rose-400 text-rose-700 bg-white hover:bg-rose-50"
+                title="טקסט קצר של מה השתנה השבוע — לשליחה בוואטסאפ"
+              >
+                🔔 {copied === "shared" ? "נשלח ✓"
+                  : copied === "copied" ? "הועתק ✓"
+                  : copied === "failed" ? "לא ניתן להעתיק"
+                  : "מה השתנה — לוואטסאפ"}
               </button>
             )}
             {mode === "team" && (

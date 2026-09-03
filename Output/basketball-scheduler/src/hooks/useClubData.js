@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY } from "../constants";
+import { withScheduleChanges } from "../utils/scheduleChanges";
 
 // Merge stored data over defaults so older/partial documents don't crash the UI.
 function withDefaults(partial) {
@@ -102,8 +103,22 @@ function useCloudClubData(user) {
 }
 
 // Single entry point — picks the implementation based on configuration.
+//
+// Every write goes through `withScheduleChanges`, and that is the whole reason it sits
+// here rather than at the call sites. A session moves from the session form, from a drag on
+// the board, from a delete, from "שכפל שבוע קודם", from the CSV import and from the
+// fixed-teams strip — six places today and a seventh next month. Diffing once, where the
+// old document and the new one are both in hand, is the only version of this that cannot
+// be forgotten. A save that touches no session writes no log.
 export function useClubData(user) {
   const local = useLocalClubData();
   const cloud = useCloudClubData(user);
-  return isFirebaseConfigured ? cloud : local;
+  const base = isFirebaseConfigured ? cloud : local;
+
+  const save = useCallback(
+    (next) => base.save(withScheduleChanges(base.data, next)),
+    [base.data, base.save]
+  );
+
+  return { ...base, save };
 }

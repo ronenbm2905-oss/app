@@ -65,6 +65,9 @@ export const EMPTY = {
   // hall taken, on one date. Exactly one of coachId / hallId says which.
   // The dated counterpart to `constraints`, which repeat every week; see utils/availability.js.
   absences: [],
+  // A bounded log of what moved in the schedule and when, so a coach is told rather than
+  // left to spot it. Written by the diff in useClubData.save; see utils/scheduleChanges.js.
+  changes: [],
   // Weeks where the manager answered "לא השבוע" to the fixed-teams strip. See utils/fixedTeams.js.
   fixedWeekSkips: [],
   // Fold the fixed teams away on the weekly board — club-wide, set by a manager.

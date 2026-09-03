@@ -24,6 +24,7 @@ import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { PendingImportBanner } from "./components/PendingImportBanner";
+import { ScheduleChangesBanner } from "./components/ScheduleChangesBanner";
 import { BirthdayReminder } from "./components/BirthdayReminder";
 import { LegalFooter } from "./legal/LegalFooter";
 import { TodayStrip } from "./components/TodayStrip";
@@ -223,6 +224,12 @@ export default function App() {
             <PendingImportBanner pending={pending} data={data} save={save} resolvePending={resolvePending} />
           </div>
         )}
+
+        {/* Only a coach sees this. The manager made the change; telling them about it is
+            noise, and noise on a banner is how banners stop being read. */}
+        <div className="mb-4 empty:hidden">
+          <ScheduleChangesBanner data={data} coachId={myCoachId} onOpen={() => setTab("coach")} />
+        </div>
 
         <TodayStrip data={data} coachId={myCoachId} showSessions={showSessions} />
 

@@ -13,6 +13,7 @@ const FILES = [
   "./rowcopy.test.mjs",
   "./playerprogress.test.mjs",
   "./hoursreport.test.mjs",
+  "./schedulechanges.test.mjs",
 ];
 
 for (const f of FILES) {
