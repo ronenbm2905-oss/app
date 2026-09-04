@@ -3,6 +3,7 @@ import { uid, formatDateHe } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/games";
 import { TransportExport } from "./TransportExport";
+import { driverLine } from "../utils/transport";
 import { GameNote } from "./GameNote";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
@@ -159,6 +160,8 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
 // The value is stored as `addressOverride`, which survives re-import (see importGamesFile).
 function ImportedAddressForm({ game, onSave, onCancel }) {
   const [address, setAddress] = useState(game.addressOverride || game.venue || "");
+  const [driverName, setDriverName] = useState(game.driverName || "");
+  const [driverPhone, setDriverPhone] = useState(game.driverPhone || "");
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
       <h3 className="text-sm font-semibold text-stone-700">עריכת כתובת — נגד {game.opponent}</h3>
@@ -177,12 +180,48 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
           autoFocus
         />
       </div>
+      {!game.isHome && (
+        <div className="border-t border-stone-200 pt-3 space-y-3">
+          <p className="text-xs text-stone-600">
+            <span className="font-medium text-stone-700">נהג ההסעה</span> — למאמן/ת של הקבוצה, כדי להתקשר בבוקר המשחק.
+            <span className="block">
+              אופציונלי, ונשמר גם אחרי ייבוא מחדש של קובץ האיגוד — עד שבועיים אחרי המשחק, ואז יורד לבד.{" "}
+              <span className="font-medium text-stone-700">אינו נכנס לגיליון ההסעות</span> שנשלח לחברה,
+              ומוצג רק לך ולמאמן/ת של אותה קבוצה.
+            </span>
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[9rem]">
+              <label className="text-xs text-stone-500 mb-1 block">שם הנהג</label>
+              <input
+                type="text"
+                value={driverName}
+                onChange={(e) => setDriverName(e.target.value)}
+                placeholder="לדוגמה: משה"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                dir="rtl"
+              />
+            </div>
+            <div className="flex-1 min-w-[9rem]">
+              <label className="text-xs text-stone-500 mb-1 block">טלפון הנהג</label>
+              <input
+                type="tel"
+                value={driverPhone}
+                onChange={(e) => setDriverPhone(e.target.value)}
+                placeholder="050-0000000"
+                className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                dir="ltr"
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
         </button>
         <button
-          onClick={() => onSave(address.trim())}
+          onClick={() => onSave({ address: address.trim(), driverName: driverName.trim(), driverPhone: driverPhone.trim() })}
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור כתובת
@@ -475,7 +514,9 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                         ) : (
                           <ImportedAddressForm
                             game={g}
-                            onSave={(addr) => saveGame({ ...g, addressOverride: addr })}
+                            onSave={({ address, driverName, driverPhone }) =>
+                              saveGame({ ...g, addressOverride: address, driverName, driverPhone })
+                            }
                             onCancel={() => setEditingCode(null)}
                           />
                         )}
@@ -499,6 +540,15 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                           {g.addressOverride || g.venue}
                           {g.addressOverride && <span className="text-stone-400"> (כתובת ידנית)</span>}
                         </div>
+                        {/* The number only for a manager or for the coach travelling with
+                            that team. Everyone else sees the name, which is all they need
+                            to know a bus is arranged. Firestore has no field-level rules,
+                            so display is the only control there is — and a quiet default
+                            protects a call site nobody has written yet. */}
+                        {(() => {
+                          const line = driverLine(g, isMyGame(g));
+                          return line ? <div className="text-xs text-stone-600 truncate">🚌 נהג: {line}</div> : null;
+                        })()}
                       </div>
                       <div className="hidden sm:block text-right shrink-0">
                         <div className="text-xs text-stone-500 truncate max-w-32">{g.league}</div>

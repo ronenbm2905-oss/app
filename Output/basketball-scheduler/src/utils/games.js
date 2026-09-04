@@ -1,7 +1,8 @@
 import * as XLSX from "xlsx";
-import { DAYS } from "../constants";
-import { formatDateFromExcel, parseDateDMY, HEB_DAY_MAP, weekStartOfDMY } from "./dates";
-import { clubHomeKeywords } from "./club";
+import { DAYS } from "../constants.js";
+import { formatDateFromExcel, parseDateDMY, HEB_DAY_MAP, weekStartOfDMY } from "./dates.js";
+import { clubHomeKeywords } from "./club.js";
+import { clearStaleDrivers } from "./transport.js";
 
 // Parse xlsx using SheetJS. In Vite we import the library directly (not window.XLSX).
 export function parseXlsxToRows(arrayBuffer) {
@@ -38,6 +39,17 @@ export function rowsToObjects(rows, headerIdx) {
 
 // Full import + sync computation. Pure: takes raw rows + current data, returns the
 // next games list, next sessions list, and counters. Caller persists via save().
+// A game is "past" only well after it happened. The grace period matters: a driver entered
+// on the morning of the match must survive that day's re-import, and a fixture rescheduled
+// by a week must not be treated as history.
+export function isPastGame(game, now = new Date(), graceDays = 14) {
+  const d = parseDateDMY(game && game.date);
+  if (!d) return false; // a game with no readable date is not "past", it is unknown
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - graceDays);
+  return d < cutoff;
+}
+
 export function importGamesFile(rawRows, data) {
   const games = data.games || [];
   const mapping = data.gameMapping || [];
@@ -166,9 +178,23 @@ export function importGamesFile(rawRows, data) {
         (g) => String(g.federationCode) === key
       );
       if (idx >= 0) {
-        // preserve a manually-set address override across re-imports (file data refreshes everything else)
-        const prevOverride = nextGames[idx].addressOverride;
-        nextGames[idx] = prevOverride ? { ...game, addressOverride: prevOverride } : game;
+        // Hand-entered fields survive a re-import; everything else refreshes from the file.
+        // The driver belongs on this list for the same reason the address does — the bus
+        // company tells us who is driving and the federation file knows nothing about it,
+        // so a routine re-import would erase it the same day it was entered.
+        //
+        // But only while the trip is still ahead. An address has no expiry; a driver's
+        // phone number does — it is for one journey. Carried unconditionally, every
+        // re-import would copy a stranger's number onto a finished game, for ever, on a
+        // record nobody opens again.
+        const { addressOverride, driverName, driverPhone } = nextGames[idx];
+        const keepDriver = !isPastGame(game);
+        nextGames[idx] = {
+          ...game,
+          ...(addressOverride ? { addressOverride } : {}),
+          ...(keepDriver && driverName ? { driverName } : {}),
+          ...(keepDriver && driverPhone ? { driverPhone } : {}),
+        };
         updated++;
       }
     } else {
@@ -186,9 +212,20 @@ export function importGamesFile(rawRows, data) {
     return (a.time || "").localeCompare(b.time || "");
   });
 
-  const nextSessions = syncGamesToSessions(nextGames, data);
+  // Sweep drivers off finished trips, across the WHOLE list rather than only the rows the
+  // file happened to match. The carry-over rule above already drops a stale driver from a
+  // game the file still contains; this catches the fixture that has since left the file —
+  // cancelled, rescheduled, moved to another league — and would otherwise hold a stranger's
+  // phone number for ever on a record nobody opens.
+  //
+  // Worth saying: the single-club branch defines this function and never calls it. Its
+  // privacy policy nonetheless promises the deletion. That is the same shape of gap the
+  // port keeps finding, so the function is wired here rather than carried over dormant.
+  const swept = clearStaleDrivers(nextGames);
 
-  return { nextGames, nextSessions, added, updated, skipped };
+  const nextSessions = syncGamesToSessions(swept.games, data);
+
+  return { nextGames: swept.games, nextSessions, added, updated, skipped, driversCleared: swept.cleared };
 }
 
 // Rebuild game-derived sessions (fromGame) from the games list, keeping manual sessions.

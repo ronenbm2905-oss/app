@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
-import { DAYS } from "../constants";
-import { parseDateDMY, weekStartOfDMY } from "./dates";
+import { DAYS } from "../constants.js";
+import { parseDateDMY, weekStartOfDMY } from "./dates.js";
 
 // Away games (isHome=false) that fall in a given week (Sunday-ISO), sorted by date then time.
 // Away games carry the opponent's address in `venue` (the "מיקום" column from the federation file),
@@ -79,6 +79,44 @@ export function buildTransportRows(awayGames, { teams, coaches, departBefore, pi
       vehicle: team?.vehicleType || "",
     };
   });
+}
+
+// Driver contact for a game — quiet by default, and that default is the control.
+//
+// The number belongs to someone who never gave it to us; the bus company did. So a call
+// site that has not thought about who is reading the screen gets the name and nothing else,
+// and the two places allowed to show the number ask for it out loud.
+export function driverLine(game, withPhone = false) {
+  if (!game || game.isHome) return "";
+  const name = String(game.driverName || "").trim();
+  const phone = String(game.driverPhone || "").trim();
+  if (!withPhone) return name;
+  return [name, phone].filter(Boolean).join(" · ");
+}
+
+// A driver is assigned to one trip. Two weeks after it the number is dead weight on a
+// record nobody opens — and because a re-import carries hand-entered fields forward, it
+// would otherwise be copied onto the same finished game every time, for ever.
+//
+// Note what is NOT here: the driver's details never reach the transport sheet. That file
+// is produced a week ahead to ORDER the coach, before any driver is assigned, and its
+// recipient is the bus company — the very party the number came from. Printing it back to
+// them adds nothing and puts a third party's phone in a file that leaves the system.
+//
+// `today` is injected rather than read from the clock so the rule can be tested.
+export function clearStaleDrivers(games, today = new Date(), days = 14) {
+  const cutoff = new Date(today);
+  cutoff.setDate(cutoff.getDate() - days);
+  let cleared = 0;
+  const next = (games || []).map((g) => {
+    if (!g || (!g.driverName && !g.driverPhone)) return g;
+    const d = parseDateDMY(g.date);
+    if (!d || d >= cutoff) return g;
+    cleared++;
+    const { driverName, driverPhone, ...rest } = g;
+    return rest;
+  });
+  return { games: next, cleared };
 }
 
 // Row object -> array of cells in TRANSPORT_HEADERS order (shared by xlsx + image).
