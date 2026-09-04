@@ -12,16 +12,18 @@ import VendorsView from "./components/VendorsView.jsx";
 import SettingsView from "./components/SettingsView.jsx";
 import AssignmentsView from "./components/AssignmentsView.jsx";
 import NotesReview from "./components/NotesReview.jsx";
+import GridView from "./components/GridView.jsx";
 import AsOfBar from "./components/AsOfBar.jsx";
 import BackupBar from "./components/BackupBar.jsx";
 import { Button } from "./components/ui/Button.jsx";
-import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog, IconList, IconNote } from "./components/ui/icons.jsx";
+import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog, IconList, IconNote, IconTable } from "./components/ui/icons.jsx";
 import { todayISO, isISODate } from "./utils/dates.js";
 
 const TABS = [
   { id: "dashboard", label: "רווחיות", Icon: IconChart },
   { id: "buildings", label: "רווחיות לפי בניין", Icon: IconBuilding },
   { id: "assignments", label: "רשימת בניינים", Icon: IconList },
+  { id: "grid", label: "הטבלה המלאה", Icon: IconTable },
   { id: "inspections", label: "רישום ביקורות", Icon: IconShield },
   { id: "vendors", label: "ספקים", Icon: IconUsers },
   { id: "findings", label: "ממצאים בגיליון", Icon: IconWarning },
@@ -206,6 +208,18 @@ export default function App() {
             readOnly={isHistorical}
             update={update}
             applyBatch={applyBatch}
+            onOpenBuilding={openBuilding}
+          />
+        )}
+        {tab === "grid" && (
+          <GridView
+            data={data}
+            contractIndex={contractIndex}
+            feeIndex={feeIndex}
+            asOf={asOf}
+            readOnly={isHistorical}
+            applyBatch={applyBatch}
+            remove={remove}
             onOpenBuilding={openBuilding}
           />
         )}
