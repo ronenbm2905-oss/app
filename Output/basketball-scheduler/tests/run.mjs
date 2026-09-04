@@ -17,6 +17,7 @@ const FILES = [
   "./secretary.test.mjs",
   "./fixedteams.test.mjs",
   "./driver.test.mjs",
+  "./copyweek.test.mjs",
 ];
 
 for (const f of FILES) {

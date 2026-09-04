@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { DAYS, DEFAULT_SESSION_TYPE } from "../constants";
 import { timeToMinutes, shiftWeek } from "../utils/dates";
+import { planWeekCopy } from "../utils/copyWeek";
 import { uid } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { clubSessionTypes, sessionTypeColor } from "../utils/sessionTypes";
@@ -75,15 +76,31 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   };
 
   const handleCopyPrevWeek = () => {
-    const prev = shiftWeek(weekStart, -1);
-    const prevSessions = data.sessions.filter((s) => (s.weekOf || "") === prev && !s.fromGame);
-    if (prevSessions.length === 0) {
+    const plan = planWeekCopy(data.sessions, weekStart, uid);
+    if (plan.source === 0) {
       setImportMsg({ type: "error", text: "אין אימונים בשבוע הקודם להעתקה." });
       return;
     }
-    const copies = prevSessions.map((s) => ({ ...s, id: uid(), weekOf: weekStart }));
-    save({ ...data, sessions: [...data.sessions, ...copies] });
-    setImportMsg({ type: "success", text: `הועתקו ${copies.length} אימונים מהשבוע הקודם.` });
+    if (plan.fresh.length === 0) {
+      setImportMsg({ type: "error", text: "כל האימונים של השבוע הקודם כבר קיימים בשבוע זה — לא הועתק דבר." });
+      return;
+    }
+    // A week that is already built is a decision, not a detail — the count goes in front of
+    // the manager before anything is written. See the note in utils/copyWeek.js.
+    if (plan.existing > 0) {
+      const ok = window.confirm(
+        `בשבוע זה כבר יש ${plan.existing} אימונים.\n\n` +
+        `העתקה תוסיף ${plan.fresh.length} אימונים נוספים מהשבוע הקודם — היא לא מחליפה ולא מוחקת כלום.\n` +
+        `אם הלו"ז של השבוע כבר נבנה, הקבוצות יופיעו פעמיים.\n\nלהמשיך?`
+      );
+      if (!ok) return;
+    }
+    save({ ...data, sessions: plan.sessions });
+    setImportMsg({
+      type: "success",
+      text: `הועתקו ${plan.fresh.length} אימונים מהשבוע הקודם.` +
+        (plan.skipped > 0 ? ` ${plan.skipped} דולגו כי הם כבר קיימים בשבוע זה.` : ""),
+    });
   };
 
   const handleFile = async (e) => {

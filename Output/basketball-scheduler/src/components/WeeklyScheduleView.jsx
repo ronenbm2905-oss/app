@@ -6,6 +6,7 @@ import { colorFor, colorForTeamByCoach } from "../utils/colors";
 import { clubSessionTypes, sessionTypeColor } from "../utils/sessionTypes";
 import { holidayNameOn } from "../utils/holidays";
 import { findAbsenceHits, absenceLabel, isHallClosure, hallClosuresOn, isAllDay } from "../utils/availability";
+import { fixedTeams } from "../utils/fixedTeams";
 import {
   findHallClashes,
   findCoachClashes,
@@ -16,7 +17,7 @@ import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
-import { IconDownload, IconTrash, IconCheck } from "./ui/icons";
+import { IconDownload, IconTrash, IconCheck, IconX} from "./ui/icons";
 import { clubLogoSrc } from "../utils/clubLogo";
 
 export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, setWeekStart }) {
@@ -24,6 +25,19 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
   const clubLogo = clubLogoSrc(data);
   const [filterDays, setFilterDays] = useState([...DAYS]);
   const [filterCoachIds, setFilterCoachIds] = useState([]); // empty = every coach
+  // Rows folded away by hand, on top of whatever the coach filter is doing. Component
+  // state rather than saved anywhere: this is "not the row I need in front of me right
+  // now", true for the next ten minutes and not for tomorrow. It survives moving between
+  // weeks — same board, different week — and resets when the screen is left.
+  const [hiddenRows, setHiddenRows] = useState([]);
+  const hideRow = (id) => setHiddenRows((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  const showAllRows = () => setHiddenRows([]);
+  // Hiding the fixed teams is a decision about the CLUB's board, not a preference of
+  // whoever happens to be looking — so it lives in the club document and every coach sees
+  // the same board the manager sees. Only a manager can set it; the rules would refuse a
+  // coach anyway, and a control that silently fails is worse than no control.
+  const hideFixed = Boolean(data.hideFixedTeams);
+  const toggleHideFixed = () => save({ ...data, hideFixedTeams: !hideFixed });
   const [title, setTitle] = useState("לוח אימונים שבועי");
   const [mode, setMode] = useState("team"); // "team" | "hall"
   const [selectedHallId, setSelectedHallId] = useState("");
@@ -104,7 +118,11 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
           `${title} · ${formatWeekRange(weekStart)}` +
           (filterCoachIds.length
             ? ` · ${data.coaches.filter((c) => filterCoachIds.includes(c.id)).map((c) => c.name).join(" · ")} בלבד`
-            : ""),
+            : "") +
+          // Same honesty as the coach filter: a board missing rows must say so on its face,
+          // or whoever receives it reads it as the whole week.
+          (hideFixed && fixedTeamRows.length ? " · ללא הקבוצות הקבועות" : "") +
+          (hiddenRowNames.length ? ` · ללא ${hiddenRowNames.join(" · ")}` : ""),
       });
     } finally {
       node.classList.remove("capturing"); // restore the interactive view immediately
@@ -242,14 +260,25 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
   // Rows to show. Filtering by coach keeps a team if the coach is its assigned coach OR
   // runs any of its sessions this week — a coach often covers a team that is not formally
   // theirs, and those are exactly the sessions that cause the overlap.
+  // The fixed teams — a club's school, or whatever else runs the same rows every week —
+  // fill the board with rows that never change. When the board is being read for the
+  // competitive teams, or sent out, they are noise. A view filter only: nothing is deleted.
+  const fixedTeamRows = useMemo(() => fixedTeams(data.teams), [data.teams]);
+  const hiddenRowNames = data.teams.filter((t) => hiddenRows.includes(t.id)).map((t) => t.name);
   const visibleTeams = useMemo(() => {
-    if (!filterCoachIds.length) return data.teams;
+    let list = data.teams;
+    if (hideFixed) {
+      const hidden = new Set(fixedTeamRows.map((t) => t.id));
+      list = list.filter((t) => !hidden.has(t.id));
+    }
+    if (hiddenRows.length) list = list.filter((t) => !hiddenRows.includes(t.id));
+    if (!filterCoachIds.length) return list;
     const ids = new Set([
-      ...data.teams.filter((t) => filterCoachIds.includes(t.coachId)).map((t) => t.id),
+      ...list.filter((t) => filterCoachIds.includes(t.coachId)).map((t) => t.id),
       ...weekSessions.filter((s) => filterCoachIds.includes(s.coachId)).map((s) => s.teamId),
     ]);
-    return data.teams.filter((t) => ids.has(t.id));
-  }, [filterCoachIds, data.teams, weekSessions]);
+    return list.filter((t) => ids.has(t.id));
+  }, [filterCoachIds, data.teams, weekSessions, hideFixed, fixedTeamRows, hiddenRows]);
 
   // How many of this coach's sessions collide, so the toolbar can say so out loud rather
   // than relying on the manager spotting red cells across a wide board.
@@ -446,6 +475,33 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
 
         {/* Same chip idiom as the day filter above, which is what makes it obvious that
             several can be on at once — a dropdown would have implied "pick one". */}
+        {/* Only offered when there is something to hide — a control for a thing the club
+            does not have is a control that has to be explained. Named "קבוצות קבועות",
+            which is what the mechanism is; the single-club branch calls it "בית ספר
+            לכדורסל", which is what one club happens to use it for. */}
+        {mode === "team" && fixedTeamRows.length > 0 && canEdit && (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <button
+              onClick={toggleHideFixed}
+              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors flex items-center gap-1.5 ${
+                hideFixed
+                  ? "bg-stone-200 text-stone-600 border-stone-300"
+                  : "bg-brand-600 text-white border-brand-600"
+              }`}
+              title={hideFixed ? "החזר את הקבוצות הקבועות ללוח" : "הסתר את הקבוצות הקבועות מהלוח — אצלך ואצל המאמנים"}
+            >
+              🔁 {hideFixed ? "הצג קבוצות קבועות" : "הסתר קבוצות קבועות"}
+              <span className={hideFixed ? "text-stone-500" : "text-brand-100"}>({fixedTeamRows.length})</span>
+            </button>
+            {hideFixed && (
+              <span className="text-xs text-stone-500 self-center">
+                {fixedTeamRows.length} שורות מוסתרות — <span className="font-medium text-stone-700">גם אצל המאמנים</span>,
+                וגם בתמונה וב-PDF. שום דבר לא נמחק, והמאמנים שלהן עדיין רואים את האימונים ב"תצוגת מאמן".
+              </span>
+            )}
+          </div>
+        )}
+
         {mode === "team" && data.coaches.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             <span className="text-xs text-stone-500 self-center">מאמנים:</span>
@@ -526,6 +582,21 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
             </button>
           </div>
         )}
+        {/* Hidden rows are the one filter with no visible trace on the board itself — the
+            row is simply gone — so the way back has to be stated, and it has to name what
+            is missing. A count alone would leave you guessing which one you dropped. */}
+        {hiddenRowNames.length > 0 && (
+          <div className="text-xs rounded-lg border border-stone-300 bg-stone-50 text-stone-700 p-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-semibold">
+              {hiddenRowNames.length === 1 ? "שורה אחת מוסתרת" : `${hiddenRowNames.length} שורות מוסתרות`}:
+            </span>
+            <span className="text-stone-600">{hiddenRowNames.join(" · ")}</span>
+            <button onClick={showAllRows} className="underline underline-offset-2 hover:text-stone-900 shrink-0">
+              הצג הכל
+            </button>
+          </div>
+        )}
+
         {weekHallClosures.length > 0 && (
           <div className="text-xs rounded-lg border border-amber-300 bg-amber-50 text-amber-900 p-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <span className="font-semibold shrink-0">🏟 אולמות תפוסים השבוע:</span>
@@ -603,7 +674,21 @@ export function WeeklyScheduleView({ data, save, publish, canEdit, weekStart, se
                         <td className="border border-stone-200 px-3 py-2" style={{ backgroundColor: `${rowColor}20` }}>
                           <div className="flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: rowColor }} />
-                            <span className="font-medium text-xs" style={{ color: rowColor }}>{team.name}</span>
+                            <span className="font-medium text-xs flex-1 min-w-0" style={{ color: rowColor }}>{team.name}</span>
+                            {/* Drop one row from the view. The coach filter narrows to whole
+                                people; this is for the row you simply do not need in front of
+                                you right now. `no-print` because it is a control, and it hides
+                                nothing that was not already hidden by the time the board is
+                                captured. stone-500, not stone-400 — the lighter grey has failed
+                                contrast four times in this project's reviews. */}
+                            <button
+                              onClick={() => hideRow(team.id)}
+                              className="no-print p-0.5 rounded text-stone-500 hover:text-stone-800 hover:bg-white/60 shrink-0"
+                              aria-label={`הסתר את השורה של ${team.name}`}
+                              title="הסתר שורה זו"
+                            >
+                              <IconX size={13} />
+                            </button>
                           </div>
                           {team.coachId && <div className="text-xs text-stone-500 mt-0.5 pr-4">{nameOf(data.coaches, team.coachId)}</div>}
                         </td>

@@ -143,6 +143,9 @@ export const EMPTY = {
   holidays: [], // { id, date: "YYYY-MM-DD", name } — special days shown on the weekly board
   announcement: { text: "", updatedAt: null }, // single notice board shown to all coaches
   schedulePublished: null, // { weekOf, at } — set when a manager marks a week's schedule as published
+  // Board-level, not per-viewer: hiding the fixed teams is a decision about the CLUB's
+  // board, so every coach sees the same board the manager does.
+  hideFixedTeams: false,
   // Weeks a manager dismissed the "fill the fixed teams" offer for, so it stops asking.
   fixedWeekSkips: [],
   weeklyAssignments: {},
