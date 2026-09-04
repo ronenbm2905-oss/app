@@ -83,6 +83,20 @@ export const DAY_BG_COLORS = [
 // never who a club is. Identity fields are blank or obviously unset, and the screens
 // that show them say what to fill in rather than quietly borrowing someone else's.
 export const DEFAULT_SETTINGS = {
+  // The club's training-plan form. The shape of a plan is fixed; what its table's columns
+  // are called, and whether it carries a lineup block at all, is the club's own sheet.
+  // `lineups.enabled` is false by default — a lineup block of groups, quads and fives is
+  // one club's paper form, not a fact about coaching.
+  trainingPlan: {
+    columns: [
+      { id: "drill", label: "תרגיל" },
+      { id: "detail", label: "פירוט" },
+      { id: "focus", label: "דגשים" },
+      { id: "time", label: "זמן" },
+    ],
+    lineups: { enabled: false, groups: 2, quads: 4, fives: 3 },
+    startingRows: 4,
+  },
   // Minutes before tip-off the scorer's table crew is asked to arrive. A convention, not
   // an identity — so unlike the name, logo and colours it carries a real default.
   secretaryLeadMin: 15,

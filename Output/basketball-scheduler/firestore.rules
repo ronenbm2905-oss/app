@@ -148,6 +148,16 @@ service cloud.firestore {
       return isClubAdmin(clubId) || (isClubStaff(clubId) && ownsExisting() && ownsIncoming());
     }
 
+    // The club's training-plan form, one document per session. Same ownership shape as the
+    // game notes, and for the same reason: a coach's plan is their own working document,
+    // and the club's manager reads all of them.
+    match /clubs/{clubId}/trainingPlans/{sessionId} {
+      allow read: if ownRead(clubId);
+      allow create: if ownCreate(clubId);
+      allow update: if ownChange(clubId);
+      allow delete: if isClubAdmin(clubId) || (isClubStaff(clubId) && ownsExisting());
+    }
+
     // The club's shared library of drill links.
     //
     // NOTE the read rule: any club member, NOT `ownRead`. `ownRead` requires ownership,

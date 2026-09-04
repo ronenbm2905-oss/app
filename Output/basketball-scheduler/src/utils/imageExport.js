@@ -86,6 +86,38 @@ export async function canvasToPdfBlob(canvas) {
   return pdf.output("blob");
 }
 
+// Rasterise an inline <svg> node directly, without html2canvas.
+//
+// html2canvas re-implements a renderer; the browser already has one that draws SVG
+// perfectly. Serialising and drawing the element gives a sharper image at any size and
+// skips the mobile <img> painting problems the helpers above exist to work around. The
+// data URI is same-origin by definition, so the canvas is never tainted and toBlob works.
+export async function svgToCanvas(svgEl, targetWidth = 1200) {
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  const box = (clone.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
+  const ratio = box.length === 4 && box[2] ? box[3] / box[2] : 1;
+  const w = Math.round(targetWidth);
+  const h = Math.round(targetWidth * ratio) || w;
+  clone.setAttribute("width", w);
+  clone.setAttribute("height", h);
+  // A serialised SVG carries no page stylesheet, so any text in it has to name a font
+  // itself or the shirt numbers come out in whatever the renderer defaults to.
+  clone.setAttribute("font-family", "Arial, sans-serif");
+
+  const img = await readyImage(
+    `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(clone))}`
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas;
+}
+
 // Capture a DOM node to a PNG blob, compositing logo + optional title on top.
 export async function captureNode(node, opts = {}) {
   const canvas = await renderNodeCanvas(node, opts);

@@ -12,7 +12,8 @@
 // re-publishing regenerates them, and including them would imply the export is
 // incomplete without them.
 //
-// Game notes and the drill library are the exception to "the club document is everything":
+// Game notes, the training plans and the drill library are the exception to "the club
+// document is everything":
 // they live in their own subcollections and are NOT derived from anything, so leaving them
 // out would hand a departing club an incomplete copy of what its coaches wrote and
 // collected. They are passed in.
@@ -32,21 +33,23 @@ import { DAYS } from "../constants";
 // internal field has an obvious place to be excluded rather than shipping by accident.
 const INTERNAL_KEYS = [];
 
-export function buildClubExport(data, { clubId, exportedAt, gameNotes, videos }) {
+export function buildClubExport(data, { clubId, exportedAt, gameNotes, videos, trainingPlans }) {
   const club = { ...(data || {}) };
   INTERNAL_KEYS.forEach((k) => delete club[k]);
   const notes = gameNotes && typeof gameNotes === "object" ? gameNotes : {};
   const library = Array.isArray(videos) ? videos : [];
+  const plans = trainingPlans && typeof trainingPlans === "object" ? trainingPlans : {};
   return {
     _format: "basketball-scheduler/club-export",
     _version: 1,
     _clubId: clubId || "",
     _exportedAt: exportedAt || "",
     _note:
-      "קובץ זה מכיל את כל נתוני המועדון כפי שהם שמורים במערכת, כולל הערות המאמנים אחרי משחקים וספריית הסרטונים. לוחות שפורסמו לפורטל ההורים נגזרים מהנתונים האלה ואינם כלולים.",
+      "קובץ זה מכיל את כל נתוני המועדון כפי שהם שמורים במערכת, כולל הערות המאמנים אחרי משחקים, מערכי האימון וספריית הסרטונים. לוחות שפורסמו לפורטל ההורים נגזרים מהנתונים האלה ואינם כלולים.",
     club,
     gameNotes: notes,
     videos: library,
+    trainingPlans: plans,
   };
 }
 

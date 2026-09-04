@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { DEFAULT_SETTINGS, BASE_SESSION_TYPES, COLORS } from "../constants";
 import { customSessionTypes } from "../utils/sessionTypes";
+import { planTemplate, DEFAULT_PLAN_TEMPLATE } from "../utils/trainingPlan";
 import { uid } from "../utils/dates";
 import { buildClubExport, csvSheets, exportFileName } from "../utils/exportClub";
 import { clubSettings } from "../utils/club";
@@ -135,7 +136,7 @@ function SubscriptionCard({ data, save, subscription, isAdmin }) {
 
 // Taking the club's data out, in both formats it might be wanted in: JSON, which is the
 // faithful copy, and CSV, which is the one that opens.
-function ExportCard({ data, clubId, gameNotes, videos }) {
+function ExportCard({ data, clubId, gameNotes, videos, trainingPlans }) {
   const [msg, setMsg] = useState("");
 
   const download = (content, filename, mime) => {
@@ -155,7 +156,7 @@ function ExportCard({ data, clubId, gameNotes, videos }) {
 
   const exportJson = () => {
     download(
-      JSON.stringify(buildClubExport(data, { clubId, exportedAt: at, gameNotes, videos }), null, 2),
+      JSON.stringify(buildClubExport(data, { clubId, exportedAt: at, gameNotes, videos, trainingPlans }), null, 2),
       exportFileName(clubId, at, "json"),
       "application/json"
     );
@@ -294,7 +295,7 @@ function PortalCard({ data, save, syncJoinCode, clubId, canEdit }) {
   );
 }
 
-export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscription, isAdmin, currentEmail, gameNotes, videos }) {
+export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscription, isAdmin, currentEmail, gameNotes, videos, trainingPlans }) {
   const saved = clubSettings(data);
   const [draft, setDraft] = useState(saved);
   const [logoMsg, setLogoMsg] = useState("");
@@ -366,6 +367,18 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
   // a hand-edited club document shows here exactly as it behaves everywhere else.
   const contrast = brandContrast(draft.primaryColor || DEFAULT_SETTINGS.primaryColor);
   const customTypes = customSessionTypes({ settings: draft });
+  // Read through the same normaliser the form uses, so this screen shows exactly what a
+  // coach will get rather than the raw half-edited object.
+  const plan = planTemplate({ settings: draft });
+  const setPlan = (patch) => set({ trainingPlan: { ...plan, ...patch } });
+  const setPlanColumn = (i, label) =>
+    setPlan({ columns: plan.columns.map((c, j) => (j === i ? { ...c, label } : c)) });
+  // A fresh `uid()` per column, minted once. See the note in utils/trainingPlan.js: the id
+  // is the storage key of that cell in every plan already written, so it must never be
+  // derived from the label or from the position.
+  const addPlanColumn = () => setPlan({ columns: [...plan.columns, { id: uid(), label: "" }] });
+  const removePlanColumn = (i) => setPlan({ columns: plan.columns.filter((_, j) => j !== i) });
+  const setLineups = (patch) => setPlan({ lineups: { ...plan.lineups, ...patch } });
   const writeCustomTypes = (list) => set({ sessionTypes: list });
   const setCustomType = (i, patch) =>
     writeCustomTypes(customTypes.map((t, j) => (j === i ? { ...t, ...patch } : t)));
@@ -629,6 +642,94 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
           whose subscription lapsed does not get to change who reaches its data. The
           renewal and export cards sit outside it; this one does not belong with them. */}
       <AccessCard data={data} save={save} currentEmail={currentEmail} />
+
+      <Card
+        title="טופס מערך האימון"
+        hint="העמודות שהמאמנים ממלאים. שינוי שם עמודה אינו מוחק את מה שכבר נכתב בה."
+      >
+        <div className="space-y-2">
+          {plan.columns.map((c, i) => (
+            <div key={c.id} className="flex items-center gap-2">
+              <span className="text-xs text-stone-500 w-6 tabular-nums">{i + 1}.</span>
+              <input
+                className={`${inputCls} flex-1`}
+                value={c.label}
+                onChange={(e) => setPlanColumn(i, e.target.value)}
+                placeholder="שם העמודה"
+              />
+              <button
+                onClick={() => removePlanColumn(i)}
+                disabled={plan.columns.length <= 1}
+                aria-label={`הסר את העמודה ${c.label || i + 1}`}
+                title={plan.columns.length <= 1 ? "חייבת להישאר עמודה אחת לפחות" : "הסר עמודה"}
+                className="w-11 h-11 flex items-center justify-center rounded-lg text-stone-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-stone-500"
+              >
+                <IconTrash size={15} />
+              </button>
+            </div>
+          ))}
+          {plan.columns.length < 8 && (
+            <button onClick={addPlanColumn} className="text-xs text-brand-700 hover:underline">
+              ＋ הוסף עמודה
+            </button>
+          )}
+          <p className="text-[11px] text-stone-500">
+            עמודה שהוסרה אינה מוחקת את הטקסט שנכתב בה — הוא פשוט מפסיק להופיע בטופס.
+          </p>
+        </div>
+
+        <div className="pt-3 mt-3 border-t border-stone-200 space-y-2">
+          <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={plan.lineups.enabled}
+              onChange={(e) => setLineups({ enabled: e.target.checked })}
+              className="w-4 h-4 accent-brand-600 mt-0.5"
+            />
+            <span>
+              חלוקה להרכבים
+              <span className="block text-xs text-stone-500">
+                בלוק בתחתית הטופס לחלוקת השחקנים לרביעיות וחמישיות. לא כל מועדון עובד כך —
+                מכובה כברירת מחדל.
+              </span>
+            </span>
+          </label>
+          {plan.lineups.enabled && (
+            <div className="flex flex-wrap gap-3 pr-6">
+              {[
+                { k: "groups", label: "מספר קבוצות", max: 6 },
+                { k: "quads", label: "רביעיות בכל קבוצה", max: 12 },
+                { k: "fives", label: "חמישיות בכל קבוצה", max: 12 },
+              ].map((f) => (
+                <div key={f.k} className="flex-1 min-w-[7rem]">
+                  <label className="text-xs text-stone-500 mb-1 block">{f.label}</label>
+                  <input
+                    type="number"
+                    min={f.k === "groups" ? 1 : 0}
+                    max={f.max}
+                    className={inputCls}
+                    value={plan.lineups[f.k]}
+                    onChange={(e) => setLineups({ [f.k]: e.target.value === "" ? "" : Number(e.target.value) })}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="pt-3 mt-3 border-t border-stone-200">
+          <Field label="שורות תרגילים בטופס ריק" hint="אפשר תמיד להוסיף עוד תוך כדי מילוי.">
+            <input
+              type="number"
+              min="1"
+              max="20"
+              className={inputCls}
+              value={plan.startingRows}
+              onChange={(e) => setPlan({ startingRows: e.target.value === "" ? "" : Number(e.target.value) })}
+            />
+          </Field>
+        </div>
+      </Card>
       <Card
         title="פרטים משפטיים"
         hint="מוצגים בתוך מדיניות הפרטיות, תנאי השימוש והצהרת הנגישות של המועדון."
@@ -680,7 +781,7 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
           from a club in a billing dispute turns a payment reminder into leverage over
           their records — including minors' — which is the opposite of what a data
           return obligation is for. */}
-      <ExportCard data={data} clubId={clubId} gameNotes={gameNotes} videos={videos} />
+      <ExportCard data={data} clubId={clubId} gameNotes={gameNotes} videos={videos} trainingPlans={trainingPlans} />
 
       <Card title="מידע טכני" hint="כל נתוני המועדון נשמרים במסמך אחד, שמוגבל ל-1 MB.">
         <div className="flex items-center gap-3">

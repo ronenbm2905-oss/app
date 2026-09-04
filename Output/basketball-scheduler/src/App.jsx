@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
 import { useGameNotes } from "./hooks/useGameNotes";
+import { useTrainingPlans } from "./hooks/useTrainingPlans";
 import { useVideos } from "./hooks/useVideos";
 import { todayWeekStart } from "./utils/dates";
 import { applyTheme } from "./utils/theme";
@@ -126,6 +127,7 @@ export default function App({ clubId }) {
   // The drill library is shared: every coach reads it and every coach adds to it, so unlike
   // the notes hook this one takes no role and scopes no query. See the rule block.
   const { videos, saveVideo, removeVideo, videosReady } = useVideos(user, clubId);
+  const { plans, savePlan } = useTrainingPlans(user, isAdmin, myEmail, clubId);
 
   // Which of THIS club's coaches is signed in, if the club filled in their address.
   // Empty when unknown, and every consumer falls back to the club-wide view — the
@@ -314,7 +316,18 @@ export default function App({ clubId }) {
         ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} publish={publish} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "coach" ? (
-          <CoachView data={data} fixedCoachId={myCoachId} canEdit={canEdit} clubId={clubId} weekStart={weekStart} setWeekStart={setWeekStart} />
+          <CoachView
+            data={data}
+            fixedCoachId={myCoachId}
+            canEdit={canEdit}
+            clubId={clubId}
+            weekStart={weekStart}
+            setWeekStart={setWeekStart}
+            plans={plans}
+            savePlan={savePlan}
+            authorName={user?.displayName || myEmail}
+            authorEmail={myEmail}
+          />
         ) : activeTab === "videos" ? (
           <VideosView
             data={data}
@@ -339,6 +352,7 @@ export default function App({ clubId }) {
             currentEmail={myEmail}
             gameNotes={notes}
             videos={videos}
+            trainingPlans={plans}
           />
         ) : (
           <ReportView data={data} />

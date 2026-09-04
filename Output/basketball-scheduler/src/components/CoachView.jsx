@@ -9,13 +9,14 @@ import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { AddToCalendarButton } from "./AddToCalendarButton";
+import { TrainingPlanForm } from "./TrainingPlanForm";
 import { secretaryDutiesFor, secretaryWhen } from "../utils/secretary";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
 import { captureNode, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { clubName as clubNameOf } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
 
-export function CoachView({ data, fixedCoachId, canEdit, clubId, weekStart, setWeekStart }) {
+export function CoachView({ data, fixedCoachId, canEdit, clubId, weekStart, setWeekStart, plans, savePlan, authorName, authorEmail }) {
   const sessionTypes = clubSessionTypes(data);
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
@@ -279,6 +280,19 @@ export function CoachView({ data, fixedCoachId, canEdit, clubId, weekStart, setW
                                 )}
                               </div>
                               {s.notes && <div className="text-xs text-stone-500 pr-1">{s.notes}</div>}
+                              {/* The club's own form, filled here instead of on paper. It sits
+                                  on the training it belongs to, so nothing is looked up twice. */}
+                              <TrainingPlanForm
+                                data={data}
+                                session={s}
+                                teamName={nameOf(data.teams, s.teamId)}
+                                hallName={nameOf(data.halls, s.hallId)}
+                                dateLabel={formatDate(weekDates[s.day])}
+                                plans={plans}
+                                savePlan={savePlan}
+                                authorName={authorName}
+                                authorEmail={authorEmail}
+                              />
                             </div>
                           );
                         })}

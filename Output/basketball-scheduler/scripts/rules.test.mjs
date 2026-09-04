@@ -64,6 +64,12 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, "clubs", CLUB, "gameNotes", "G-1"), {
     text: "שיחקנו טוב", authorEmail: "coach@club.org", author: "מאמן", updatedAt: "2026-09-01",
   });
+  await setDoc(doc(db, "clubs", CLUB, "trainingPlans", "S-1"), {
+    rows: [], units: {}, summary: "", authorEmail: "coach@club.org", author: "מאמן", updatedAt: "2026-09-01",
+  });
+  await setDoc(doc(db, "clubs", CLUB, "trainingPlans", "S-2"), {
+    rows: [], units: {}, summary: "", authorEmail: "other@club.org", author: "אחר", updatedAt: "2026-09-01",
+  });
   await setDoc(doc(db, "clubs", CLUB, "videos", "V-1"), {
     title: "תרגיל מסירות", url: "https://youtu.be/abc", provider: "youtube",
     authorEmail: "coach@club.org", author: "מאמן", createdAt: "2026-09-01",
@@ -226,6 +232,20 @@ await check("the manager removes anything", assertSucceeds(deleteDoc(vid(asAdmin
 
 await check("an outsider cannot read the library", assertFails(getDoc(vid(asStranger, "V-1"))));
 await check("a portal parent cannot read the library", assertFails(getDoc(vid(asParentA, "V-1"))));
+
+console.log("\nTraining plans — a coach's own working document:");
+const planDoc = (db, id) => doc(db, "clubs", CLUB, "trainingPlans", id);
+const myPlan = { rows: [], units: {}, summary: "עודכן", authorEmail: "coach@club.org", author: "מאמן", updatedAt: "2026-09-02" };
+await check("a coach reads their own plan", assertSucceeds(getDoc(planDoc(asCoach, "S-1"))));
+await check("a coach CANNOT read another coach's plan", assertFails(getDoc(planDoc(asCoach, "S-2"))));
+await check("a coach writes their own plan", assertSucceeds(setDoc(planDoc(asCoach, "S-1"), myPlan)));
+await check("a coach CANNOT write another coach's plan", assertFails(setDoc(planDoc(asCoach, "S-2"), myPlan)));
+await check("the manager reads every plan", assertSucceeds(getDoc(planDoc(asAdmin, "S-2"))));
+// Same listen rule as the notes: unscoped is refused outright, scoped is allowed.
+await check("a coach CANNOT list every plan", assertFails(getDocs(collection(asCoach, "clubs", CLUB, "trainingPlans"))));
+await check("a coach CAN list their own, scoped",
+  assertSucceeds(getDocs(query(collection(asCoach, "clubs", CLUB, "trainingPlans"), where("authorEmail", "==", "coach@club.org")))));
+await check("a portal parent cannot read a plan", assertFails(getDoc(planDoc(asParentA, "S-1"))));
 
 await testEnv.cleanup();
 console.log(`\n${passed} passed, ${failed} failed\n`);
