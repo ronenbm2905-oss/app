@@ -34,6 +34,7 @@ import {
   profitabilityCsv, inspectionsCsv, priceHistoryCsv, INSPECTIONS_CSV_NOTICE,
 } from "../src/utils/backup.js";
 import { round2, withVat, fromGross, sum } from "../src/utils/money.js";
+import { netOfGross, vatPart, netTotals } from "../src/utils/vat.js";
 import { addressKey } from "../src/utils/id.js";
 import { managerLoad, managerConflicts, knownManagers } from "../src/utils/managers.js";
 import {
@@ -931,7 +932,53 @@ if (!existsSync(SEED_XLSX)) {
 }
 
 // ============================================================================
-// 24. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
+// 24. ברוטו מול נטו — דמי הניהול כוללים מע"מ (אישור רונן, 4.9)
+// ============================================================================
+{
+  eq("11,800 ברוטו → 10,000 נטו", netOfGross(11800, 0.18), 10000);
+  eq("ורכיב המע\"מ הוא 1,800", vatPart(11800, 0.18), 1800);
+  eq("נטו + מע\"מ = ברוטו", round2(netOfGross(11800, 0.18) + vatPart(11800, 0.18)), 11800);
+  eq("שיעור 0 אינו משנה דבר", netOfGross(500, 0), 500);
+  eq("אפס נשאר אפס", netOfGross(0, 0.18), 0);
+  eq("קלט לא-מספרי אינו מפיל", netOfGross(undefined, 0.18), 0);
+
+  /**
+   * ⚠ הזהות שמצדיקה גזירה אחידה: **ספק רגיל ועוסק פטור מגיעים לאותו נטו.**
+   *   · רגיל: משלמים 1,180 ברוטו, מקזזים 180 → עלות אמיתית 1,000.
+   *   · פטור: משלמים 1,000 בלי מע"מ; הגיליון רשם 1,180 (מע"מ רעיוני) →
+   *     1,180/1.18 = 1,000, שוב העלות האמיתית.
+   * בלי הזהות הזו היינו חייבים לפצל את החישוב לפי סוג הספק.
+   */
+  const regular = makeContract({ buildingId: "b", categoryId: "cleaning", amount: 1180 });
+  const exempt = makeContract({ buildingId: "b", categoryId: "cleaning", amount: 1180, vatMode: "imputed", vatRate: 0.18 });
+  eq("ספק רגיל: נטו 1,000", netOfGross(regular.amount, 0.18), 1000);
+  eq("עוסק פטור: המע\"מ הרעיוני שבתוכו", imputedVatIncluded(exempt), 180);
+  eq("ולכן המזומן ששולם לו זהה לנטו",
+    round2(exempt.amount - imputedVatIncluded(exempt)), netOfGross(exempt.amount, 0.18));
+
+  // --- הסיכום ---
+  const t = netTotals({ income: 11800, cost: 5900, profit: 5900 }, 0.18);
+  eq("הכנסה נטו", t.income, 10000);
+  eq("עלות נטו", t.cost, 5000);
+  eq("רווח נטו", t.profit, 5000);
+  eq("מע\"מ שנגבה", t.vatOnIncome, 1800);
+  eq("מע\"מ שקוזז", t.vatOnCost, 900);
+  eq("⚠ המע\"מ שמועבר למדינה הוא ההפרש", t.vatToRemit, 900);
+
+  // ⚠ האחוז זהה, השקלים לא — זה בדיוק המקום שקל לטעות בו
+  const gross = { income: 11800, cost: 5900, profit: 5900 };
+  eq("⚠ שולי הרווח באחוזים אינם משתנים",
+    round2(t.margin * 10000), round2((gross.profit / gross.income) * 10000));
+  ok("⚠ אבל הרווח בשקלים כן — קטן בשיעור המע\"מ",
+    t.profit < gross.profit && round2(t.profit * 1.18) === gross.profit,
+    `${t.profit} מול ${gross.profit}`);
+
+  eq("סיכום ריק לא מפיל", netTotals(undefined, 0.18).profit, 0);
+  eq("הכנסה אפס — margin הוא null", netTotals({ income: 0, cost: 0 }, 0.18).margin, null);
+}
+
+// ============================================================================
+// 25. נאמנות מול הנתונים האמיתיים — מדולג בלי seed
 // ============================================================================
 console.log("\n--- נאמנות מול seed/vitzman.json ---");
 if (!existsSync(SEED)) {
@@ -1012,6 +1059,20 @@ if (!existsSync(SEED)) {
     eq("קטגוריית הגבייה מסתכמת לסכום המלא", collection.actual, 32950);
   } else {
     skip("בדיקת הטווח הקטוע", "meta.sheetFindings.truncatedRanges חסר");
+  }
+
+  // --- ברוטו מול נטו על התיק האמיתי ---
+  {
+    const net = netTotals(totals, 0.18);
+    eq("הכנסה נטו על התיק", net.income, round2(1088983 / 1.18));
+    eq("עלות נטו", net.cost, round2(940050.08 / 1.18));
+    ok("⚠ הרווח הנטו קטן בכ-18% מהברוטו",
+      Math.abs(net.profit - 148932.92 / 1.18) < 0.02,
+      `${net.profit} מול ${round2(148932.92 / 1.18)}`);
+    ok("ושולי הרווח נשארים 13.68%",
+      Math.abs(net.margin - totals.profit / totals.income) < 1e-9,
+      `${net.margin} מול ${totals.profit / totals.income}`);
+    ok("המע\"מ להעברה חיובי", net.vatToRemit > 0);
   }
 
   // --- מי מנהל את הבניין: שתי העמודות מול הנתונים האמיתיים ---

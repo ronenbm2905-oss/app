@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { StatTile } from "./ui/StatTile.jsx";
 import { IconWarning } from "./ui/icons.jsx";
 import { fmtILS, fmtILSExact, fmtPct, round2 } from "../utils/money.js";
@@ -6,6 +6,8 @@ import { todayISO } from "../utils/dates.js";
 import { portfolioTotals, categoryBreakdown, employeeLoad, unassignedBuildings } from "../utils/profitability.js";
 import { inspectionSummary } from "../utils/inspections.js";
 import { stalePriceContracts, STALE_PRICE_YEARS } from "../utils/vendors.js";
+import { netTotals } from "../utils/vat.js";
+import { DEFAULT_VAT_RATE } from "../constants.js";
 
 /**
  * דשבורד הרווחיות.
@@ -29,6 +31,17 @@ export default function ProfitabilityDashboard({ data, contractIndex, feeIndex, 
     [data.buildings, contractIndex, asOf]
   );
   const totals = useMemo(() => portfolioTotals(active, contractIndex, asOf, feeIndex), [active, contractIndex, asOf, feeIndex]);
+
+  /**
+   * ⚠ **ברוטו הוא ברירת המחדל, ובכוונה.** הוא מה שמתאזן מול הגיליון, מול
+   * ההסכמים ומול המספרים שרונן מכיר בעל פה. הנטו הוא עדשה נוספת — מספר
+   * שמשנים בו את המשמעות בלי לומר זאת הוא מספר שאי אפשר להצליב מול כלום.
+   */
+  const [vatMode, setVatMode] = useState("gross");
+  const net = useMemo(() => netTotals(totals, DEFAULT_VAT_RATE), [totals]);
+  const shown = vatMode === "net"
+    ? { ...totals, income: net.income, cost: net.cost, profit: net.profit }
+    : totals;
   const breakdown = useMemo(() => categoryBreakdown(active, contractIndex, asOf), [active, contractIndex, asOf]);
   const loads = useMemo(
     () => employeeLoad(data.employees, data.buildings, contractIndex, asOf, feeIndex),
@@ -42,16 +55,51 @@ export default function ProfitabilityDashboard({ data, contractIndex, feeIndex, 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6">
       {/* --- מדדי-על --- */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm">
+          {[["gross", "כולל מע״מ"], ["net", "נטו"]].map(([id, label]) => (
+            <button key={id} onClick={() => setVatMode(id)}
+              className={`rounded-md px-3 py-1 transition ${
+                vatMode === id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-500">
+          {vatMode === "gross"
+            ? "הסכומים כפי שרשומים — כוללים מע״מ, ומתאזנים מול הגיליון ומול ההסכמים."
+            : `נטו לפי ${(DEFAULT_VAT_RATE * 100).toFixed(0)}% מע״מ — מה שנשאר בחברה אחרי העברת המע״מ למדינה.`}
+        </span>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="הכנסה חודשית" value={fmtILS(totals.income)}
+        <StatTile label={`הכנסה חודשית${vatMode === "net" ? " (נטו)" : ""}`} value={fmtILS(shown.income)}
           hint={`${totals.buildingCount} בניינים פעילים`} />
-        <StatTile label="הוצאה חודשית" value={fmtILS(totals.cost)} />
-        <StatTile label="רווח חודשי" value={fmtILS(totals.profit)}
-          tone={totals.profit >= 0 ? "good" : "bad"}
-          hint={`${fmtILS(totals.profit * 12)} לשנה`} />
+        <StatTile label={`הוצאה חודשית${vatMode === "net" ? " (נטו)" : ""}`} value={fmtILS(shown.cost)} />
+        <StatTile label={`רווח חודשי${vatMode === "net" ? " (נטו)" : ""}`} value={fmtILS(shown.profit)}
+          tone={shown.profit >= 0 ? "good" : "bad"}
+          hint={`${fmtILS(shown.profit * 12)} לשנה`} />
         <StatTile label="שולי רווח (margin)" value={fmtPct(totals.margin)}
           tone={totals.margin >= 0.1 ? "good" : "warn"}
-          hint="רווח חלקי ההכנסה — שיעור הרווח מהמחזור" />
+          hint="זהה בברוטו ובנטו — המע״מ מצטמצם בחלוקה" />
+      </div>
+
+      {/*
+        ⚠ הפער הזה גלוי תמיד, בשני המצבים. רונן תכנן לפי הרווח הברוטו עד
+        היום; המספר שנשאר בחברה קטן ממנו, וזה לא משהו שצריך לחפש בלשונית.
+      */}
+      <div className="card border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <b>מע״מ:</b> דמי הניהול והעלויות רשומים <b>כולל מע״מ</b>.
+        המע״מ שנגבה מוועדי הבתים אינו הכנסה — הוא מועבר למדינה.
+        {" "}הרווח שנשאר בחברה הוא <b className="tnum text-slate-900">{fmtILSExact(net.profit)}</b> לחודש
+        {" "}(<span className="tnum">{fmtILS(net.profit * 12)}</span> לשנה),
+        מול <span className="tnum">{fmtILSExact(totals.profit)}</span> ברוטו.
+        {" "}העברה למדינה: <span className="tnum">{fmtILS(net.vatToRemit)}</span> לחודש.
+        <span className="mt-1 block text-xs text-slate-500">
+          ⚠ הגזירה אחידה לספק רגיל ולעוסק פטור: אצל הראשון המע״מ מקוזז, ואצל השני
+          הסכום הרשום כולל מע״מ רעיוני שנוסף להשוואה — בשני המקרים הנטו הוא הסכום
+          חלקי {(1 + DEFAULT_VAT_RATE).toFixed(2)}.
+        </span>
       </div>
 
       {/* --- דורש טיפול: מה שאינו כספי, ולכן נעלם בגיליון --- */}
