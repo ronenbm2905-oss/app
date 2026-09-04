@@ -219,3 +219,20 @@
   (2) **אומת:** `npm test` 285 · build נקי. (3) **לא אומת:** QA בדפדפן. (4) שישה פורטים
   הושלמו; נותרו 8.
 - **Related:** [[basketball-scheduler-cloud-migration]], [[basketball-scheduler-legal-gate]]
+
+### 2026-09-01 — פורט שביעי: מזכירות וקבוצות קבועות [shipped to branch]
+- **What was done:** `secretary.js` + באנר בתצוגת המאמן · `fixedTeams.js` + `FixedTeamsStrip`
+  במסך הניהול · דגל `weekly` בטופס הקבוצה · `timeMinus`/`timePlus` · `fixedWeekSkips`
+  ב-`EMPTY` · שדה "הקדמת מזכירות" בהגדרות. שתי חבילות הבדיקה של `main` עברו **כפי שהן**.
+- **דליפת הזהות של הסבב הייתה מספר:** `SECRETARY_LEAD_MIN = 15`, עם הערה בקוד שאומרת
+  במפורש **"זה כלל של המועדון, לא עובדה על זמן"**. ההערה היא כל הטיעון — **מספר אינו פחות
+  ספציפי-למועדון בגלל שהוא קטן**. עבר ל-`settings.secretaryLeadMin`, 15 כברירת מחדל.
+- **הבדיקה תפסה באג בקוד שכתבתי בשביל זה:** השומר הראשון היה `Number(raw)` + טווח, ו-
+  `Number("")`, `Number(null)` ו-`Number([])` הם **כולם 0** — כלומר "לא הוגדר" נקרא
+  "להגיע בדיוק בשריקה". הוראה אמיתית, והלא נכונה. תוקן לבדיקת טיפוס מפורשת.
+- **Decisions:** ברירת מחדל מספרית מותרת ב-`DEFAULT_SETTINGS` — הכלל "ריק ביודעין" חל על
+  **זהות** (שם, לוגו, צבעים, מילות מפתח, כתובת), לא על מוסכמות ניטרליות. אותו שיקול כמו
+  `VIDEO_CATEGORIES`.
+- **Notes / Caveats:** (1) **אומת:** `npm test` 353 · build נקי. (2) **לא אומת:** QA בדפדפן.
+  (3) שבעה פורטים; נותרו 6 פריטים, מהם 3 חסומים.
+- **Related:** [[basketball-scheduler-cloud-migration]], [[basketball-scheduler-legal-gate]]
