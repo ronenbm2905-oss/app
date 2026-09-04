@@ -538,6 +538,19 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
         <Field label="נקודת איסוף להסעות" hint="מופיעה בקובץ ההסעות שנשלח לחברת ההסעות.">
           <input className={inputCls} value={draft.pickupPoint || ""} onChange={(e) => set({ pickupPoint: e.target.value })} />
         </Field>
+        <Field
+          label="הקדמת מזכירות (דקות)"
+          hint="כמה זמן לפני השריקה הקבוצה שעושה מזכירות מתבקשת להגיע. מופיע בלוח של המאמן."
+        >
+          <input
+            type="number"
+            min="0"
+            max="240"
+            className={inputCls}
+            value={draft.secretaryLeadMin ?? DEFAULT_SETTINGS.secretaryLeadMin}
+            onChange={(e) => set({ secretaryLeadMin: e.target.value === "" ? "" : Number(e.target.value) })}
+          />
+        </Field>
       </Card>
 
       <Card

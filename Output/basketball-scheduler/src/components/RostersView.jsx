@@ -230,6 +230,7 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
   const [name, setName] = useState(initial?.name || "");
   const [coachId, setCoachId] = useState(initial?.coachId || "");
   const [vehicleType, setVehicleType] = useState(initial?.vehicleType || "");
+  const [weekly, setWeekly] = useState(!!initial?.weekly);
   const valid = name.trim().length > 0;
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
@@ -258,13 +259,29 @@ function TeamForm({ initial, coaches, onSave, onCancel }) {
           placeholder="בחר סוג רכב"
         />
       </div>
+      {/* A per-team flag, not a mode: a club can run a school whose week repeats and
+          competitive teams whose week does not, at the same time. */}
+      <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={weekly}
+          onChange={(e) => setWeekly(e.target.checked)}
+          className="w-4 h-4 accent-brand-600 mt-0.5"
+        />
+        <span>
+          קבוצה קבועה — חוזרת כל שבוע
+          <span className="block text-xs text-stone-500">
+            בשבוע שהיא עדיין לא הוזנה בו יופיע כפתור להוספת האימונים שלה, לפי השבוע האחרון שהיא רצה בו.
+          </span>
+        </span>
+      </label>
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onCancel} className="px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50">
           ביטול
         </button>
         <button
           disabled={!valid}
-          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "" })}
+          onClick={() => onSave({ id: initial?.id || uid(), name: name.trim(), coachId: coachId || null, vehicleType: vehicleType || "", weekly })}
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור

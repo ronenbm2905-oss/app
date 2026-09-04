@@ -83,6 +83,9 @@ export const DAY_BG_COLORS = [
 // never who a club is. Identity fields are blank or obviously unset, and the screens
 // that show them say what to fill in rather than quietly borrowing someone else's.
 export const DEFAULT_SETTINGS = {
+  // Minutes before tip-off the scorer's table crew is asked to arrive. A convention, not
+  // an identity — so unlike the name, logo and colours it carries a real default.
+  secretaryLeadMin: 15,
   // Visibly unset rather than "" — this reaches the header and the browser tab title,
   // where an empty string reads as a broken app instead of an unfinished one.
   name: "מועדון ללא שם",
@@ -140,6 +143,8 @@ export const EMPTY = {
   holidays: [], // { id, date: "YYYY-MM-DD", name } — special days shown on the weekly board
   announcement: { text: "", updatedAt: null }, // single notice board shown to all coaches
   schedulePublished: null, // { weekOf, at } — set when a manager marks a week's schedule as published
+  // Weeks a manager dismissed the "fill the fixed teams" offer for, so it stops asking.
+  fixedWeekSkips: [],
   weeklyAssignments: {},
   admins: [],   // emails with edit rights (read + write)
   members: [],  // emails with view-only rights (read); admins also read via the rules

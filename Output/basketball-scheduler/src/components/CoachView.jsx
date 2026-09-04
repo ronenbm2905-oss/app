@@ -9,6 +9,7 @@ import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { AddToCalendarButton } from "./AddToCalendarButton";
+import { secretaryDutiesFor, secretaryWhen } from "../utils/secretary";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
 import { captureNode, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { clubName as clubNameOf } from "../utils/club";
@@ -89,6 +90,13 @@ export function CoachView({ data, fixedCoachId, canEdit, clubId, weekStart, setW
   const reportTeamId = teamId || (coachTeams.length === 1 ? coachTeams[0].id : "");
   const reportTeamName = nameOf(data.teams, reportTeamId);
 
+  // Scoped to the coach's WEEK, not to the selected report team. A coach with two teams who
+  // has not picked one has no `reportTeamId` at all, so scoping this the same way would
+  // hide the duty from exactly the coach most likely to be double-booked.
+  const screenDuties = (teamId ? [teamId] : coachTeamIds).flatMap((id) =>
+    secretaryDutiesFor(data, id, weekStart).map((d) => ({ ...d, forTeamId: id, forTeamName: nameOf(data.teams, id) }))
+  );
+
   const weekDates = getWeekDates(weekStart);
   const reportSessions = data.sessions
     .filter((s) => s.teamId === reportTeamId && inWeek(s))
@@ -151,6 +159,28 @@ export function CoachView({ data, fixedCoachId, canEdit, clubId, weekStart, setW
             label={`אימונים — ${myName}`}
             weekStart={weekStart}
           />
+        )}
+
+        {screenDuties.length > 0 && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 space-y-1">
+            <div className="text-sm font-semibold text-amber-900 flex items-center gap-1.5">
+              🪑 מזכירות השבוע
+            </div>
+            {screenDuties.map((d, i) => (
+              <div key={`${d.forTeamId}-${d.gameKey || i}`} className="text-sm text-amber-800 flex flex-wrap items-center gap-x-2">
+                {/* Named only when the coach has more than one team — otherwise it is obvious. */}
+                {coachTeams.length > 1 && <span className="font-semibold">{d.forTeamName}:</span>}
+                <span className="font-medium">{secretaryWhen(d) || "השבוע"}</span>
+                <span>· משחק של {d.hostTeamName || "קבוצה אחרת"}</span>
+                {d.venue && <span className="text-amber-700">· {d.venue}</span>}
+              </div>
+            ))}
+            {screenDuties.some((d) => !d.date) && (
+              <p className="text-xs text-amber-700">
+                המשחק עדיין לא בלוח, אז אין שעה. השעה תופיע לבד כשהוא ייובא.
+              </p>
+            )}
+          </div>
         )}
 
         {/* Player-facing weekly PDF report */}
