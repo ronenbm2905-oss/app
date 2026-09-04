@@ -47,3 +47,4 @@ itai/Outputs/run2dream-web/
 # --- עותקי עבודה מקוננים ---
 # .saas-review הוא clone מלא עם .git משלו (~693MB). ריפו בתוך ריפו = צרות.
 .saas-review/
+Output/project-budget/
