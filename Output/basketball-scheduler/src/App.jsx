@@ -314,7 +314,7 @@ export default function App({ clubId }) {
         ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} publish={publish} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "coach" ? (
-          <CoachView data={data} fixedCoachId={myCoachId} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
+          <CoachView data={data} fixedCoachId={myCoachId} canEdit={canEdit} clubId={clubId} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "videos" ? (
           <VideosView
             data={data}

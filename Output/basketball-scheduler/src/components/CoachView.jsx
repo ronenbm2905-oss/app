@@ -8,12 +8,13 @@ import { sessionViolatesConstraints } from "../utils/conflicts";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
+import { AddToCalendarButton } from "./AddToCalendarButton";
 import { IconUsers, IconCalendar, IconMapPin, IconBan, IconDownload } from "./ui/icons";
 import { captureNode, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
 import { clubName as clubNameOf } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
 
-export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart }) {
+export function CoachView({ data, fixedCoachId, canEdit, clubId, weekStart, setWeekStart }) {
   const sessionTypes = clubSessionTypes(data);
   const [coachId, setCoachId] = useState(fixedCoachId || "");
   const [day, setDay] = useState("");
@@ -139,6 +140,18 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
           )}
           <Select value={day} onChange={setDay} options={DAYS.map((d) => ({ id: d, name: d }))} placeholder="כל הימים" className="max-w-xs" />
         </div>
+
+        {/* The coach's own week, not the club's — whatever the filters above are showing
+            is what goes into their calendar. */}
+        {coachId && (
+          <AddToCalendarButton
+            sessions={DAYS.flatMap((d) => myFor(d))}
+            data={data}
+            clubId={clubId}
+            label={`אימונים — ${myName}`}
+            weekStart={weekStart}
+          />
+        )}
 
         {/* Player-facing weekly PDF report */}
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
