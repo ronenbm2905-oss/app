@@ -12,9 +12,10 @@
 // re-publishing regenerates them, and including them would imply the export is
 // incomplete without them.
 //
-// Game notes are the exception to "the club document is everything": they live in their
-// own subcollection and are NOT derived from anything, so leaving them out would hand a
-// departing club an incomplete copy of records its coaches wrote. They are passed in.
+// Game notes and the drill library are the exception to "the club document is everything":
+// they live in their own subcollections and are NOT derived from anything, so leaving them
+// out would hand a departing club an incomplete copy of what its coaches wrote and
+// collected. They are passed in.
 //
 // One coupling worth stating, because it is invisible from here: a COACH only ever
 // receives their own notes (the rules scope their listen by `authorEmail`), so an export
@@ -31,19 +32,21 @@ import { DAYS } from "../constants";
 // internal field has an obvious place to be excluded rather than shipping by accident.
 const INTERNAL_KEYS = [];
 
-export function buildClubExport(data, { clubId, exportedAt, gameNotes }) {
+export function buildClubExport(data, { clubId, exportedAt, gameNotes, videos }) {
   const club = { ...(data || {}) };
   INTERNAL_KEYS.forEach((k) => delete club[k]);
   const notes = gameNotes && typeof gameNotes === "object" ? gameNotes : {};
+  const library = Array.isArray(videos) ? videos : [];
   return {
     _format: "basketball-scheduler/club-export",
     _version: 1,
     _clubId: clubId || "",
     _exportedAt: exportedAt || "",
     _note:
-      "קובץ זה מכיל את כל נתוני המועדון כפי שהם שמורים במערכת, כולל הערות המאמנים אחרי משחקים. לוחות שפורסמו לפורטל ההורים נגזרים מהנתונים האלה ואינם כלולים.",
+      "קובץ זה מכיל את כל נתוני המועדון כפי שהם שמורים במערכת, כולל הערות המאמנים אחרי משחקים וספריית הסרטונים. לוחות שפורסמו לפורטל ההורים נגזרים מהנתונים האלה ואינם כלולים.",
     club,
     gameNotes: notes,
+    videos: library,
   };
 }
 
@@ -69,9 +72,10 @@ const nameOf = (list, id) => (list || []).find((x) => x.id === id)?.name || "";
 
 // The tabular parts, resolved from ids into names. An export full of "t7f3k" is a
 // backup, not a copy of your records.
-export function csvSheets(data, gameNotes) {
+export function csvSheets(data, gameNotes, videos) {
   const d = data || {};
   const notes = gameNotes && typeof gameNotes === "object" ? gameNotes : {};
+  const library = Array.isArray(videos) ? videos : [];
   return {
     teams: toCsv(d.teams, [
       { label: "שם קבוצה", get: (t) => t.name },
@@ -128,6 +132,14 @@ export function csvSheets(data, gameNotes) {
         { label: "הערה", get: (n) => n.text || "" },
       ]
     ),
+    videos: toCsv(library, [
+      { label: "שם", get: (v) => v.title || "" },
+      { label: "קטגוריה", get: (v) => v.category || "" },
+      { label: "קישור", get: (v) => v.url || "" },
+      { label: "הוסיף", get: (v) => v.author || "" },
+      { label: "נוסף בתאריך", get: (v) => v.createdAt || "" },
+      { label: "הערה", get: (v) => v.note || "" },
+    ]),
     games: toCsv(d.games, [
       { label: "תאריך", get: (g) => g.date || "" },
       { label: "שעה", get: (g) => g.time || "" },

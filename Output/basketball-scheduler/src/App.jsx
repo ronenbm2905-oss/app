@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useClubData } from "./hooks/useClubData";
 import { useGameNotes } from "./hooks/useGameNotes";
+import { useVideos } from "./hooks/useVideos";
 import { todayWeekStart } from "./utils/dates";
 import { applyTheme } from "./utils/theme";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
@@ -17,6 +18,7 @@ import { PlayersView } from "./components/PlayersView";
 import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { SettingsView } from "./components/SettingsView";
+import { VideosView } from "./components/VideosView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { BirthdayReminder } from "./components/BirthdayReminder";
 import { SchedulePublishedBanner } from "./components/SchedulePublishedBanner";
@@ -26,7 +28,7 @@ import { HomeView } from "./components/HomeView";
 import {
   IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
-  IconCalendarDays, IconUser, IconUsers, IconClock, IconSettings, IconCalendarX,
+  IconCalendarDays, IconUser, IconUsers, IconClock, IconSettings, IconCalendarX, IconVideo,
 } from "./components/ui/icons";
 import { clubName as clubNameOf } from "./utils/club";
 import { coachIdForUser } from "./utils/coachIdentity";
@@ -52,6 +54,7 @@ const TABS = [
   { id: "games", label: "משחקים", Icon: IconTrophy },
   { id: "weekly", label: "לוח שבועי", Icon: IconCalendarDays },
   { id: "coach", label: "תצוגת מאמן", Icon: IconUser },
+  { id: "videos", label: "סרטוני אימון", Icon: IconVideo },
   { id: "players", label: "שחקנים", Icon: IconUsers },
   { id: "report", label: "דו\"ח שעות", Icon: IconClock },
   { id: "settings", label: "הגדרות", Icon: IconSettings },
@@ -120,6 +123,9 @@ export default function App({ clubId }) {
   // is an empty screen rather than an error.
   const myEmail = user?.email || "";
   const { notes, saveNote } = useGameNotes(user, isAdmin, myEmail, clubId);
+  // The drill library is shared: every coach reads it and every coach adds to it, so unlike
+  // the notes hook this one takes no role and scopes no query. See the rule block.
+  const { videos, saveVideo, removeVideo, videosReady } = useVideos(user, clubId);
 
   // Which of THIS club's coaches is signed in, if the club filled in their address.
   // Empty when unknown, and every consumer falls back to the club-wide view — the
@@ -280,6 +286,7 @@ export default function App({ clubId }) {
             onOpen={setTab}
             canEdit={canEdit}
             gameNotes={notes}
+            videoCount={videosReady ? videos.length : undefined}
           />
         ) : activeTab === "announcements" ? (
           <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
@@ -308,6 +315,16 @@ export default function App({ clubId }) {
           <WeeklyScheduleView data={data} save={save} publish={publish} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "coach" ? (
           <CoachView data={data} fixedCoachId={myCoachId} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
+        ) : activeTab === "videos" ? (
+          <VideosView
+            data={data}
+            user={user}
+            canEdit={canEdit}
+            videos={videos}
+            saveVideo={saveVideo}
+            removeVideo={removeVideo}
+            videosReady={videosReady}
+          />
         ) : activeTab === "players" ? (
           <PlayersView data={data} save={save} canEdit={canEdit} />
         ) : activeTab === "settings" ? (
@@ -321,6 +338,7 @@ export default function App({ clubId }) {
             isAdmin={isAdmin}
             currentEmail={myEmail}
             gameNotes={notes}
+            videos={videos}
           />
         ) : (
           <ReportView data={data} />

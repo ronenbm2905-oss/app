@@ -64,6 +64,14 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(db, "clubs", CLUB, "gameNotes", "G-1"), {
     text: "שיחקנו טוב", authorEmail: "coach@club.org", author: "מאמן", updatedAt: "2026-09-01",
   });
+  await setDoc(doc(db, "clubs", CLUB, "videos", "V-1"), {
+    title: "תרגיל מסירות", url: "https://youtu.be/abc", provider: "youtube",
+    authorEmail: "coach@club.org", author: "מאמן", createdAt: "2026-09-01",
+  });
+  await setDoc(doc(db, "clubs", CLUB, "videos", "V-2"), {
+    title: "של אחר", url: "https://youtu.be/def", provider: "youtube",
+    authorEmail: "other@club.org", author: "אחר", createdAt: "2026-09-01",
+  });
   await setDoc(doc(db, "clubs", CLUB, "gameNotes", "G-2"), {
     text: "של מישהו אחר", authorEmail: "other@club.org", author: "אחר", updatedAt: "2026-09-01",
   });
@@ -184,6 +192,40 @@ await check("a coach CAN list their own, scoped by authorEmail",
 await check("a coach CANNOT list under someone else's address",
   assertFails(getDocs(query(notes(asCoach), where("authorEmail", "==", "other@club.org")))));
 await check("the manager lists the whole collection", assertSucceeds(getDocs(notes(asAdmin))));
+
+console.log("\nThe shared video library — read wide, write narrow:");
+const vid = (db, id) => doc(db, "clubs", CLUB, "videos", id);
+const videos = (db) => collection(db, "clubs", CLUB, "videos");
+const myVideo = { title: "עודכן", url: "https://youtu.be/abc", provider: "youtube", authorEmail: "coach@club.org", author: "מאמן", createdAt: "2026-09-01" };
+
+// The pair that makes it a LIBRARY. If read were owner-scoped like the notes, every coach
+// would see only what they added — the feature would be broken, not secured.
+await check("a coach reads a link ANOTHER coach added", assertSucceeds(getDoc(vid(asCoach, "V-2"))));
+await check("a coach lists the WHOLE library unscoped", assertSucceeds(getDocs(videos(asCoach))));
+
+await check("a coach edits their own link", assertSucceeds(setDoc(vid(asCoach, "V-1"), myVideo)));
+await check("a coach CANNOT edit another coach's link", assertFails(setDoc(vid(asCoach, "V-2"), myVideo)));
+await check("a coach CANNOT delete another coach's link", assertFails(deleteDoc(vid(asCoach, "V-2"))));
+await check("a coach CANNOT add a link in someone else's name",
+  assertFails(setDoc(vid(asCoach, "V-9"), { ...myVideo, authorEmail: "other@club.org" })));
+// Releasing an entry to the club: the manager blanks the owner and the link stays. This
+// is the mechanism behind the privacy policy's promise that a departing coach's details
+// come off the links they contributed — a club has no Firebase console to do it by hand.
+await check("the manager releases another coach's entry to the club",
+  assertSucceeds(setDoc(vid(asAdmin, "V-2"),
+    { title: "של אחר", url: "https://youtu.be/def", provider: "youtube", authorEmail: "", author: "", createdAt: "2026-09-01" })));
+await check("...and after that the coach can no longer edit it",
+  assertFails(setDoc(vid(asOther, "V-2"),
+    { title: "בחזרה", url: "https://youtu.be/def", provider: "youtube", authorEmail: "other@club.org", author: "אחר", createdAt: "2026-09-01" })));
+await check("...but every coach still READS it — the link stayed in the library",
+  assertSucceeds(getDoc(vid(asCoach, "V-2"))));
+await check("a coach CANNOT release someone else's entry",
+  assertFails(setDoc(vid(asCoach, "V-1"), { ...myVideo, authorEmail: "", author: "" })));
+
+await check("the manager removes anything", assertSucceeds(deleteDoc(vid(asAdmin, "V-2"))));
+
+await check("an outsider cannot read the library", assertFails(getDoc(vid(asStranger, "V-1"))));
+await check("a portal parent cannot read the library", assertFails(getDoc(vid(asParentA, "V-1"))));
 
 await testEnv.cleanup();
 console.log(`\n${passed} passed, ${failed} failed\n`);

@@ -22,7 +22,7 @@ function plural(n, one, many) {
   return `${n} ${many}`;
 }
 
-export function homeStats(data, weekStart, canEdit = true, notes) {
+export function homeStats(data, weekStart, canEdit = true, notes, videoCount) {
   const d = data || {};
   const sessions = arr(d.sessions).filter((s) => s && (s.weekOf || "") === weekStart);
   const games = arr(d.games).filter((g) => g && g.date && weekStartOfDMY(g.date) === weekStart);
@@ -60,6 +60,9 @@ export function homeStats(data, weekStart, canEdit = true, notes) {
       const more = upcomingAbsences(d.absences, weekStart).length - 1;
       return `${who} · ${Number(day)}/${Number(m)}${more > 0 ? ` (+${more})` : ""}`;
     })(),
+    videos: typeof videoCount === "number"
+      ? plural(videoCount, "סרטון אחד", "סרטונים")
+      : "תרגילים ומהלכים, בקישור",
     players: plural(count(d.players), "שחקן אחד", "שחקנים"),
     report: "שעות לפי מאמן, לפי חודש",
     // Multi-club only: the settings tile does not exist on the single-club branch.

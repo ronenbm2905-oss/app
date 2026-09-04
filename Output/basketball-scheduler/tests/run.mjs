@@ -12,6 +12,7 @@ const FILES = [
   "./access.test.mjs",
   "./coach-identity.test.mjs",
   "./gamenotes.test.mjs",
+  "./videolinks.test.mjs",
 ];
 
 for (const f of FILES) {

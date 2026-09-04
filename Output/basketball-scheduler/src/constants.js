@@ -34,6 +34,20 @@ export const DEFAULT_SESSION_TYPE = "אימון";
 // the club's palette.
 export const UNKNOWN_TYPE_COLOR = "#57534E";
 
+// Drill-video categories. A shared constant rather than a club setting, unlike
+// SESSION_TYPES: those had to move to the club document because two of the five entries
+// were one club's own ("ספורטתרפיה", and a coach's name). These are the vocabulary of the
+// sport, not of a club — every customer means the same thing by "הגנה".
+export const VIDEO_CATEGORIES = [
+  "התקפה",
+  "הגנה",
+  "מסירות וכדרור",
+  "קליעה",
+  "מהלכים",
+  "כושר וחימום",
+  "אחר",
+];
+
 export const COLORS = [
   "#EA580C", "#0EA5E9", "#16A34A", "#9333EA", "#DC2626",
   "#0D9488", "#CA8A04", "#DB2777", "#4F46E5", "#65A30D",

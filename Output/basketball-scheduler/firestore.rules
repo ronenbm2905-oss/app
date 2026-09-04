@@ -148,6 +148,24 @@ service cloud.firestore {
       return isClubAdmin(clubId) || (isClubStaff(clubId) && ownsExisting() && ownsIncoming());
     }
 
+    // The club's shared library of drill links.
+    //
+    // NOTE the read rule: any club member, NOT `ownRead`. `ownRead` requires ownership,
+    // which is right for a coach's private notes and exactly wrong here — it would give
+    // every coach a library containing only the links they added themselves, which is the
+    // opposite of a shared library. Writing stays owner-scoped, so a coach curates what
+    // they added and the club's manager can remove anything.
+    //
+    // The client listener must be UNSCOPED to match, and it is (hooks/useVideos.js). This
+    // is the one place in the app where copying the notes hook's scoped listen out of
+    // habit would silently break the feature rather than the security.
+    match /clubs/{clubId}/videos/{videoId} {
+      allow read: if isClubStaff(clubId);
+      allow create: if ownCreate(clubId);
+      allow update: if ownChange(clubId);
+      allow delete: if isClubAdmin(clubId) || (isClubStaff(clubId) && ownsExisting());
+    }
+
     // Notes a coach writes after a game. Their own documents rather than fields on the
     // club document: free text per game is the first thing here that grows without bound,
     // and the club document has a 1 MiB ceiling it already fits a whole season into.
