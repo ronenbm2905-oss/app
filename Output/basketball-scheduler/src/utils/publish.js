@@ -157,9 +157,22 @@ export const publishableTeamIds = (data) =>
 // may not know it exists ("מילואים", "ניתוח"). `availability.js` already defaults to
 // hiding that note inside the app; this list makes the parent-facing document unable to
 // carry the record at all, whatever a future field addition does upstream.
+//
+// `driverName`/`driverPhone` and `authorEmail` were added when the legal gate asked why a
+// list that guards against a future field addition upstream did not name the three fields
+// most likely to BE that addition. None of them can leak today — the driver's details live
+// on a game and only five game fields are copied, and the records that carry `authorEmail`
+// are in subcollections this document never touches. That is the argument for adding them,
+// not against: the list exists precisely for the field that becomes reachable later.
+//
+// And note the one that is NOT here: `email`. The club's own contact address is published
+// on purpose (`legal`, above) — it is how a parent identifies the controller and exercises
+// access or erasure. Banning the key would block every publish. A coach's address is kept
+// out by the allowlist copying names only, and `publish-absences.test.mjs` asserts it.
 export const FORBIDDEN_KEYS = [
   "players", "admins", "members", "phone", "birthDate", "constraints", "absences",
   "gameMapping", "weeklyAssignments", "jerseyNumber", "joinCode",
+  "driverName", "driverPhone", "authorEmail",
 ];
 
 // Walks the built document and returns any forbidden key found. Empty array = safe.

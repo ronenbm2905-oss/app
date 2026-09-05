@@ -107,4 +107,45 @@ const nested = buildTeamWeek(club, WEEK, "t1", 0);
 nested.sessions[0].absences = [club.absences[0]];
 assert.deepEqual(findLeakedKeys(nested), ["$.sessions[0].absences"], "a nested absences block was not caught");
 
-console.log("publish boundary: 28 assertions passed");
+// ---- 3. The driver, who is not a user and never agreed to anything ----
+//
+// A bus driver's name and phone reach the club from the transport company, not from him.
+// He has no account, no way to look, and no reason to expect to be in a schedule a parent
+// can open. Only five game fields are copied to the portal, so this cannot leak today —
+// which is exactly when a guard is worth writing, rather than after it can.
+const withDriver = {
+  ...club,
+  games: [{
+    id: "g1", teamId: "t1", date: "10/09/2026", time: "19:00", opponent: "הפועל",
+    isHome: false, venue: "אולם היריבה", driverName: "משה הנהג", driverPhone: "052-9999999",
+  }],
+};
+for (const [label, doc] of [
+  ["buildPublicWeek", buildPublicWeek(withDriver, WEEK, 0)],
+  ["buildTeamWeek", buildTeamWeek(withDriver, WEEK, "t1", 0)],
+]) {
+  const text = asText(doc);
+  assert.ok(!text.includes("משה הנהג"), `${label}: the driver's name reached the parent document`);
+  assert.ok(!text.includes("052-9999999"), `${label}: the driver's phone reached the parent document`);
+  assert.deepEqual(findLeakedKeys(doc), [], `${label}: findLeakedKeys reported a leak`);
+}
+assert.ok(FORBIDDEN_KEYS.includes("driverName") && FORBIDDEN_KEYS.includes("driverPhone"),
+  "the driver's fields are not on the forbidden list");
+assert.ok(FORBIDDEN_KEYS.includes("authorEmail"),
+  "the field the record subcollections are owned by is not on the forbidden list");
+// The detector catches them where they would realistically appear: on a published game.
+{
+  const doc = buildTeamWeek(withDriver, WEEK, "t1", 0);
+  doc.games[0].driverPhone = "052-9999999";
+  assert.deepEqual(findLeakedKeys(doc), ["$.games[0].driverPhone"], "a driver phone on a game was not caught");
+}
+// ...while the game itself is still published, opponent, venue and all. A guard that
+// silently emptied the fixture list would "pass" this file and break the portal.
+{
+  const games = buildTeamWeek(withDriver, WEEK, "t1", 0).games;
+  assert.equal(games.length, 1, "the game stopped being published");
+  assert.equal(games[0].opponent, "הפועל");
+  assert.equal(games[0].venue, "אולם היריבה");
+}
+
+console.log("publish boundary: 38 assertions passed");
