@@ -19,7 +19,23 @@
 // Update it in the same commit that changes what the statement claims — never on its own.
 export const A11Y_STATEMENT_DATE = "4.9.2026";
 
-const CONSTANTS = { a11yDate: A11Y_STATEMENT_DATE };
+// The same treatment for the other two, and for the same reason — applied late, which is
+// itself the lesson. The accessibility statement was fixed at the root while the privacy
+// policy and the terms kept hand-written dates, and within one day the policy changed nine
+// sections without its date moving. Both documents promise in their own text (§9 and §7)
+// that an updated version carries a new date, so a stale one breaks a commitment the
+// document makes about itself — and the date is the ONLY signal a parent has that the
+// processing changed since they last read it.
+//
+// Update the matching constant in the SAME commit that edits the document.
+export const PRIVACY_POLICY_DATE = "4.9.2026";
+export const TERMS_OF_USE_DATE = "4.9.2026";
+
+const CONSTANTS = {
+  a11yDate: A11Y_STATEMENT_DATE,
+  privacyDate: PRIVACY_POLICY_DATE,
+  termsDate: TERMS_OF_USE_DATE,
+};
 
 const LABELS = {
   operator: "שם המפעיל",

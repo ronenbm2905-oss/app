@@ -11,6 +11,7 @@
 import assert from "node:assert/strict";
 import {
   ownedBy, releaseRecord, isReleased, departureHoldings, buildDeparturePlan, describeHoldings,
+  unclaimedAddresses, coachesMissingEmail,
 } from "../src/utils/coachDeparture.js";
 
 const DANA = "dana.coach@gmail.com";
@@ -163,4 +164,84 @@ assert.equal(departureHoldings({ name: "דנה" }, sources()).total, 0, "a coach
 }
 assert.equal(describeHoldings(departureHoldings({ id: "c9" }, sources())), "");
 
-console.log("coach departure: 69 assertions passed");
+// ---- Records written by an address the roster does not know ----
+//
+// The hole the second legal gate found, and the reason this section exists. The roster's
+// `email` is optional — the policy says so — while WRITING is gated on the club's member
+// list, which never touches that field. So a coach can fill in training plans, with players'
+// names in them, under an address the roster never learns. Searching only from the roster
+// finds nothing, the card disappears, the delete guard sees a clean coach, and the records
+// outlive the person with their name still on them: the exact failure the departure action
+// was built to end. The card therefore searches from both directions.
+{
+  const s = sources();
+  s.notes.g9 = { text: "מי כתב את זה", authorEmail: "ghost@club.org", author: "רפאל" };
+  s.plans.s9 = { summary: "מערך", missing: "יואב", authorEmail: "ghost@club.org", author: "רפאל" };
+  const roster = [coach, other]; // neither is ghost@club.org
+
+  const rows = unclaimedAddresses({ ...s, coaches: roster });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].email, "ghost@club.org");
+  assert.equal(rows[0].notes, 1);
+  assert.equal(rows[0].plans, 1);
+  assert.equal(rows[0].videos, 0);
+  assert.equal(rows[0].total, 2);
+  // A coach the roster DOES know never appears here — their records belong on their own row.
+  assert.ok(!rows.some((r) => r.email === DANA || r.email === RONI));
+
+  // The row is releasable through the same plan builder, with no coach and no absences.
+  const plan = buildDeparturePlan({ id: "", name: "", email: "ghost@club.org" }, s);
+  assert.equal(plan.total, 2);
+  assert.deepEqual(plan.absenceIds, [], "an address row must never delete an absence");
+  assert.deepEqual(plan.releases.map((r) => r.key).sort(), ["g9", "s9"]);
+  // ...and the training plan's content survives it, players' names included.
+  assert.equal(plan.releases.find((r) => r.kind === "plan").record.missing, "יואב");
+}
+// A released record is nobody's, and must never be offered for release a second time.
+{
+  const rows = unclaimedAddresses({
+    notes: { g1: { text: "משוחרר", authorEmail: "", author: "" } },
+    plans: {}, videos: [], coaches: [coach],
+  });
+  assert.deepEqual(rows, []);
+}
+// Casing must not split one person into two rows, or hide them behind a coach who has it.
+{
+  const rows = unclaimedAddresses({
+    notes: { g1: { authorEmail: "Ghost@Club.org" }, g2: { authorEmail: "ghost@club.org" } },
+    plans: {}, videos: [], coaches: [{ id: "c1", email: "DANA.coach@GMAIL.com" }],
+  });
+  assert.equal(rows.length, 1, "one address was counted as two");
+  assert.equal(rows[0].notes, 2);
+  assert.deepEqual(unclaimedAddresses({
+    notes: { g1: { authorEmail: DANA } }, plans: {}, videos: [],
+    coaches: [{ id: "c1", email: "  DANA.Coach@Gmail.COM " }],
+  }), [], "a coach's own record surfaced as unclaimed because of casing");
+}
+assert.deepEqual(unclaimedAddresses(), []);
+assert.deepEqual(unclaimedAddresses({ notes: 7, plans: null, videos: "x", coaches: 3 }), []);
+// Sorted, so the screen does not reorder itself between renders.
+{
+  const rows = unclaimedAddresses({
+    notes: { a: { authorEmail: "z@club.org" }, b: { authorEmail: "a@club.org" } },
+    plans: {}, videos: [], coaches: [],
+  });
+  assert.deepEqual(rows.map((r) => r.email), ["a@club.org", "z@club.org"]);
+}
+
+// ---- Which coaches the action cannot search for ----
+assert.deepEqual(coachesMissingEmail([coach, { id: "c3", name: "בלי כתובת" }]).map((c) => c.id), ["c3"]);
+assert.deepEqual(coachesMissingEmail([{ id: "c4", name: "רווח", email: "   " }]).map((c) => c.id), ["c4"]);
+assert.deepEqual(coachesMissingEmail([coach, other]), []);
+assert.deepEqual(coachesMissingEmail([{ id: "c5" }]), [], "a row with no name is not a coach yet");
+assert.deepEqual(coachesMissingEmail(null), []);
+
+// ---- The summary takes either shape ----
+// `departureHoldings` returns id lists and `unclaimedAddresses` returns counts; one
+// sentence builder for both, so a manager reads the same wording wherever the row came from.
+assert.equal(describeHoldings({ notes: 2, plans: 1, videos: 0, absences: 0 }), "2 הערות משחק · מערך אימון אחד");
+assert.equal(describeHoldings({ notes: 1 }), "הערת משחק אחת");
+assert.equal(describeHoldings({}), "");
+assert.equal(describeHoldings(null), "");
+
+console.log("coach departure: 96 assertions passed");

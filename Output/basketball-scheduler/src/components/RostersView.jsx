@@ -4,7 +4,7 @@ import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
 import { Select } from "./ui/Select";
 import { CoachDepartureCard } from "./CoachDepartureCard";
-import { departureHoldings } from "../utils/coachDeparture";
+import { departureHoldings, unclaimedAddresses } from "../utils/coachDeparture";
 import {
   IconPlus, IconTrash, IconPencil, IconCheck, IconAlert, IconX,
   IconUsers, IconUserPlus, IconBuilding, IconChevronUp, IconChevronDown,
@@ -444,6 +444,20 @@ export function RostersView({ data, save, canEdit, notes, plans, videos, onDepar
       setBlockedMsg(
         'למאמן/ת זה/ו יש עדיין רשומות אישיות במערכת (תיעוד מקצועי או סימוני היעדרות). ' +
         'השתמש/י ב"סיום תפקיד" למטה כדי להסיר את הפרטים האישיים, ואז אפשר יהיה למחוק.'
+      );
+      return;
+    }
+    // A clean `held.total` is only trustworthy when we know what to search for. The roster's
+    // email field is optional, and writing is gated on the club's member list rather than on
+    // it — so for a coach with no address stored, "no records found" means "nothing to search
+    // by", not "nothing there". Deleting the row would strand whatever they wrote, with their
+    // name on it, out of the departure card's reach forever.
+    if (!String(coach?.email || "").trim() &&
+        unclaimedAddresses({ notes, plans, videos, coaches: data.coaches }).length > 0) {
+      setBlockedMsg(
+        'לא מולאה כתובת דוא"ל למאמן/ת זה/ו, ויש במערכת רשומות שנכתבו מכתובות שאינן משויכות ' +
+        'לאף מאמן/ת — כך שאי אפשר לדעת אם חלק מהן שלו/ה. מלא/י את הכתובת ברשומת המאמן/ת, ' +
+        'או טפל/י ברשומות בכרטיס "סיום תפקיד" למטה, ואז אפשר יהיה למחוק.'
       );
       return;
     }

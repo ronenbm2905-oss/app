@@ -12,6 +12,8 @@ import {
   fillLegalTemplate,
   legalDetailsComplete,
   A11Y_STATEMENT_DATE,
+  PRIVACY_POLICY_DATE,
+  TERMS_OF_USE_DATE,
   LEGAL_FIELD_LABELS,
 } from "../src/legal/fillTemplate.js";
 
@@ -40,8 +42,10 @@ assert.equal(fillLegalTemplate("{{operator}}{{entitySuffix}}", FULL), "מכבי 
 assert.equal(fillLegalTemplate("{{operator}}{{entitySuffix}}", { ...FULL, entityType: "עמותה" }),
   "מכבי בדיקה (עמותה)");
 
-// ---- The product's own constant ----
+// ---- The product's own constants ----
 assert.equal(fillLegalTemplate("{{a11yDate}}", FULL), A11Y_STATEMENT_DATE);
+assert.equal(fillLegalTemplate("{{privacyDate}}", FULL), PRIVACY_POLICY_DATE);
+assert.equal(fillLegalTemplate("{{termsDate}}", FULL), TERMS_OF_USE_DATE);
 // ...and it fills in for a club that has entered nothing at all. This is the whole point:
 // the date describes the product's screens, not the club, so no club can leave it blank.
 assert.equal(fillLegalTemplate("{{a11yDate}}", {}), A11Y_STATEMENT_DATE);
@@ -55,7 +59,9 @@ assert.ok(/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(A11Y_STATEMENT_DATE),
 
 // ...and it is NOT one of the fields a club is asked to complete, or every club would be
 // blocked from going live by a value it cannot know.
-assert.ok(!("a11yDate" in LEGAL_FIELD_LABELS), "the product constant leaked into the club form");
+for (const token of ["a11yDate", "privacyDate", "termsDate"]) {
+  assert.ok(!(token in LEGAL_FIELD_LABELS), `the product constant ${token} leaked into the club form`);
+}
 assert.ok(legalDetailsComplete(FULL), "a fully filled club was reported incomplete");
 for (const key of Object.keys(LEGAL_FIELD_LABELS)) {
   const missing = { ...FULL, [key]: "" };
@@ -71,8 +77,30 @@ import { readFileSync } from "node:fs";
 const read = (name) =>
   readFileSync(new URL(`../src/legal/content/${name}`, import.meta.url), "utf8");
 
+// No document may carry a hand-written date. This started as a guard on the accessibility
+// statement alone — and within a day the privacy policy changed nine sections while its own
+// date sat unchanged at 20.8, breaking the promise §9 makes in the same file. A guard that
+// covers one of three documents covers none of the failure.
+const DATE_TOKEN = { "privacy-policy.md": "privacyDate", "terms-of-use.md": "termsDate", "accessibility-statement.md": "a11yDate" };
+for (const [name, token] of Object.entries(DATE_TOKEN)) {
+  const text = read(name);
+  assert.ok(!/[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}/.test(text), `${name}: a hand-written date is back`);
+  assert.ok(new RegExp(`\\{\\{${token}\\}\\}`).test(text), `${name}: no date token at all`);
+  // The filled document says a date and not a marker, whatever the club supplied.
+  assert.ok(/[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}/.test(fillLegalTemplate(text, {})),
+    `${name}: the date did not render for a club that filled nothing in`);
+}
+// Why the date is load-bearing, asserted from the documents' own text so the reason cannot
+// quietly be edited out. The policy promises a new date on every update (§9). The terms do
+// something different and, for a stale date, worse: they infer agreement from continued use
+// after an update (§7) — with no promise of a date at all, the date printed at the top is
+// the only thing telling a coach that what they are agreeing to has changed.
+assert.ok(/תאריך עדכון חדש/.test(read("privacy-policy.md")),
+  "the policy no longer promises a new date on update — the guard above loses its reason");
+assert.ok(/המשך השימוש לאחר עדכון מהווה הסכמה/.test(read("terms-of-use.md")),
+  "the terms no longer infer agreement from continued use — check whether the date still carries that weight");
+
 const a11y = read("accessibility-statement.md");
-assert.ok(!/28\.7\.2026/.test(a11y), "a hand-written date is back in the accessibility statement");
 assert.equal((a11y.match(/\{\{a11yDate\}\}/g) || []).length, 2,
   "the statement should carry the date token exactly twice — header and closing section");
 // The limitation that has no keyboard path must be declared. An undeclared limitation is
@@ -82,7 +110,7 @@ assert.ok(/מקלדת/.test(a11y));
 
 // Every token used anywhere in the documents must be one the filler knows, or a club
 // reads a raw {{placeholder}} in its own privacy policy.
-const known = new Set([...Object.keys(LEGAL_FIELD_LABELS), "entitySuffix", "a11yDate"]);
+const known = new Set([...Object.keys(LEGAL_FIELD_LABELS), "entitySuffix", ...Object.values(DATE_TOKEN)]);
 for (const name of ["accessibility-statement.md", "privacy-policy.md", "terms-of-use.md"]) {
   for (const m of read(name).matchAll(/\{\{(\w+)\}\}/g)) {
     assert.ok(known.has(m[1]), `${name}: unknown placeholder {{${m[1]}}}`);
@@ -91,4 +119,4 @@ for (const name of ["accessibility-statement.md", "privacy-policy.md", "terms-of
     `${name}: a placeholder survived filling`);
 }
 
-console.log("legal template: 30 assertions passed");
+console.log("legal template: 67 assertions passed");

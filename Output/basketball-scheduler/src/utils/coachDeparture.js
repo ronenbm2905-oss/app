@@ -48,9 +48,15 @@ export function isReleased(record) {
 //
 // Absences are matched by `coachId` and not by address, and that difference matters: an
 // absence is the one record here written ABOUT the coach rather than BY them, so it exists
-// even for a coach who never signed in. A coach with no address on file therefore has no
-// notes, plans or videos to find — writing one requires signing in, and the address is the
-// identity — but may still have absences waiting to be cleared.
+// even for a coach who never signed in.
+//
+// A coach with no address in their roster record therefore has no notes, plans or videos
+// that can be found FROM THE ROSTER — but they may well have written some. This comment
+// used to claim otherwise ("writing requires signing in, and the address is the identity"),
+// and that was wrong in the way that matters: writing is gated on `isClubStaff`, which
+// reads `admins[]`/`members[]`, and the roster's `email` field appears nowhere in the
+// rules. The legal gate found the hole by checking the claim instead of believing it.
+// `unclaimedAddresses` below is what covers the gap.
 export function departureHoldings(coach, { notes, plans, videos, absences } = {}) {
   const email = normalizeEmail(coach?.email);
   const id = String(coach?.id || "");
@@ -99,12 +105,56 @@ export function buildDeparturePlan(coach, sources = {}) {
 // The sentence a manager reads before confirming. Built here rather than in the screen so
 // the counts and the wording are asserted together: a dialog that says "2 רשומות" and then
 // clears three is worse than no dialog.
+// Author addresses that belong to no coach on the roster.
+//
+// The roster's `email` field is optional — the privacy policy says so in as many words, and
+// nothing validates it — while WRITING is gated on `members[]`. So a coach can fill in
+// training plans, with players' names in them, whose author address the roster never learns.
+// Searching from the roster finds nothing, the departure card shows no row, the delete guard
+// sees a clean coach, and the records outlive the person with their name still on them: the
+// exact failure the departure action was built to end.
+//
+// So the card searches from BOTH directions. This is the second one: every address that
+// actually wrote something and matches no coach. It also catches the cases a required field
+// would not — an address changed after the fact, or a coach deleted before this existed.
+export function unclaimedAddresses({ notes, plans, videos, coaches } = {}) {
+  const known = new Set(arr(coaches).map((c) => normalizeEmail(c?.email)).filter(Boolean));
+  const found = new Map();
+  const add = (record, kind) => {
+    const email = normalizeEmail(record?.authorEmail);
+    // A released record is nobody's by design, and must never be offered for release again.
+    if (!email || known.has(email)) return;
+    if (!found.has(email)) found.set(email, { email, notes: 0, plans: 0, videos: 0, total: 0 });
+    const row = found.get(email);
+    row[kind] += 1;
+    row.total += 1;
+  };
+  Object.values(map(notes)).forEach((n) => add(n, "notes"));
+  Object.values(map(plans)).forEach((p) => add(p, "plans"));
+  arr(videos).forEach((v) => add(v, "videos"));
+  return [...found.values()].sort((a, b) => a.email.localeCompare(b.email));
+}
+
+// Coaches the club can record but the departure action cannot search for. Shown as a
+// warning rather than blocked: a coach who never signs in genuinely has no address, and
+// refusing to store them would be inventing a requirement the product does not have.
+export function coachesMissingEmail(coaches) {
+  return arr(coaches).filter((c) => c && c.name && !normalizeEmail(c.email));
+}
+
+// Takes either shape: the id lists `departureHoldings` returns, or the plain counts
+// `unclaimedAddresses` returns. One summary function rather than two, so the sentence a
+// manager reads before pressing is worded the same wherever the row came from.
+const count = (v) => (Array.isArray(v) ? v.length : Number(v) || 0);
+
 export function describeHoldings(held) {
   const parts = [];
   const line = (n, one, many) => (n === 1 ? one : `${n} ${many}`);
-  if (held.notes.length) parts.push(line(held.notes.length, "הערת משחק אחת", "הערות משחק"));
-  if (held.plans.length) parts.push(line(held.plans.length, "מערך אימון אחד", "מערכי אימון"));
-  if (held.videos.length) parts.push(line(held.videos.length, "סרטון אחד", "סרטונים"));
-  if (held.absences.length) parts.push(line(held.absences.length, "סימון היעדרות אחד", "סימוני היעדרות"));
+  const notes = count(held?.notes), plans = count(held?.plans);
+  const videos = count(held?.videos), absences = count(held?.absences);
+  if (notes) parts.push(line(notes, "הערת משחק אחת", "הערות משחק"));
+  if (plans) parts.push(line(plans, "מערך אימון אחד", "מערכי אימון"));
+  if (videos) parts.push(line(videos, "סרטון אחד", "סרטונים"));
+  if (absences) parts.push(line(absences, "סימון היעדרות אחד", "סימוני היעדרות"));
   return parts.join(" · ");
 }

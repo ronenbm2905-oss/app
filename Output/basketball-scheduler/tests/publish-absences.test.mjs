@@ -148,4 +148,4 @@ assert.ok(FORBIDDEN_KEYS.includes("authorEmail"),
   assert.equal(games[0].venue, "אולם היריבה");
 }
 
-console.log("publish boundary: 38 assertions passed");
+console.log("publish boundary: 41 assertions passed");

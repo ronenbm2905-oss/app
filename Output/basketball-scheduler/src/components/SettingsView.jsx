@@ -236,7 +236,7 @@ function ExportCard({ data, clubId, gameNotes, videos, trainingPlans }) {
       <p className="text-xs text-stone-500 leading-relaxed">
         <strong>JSON</strong> הוא העותק המלא והמדויק, כולל הגדרות והרשאות.{" "}
         <strong>CSV</strong> מייצר קובץ לכל סוג נתונים (קבוצות, מאמנים, אולמות, שחקנים, אימונים,
-        משחקים) שנפתח באקסל. הלו״ז שפורסם להורים אינו נכלל — הוא נגזר מהנתונים האלה ונוצר מחדש
+        משחקים, הערות משחק, מערכי אימון, תרגילים וספריית הסרטונים) שנפתח באקסל. הלו״ז שפורסם להורים אינו נכלל — הוא נגזר מהנתונים האלה ונוצר מחדש
         בפרסום.
       </p>
       <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 leading-relaxed">

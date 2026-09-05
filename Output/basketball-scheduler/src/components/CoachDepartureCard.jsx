@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { departureHoldings, describeHoldings } from "../utils/coachDeparture";
+import {
+  departureHoldings, describeHoldings, unclaimedAddresses, coachesMissingEmail,
+} from "../utils/coachDeparture";
 import { IconUserX, IconAlert } from "./ui/icons";
 
 // Ending a coach's role, in one act.
@@ -24,8 +26,15 @@ export function CoachDepartureCard({ coaches, notes, plans, videos, absences, on
     .map((coach) => ({ coach, held: departureHoldings(coach, { notes, plans, videos, absences }) }))
     .filter((r) => r.held.total > 0);
 
+  // Records written by an address the roster does not know. Searching only from the roster
+  // missed exactly the coach whose email field was never filled in — and the card would
+  // then disappear, so the most dangerous state was the one with nothing on screen.
+  const orphans = unclaimedAddresses({ notes, plans, videos, coaches });
+  const missing = coachesMissingEmail(coaches);
+  const warn = missing.length > 0 && orphans.length > 0;
+
   // Nothing to clear is the normal state, and an empty card would be noise on every visit.
-  if (rows.length === 0) return null;
+  if (rows.length === 0 && orphans.length === 0) return null;
 
   return (
     <div className="bg-white rounded-xl border border-stone-300 overflow-hidden" dir="rtl">
@@ -40,6 +49,22 @@ export function CoachDepartureCard({ coaches, notes, plans, videos, absences, on
           פעולה חד-כיוונית.
         </p>
       </div>
+
+      {warn && (
+        <div className="px-4 py-3 bg-amber-50 border-b border-amber-200">
+          <p className="text-xs text-amber-900 flex items-start gap-2">
+            <IconAlert size={14} />
+            <span>
+              {missing.length === 1
+                ? `לא מולאה כתובת דוא"ל ברשומה של ${missing[0].name}.`
+                : `לא מולאה כתובת דוא"ל ברשומות של ${missing.length} מאמנים.`}{" "}
+              הפעולה מאתרת רשומות <span className="font-medium">לפי כתובת</span>, ולכן רשומות
+              שכתבו מופיעות למטה תחת "רשומות ללא מאמן משויך" ולא תחת שמם. מילוי הכתובת
+              ברשומת המאמן/ת יחבר ביניהן.
+            </span>
+          </p>
+        </div>
+      )}
 
       <div className="divide-y divide-stone-100">
         {rows.map(({ coach, held }) => (
@@ -87,6 +112,57 @@ export function CoachDepartureCard({ coaches, notes, plans, videos, absences, on
                     className="text-xs px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700"
                   >
                     כן, סיים תפקיד
+                  </button>
+                  <button
+                    onClick={() => setConfirmId(null)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-stone-300 text-stone-700 hover:bg-white"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {orphans.map((row) => (
+          <div key={`orphan:${row.email}`} className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="flex-1 text-sm text-stone-700">
+                רשומות ללא מאמן משויך
+                <span className="block text-xs text-stone-500 mt-0.5" dir="ltr">{row.email}</span>
+                <span className="block text-xs text-stone-500 mt-0.5">
+                  {describeHoldings(row)}
+                </span>
+              </span>
+              {confirmId !== `orphan:${row.email}` && (
+                <button
+                  onClick={() => setConfirmId(`orphan:${row.email}`)}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 shrink-0"
+                >
+                  הסר פרטים
+                </button>
+              )}
+            </div>
+
+            {confirmId === `orphan:${row.email}` && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                <p className="text-xs text-amber-900 flex items-start gap-2">
+                  <IconAlert size={14} />
+                  <span>
+                    הכתובת <span dir="ltr" className="font-medium">{row.email}</span> תוסר
+                    מהרשומות האלה יחד עם השם שנשמר לצידה, והתוכן יישאר למועדון.{" "}
+                    <span className="font-medium">ודאו שזו אינה כתובת של מאמן/ת פעיל/ה</span> —
+                    אם כן, עדיף למלא אותה ברשומת המאמן/ת במקום להסירה כאן. לא ניתן לבטל
+                    את הפעולה.
+                  </span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { onDepart({ id: "", name: "", email: row.email }); setConfirmId(null); }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+                  >
+                    כן, הסר את הפרטים
                   </button>
                   <button
                     onClick={() => setConfirmId(null)}
