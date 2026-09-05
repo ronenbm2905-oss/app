@@ -164,7 +164,7 @@ function ExportCard({ data, clubId, gameNotes, videos, trainingPlans }) {
   };
 
   const exportCsv = () => {
-    const sheets = csvSheets(data, gameNotes, videos);
+    const sheets = csvSheets(data, gameNotes, videos, trainingPlans);
     Object.entries(sheets).forEach(([name, csv]) =>
       download(csv, exportFileName(`${clubId}-${name}`, at, "csv"), "text/csv;charset=utf-8")
     );
@@ -174,7 +174,7 @@ function ExportCard({ data, clubId, gameNotes, videos, trainingPlans }) {
   return (
     <Card
       title="ייצוא הנתונים"
-      hint="כל נתוני המועדון, בכל רגע, בלי לפנות אלינו. הנתונים שלכם — גם אם תחליטו לעזוב."
+      hint="כל נתוני המועדון, בכל רגע, בלי לפנות אלינו. הנתונים שלכם — גם אם תחליטו לעזוב. ה-JSON הוא העותק המלא; ה-CSV נפתח באקסל אבל אינו כולל את שרטוטי המגרש."
     >
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={exportJson} className="px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50">
