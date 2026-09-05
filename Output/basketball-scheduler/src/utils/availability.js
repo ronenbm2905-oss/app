@@ -227,8 +227,15 @@ export function removeAbsence(absences, id) {
 //
 // Past ones stay in the data, and nothing in the app reads them: the hours report counts
 // sessions, not absences. So a finished absence is a record about a person that is kept
-// for no purpose — see the season-end step in docs/data-deletion-procedure.md, which is
-// the only thing that removes them.
+// for no purpose. Two things remove one: a manager deleting it by hand, and the departure
+// action in `coachDeparture.js`, which clears every absence written about a coach who has
+// finished their role. There is still no season-end sweep, and the privacy policy says so
+// in as many words rather than promising one.
+//
+// This comment used to point at docs/data-deletion-procedure.md as "the only thing that
+// removes them". That file belongs to the single-club branch and was never ported, so the
+// reference named nothing — a promise a reader would have relied on. Never leave a pointer
+// to a document that does not exist in this branch.
 export function upcomingAbsences(absences, fromIso, limit = 0, kind = "") {
   const list = arr(absences)
     .filter((a) => a && a.date && a.date >= fromIso)

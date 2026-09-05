@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { VIDEO_CATEGORIES } from "../constants";
 import { uid } from "../utils/dates";
+import { releaseRecord } from "../utils/coachDeparture";
 import { buildVideo, matchesSearch, sortVideos, providerLabel, normalizeVideoUrl } from "../utils/videoLinks";
 import { Select } from "./ui/Select";
 import { IconPlus, IconTrash, IconCheck, IconPencil, IconPlay, IconSearch } from "./ui/icons";
@@ -22,13 +23,17 @@ function VideoForm({ initial, author, authorEmail, isManager, onSave, onCancel }
   const [category, setCategory] = useState(initial?.category || "");
   const [note, setNote] = useState(initial?.note || "");
   const [error, setError] = useState("");
-  // Releasing the entry to the club. Offered only to a manager editing an entry somebody
-  // else added, and it exists because the privacy policy promises that a departing coach's
-  // name and address come off the links they contributed while the links themselves stay.
-  // Without it that promise has no mechanism here: the form writes the original author
+  // Releasing this one entry to the club. Offered only to a manager editing an entry
+  // somebody else added, and it exists because the privacy policy promises that a departing
+  // coach's name and address come off the links they contributed while the links themselves
+  // stay. Without it that promise has no mechanism here: the form writes the original author
   // back on every save, and a club — unlike the service operator — has no Firebase console
   // to do it by hand. A promise with no mechanism is the failure this project keeps
   // finding in its own documents.
+  //
+  // For a coach who is actually leaving, the roster screen's "סיום תפקיד" does all three
+  // record types at once; this stays for the single entry a manager wants to hand over
+  // without ending anyone's role. Both call the same `releaseRecord`.
   const [release, setRelease] = useState(false);
   const otherAuthor = Boolean(
     isManager && initial?.authorEmail &&
@@ -41,16 +46,18 @@ function VideoForm({ initial, author, authorEmail, isManager, onSave, onCancel }
       url, title, category, note,
       // On an edit the original author keeps the entry — the rules compare `authorEmail`
       // on the way in and on the way out, and rewriting it would make the save fail for a
-      // coach. A manager is allowed past that check by the rules, which is what makes the
-      // release below possible at all; it blanks the owner, and from then on only a
-      // manager can touch the entry.
-      author: release ? "" : (initial?.author || author),
-      authorEmail: release ? "" : (initial?.authorEmail || authorEmail),
+      // coach.
+      author: initial?.author || author,
+      authorEmail: initial?.authorEmail || authorEmail,
       now: initial?.createdAt || new Date().toISOString(),
     });
     if (!built.ok) { setError(built.reason); return; }
     setError("");
-    onSave(built.video);
+    // Released after validation, not instead of it: an entry with a broken link must fail
+    // the same way whether or not it is being handed over. A manager is allowed past the
+    // ownership check by the rules, which is what makes this possible at all — it blanks
+    // the owner, and from then on only a manager can touch the entry.
+    onSave(release ? releaseRecord(built.video) : built.video);
   };
 
   return (

@@ -247,6 +247,37 @@ await check("a coach CAN list their own, scoped",
   assertSucceeds(getDocs(query(collection(asCoach, "clubs", CLUB, "trainingPlans"), where("authorEmail", "==", "coach@club.org")))));
 await check("a portal parent cannot read a plan", assertFails(getDoc(planDoc(asParentA, "S-1"))));
 
+console.log("\nEnding a coach's role — the record stays, the person comes off:");
+// The video library already had this and the other two collections did not, which is the
+// gap the legal gate found: the privacy policy promised a departing coach's details come
+// off what they wrote, and only one of the three record types could deliver it. These are
+// the rule-level facts the "סיום תפקיד" action depends on.
+const released = (body) => ({ ...body, authorEmail: "", author: "" });
+const othersNote = { text: "של מישהו אחר", authorEmail: "other@club.org", author: "אחר", updatedAt: "2026-09-01" };
+const othersPlan = { rows: [], units: {}, summary: "של אחר", authorEmail: "other@club.org", author: "אחר", updatedAt: "2026-09-01" };
+
+await check("the manager releases another coach's NOTE",
+  assertSucceeds(setDoc(note(asAdmin, "G-2"), released(othersNote))));
+await check("...and its author can no longer read it", assertFails(getDoc(note(asOther, "G-2"))));
+await check("...nor write themselves back onto it",
+  assertFails(setDoc(note(asOther, "G-2"), othersNote)));
+await check("...while the manager still reads it — the club kept the record",
+  assertSucceeds(getDoc(note(asAdmin, "G-2"))));
+// A coach cannot perform the release themselves, not even on their own record: `ownChange`
+// wants ownership on the way in as well as out, and a blank address satisfies neither. The
+// act belongs to the club, which is the point of calling it a release.
+await check("a coach CANNOT release their own note",
+  assertFails(setDoc(note(asCoach, "G-1"), released(mine))));
+
+await check("the manager releases another coach's PLAN — the one with the players on it",
+  assertSucceeds(setDoc(planDoc(asAdmin, "S-2"), released(othersPlan))));
+await check("...and its author can no longer read it", assertFails(getDoc(planDoc(asOther, "S-2"))));
+await check("...nor can any other coach — a released plan answers to managers only",
+  assertFails(getDoc(planDoc(asCoach, "S-2"))));
+await check("...while the manager still reads it", assertSucceeds(getDoc(planDoc(asAdmin, "S-2"))));
+await check("a coach CANNOT release their own plan",
+  assertFails(setDoc(planDoc(asCoach, "S-1"), released(myPlan))));
+
 await testEnv.cleanup();
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

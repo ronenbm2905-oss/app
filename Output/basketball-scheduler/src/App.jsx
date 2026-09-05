@@ -33,6 +33,7 @@ import {
 } from "./components/ui/icons";
 import { clubName as clubNameOf } from "./utils/club";
 import { coachIdForUser } from "./utils/coachIdentity";
+import { buildDeparturePlan } from "./utils/coachDeparture";
 // Read from the club's own settings at runtime — one build serves every club, so there
 // is no bundled crest here the way the single-club branch has one.
 import { clubLogoSrc } from "./utils/clubLogo";
@@ -133,6 +134,32 @@ export default function App({ clubId }) {
   // Empty when unknown, and every consumer falls back to the club-wide view — the
   // behaviour the app had before the field existed.
   const myCoachId = coachIdForUser(user, data.coaches);
+
+  // A coach finishes their role. One act, three subcollections and the club document.
+  //
+  // The order is the point: the records that name the coach are released FIRST, and the
+  // absences written about them go last, in the club-document write. If the run stops
+  // partway the club is left having removed a name too many times rather than too few, and
+  // a manager can press it again — `buildDeparturePlan` reads the current state each time,
+  // so a second run simply finds less to do. The reverse order would delete the absences
+  // and then fail, leaving the coach's name on documents about players with nothing on
+  // screen to say so.
+  //
+  // Not wrapped in a transaction, deliberately: these are separate documents in separate
+  // collections, a batch would still not be atomic with the local-mode fallback, and the
+  // operation is idempotent, which is the property that actually matters here.
+  const departCoach = async (coach) => {
+    const plan = buildDeparturePlan(coach, { notes, plans, videos, absences: data.absences });
+    for (const item of plan.releases) {
+      if (item.kind === "note") await saveNote(item.key, item.record);
+      else if (item.kind === "plan") await savePlan(item.key, item.record);
+      else await saveVideo(item.record);
+    }
+    if (plan.absenceIds.length > 0) {
+      const drop = new Set(plan.absenceIds);
+      save({ ...data, absences: (data.absences || []).filter((a) => !drop.has(String(a?.id))) });
+    }
+  };
 
   const identityKnown = (!isFirebaseConfigured || Boolean(user)) && loaded && !error;
   useEffect(() => {
@@ -293,7 +320,15 @@ export default function App({ clubId }) {
         ) : activeTab === "announcements" ? (
           <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
         ) : activeTab === "rosters" ? (
-          <RostersView data={data} save={save} canEdit={canEdit} />
+          <RostersView
+            data={data}
+            save={save}
+            canEdit={canEdit}
+            notes={notes}
+            plans={plans}
+            videos={videos}
+            onDepart={departCoach}
+          />
         ) : activeTab === "manager" ? (
           <ManagerView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} />
         ) : activeTab === "constraints" ? (

@@ -3,6 +3,8 @@ import { VEHICLE_TYPES } from "../constants";
 import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
 import { Select } from "./ui/Select";
+import { CoachDepartureCard } from "./CoachDepartureCard";
+import { departureHoldings } from "../utils/coachDeparture";
 import {
   IconPlus, IconTrash, IconPencil, IconCheck, IconAlert, IconX,
   IconUsers, IconUserPlus, IconBuilding, IconChevronUp, IconChevronDown,
@@ -392,7 +394,7 @@ function TeamRosterList({ items, coaches, usageCount, onSave, onDelete, onMove, 
   );
 }
 
-export function RostersView({ data, save, canEdit }) {
+export function RostersView({ data, save, canEdit, notes, plans, videos, onDepart }) {
   const [blockedMsg, setBlockedMsg] = useState(null);
 
   const coachUsage = (id) =>
@@ -425,9 +427,24 @@ export function RostersView({ data, save, canEdit }) {
     save({ ...data, teams: next });
   };
 
+  // Deleting a coach used to check the schedule only. It left behind everything that names
+  // them — notes, training plans and video entries carrying their address, and absence marks
+  // written about them — orphaned under a coach id that no longer resolves. The absences are
+  // the visible half of that: `subjectOf` keeps returning a coachId that is gone, and the
+  // availability screen draws a free-text reason with no name beside it. So the roster row
+  // is now the LAST thing to go, after the departure card has cleared the rest.
   const handleDeleteCoach = (id, inUse) => {
     if (inUse > 0) {
       setBlockedMsg("לא ניתן למחוק מאמן שיש לו אימונים או אילוצים רשומים. ערוך או מחק אותם קודם.");
+      return;
+    }
+    const coach = data.coaches.find((c) => c.id === id);
+    const held = departureHoldings(coach, { notes, plans, videos, absences: data.absences });
+    if (held.total > 0) {
+      setBlockedMsg(
+        'למאמן/ת זה/ו יש עדיין רשומות אישיות במערכת (תיעוד מקצועי או סימוני היעדרות). ' +
+        'השתמש/י ב"סיום תפקיד" למטה כדי להסיר את הפרטים האישיים, ואז אפשר יהיה למחוק.'
+      );
       return;
     }
     save({ ...data, coaches: data.coaches.filter((c) => c.id !== id) });
@@ -464,6 +481,16 @@ export function RostersView({ data, save, canEdit }) {
         <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={data.coaches} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withBirthDate withEmail withParallelGroups />
         <RosterList title="אולמות" icon={<IconBuilding size={16} />} items={data.halls} label="אולם" usageCount={hallUsage} onSave={handleSaveHall} onDelete={handleDeleteHall} canEdit={canEdit} />
       </div>
+      {canEdit && onDepart && (
+        <CoachDepartureCard
+          coaches={data.coaches}
+          notes={notes}
+          plans={plans}
+          videos={videos}
+          absences={data.absences}
+          onDepart={onDepart}
+        />
+      )}
     </div>
   );
 }
