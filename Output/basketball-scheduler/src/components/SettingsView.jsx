@@ -8,6 +8,7 @@ import { clubSettings } from "../utils/club";
 import { clubLogoSrc } from "../utils/clubLogo";
 import { applyTheme, brandContrast } from "../utils/theme";
 import { legalDetailsComplete, LEGAL_FIELD_LABELS } from "../legal/fillTemplate";
+import { retentionReport, retentionSummary, ABSENCE_KEEP_DAYS, DRIVER_KEEP_DAYS } from "../utils/retention";
 import { fileToLogoDataUrl, dataUrlBytes, LOGO_MAX_BYTES } from "../utils/imageResize";
 import { generateJoinCode, formatJoinCode } from "../utils/joinCode";
 import { describeSubscription, WARN_DAYS, GRACE_DAYS } from "../utils/subscription";
@@ -19,6 +20,53 @@ const KB = (bytes) => `${Math.round(bytes / 1024)} KB`;
 // Firestore refuses a document over 1 MiB. Everything for a club lives in one
 // document, so surface the headroom before a paying customer hits the wall.
 const DOC_LIMIT_BYTES = 1024 * 1024;
+
+// Clearing what has outlived its purpose.
+//
+// Two records are kept for nothing once their day has passed: an absence mark, which is a
+// line a manager wrote ABOUT a coach and which nothing in the app reads afterwards, and a
+// bus driver's name and phone. The privacy policy could not promise either would go,
+// because nothing removed them — the driver sweep runs only inside the federation import,
+// so a club that stopped importing kept a stranger's number indefinitely, and the absences
+// had no sweep at all.
+//
+// A manual button and not a background job, on purpose. An automatic sweep needs a
+// scheduled function (Blaze, still open), and it would delete a manager's records with
+// nobody watching. This shows the counts first and clears only when pressed — which is
+// exactly what the policy can then describe without overpromising.
+function RetentionCard({ data, save, canEdit }) {
+  const [done, setDone] = useState("");
+  const report = retentionReport(data);
+  const summary = retentionSummary(report);
+
+  return (
+    <Card
+      title="ניקוי מידע שחלף"
+      hint={`סימוני היעדרות שעברו יותר מ-${ABSENCE_KEEP_DAYS} יום, ופרטי נהג הסעה ממשחקים שהסתיימו לפני יותר מ-${DRIVER_KEEP_DAYS} יום. אלה רשומות על אנשים שכבר אין להן שימוש — לוח האימונים, דוח השעות והמשחקים עצמם אינם נוגעים בהן.`}
+    >
+      {report.total === 0 ? (
+        <p className="text-sm text-stone-600">אין כרגע מה לנקות.</p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-stone-700">
+            נמצאו <span className="font-semibold">{summary}</span> שאפשר למחוק.
+          </p>
+          <button
+            onClick={() => {
+              save(report.next);
+              setDone(`נמחקו ${summary}.`);
+            }}
+            disabled={!canEdit}
+            className="px-3 py-2 text-sm rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+          >
+            מחק אותם
+          </button>
+        </div>
+      )}
+      {done && <p className="text-xs text-emerald-700" role="status">{done}</p>}
+    </Card>
+  );
+}
 
 function Card({ title, hint, children, badge }) {
   return (
@@ -782,6 +830,10 @@ export function SettingsView({ data, save, canEdit, syncJoinCode, clubId, subscr
           their records — including minors' — which is the opposite of what a data
           return obligation is for. */}
       <ExportCard data={data} clubId={clubId} gameNotes={gameNotes} videos={videos} trainingPlans={trainingPlans} />
+
+      {/* Under the export, and in that order for a reason: the deletion runbook's rule —
+          export before you delete — reads the same way on the screen a club actually uses. */}
+      <RetentionCard data={data} save={save} canEdit={canEdit} />
 
       <Card title="מידע טכני" hint="כל נתוני המועדון נשמרים במסמך אחד, שמוגבל ל-1 MB.">
         <div className="flex items-center gap-3">
