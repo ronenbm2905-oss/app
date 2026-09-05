@@ -439,6 +439,24 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
   const selectedCoachNames = data.coaches
     .filter((c) => filterCoachIds.includes(c.id))
     .map((c) => c.name);
+
+  // What the calendar export actually hands over, and what it calls itself.
+  //
+  // Three scopes, in order of who is asking: a coach gets their own week; a manager who has
+  // picked coaches on the board gets exactly those; a manager who has picked nobody gets the
+  // club's week. `weekSessions` stays unfiltered — the clash detection above depends on
+  // seeing everything — so the narrowing happens here and nowhere else.
+  const calendarSessions = useMemo(() => {
+    if (myCoachId) return weekSessions.filter((s) => s.coachId === myCoachId);
+    if (!filterCoachIds.length) return weekSessions;
+    return weekSessions.filter((s) => filterCoachIds.includes(s.coachId));
+  }, [weekSessions, myCoachId, filterCoachIds]);
+
+  const calendarScope = myCoachId
+    ? "האימונים שלי"
+    : selectedCoachNames.length
+    ? selectedCoachNames.join(" · ")
+    : "כל הקבוצות";
   // Sessions colliding with a coach/hall constraint → bold amber. { sessionId: [constraint,...] }
   const violations = useMemo(
     () => findConstraintViolations(weekSessions, data.constraints || []),
@@ -611,18 +629,24 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                 >
                   <IconDownload size={15} /> {shareBusy === "pdf" ? "מכין PDF…" : "שמירת PDF"}
                 </button>
-                {/* The board's own filters deliberately do NOT narrow this — a calendar with
-                    a filter silently applied is a calendar that is quietly wrong. What does
-                    narrow it is who is asking: a manager exports the club's week, a coach
-                    exports their own. A coach pressing this wanted their trainings, not all
-                    ninety of the club's. */}
+                {/* This used to ignore the coach filter on purpose — the argument was that a
+                    calendar quietly narrowed is a calendar quietly wrong. The argument holds;
+                    the conclusion did not. The board itself narrows to the selected coach, so
+                    a button sitting beside it that exports all ninety sessions contradicts
+                    what is on screen — which is its own kind of quietly wrong.
+                    So: the filter IS honoured, and the button says whose week it is handing
+                    over, in its label, its tooltip and the file name. Nothing is silent.
+                    The DAY filter is deliberately not honoured: picking a coach says "this is
+                    what I want", while unticking Saturday is usually just tidying the screen —
+                    and a calendar missing a day nobody meant to drop is the failure the
+                    original comment was actually warning about. */}
                 <AddToCalendarButton
-                  sessions={myCoachId ? weekSessions.filter((s) => s.coachId === myCoachId) : weekSessions}
+                  sessions={calendarSessions}
                   data={data}
-                  label={myCoachId ? `${title} — האימונים שלי` : title}
-                  calendarName={`${title} · ${formatWeekRange(weekStart)}`}
+                  label={`${title} — ${calendarScope}`}
+                  calendarName={`${title} · ${calendarScope} · ${formatWeekRange(weekStart)}`}
                   weekStart={weekStart}
-                  title={myCoachId ? "האימונים שלך ליומן" : "כל אימוני השבוע ליומן"}
+                  title={`ליומן: ${calendarScope} (${calendarSessions.length} אימונים)`}
                 />
               </>
             )}
