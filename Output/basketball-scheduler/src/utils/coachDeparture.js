@@ -117,14 +117,26 @@ export function buildDeparturePlan(coach, sources = {}) {
 // So the card searches from BOTH directions. This is the second one: every address that
 // actually wrote something and matches no coach. It also catches the cases a required field
 // would not — an address changed after the fact, or a coach deleted before this existed.
-export function unclaimedAddresses({ notes, plans, videos, coaches } = {}) {
+export function unclaimedAddresses({ notes, plans, videos, coaches, admins, members } = {}) {
   const known = new Set(arr(coaches).map((c) => normalizeEmail(c?.email)).filter(Boolean));
+  // Still authorised in this club — a manager, or a coach whose address is on the access
+  // list but not on their roster row. Their records are NOT a departure: a manager writes
+  // game notes under their own address and fills in a training plan for a coach who did not
+  // get to it, and they need not appear in the coach list at all. Without this the club's
+  // own manager would see a permanent "unassigned records" row inviting them to strip their
+  // name from documents about children — and a row that is wrong every day is a row nobody
+  // reads on the day it is right.
+  const active = new Set(
+    [...arr(admins), ...arr(members)].map((e) => normalizeEmail(e)).filter(Boolean)
+  );
   const found = new Map();
   const add = (record, kind) => {
     const email = normalizeEmail(record?.authorEmail);
     // A released record is nobody's by design, and must never be offered for release again.
     if (!email || known.has(email)) return;
-    if (!found.has(email)) found.set(email, { email, notes: 0, plans: 0, videos: 0, total: 0 });
+    if (!found.has(email)) {
+      found.set(email, { email, notes: 0, plans: 0, videos: 0, total: 0, authorized: active.has(email) });
+    }
     const row = found.get(email);
     row[kind] += 1;
     row.total += 1;
@@ -134,6 +146,17 @@ export function unclaimedAddresses({ notes, plans, videos, coaches } = {}) {
   arr(videos).forEach((v) => add(v, "videos"));
   return [...found.values()].sort((a, b) => a.email.localeCompare(b.email));
 }
+
+// Rows the club should actually act on: an address that wrote something and belongs to
+// nobody who is still authorised here.
+//
+// Kept as a separate function rather than a flag the caller filters on, because the
+// difference matters in one place where filtering would be a bug: the guard that blocks
+// deleting a coach who has no address on their roster row. That coach IS on the access
+// list, so they come back `authorized: true` — filtering them out of the guard would let
+// the roster row be deleted and strand what they wrote, which is exactly the hole this
+// module was written to close. The guard reads `unclaimedAddresses`; the screen reads this.
+export const releasableAddresses = (sources) => unclaimedAddresses(sources).filter((r) => !r.authorized);
 
 // Coaches the club can record but the departure action cannot search for. Shown as a
 // warning rather than blocked: a coach who never signs in genuinely has no address, and

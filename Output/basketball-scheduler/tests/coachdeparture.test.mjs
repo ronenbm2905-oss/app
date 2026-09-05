@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import {
   ownedBy, releaseRecord, isReleased, departureHoldings, buildDeparturePlan, describeHoldings,
-  unclaimedAddresses, coachesMissingEmail,
+  unclaimedAddresses, releasableAddresses, coachesMissingEmail,
 } from "../src/utils/coachDeparture.js";
 
 const DANA = "dana.coach@gmail.com";
@@ -244,4 +244,52 @@ assert.equal(describeHoldings({ notes: 1 }), "הערת משחק אחת");
 assert.equal(describeHoldings({}), "");
 assert.equal(describeHoldings(null), "");
 
-console.log("coach departure: 96 assertions passed");
+// ---- Who is still authorised here, and why the difference is load-bearing ----
+//
+// The club's own manager writes game notes under their own address, and fills in a training
+// plan for a coach who did not get to it. They need not appear in the coach list at all. So
+// on day one their address becomes an "unassigned records" row — and without this split it
+// stays there forever, inviting them to strip their own name off documents about children.
+// A row that is wrong every day is a row nobody reads on the day it is right.
+{
+  const s = sources();
+  s.notes.g9 = { text: "המנהל כתב", authorEmail: "boss@club.org", author: "מנהל" };
+  s.plans.s9 = { summary: "מילאתי במקומו", authorEmail: "boss@club.org", author: "מנהל" };
+  s.notes.g8 = { text: "מי זה", authorEmail: "gone@club.org", author: "עזב" };
+  const club = { ...s, coaches: [coach, other], admins: ["boss@club.org"], members: [] };
+
+  const all = unclaimedAddresses(club);
+  assert.deepEqual(all.map((r) => r.email), ["boss@club.org", "gone@club.org"]);
+  assert.equal(all.find((r) => r.email === "boss@club.org").authorized, true);
+  assert.equal(all.find((r) => r.email === "gone@club.org").authorized, false);
+
+  // The screen offers release for the departed address only.
+  const releasable = releasableAddresses(club);
+  assert.deepEqual(releasable.map((r) => r.email), ["gone@club.org"]);
+
+  // A coach on the access list counts as authorised too, even with no roster address —
+  // and that is exactly the case the delete guard must still see.
+  const withStaff = { ...club, members: ["ghost@club.org"] };
+  withStaff.plans.s7 = { summary: "מערך", missing: "יואב", authorEmail: "ghost@club.org" };
+  assert.equal(unclaimedAddresses(withStaff).find((r) => r.email === "ghost@club.org").authorized, true);
+  assert.ok(!releasableAddresses(withStaff).some((r) => r.email === "ghost@club.org"));
+  // THE REGRESSION GUARD: the delete guard reads the unfiltered list. If it ever reads the
+  // filtered one, a coach with no roster address becomes deletable again and their training
+  // plans — players' names in them — are stranded. That is the hole this module closed.
+  assert.ok(unclaimedAddresses(withStaff).some((r) => r.email === "ghost@club.org"),
+    "an authorised address vanished from the unfiltered list — the delete guard would go blind");
+
+  // Casing on the access list must not decide it either.
+  const cased = { ...club, admins: ["BOSS@Club.ORG"] };
+  assert.equal(unclaimedAddresses(cased).find((r) => r.email === "boss@club.org").authorized, true);
+}
+// With no access lists passed, nothing is authorised — the safe default is to show the row
+// rather than to hide it.
+{
+  const s = sources();
+  s.notes.g9 = { text: "x", authorEmail: "boss@club.org" };
+  assert.equal(unclaimedAddresses({ ...s, coaches: [coach, other] })[0].authorized, false);
+}
+assert.deepEqual(releasableAddresses(), []);
+
+console.log("coach departure: 106 assertions passed");

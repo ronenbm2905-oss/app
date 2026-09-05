@@ -452,8 +452,15 @@ export function RostersView({ data, save, canEdit, notes, plans, videos, onDepar
     // it — so for a coach with no address stored, "no records found" means "nothing to search
     // by", not "nothing there". Deleting the row would strand whatever they wrote, with their
     // name on it, out of the departure card's reach forever.
+    // `unclaimedAddresses` and NOT `releasableAddresses`: a coach whose roster row has no
+    // address is still on the club's access list, so their records come back marked as
+    // authorised. Filtering on that here would let this very row be deleted and strand what
+    // they wrote — the hole this guard exists to close.
     if (!String(coach?.email || "").trim() &&
-        unclaimedAddresses({ notes, plans, videos, coaches: data.coaches }).length > 0) {
+        unclaimedAddresses({
+          notes, plans, videos, coaches: data.coaches,
+          admins: data.admins, members: data.members,
+        }).length > 0) {
       setBlockedMsg(
         'לא מולאה כתובת דוא"ל למאמן/ת זה/ו, ויש במערכת רשומות שנכתבו מכתובות שאינן משויכות ' +
         'לאף מאמן/ת — כך שאי אפשר לדעת אם חלק מהן שלו/ה. מלא/י את הכתובת ברשומת המאמן/ת, ' +
@@ -502,6 +509,8 @@ export function RostersView({ data, save, canEdit, notes, plans, videos, onDepar
           plans={plans}
           videos={videos}
           absences={data.absences}
+          admins={data.admins}
+          members={data.members}
           onDepart={onDepart}
         />
       )}

@@ -28,7 +28,7 @@ export const A11Y_STATEMENT_DATE = "4.9.2026";
 // processing changed since they last read it.
 //
 // Update the matching constant in the SAME commit that edits the document.
-export const PRIVACY_POLICY_DATE = "4.9.2026";
+export const PRIVACY_POLICY_DATE = "5.9.2026";
 export const TERMS_OF_USE_DATE = "4.9.2026";
 
 const CONSTANTS = {

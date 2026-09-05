@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  departureHoldings, describeHoldings, unclaimedAddresses, coachesMissingEmail,
+  departureHoldings, describeHoldings, unclaimedAddresses, releasableAddresses, coachesMissingEmail,
 } from "../utils/coachDeparture";
 import { IconUserX, IconAlert } from "./ui/icons";
 
@@ -19,7 +19,7 @@ import { IconUserX, IconAlert } from "./ui/icons";
 // it is irreversible, it touches records the manager cannot see from this screen, and it
 // should be read before it is clicked. A card that lists exactly what will happen, per
 // coach, is the honest shape for that.
-export function CoachDepartureCard({ coaches, notes, plans, videos, absences, onDepart }) {
+export function CoachDepartureCard({ coaches, notes, plans, videos, absences, admins, members, onDepart }) {
   const [confirmId, setConfirmId] = useState(null);
 
   const rows = (coaches || [])
@@ -29,12 +29,19 @@ export function CoachDepartureCard({ coaches, notes, plans, videos, absences, on
   // Records written by an address the roster does not know. Searching only from the roster
   // missed exactly the coach whose email field was never filled in — and the card would
   // then disappear, so the most dangerous state was the one with nothing on screen.
-  const orphans = unclaimedAddresses({ notes, plans, videos, coaches });
+  const sources = { notes, plans, videos, coaches, admins, members };
+  const orphans = releasableAddresses(sources);
+  // Addresses that wrote something and are still authorised here — the club's own manager,
+  // most often. Reported as one quiet line and never as a release button: this row would
+  // otherwise appear on day one and never leave, and a card that is wrong every day is a
+  // card nobody reads on the day it matters.
+  const linked = unclaimedAddresses(sources).filter((r) => r.authorized);
   const missing = coachesMissingEmail(coaches);
-  const warn = missing.length > 0 && orphans.length > 0;
+  const warn = missing.length > 0 && unclaimedAddresses(sources).length > 0;
 
   // Nothing to clear is the normal state, and an empty card would be noise on every visit.
-  if (rows.length === 0 && orphans.length === 0) return null;
+  // The quiet line alone never summons the card — only work does.
+  if (rows.length === 0 && orphans.length === 0 && !warn) return null;
 
   return (
     <div className="bg-white rounded-xl border border-stone-300 overflow-hidden" dir="rtl">
@@ -176,6 +183,18 @@ export function CoachDepartureCard({ coaches, notes, plans, videos, absences, on
           </div>
         ))}
       </div>
+
+      {linked.length > 0 && (
+        <div className="px-4 py-2.5 border-t border-stone-100 bg-stone-50">
+          <p className="text-xs text-stone-500">
+            רשומות נוספות נכתבו מכתובות של משתמשים מורשים שאינם רשומים כמאמנים
+            (<span dir="ltr">{linked.map((r) => r.email).join(", ")}</span>) — למשל מנהל/ת
+            שכתב/ה הערה או מילא/ה מערך אימון. <span className="font-medium">אין צורך
+            לפעול.</span> אם אחת מהכתובות שייכת למאמן/ת, מילוי הכתובת ברשומת המאמן/ת יקשר
+            את הרשומות לשמו/ה.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
