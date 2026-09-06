@@ -112,6 +112,15 @@ export default function App() {
   const canEdit = isAdmin;
   // A coach's own record, when an admin has filled in their sign-in address.
   const myCoachId = canEdit ? null : coachForUser(user, data.coaches)?.id || null;
+  // The same lookup WITHOUT the manager exclusion.
+  //
+  // `myCoachId` deliberately answers "am I here as a coach", and for a manager the answer is
+  // no — the board, today's strip and the coach's own view all want the club-wide picture.
+  // But a club manager who also runs a squad is still that squad's coach, and the progress
+  // screen is the one place where that matters: it is written BY coaches, so blanking the
+  // identity left the manager unable to write about his own players. Kept separate rather
+  // than folded into `myCoachId`, because widening that one would change five other screens.
+  const selfCoachId = coachForUser(user, data.coaches)?.id || null;
   // Who gets a count of today's sessions at all. A manager sees the club's day because
   // running it is the job. A coach the club can place sees their own. Anyone else — a
   // viewer with no coach record, or a coach whose sign-in address nobody filled in — gets
@@ -313,6 +322,7 @@ export default function App() {
             data={data}
             canEdit={canEdit}
             myCoachId={myCoachId}
+            selfCoachId={selfCoachId}
             progress={progress}
             saveProgress={saveProgress}
             authorName={user?.displayName || user?.email || ""}

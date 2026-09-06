@@ -14,7 +14,7 @@ const when = (iso) => {
 // the coach writes, the manager reads. What the manager does NOT get is a text box — see
 // the note on `onSave` below, it is a real bug and not a preference.
 export function PlayerProgressCard({
-  player, roster, entry, period, canEdit, readOnly, onSave, onMarkRead, authorName, authorEmail,
+  player, roster, entry, period, canEdit, canWrite, readOnly, onSave, onMarkRead, authorName, authorEmail,
 }) {
   const written = hasContent(entry);
   const unread = isUnread(entry);
@@ -60,7 +60,7 @@ export function PlayerProgressCard({
   // would stamp THEIR address onto `authorEmail`, which drops the document out of the
   // coach's own filtered listen. The coach would simply stop seeing what they wrote, with
   // no error anywhere. `markRead` spreads the existing entry and so keeps ownership intact.
-  if (canEdit) {
+  if (!canWrite) {
     return (
       <div className={`border rounded-lg p-3 ${unread ? "border-amber-300 bg-amber-50" : "border-stone-200 bg-white"}`}>
         <div className="flex items-center gap-2 flex-wrap">
@@ -75,7 +75,10 @@ export function PlayerProgressCard({
               <span className="text-xs text-stone-500">
                 {entry.author || "—"}{entry.updatedAt ? ` · ${when(entry.updatedAt)}` : ""}
               </span>
-              {unread && (
+              {/* Marking read is the manager's act. A coach can now land on this same card
+                  — reading an earlier half, or a squad-mate's note — and "read" from them
+                  would mean nothing to anyone. */}
+              {unread && canEdit && (
                 <button
                   onClick={() => onMarkRead(entry)}
                   className="text-xs px-2.5 py-1 rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 flex items-center gap-1"

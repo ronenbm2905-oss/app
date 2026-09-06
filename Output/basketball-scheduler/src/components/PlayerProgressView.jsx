@@ -25,7 +25,7 @@ import { IconUsers, IconPencil } from "./ui/icons";
 // parents of its own motion. One share button turns that sentence into a lie, and the
 // privacy policy with it. (What the banner does NOT claim is secrecy from a parent who
 // asks — that right exists in law and the coach is told so before they write.)
-export function PlayerProgressView({ data, canEdit, myCoachId, progress, saveProgress, authorName, authorEmail }) {
+export function PlayerProgressView({ data, canEdit, myCoachId, selfCoachId, progress, saveProgress, authorName, authorEmail }) {
   // Pinned once, on mount. Recomputing it per save would file a note written at 23:59 on
   // 31 January into the second half if the coach pressed save a minute later.
   const [today] = useState(() => toISODate(new Date()));
@@ -34,7 +34,11 @@ export function PlayerProgressView({ data, canEdit, myCoachId, progress, savePro
   const [period, setPeriod] = useState(currentPeriod);
   const [teamId, setTeamId] = useState("");
 
-  const myTeams = useMemo(() => teamsOfCoach(data, myCoachId), [data, myCoachId]);
+  // Squads this person coaches — asked of `selfCoachId`, so a manager who also runs a
+  // squad is recognised as its coach here even though every other screen treats them as a
+  // manager.
+  const myTeams = useMemo(() => teamsOfCoach(data, selfCoachId || myCoachId), [data, selfCoachId, myCoachId]);
+  const myTeamIds = useMemo(() => new Set(myTeams.map((t) => t.id)), [myTeams]);
   // A manager picks from every squad, and needs the coach's name to tell "נערים א" from
   // "נערים ב". A coach picks only from their own.
   const teamOptions = canEdit ? teamsWithCoach(data.teams, data.coaches) : myTeams;
@@ -52,10 +56,23 @@ export function PlayerProgressView({ data, canEdit, myCoachId, progress, savePro
   );
   const numbered = (p) => fullRoster.find((f) => f.id === p.id) || p;
 
+  // Who may type into a given card.
+  //
+  // Two conditions, and the second is the bug the manager's read-only card was built to
+  // prevent: saving stamps the writer's address onto `authorEmail`, and a note re-stamped
+  // to somebody else drops out of its real author's filtered listen — they simply stop
+  // seeing what they wrote, with no error. So: only on a squad I coach, and only on a note
+  // that is mine or does not exist yet. A manager reading another coach's squad is
+  // unchanged — that card stays read-only.
+  const readOnly = period !== currentPeriod; // an earlier half is history, not a form
+  const me = String(authorEmail || "").toLowerCase();
+  const ownTeam = Boolean(activeTeamId) && myTeamIds.has(activeTeamId);
+  const canWriteFor = (entry) =>
+    ownTeam && !readOnly && (!entry || String(entry.authorEmail || "").toLowerCase() === me);
+
   const stale = canEdit ? staleSeasons(progress, season) : [];
   const missing = missingFor(roster, progress, period);
   const done = writtenCount(roster, progress, period);
-  const readOnly = period !== currentPeriod; // an earlier half is history, not a form
 
   const save = (entry) => saveProgress(progressKey(entry.playerId, entry.period), entry);
   const onMarkRead = (entry) =>
@@ -152,6 +169,7 @@ export function PlayerProgressView({ data, canEdit, myCoachId, progress, savePro
                 entry={progressFor(progress, p.id, period)}
                 period={period}
                 canEdit={canEdit}
+                canWrite={canWriteFor(progressFor(progress, p.id, period))}
                 readOnly={readOnly}
                 onSave={save}
                 onMarkRead={onMarkRead}
