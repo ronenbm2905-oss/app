@@ -67,6 +67,16 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
     [building, contractIndex, asOf, feeIndex]
   );
 
+  /**
+   * הקטגוריות שיש להן חוזה, לפי מזהה — השאר מוצגות ריקות ועדיין ניתנות להזנה.
+   * ⚠ **חייב לשבת אחרי `p`.** הצבה לפניו נותנת ReferenceError של TDZ, כלומר
+   * מסך לבן — נתפס באימות בדפדפן ולא בבנייה, שעברה נקייה.
+   */
+  const byCategoryId = useMemo(
+    () => new Map((p?.detail.byCategory || []).map((r) => [r.categoryId, r])),
+    [p]
+  );
+
   if (!building) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12 text-center text-slate-500">
@@ -100,6 +110,16 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
   const setVendorForCategory = (categoryId, vendorId) => {
     if (readOnly) return;
     const rows = priceHistory(buildingId, categoryId, contractIndex);
+    // ⚠ בקטגוריה שאין לה עדיין חוזה, `updates` ריק והבחירה הייתה **נבלעת בשקט**.
+    // נוצר חוזה בלי סכום: ״הספק ידוע, המחיר עוד לא״ — מצב לגיטימי בבניין חדש.
+    if (!rows.length) {
+      if (!vendorId) return;
+      applyBatch("contracts", {
+        updates: [],
+        creates: [makeContract({ buildingId, categoryId, vendorId, amount: null })],
+      });
+      return;
+    }
     applyBatch("contracts", {
       updates: rows.map((r) => ({ id: r.id, patch: { vendorId: vendorId || null } })),
       creates: [],
@@ -200,9 +220,19 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {p.detail.byCategory.map((row) => {
+              {/*
+                ⚠ **עוברים על `EXPENSE_CATEGORIES` ולא על `p.detail.byCategory`.**
+                `buildingCost` מדלג על קטגוריה שאין לה חוזה (`if (!contract) continue`)
+                — נכון לחישוב העלות, והרסני לתצוגה: **בבניין חדש הטבלה יצאה ריקה
+                לגמרי**, ולכן לא היה שום מקום ללחוץ עליו כדי להזין הוצאה ראשונה.
+                אנדריי נתקל בזה על ״אפשטיין 42״.
+                הקטגוריה מוצגת תמיד; החוזה עשוי להיות `null`.
+              */}
+              {EXPENSE_CATEGORIES.map((cat) => {
+                const row = byCategoryId.get(cat.id)
+                  || { categoryId: cat.id, name: cat.name, amount: null, imputedVat: 0, contract: null };
                 const c = row.contract;
-                const vendor = vendorById.get(c.vendorId);
+                const vendor = c ? vendorById.get(c.vendorId) : null;
                 const history = priceHistory(buildingId, row.categoryId, contractIndex);
                 return (
                   <tr key={row.categoryId} className="hover:bg-slate-50">
@@ -210,7 +240,7 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
                     <td className="td text-slate-600">
                       <EditableField
                         type="select"
-                        value={c.vendorId || ""}
+                        value={c?.vendorId || ""}
                         readOnly={readOnly}
                         placeholder="— ללא ספק"
                         title={vendor?.phone ? `${vendor.name} · ${vendor.phone}` : "שינוי ספק חל על כל שורות המחיר"}
@@ -227,13 +257,15 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
                         disabled={readOnly}
                         title={readOnly ? "צפייה בתאריך עבר — קריאה בלבד" : "עריכת המחיר"}
                         onClick={() => setEditing({ kind: "contract", categoryId: row.categoryId })}>
-                        {row.amount === null
-                          ? <span className="text-slate-400">— הוועד משלם</span>
-                          : fmtILSExact(row.amount)}
+                        {row.amount !== null
+                          ? fmtILSExact(row.amount)
+                          : c
+                            ? <span className="text-slate-400">— הוועד משלם</span>
+                            : <span className="text-slate-300">+ הוסף סכום</span>}
                       </button>
                     </td>
                     <td className="td text-xs text-slate-500">
-                      {c.effectiveFrom || <span className="text-slate-300">—</span>}
+                      {c?.effectiveFrom || <span className="text-slate-300">—</span>}
                       {history.length > 1 && (
                         <button
                           onClick={() => setEditing({ kind: "contract", categoryId: row.categoryId })}
@@ -245,18 +277,18 @@ export default function BuildingPage({ buildingId, data, contractIndex, feeIndex
                     <td className="td">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
                         <EditableField type="checkbox" readOnly={readOnly}
-                          value={c.vatMode === "imputed"} placeholder="עוסק פטור"
+                          value={c?.vatMode === "imputed"} placeholder="עוסק פטור"
                           title="הסכום כולל מע״מ רעיוני שנוסף להשוואה מול ספק רגיל"
                           onSave={(v) => setContractFlag(c, { vatMode: v ? "imputed" : "standard" })} />
-                        {c.vatMode === "imputed" && row.imputedVat > 0 && (
+                        {c?.vatMode === "imputed" && row.imputedVat > 0 && (
                           <span className="text-violet-700 tnum">({fmtILS(row.imputedVat)})</span>
                         )}
                         <EditableField type="checkbox" readOnly={readOnly}
-                          value={c.isEstimate} placeholder="הערכה"
+                          value={c?.isEstimate} placeholder="הערכה"
                           title="הסכום הוא אומדן ולא חוזה חתום"
                           onSave={(v) => setContractFlag(c, { isEstimate: v })} />
                         <EditableField type="checkbox" readOnly={readOnly}
-                          value={c.isConditional} placeholder="מותנה"
+                          value={c?.isConditional} placeholder="מותנה"
                           title="מותנה בכך שכל הדיירים שילמו"
                           onSave={(v) => setContractFlag(c, { isConditional: v })} />
                       </div>
