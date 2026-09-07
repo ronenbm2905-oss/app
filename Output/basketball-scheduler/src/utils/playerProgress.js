@@ -211,6 +211,27 @@ export function progressCountFor(map, playerId) {
   return Object.keys(map || {}).filter((k) => k.startsWith(`${id}__`)).length;
 }
 
+// Who may type into one player's card.
+//
+// This is the rule that replaced a decision taken deliberately at the legal review: the
+// manager was given no text box at all, because a save stamps the writer's address onto
+// `authorEmail` and a note re-stamped to somebody else drops out of its real author's
+// filtered listen — the coach simply stops seeing what they wrote, with no error. The rule
+// that reopened writing for a manager who also coaches has to keep that property, so it
+// lives here where it can be held to it rather than inline in the view.
+//
+// Four conditions, each of which is somebody's actual situation:
+//   ownTeam  — a squad I coach. A manager reading another coach's squad stays read-only.
+//   readOnly — a closed half is history, not a form.
+//   entry    — a note somebody else wrote is theirs; a note that does not exist yet is free.
+export function canWriteProgress({ entry, myEmail, ownTeam, readOnly }) {
+  if (!ownTeam || readOnly) return false;
+  const me = str(myEmail).toLowerCase();
+  if (!me) return false; // an unidentified writer would author a note nobody owns
+  if (!entry) return true;
+  return str(entry.authorEmail).toLowerCase() === me;
+}
+
 // Seasons still sitting in the collection other than the current one.
 //
 // The screen only ever offers the current season's two halves, so from the first of August

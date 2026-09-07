@@ -37,6 +37,11 @@ export const GAME_DURATION_MIN = 90;
 // first time anyone changed it: the bus in the vendor's file and the time on the coach's
 // screen an hour apart, with nothing on either screen saying so.
 export const DEFAULT_DEPART_BEFORE = 90;
+// Four hours before tip-off is already generous for the longest away trip in the league.
+// The ceiling exists because `timeMinus` wraps backwards past midnight — 900 instead of 90
+// yields a time on the PREVIOUS day, printed as a clean HH:MM with no date, on every
+// coach's screen, with nothing about it looking wrong.
+export const MAX_DEPART_BEFORE = 240;
 
 export function departBeforeOf(data) {
   // The type check before the Number() is not defensive noise. `Number("")` is 0, and 0
@@ -46,7 +51,10 @@ export function departBeforeOf(data) {
   const raw = data?.departBeforeMin;
   const ok = typeof raw === "number" || (typeof raw === "string" && raw.trim() !== "");
   const n = ok ? Number(raw) : NaN;
-  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_DEPART_BEFORE;
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_DEPART_BEFORE;
+  // Clamped here and not only at the input, because the value arrives from the club
+  // document — which a second manager, an older client or a hand edit can also write.
+  return Math.min(n, MAX_DEPART_BEFORE);
 }
 
 // The gathering time for one game, or "" when there is nothing to gather for.

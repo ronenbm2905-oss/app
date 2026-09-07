@@ -61,9 +61,16 @@ function useCloudProgress(user, isAdmin, email) {
         setReady(true);
       },
       () => {
-        // A note that fails to load must not take the rest of the screen down with it.
+        // A note that fails to load must not take the rest of the screen down with it —
+        // so the map is emptied and the screens that only DISPLAY notes carry on.
+        //
+        // Readiness, though, stays false, and that is the whole point. This map is also the
+        // guard on deleting a player: an empty map meaning "the listen failed" is
+        // indistinguishable from one meaning "nothing was ever written", and a delete taken
+        // on that reading severs the only link between a note and the child it is about.
+        // Showing nothing is recoverable; deleting on a guess is not.
         setProgress({});
-        setReady(true);
+        setReady(false);
       }
     );
     return unsub;

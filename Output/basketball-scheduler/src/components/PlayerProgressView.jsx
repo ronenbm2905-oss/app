@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   periodOf, periodsOfSeason, seasonOfPeriod, periodLabel, progressKey,
-  progressFor, rosterFor, missingFor, writtenCount, markRead, staleSeasons,
+  progressFor, rosterFor, missingFor, writtenCount, markRead, staleSeasons, canWriteProgress,
 } from "../utils/playerProgress";
 import { teamsOfCoach, teamsWithCoach } from "../utils/teams";
 import { sortByName } from "../utils/names";
@@ -67,8 +67,7 @@ export function PlayerProgressView({ data, canEdit, myCoachId, selfCoachId, prog
   const readOnly = period !== currentPeriod; // an earlier half is history, not a form
   const me = String(authorEmail || "").toLowerCase();
   const ownTeam = Boolean(activeTeamId) && myTeamIds.has(activeTeamId);
-  const canWriteFor = (entry) =>
-    ownTeam && !readOnly && (!entry || String(entry.authorEmail || "").toLowerCase() === me);
+  const canWriteFor = (entry) => canWriteProgress({ entry, myEmail: me, ownTeam, readOnly });
 
   const stale = canEdit ? staleSeasons(progress, season) : [];
   const missing = missingFor(roster, progress, period);
@@ -94,7 +93,9 @@ export function PlayerProgressView({ data, canEdit, myCoachId, selfCoachId, prog
 
   return (
     <div className="space-y-4" dir="rtl">
-      {!canEdit && (
+      {/* Addressed to whoever is about to write, which since the manager-who-coaches change
+          is no longer the same set as "not a manager". */}
+      {(!canEdit || ownTeam) && (
         <div className="text-xs rounded-lg border border-stone-300 bg-stone-50 text-stone-700 p-2.5">
           ההערכה נועדה לשיחה מקצועית בינך לבין מנהלי המועדון. היא אינה מסמך רשמי, ואיננו
           מעבירים אותה לשחקן/ית או להורים ביוזמתנו. עם זאת, להורה עומדת זכות על פי דין

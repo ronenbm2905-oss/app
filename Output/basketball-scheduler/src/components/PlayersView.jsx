@@ -100,7 +100,7 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
   );
 }
 
-export function PlayersView({ data, save, canEdit, progress }) {
+export function PlayersView({ data, save, canEdit, progress, progressReady }) {
   const players = data.players || [];
   const [teamId, setTeamId] = useState(data.teams[0]?.id || "");
   const [editing, setEditing] = useState(null); // player id | "new" | null
@@ -126,6 +126,21 @@ export function PlayersView({ data, save, canEdit, progress }) {
     setEditing(null);
   };
 
+  // "Don't know" is not "none", and both deletions ask this first.
+  //
+  // The guard below counts notes in a map that is empty in two very different situations:
+  // nothing was ever written, and the listen failed. `progressCountFor` cannot tell them
+  // apart — by design, so that a broken read never crashes a display — which makes the
+  // question belong here, at the one caller that acts on the answer irreversibly.
+  const knowsAboutProgress = () => {
+    if (progressReady) return true;
+    window.alert(
+      "רשימת ההערכות עדיין נטענת, או שטעינתה נכשלה. רענן/י את הדף ונסה/י שוב — " +
+      "אי אפשר למחוק שחקן/ית בלי לדעת אם נכתבה עליו/ה הערכת התקדמות."
+    );
+    return false;
+  };
+
   // A player may not be removed while a progress note about them survives.
   //
   // The note is filed under the player's id and deliberately does not carry their name, so
@@ -134,6 +149,7 @@ export function PlayersView({ data, save, canEdit, progress }) {
   // answered at all. The same guard already protects coaches and halls from being deleted
   // out from under their records; it was simply never applied to players.
   const handleDelete = (id) => {
+    if (!knowsAboutProgress()) return;
     const n = progressCountFor(progress, id);
     if (n > 0) {
       window.alert(
@@ -163,6 +179,7 @@ export function PlayersView({ data, save, canEdit, progress }) {
   // link between the note and the child. Here it matters more, not less — one action
   // could sever thirty.
   const handleClearTeam = () => {
+    if (!knowsAboutProgress()) return;
     const guarded = teamPlayers.filter((pl) => progressCountFor(progress, pl.id) > 0);
     if (guarded.length > 0) {
       window.alert(
@@ -174,9 +191,13 @@ export function PlayersView({ data, save, canEdit, progress }) {
     }
     if (
       !window.confirm(
-        `למחוק את כל ${teamPlayers.length} השחקנים מקבוצת "${teamName}"?
+        (teamPlayers.length === 1
+          ? `למחוק את השחקן/ית היחיד/ה בקבוצת "${teamName}"?
 
-` +
+`
+          : `למחוק את כל ${teamPlayers.length} השחקנים מקבוצת "${teamName}"?
+
+`) +
         "הפעולה אינה הפיכה. אם הרשימה יובאה בטעות לקבוצה הזו — זו הדרך לבטל אותה."
       )
     )

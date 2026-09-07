@@ -350,8 +350,12 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                                 return (
                                   <div className="text-xs text-stone-700 pr-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                     {assembly && (
-                                      <span className="font-medium">
-                                        🚌 התייצבות <span dir="ltr" className="tabular-nums">{assembly}</span>
+                                      <span
+                                        className="font-medium"
+                                        title="חישוב: שעת המשחק פחות זמן ההתייצבות שהמנהל קבע. אינו הודעה רשמית על הסעה"
+                                      >
+                                        <span aria-hidden="true">🚌</span> התייצבות{" "}
+                                        <span dir="ltr" className="tabular-nums">{assembly}</span>
                                         <span className="font-normal text-stone-600"> · {CLUB_PICKUP_POINT}</span>
                                       </span>
                                     )}

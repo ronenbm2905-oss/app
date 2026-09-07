@@ -5,6 +5,7 @@ import {
   awayGamesForWeek,
   buildTransportRows,
   departBeforeOf,
+  MAX_DEPART_BEFORE,
   exportTransportXlsx,
   transportRowToCells,
   TRANSPORT_HEADERS,
@@ -40,8 +41,12 @@ export function TransportExport({ data, save, weekStart, setWeekStart }) {
   const weekLabel = formatWeekRange(weekStart);
   const hasRows = rows.length > 0;
 
+  // Compared against the RAW stored field rather than against `stored`, which is already
+  // clamped and defaulted. Otherwise a document holding 900 would keep holding 900 while
+  // every screen quietly read 240 — and no blur would ever reconcile them, because the box
+  // and the clamp already agreed. This also pins the default the first time it is touched.
   const commitDepartBefore = () => {
-    if (departBefore !== stored) save({ ...data, departBeforeMin: departBefore });
+    if (departBefore !== data?.departBeforeMin) save({ ...data, departBeforeMin: departBefore });
   };
 
   const handleXlsx = () => {
@@ -102,16 +107,19 @@ export function TransportExport({ data, save, weekStart, setWeekStart }) {
           <input
             type="number"
             min={0}
+            max={MAX_DEPART_BEFORE}
             step={15}
             value={departBefore}
-            onChange={(e) => setDepartBefore(Math.max(0, Number(e.target.value) || 0))}
+            onChange={(e) => setDepartBefore(Math.min(MAX_DEPART_BEFORE, Math.max(0, Number(e.target.value) || 0)))}
             onBlur={commitDepartBefore}
             className="w-16 bg-white border border-indigo-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
             aria-label="דקות לפני המשחק להתייצבות"
           />
           דק' לפני שריקת הפתיחה
         </label>
-        <span className="text-xs text-indigo-700">גם המאמן רואה את השעה הזו בלוח שלו</span>
+        <span className="text-xs text-indigo-700">
+          גם המאמן רואה את השעה הזו בלוח שלו — שינוי כאן אינו מפיק הודעה
+        </span>
       </div>
 
       <div className="text-xs text-indigo-800">

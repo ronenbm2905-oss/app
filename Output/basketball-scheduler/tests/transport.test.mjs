@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {
   TRANSPORT_HEADERS, buildTransportRows, transportRowToCells, awayGamesForWeek,
-  assemblyTime, departBeforeOf, DEFAULT_DEPART_BEFORE,
+  assemblyTime, departBeforeOf, DEFAULT_DEPART_BEFORE, MAX_DEPART_BEFORE,
 } from "../src/utils/transport.js";
 
 let pass = 0;
@@ -156,6 +156,15 @@ t("junk in the field does not become NaN on the coach's screen", () => {
 });
 t("a stored string number still works", () =>
   assert.equal(departBeforeOf({ departBeforeMin: "45" }), 45));
+t("900 instead of 90 is capped, not shown as yesterday's time", () => {
+  // timeMinus wraps backwards past midnight (the test above locks that on purpose), so an
+  // uncapped 900 would print a time on the PREVIOUS day as a clean HH:MM with no date.
+  assert.equal(departBeforeOf({ departBeforeMin: 900 }), MAX_DEPART_BEFORE);
+  assert.equal(assemblyTime({ isHome: false, time: "20:00" }, departBeforeOf({ departBeforeMin: 900 })), "16:00");
+});
+t("the ceiling is applied to the stored value, not only to the input box", () =>
+  // A second manager, an older client or a hand edit all write this field too.
+  assert.equal(departBeforeOf({ departBeforeMin: "1440" }), MAX_DEPART_BEFORE));
 t("the vendor's sheet and the coach's board agree by construction", () => {
   const g = { ...game, time: "20:00" };
   const [row] = buildTransportRows([g], { ...opts, departBefore: 75 });

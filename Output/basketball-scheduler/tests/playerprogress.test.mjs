@@ -4,7 +4,7 @@ import {
   seasonOf, halfOf, periodOf, seasonOfPeriod, periodsOfSeason, periodLabel,
   progressKey, parseProgressKey, buildProgress, markRead, isUnread, unreadCount,
   hasContent, progressFor, rosterFor, playerLabel, missingFor, writtenCount,
-  progressCountFor, staleSeasons,
+  progressCountFor, staleSeasons, canWriteProgress,
 } from "../src/utils/playerProgress.js";
 
 let pass = 0;
@@ -246,10 +246,34 @@ t("a prefix that is not a whole id does not count — p1 must not match p10", ()
   assert.equal(progressCountFor(map, "p1"), 0, "p1 matched p10's key");
   assert.equal(progressCountFor(map, "p10"), 1);
 });
-t("no map, no id, nothing thrown", () => {
+t("an unknown map counts 0 on purpose — a caller that GUARDS on this must check readiness first", () => {
+  // Not a preference: a broken read must never crash a display. It DOES mean the two
+  // answers "nothing was written" and "we could not find out" arrive here identical, which
+  // is why PlayersView asks progressReady before it asks this. See gate #12, M1.
   assert.equal(progressCountFor(null, "p1"), 0);
   assert.equal(progressCountFor({}, ""), 0);
 });
+
+console.log("- who may write about a child (gate #12 S1) -");
+const mine = { authorEmail: "Me@Club.IL", text: "כתבתי" };
+const theirs = { authorEmail: "other@club.il", text: "מישהו אחר כתב" };
+const open = { myEmail: "me@club.il", ownTeam: true, readOnly: false };
+t("a squad I coach, a note that does not exist yet — I write", () =>
+  assert.equal(canWriteProgress({ entry: null, ...open }), true));
+t("my own note, case-insensitively — I write", () =>
+  assert.equal(canWriteProgress({ entry: mine, ...open }), true));
+t("another coach's note stays read-only, even to a manager on their own squad", () =>
+  // The manager IS on a squad they coach here, and it still refuses: saving would stamp
+  // their address onto authorEmail and drop the note out of the real author's listen.
+  assert.equal(canWriteProgress({ entry: theirs, ...open }), false));
+t("a squad I do not coach — never, note or no note", () => {
+  assert.equal(canWriteProgress({ entry: null, ...open, ownTeam: false }), false);
+  assert.equal(canWriteProgress({ entry: mine, ...open, ownTeam: false }), false);
+});
+t("a closed half is history, not a form", () =>
+  assert.equal(canWriteProgress({ entry: mine, ...open, readOnly: true }), false));
+t("an unidentified writer authors nothing", () =>
+  assert.equal(canWriteProgress({ entry: null, ...open, myEmail: "" }), false));
 
 console.log("- last season's leftovers (gate #10 M4) -");
 t("staleSeasons names seasons that are not the current one", () => {

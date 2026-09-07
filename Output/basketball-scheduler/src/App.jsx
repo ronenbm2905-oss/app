@@ -98,7 +98,9 @@ export default function App() {
   // Half-season progress notes. Scoped like the notes and plans hooks — a coach listens
   // only to their own, because the rule gives them nothing else and an unscoped listen is
   // refused outright rather than filtered.
-  const { progress, saveProgress } = usePlayerProgress(user, isAdmin, myEmail);
+  // progressReady is not a spinner: it is what tells PlayersView whether the deletion
+  // guard sitting on this map can be trusted. See the hook's error handler.
+  const { progress, saveProgress, progressReady } = usePlayerProgress(user, isAdmin, myEmail);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -329,7 +331,7 @@ export default function App() {
             authorEmail={myEmail}
           />
         ) : activeTab === "players" ? (
-          <PlayersView data={data} save={save} canEdit={canEdit} progress={progress} />
+          <PlayersView data={data} save={save} canEdit={canEdit} progress={progress} progressReady={progressReady} />
         ) : (
           <ReportView data={data} weekStart={weekStart} />
         )}
