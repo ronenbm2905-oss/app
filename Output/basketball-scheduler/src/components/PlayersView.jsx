@@ -148,6 +148,45 @@ export function PlayersView({ data, save, canEdit, progress }) {
     save({ ...data, players: players.filter((p) => p.id !== id) });
   };
 
+  // Undoing a mis-aimed import.
+  //
+  // An import is thirty names at once, and the way it goes wrong is always the same: the
+  // squad picker was left on the previous team. Taking that back one row at a time is not
+  // a real option, so the whole roster of ONE squad comes out in a single action.
+  //
+  // The confirmation names the squad and the count rather than asking "are you sure",
+  // because choosing the wrong squad is the exact mistake being undone here — the number
+  // and the name are what tell the manager whether this is the list they meant.
+  //
+  // Same guard as the single delete, and for the same reason: a progress note is filed
+  // under a player id and carries no name, so removing the roster entry severs the only
+  // link between the note and the child. Here it matters more, not less — one action
+  // could sever thirty.
+  const handleClearTeam = () => {
+    const guarded = teamPlayers.filter((pl) => progressCountFor(progress, pl.id) > 0);
+    if (guarded.length > 0) {
+      window.alert(
+        `לא ניתן למחוק את הרשימה: ל-${guarded.length} מהשחקנים כבר נכתבו הערכות התקדמות ` +
+        `(${guarded.map((pl) => pl.name).join(", ")}). יש למחוק את ההערכות תחילה — ` +
+        "לאחר ההסרה מהרשימה לא ניתן לקשר בין הרשומות לבין השחקן/ית, ולא נוכל לענות על בקשת עיון או מחיקה של הורה."
+      );
+      return;
+    }
+    if (
+      !window.confirm(
+        `למחוק את כל ${teamPlayers.length} השחקנים מקבוצת "${teamName}"?
+
+` +
+        "הפעולה אינה הפיכה. אם הרשימה יובאה בטעות לקבוצה הזו — זו הדרך לבטל אותה."
+      )
+    )
+      return;
+    const removed = teamPlayers.length;
+    save({ ...data, players: players.filter((pl) => pl.teamId !== teamId) });
+    setEditing(null);
+    setMsg({ type: "success", text: `נמחקו ${removed} שחקנים מקבוצת "${teamName}".` });
+  };
+
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -214,6 +253,16 @@ export function PlayersView({ data, save, canEdit, progress }) {
             <button onClick={() => setEditing("new")} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700">
               <IconPlus size={15} /> הוסף שחקן
             </button>
+            {/* Only offered when there is a list to undo. */}
+            {teamPlayers.length > 0 && (
+              <button
+                onClick={handleClearTeam}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-50"
+                title={`מחיקת כל ${teamPlayers.length} השחקנים מקבוצת "${teamName}"`}
+              >
+                <IconTrash size={15} /> מחק את כל הרשימה
+              </button>
+            )}
           </div>
         )}
       </div>

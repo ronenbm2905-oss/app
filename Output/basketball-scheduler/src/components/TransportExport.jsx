@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { CLUB_PICKUP_POINT } from "../constants";
 import { formatWeekRange } from "../utils/dates";
 import {
   awayGamesForWeek,
   buildTransportRows,
+  departBeforeOf,
   exportTransportXlsx,
   transportRowToCells,
   TRANSPORT_HEADERS,
@@ -18,8 +19,14 @@ const CENTER_COLS = new Set([1, 3, 8, 10, 11]); // יום, שעה, שעת התי
 // Manager tool: weekly export of away games + addresses for ordering transportation.
 // Two outputs — an editable .xlsx (send to the bus vendor) and a PNG image (share on WhatsApp).
 // Column set matches the file the vendor already knows from last season.
-export function TransportExport({ data, weekStart, setWeekStart }) {
-  const [departBefore, setDepartBefore] = useState(90); // minutes before tip-off → "שעת התייצבות"
+export function TransportExport({ data, save, weekStart, setWeekStart }) {
+  // The gathering time is a club setting, not this screen's private state. It is typed
+  // here and read on the coach's own board, so the vendor's sheet and the coach's screen
+  // quote one number. Kept in local state while it is being typed — a save writes the
+  // whole club document — and committed on blur.
+  const stored = departBeforeOf(data);
+  const [departBefore, setDepartBefore] = useState(stored);
+  useEffect(() => { setDepartBefore(stored); }, [stored]); // another manager changed it
   const [busy, setBusy] = useState(false);
   const captureRef = useRef(null); // off-screen node snapshotted into the shareable image
 
@@ -32,6 +39,10 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
   });
   const weekLabel = formatWeekRange(weekStart);
   const hasRows = rows.length > 0;
+
+  const commitDepartBefore = () => {
+    if (departBefore !== stored) save({ ...data, departBeforeMin: departBefore });
+  };
 
   const handleXlsx = () => {
     if (!hasRows) return;
@@ -94,11 +105,13 @@ export function TransportExport({ data, weekStart, setWeekStart }) {
             step={15}
             value={departBefore}
             onChange={(e) => setDepartBefore(Math.max(0, Number(e.target.value) || 0))}
+            onBlur={commitDepartBefore}
             className="w-16 bg-white border border-indigo-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
             aria-label="דקות לפני המשחק להתייצבות"
           />
           דק' לפני שריקת הפתיחה
         </label>
+        <span className="text-xs text-indigo-700">גם המאמן רואה את השעה הזו בלוח שלו</span>
       </div>
 
       <div className="text-xs text-indigo-800">

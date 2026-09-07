@@ -465,7 +465,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
       {subTab === "games" && (
         <div className="space-y-4">
           {canEdit && (
-            <TransportExport data={data} weekStart={weekStart} setWeekStart={setWeekStart} />
+            <TransportExport data={data} save={save} weekStart={weekStart} setWeekStart={setWeekStart} />
           )}
           <div className="flex flex-wrap items-center gap-2 justify-between">
             <div className="flex items-center gap-2">

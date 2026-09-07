@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { DAYS } from "../constants";
+import { DAYS, CLUB_PICKUP_POINT } from "../constants";
 import { timeToMinutes, getWeekDates, formatDate, formatWeekRange, toISODate } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { absencesOn, absenceLabel, absenceCoversSession, hallClosuresOn } from "../utils/availability";
 import { secretaryDutiesFor, secretaryLabel, secretaryWhen, shortDate } from "../utils/secretary";
-import { driverLine } from "../utils/transport";
+import { driverLine, assemblyTime, departBeforeOf } from "../utils/transport";
 import { Select } from "./ui/Select";
 import { AddToCalendarButton } from "./AddToCalendarButton";
 import { TrainingPlanForm } from "./TrainingPlanForm";
@@ -62,16 +62,20 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
   // get the schedule and none of the personal detail attached to it.
   const isOwnBoard = canEdit || (Boolean(fixedCoachId) && coachId === fixedCoachId);
 
-  // The driver of the bus to an away game, for the coach travelling on it.
+  // The game behind a session, when the session came from one.
   //
-  // The games tab already carries this, but that tab is the club's whole fixture list — not
-  // the screen anyone opens on the morning of a match. This is: it is the coach's own week.
-  // The number is shown on the same rule as everywhere else — own board only.
-  const driverForSession = (s) => {
-    if (!s || !s.fromGame) return "";
-    const game = (data.games || []).find((g) => String(g.federationCode) === String(s.federationCode));
-    return driverLine(game, isOwnBoard);
+  // The games tab already carries all of this, but that tab is the club's whole fixture
+  // list — not the screen anyone opens on the morning of a match. This is: it is the
+  // coach's own week.
+  const gameForSession = (s) => {
+    if (!s || !s.fromGame) return null;
+    return (data.games || []).find((g) => String(g.federationCode) === String(s.federationCode)) || null;
   };
+
+  // Minutes before tip-off the squad gathers — the manager's number from the transport
+  // panel, not a second default living here. If the two ever disagreed, the coach would be
+  // standing at the pickup point at the wrong time and both screens would look right.
+  const departBefore = departBeforeOf(data);
 
   if (!coachId) {
     return (
@@ -331,13 +335,29 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                                 )}
                               </div>
                               {s.notes && <div className="text-xs text-stone-500 pr-1">{s.notes}</div>}
-                              {/* On the away game itself, where a coach looks on the morning
-                                  of the match — not buried in the club's full fixture list. */}
+                              {/* The trip, on the away game itself — where a coach looks on
+                                  the morning of the match, not buried in the club's full
+                                  fixture list. The gathering time is the useful half: the
+                                  session line above already shows the warm-up (tip-off minus
+                                  30), and a coach reading it has no way to know the bus
+                                  leaves an hour before that. The driver's number stays on the
+                                  same rule as everywhere else — own board only. */}
                               {(() => {
-                                const driver = driverForSession(s);
-                                return driver ? (
-                                  <div className="text-xs font-medium text-stone-700 pr-1">🚌 נהג: {driver}</div>
-                                ) : null;
+                                const game = gameForSession(s);
+                                const assembly = assemblyTime(game, departBefore);
+                                const driver = driverLine(game, isOwnBoard);
+                                if (!assembly && !driver) return null;
+                                return (
+                                  <div className="text-xs text-stone-700 pr-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                    {assembly && (
+                                      <span className="font-medium">
+                                        🚌 התייצבות <span dir="ltr" className="tabular-nums">{assembly}</span>
+                                        <span className="font-normal text-stone-600"> · {CLUB_PICKUP_POINT}</span>
+                                      </span>
+                                    )}
+                                    {driver && <span className="font-medium">נהג: {driver}</span>}
+                                  </div>
+                                );
                               })()}
                               {/* The paper form the club already uses, filled here instead. It sits
                                   on the training it belongs to, so nothing is looked up twice. */}

@@ -28,6 +28,41 @@ export function awayGamesForWeek(games, weekStart) {
 // A game lasts 1.5h from tip-off — used for the return-pickup time.
 export const GAME_DURATION_MIN = 90;
 
+// Minutes before tip-off that the squad gathers at the pickup point — "שעת התייצבות".
+//
+// It lives on the club document rather than in the export screen's state, and that is the
+// whole point of it being here. The manager sets the number once, on the transport panel,
+// and the coach's own board reads the SAME number. While it was component state the two
+// agreed only by coincidence — both defaulted to 90 — and would have parted company the
+// first time anyone changed it: the bus in the vendor's file and the time on the coach's
+// screen an hour apart, with nothing on either screen saying so.
+export const DEFAULT_DEPART_BEFORE = 90;
+
+export function departBeforeOf(data) {
+  // The type check before the Number() is not defensive noise. `Number("")` is 0, and 0
+  // here does not read as "missing" — it reads as "gather at the whistle". A field cleared
+  // and left empty would have put the squad at the pickup point as the game started, and
+  // the screen would have looked entirely normal.
+  const raw = data?.departBeforeMin;
+  const ok = typeof raw === "number" || (typeof raw === "string" && raw.trim() !== "");
+  const n = ok ? Number(raw) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_DEPART_BEFORE;
+}
+
+// The gathering time for one game, or "" when there is nothing to gather for.
+//
+// Measured from the GAME's tip-off (`g.time`) and never from the session's `start`:
+// syncGamesToSessions writes the session half an hour early for the warm-up, so a bus
+// derived from it would be announced thirty minutes before the real one.
+//
+// A home game returns "" — the club orders no bus to its own hall — and so does a game
+// that was called off, which is the same rule `awayGamesForWeek` applies to the vendor's
+// sheet. Two screens, one answer.
+export function assemblyTime(game, departBefore = DEFAULT_DEPART_BEFORE) {
+  if (!game || game.isHome || game.cancelled) return "";
+  return timeMinus(game.time, departBefore);
+}
+
 // Hebrew weekday name from a DD-MM-YYYY date string.
 export function dayOf(dmy) {
   const d = parseDateDMY(dmy);
@@ -76,7 +111,7 @@ export function buildTransportRows(awayGames, { teams, coaches, departBefore, pi
       address: g.addressOverride || g.venue || "", // manual override wins over the file's מיקום column
       coachName: coach?.name || "",
       coachPhone: coach?.phone || "",
-      arriveTime: timeMinus(g.time, departBefore), // gather at pickup point
+      arriveTime: assemblyTime(g, departBefore), // gather at pickup point
       pickupPoint: pickupPoint || "",
       returnTime: timePlus(g.time, GAME_DURATION_MIN), // end of game
       vehicle: team?.vehicleType || "",

@@ -72,6 +72,9 @@ export const EMPTY = {
   fixedWeekSkips: [],
   // Fold the fixed teams away on the weekly board — club-wide, set by a manager.
   hideFixedTeams: false,
+  // Minutes before tip-off that a squad gathers for an away game. Club-wide, because the
+  // transport export and the coach's own board both have to quote the same time.
+  departBeforeMin: 90,
   announcement: { text: "", updatedAt: null }, // single notice board shown to all coaches
   schedulePublished: null, // { weekOf, at } — set when a manager marks a week's schedule as published
   weeklyAssignments: {},

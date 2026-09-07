@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   TRANSPORT_HEADERS, buildTransportRows, transportRowToCells, awayGamesForWeek,
+  assemblyTime, departBeforeOf, DEFAULT_DEPART_BEFORE,
 } from "../src/utils/transport.js";
 
 let pass = 0;
@@ -120,6 +121,46 @@ t("clearStaleDrivers leaves games without a driver untouched", () => {
   const games = [{ federationCode: "a", date: "11-09-2026" }];
   const { cleared } = clearStaleDrivers(games, NOW);
   assert.equal(cleared, 0);
+});
+
+console.log("- the gathering time, shared by the vendor's sheet and the coach's board -");
+t("counts back from tip-off, not from the warm-up", () =>
+  // The SESSION starts at 19:30 (tip-off minus 30 for the warm-up). Measuring from that
+  // would announce 18:00 for a bus that leaves at 18:30.
+  assert.equal(assemblyTime({ isHome: false, time: "20:00" }, 90), "18:30"));
+t("a home game has no bus", () =>
+  assert.equal(assemblyTime({ isHome: true, time: "20:00" }, 90), ""));
+t("a called-off game has no trip", () =>
+  assert.equal(assemblyTime({ isHome: false, cancelled: true, time: "20:00" }, 90), ""));
+t("a session with no game behind it says nothing", () =>
+  assert.equal(assemblyTime(null, 90), ""));
+t("a game with no time says nothing rather than guessing one", () =>
+  assert.equal(assemblyTime({ isHome: false, time: "" }, 90), ""));
+t("an early game wraps back over midnight instead of going negative", () =>
+  assert.equal(assemblyTime({ isHome: false, time: "00:30" }, 90), "23:00"));
+t("zero minutes means tip-off itself", () =>
+  assert.equal(assemblyTime({ isHome: false, time: "20:00" }, 0), "20:00"));
+
+t("the club's number is what both screens read", () =>
+  assert.equal(departBeforeOf({ departBeforeMin: 60 }), 60));
+t("0 is a real answer and not a missing one", () =>
+  assert.equal(departBeforeOf({ departBeforeMin: 0 }), 0));
+t("a document saved before the field existed falls back to the default", () => {
+  assert.equal(departBeforeOf({}), DEFAULT_DEPART_BEFORE);
+  assert.equal(departBeforeOf(undefined), DEFAULT_DEPART_BEFORE);
+});
+t("junk in the field does not become NaN on the coach's screen", () => {
+  assert.equal(departBeforeOf({ departBeforeMin: "" }), DEFAULT_DEPART_BEFORE);
+  assert.equal(departBeforeOf({ departBeforeMin: "abc" }), DEFAULT_DEPART_BEFORE);
+  assert.equal(departBeforeOf({ departBeforeMin: -15 }), DEFAULT_DEPART_BEFORE);
+});
+t("a stored string number still works", () =>
+  assert.equal(departBeforeOf({ departBeforeMin: "45" }), 45));
+t("the vendor's sheet and the coach's board agree by construction", () => {
+  const g = { ...game, time: "20:00" };
+  const [row] = buildTransportRows([g], { ...opts, departBefore: 75 });
+  assert.equal(row.arriveTime, assemblyTime(g, 75));
+  assert.equal(row.arriveTime, "18:45");
 });
 
 console.log("\n" + pass + " tests passed (incl. gate #7)");
