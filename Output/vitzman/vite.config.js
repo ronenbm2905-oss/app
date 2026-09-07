@@ -43,7 +43,23 @@ export default defineConfig(({ mode }) => ({
    *
    * נתפס בבדיקה שחיפשה את מפתח ה-API בתוך `dist-standalone`.
    */
-  define: { __CLOUD_ENABLED__: JSON.stringify(mode !== "standalone") },
+  /**
+   * ⚠ **חותמת בנייה גלויה — לא נוחות אלא כלי אבחון.**
+   *
+   * שלוש פעמים בשיחה אחת נשאלה השאלה ״האם הגרסה החדשה תפסה?״, ולא הייתה שום
+   * דרך לענות עליה חוץ מלחפש פיצ׳ר ולנחש. עם חותמת בכותרת התחתונה, רונן
+   * ואנדריי משווים מספר אחד ויודעים מיד אם הם על אותה גרסה — ואם הרענון
+   * הקשיח בכלל עבד.
+   */
+  define: {
+    __CLOUD_ENABLED__: JSON.stringify(mode !== "standalone"),
+    __BUILD_STAMP__: JSON.stringify(
+      new Date().toLocaleString("he-IL", {
+        timeZone: "Asia/Jerusalem",
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+      })
+    ),
+  },
   resolve: mode === "standalone"
     ? { alias: { "firebase/app": STUB, "firebase/firestore": STUB, "firebase/auth": STUB } }
     : {},
