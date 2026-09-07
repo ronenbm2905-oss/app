@@ -134,6 +134,11 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
       time: `${s.start}–${s.end}`,
       where: nameOf(data.halls, s.hallId),
       what: [s.type && s.type !== "אימון" ? s.type : "", s.notes || ""].filter(Boolean).join(" · ") || "אימון",
+      // The gathering time on the sheet the squad actually receives. It is deliberately
+      // NOT folded into `what` — that cell already carries opponent, venue and two clock
+      // times, and the one line a parent has to act on would be the easiest to miss. The
+      // driver's name and number stay out of this table entirely; it leaves the building.
+      assembly: assemblyTime(gameForSession(s), departBefore),
     })),
     ...reportDuties.map((d, i) => ({
       key: `duty-${d.gameKey || i}`,
@@ -147,6 +152,7 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
       time: d.time || "",
       where: d.venue || "",
       what: secretaryLabel(d),
+      assembly: "",
     })),
   ].sort((a, b) => a.dayIdx - b.dayIdx || a.sortTime - b.sortTime);
 
@@ -462,12 +468,28 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                     <td style={{ ...cell, textAlign: "right" }}>{r.where || "—"}</td>
                     <td style={{ ...cell, textAlign: "right", fontWeight: r.duty ? 700 : 400 }}>
                       {r.duty ? `🪑 ${r.what}` : r.what}
+                      {r.assembly && (
+                        <div style={{ fontWeight: 700, color: "#4338CA", marginTop: "3px" }}>
+                          🚌 התייצבות <span dir="ltr">{r.assembly}</span> · {CLUB_PICKUP_POINT}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        )}
+        {/* The sentence that keeps the line above honest once the sheet is out of our hands.
+            The assembly time is derived from the fixture in the board — a game moved by the
+            league and not yet synced produces a confident, wrong time — and this image goes
+            to a parents' group, where it will read as the club speaking. Terms §5 says the
+            same thing to the coach; this says it to whoever actually receives the sheet. */}
+        {reportRows.some((r) => r.assembly) && (
+          <p style={{ maxWidth: "700px", margin: "10px auto 0", fontSize: "11px", color: "#57534E", textAlign: "center" }}>
+            שעת ההתייצבות מחושבת לפי שעת המשחק שבלוח. ההודעה המחייבת על הסעה היא זו שנשלחת
+            מהמועדון.
+          </p>
         )}
       </div>
     </div>
