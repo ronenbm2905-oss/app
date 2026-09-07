@@ -157,6 +157,66 @@ export function makeInspection(i = {}) {
 }
 
 /** נרמול מצב מלא — כל אוסף חסר הופך למערך ריק, כל ישות עוברת ב-factory. */
+/**
+ * פוליסת ביטוח — **אוסף עצמאי, בלי שום נתיב אל מנוע הרווחיות.**
+ *
+ * ⚠ **הפרמיה אינה עלות של ויצמן ברוב המקרים.** בקובץ 898,940 ₪/שנה, אבל
+ * הוועד משלם ישירות ב-92 מ-142 השורות. `buildingCost` עובר רק על `contracts`
+ * דרך `EXPENSE_CATEGORIES`, ולפוליסה אין `categoryId` — כלומר לפרמיה **אין
+ * דרך פיזית** להיכנס לרווח. זו הגנה מבנית ולא הערה.
+ *
+ * ⚠ **`premiumAnnual` — שנתי במפורש.** כל שאר הסכומים במערכת חודשיים, והשגיאה
+ * הסבירה ביותר כאן היא פי 12. השם נושא את היחידה כדי שלא תקרה.
+ *
+ * ⚠ **`buildingIds` הוא מערך.** פוליסה אחת יכולה לכסות כמה בניינים
+ * (״בירק 1א+ב+ברמן 2 בנייני גינדי״) ויכולה לא לכסות אף אחד (36 מהשורות).
+ * שדה יחיד לא היה מסוגל לייצג אף אחד משני הקצוות.
+ */
+export function makePolicy(p = {}) {
+  const num = (v) => (v == null || v === "" || Number.isNaN(Number(v)) ? null : Number(v));
+  return {
+    id: p.id || newId("pol"),
+    buildingIds: Array.isArray(p.buildingIds) ? [...new Set(p.buildingIds.filter(Boolean))] : [],
+
+    insurerName: (p.insurerName || "").trim(),   // חברת הביטוח: מנורה / הפניקס / ...
+    agencyName: (p.agencyName || "").trim(),     // הסוכנות: ברעוז / ...
+
+    /**
+     * מי נושא בפרמיה. ⚠ `null` הוא **״לא ידוע״ ולא ״הוועד״** — 12 שורות ריקות
+     * בקובץ. אותו עיקרון של `amount === null` בחוזה: ריק נספר, לא מסוכם.
+     */
+    payer: p.payer === "vitzman" || p.payer === "building" ? p.payer : null,
+    /** שאלה **נפרדת** ממי משלם: ויצמן יכולה לשלם ולחייב בנפרד. */
+    includedInFee: typeof p.includedInFee === "boolean" ? p.includedInFee : null,
+
+    startDate: p.startDate || null,
+    endDate: p.endDate || null,
+    premiumAnnual: p.premiumAnnual == null ? null : round2(p.premiumAnnual),
+
+    /** ״קיים-מבנה״ — תלת-ערכי. ״כו״ (שגיאת הקלדה) ו-15 ריקים הופכים ל-null. */
+    hasStructureCover: typeof p.hasStructureCover === "boolean" ? p.hasStructureCover : null,
+
+    // --- כתובת המקור, מפורקת. זה מה שמאפשר להכריע את 36 הספקות. ---
+    // ⚠ העיר חיה **על הפוליסה** ולא על הבניין: למערכת אין שדה עיר, ורונן
+    // הכריע לא למזג כרגע. 19 בניינים בנס ציונה ואחד בראשון לציון.
+    city: (p.city || "").trim(),
+    street: (p.street || "").trim(),
+    houseNumber: String(p.houseNumber ?? "").trim(),
+    sourceAddress: (p.sourceAddress || "").trim(),
+    unitCount: num(p.unitCount),
+    customerNumber: String(p.customerNumber ?? "").trim(),
+
+    // ⚠ פרטי איש קשר בוועד — אנשים פרטיים. הכרעת רונן 7.9: לייבא.
+    // שדות מוטָפסים ולא טקסט חופשי, כדי שניתן יהיה למחוק אותם בפעולה אחת.
+    committeeName: (p.committeeName || "").trim(),
+    committeePhone: (p.committeePhone || "").trim(),
+
+    notes: p.notes || "",
+    sourceRow: p.sourceRow ?? null,
+    createdAt: p.createdAt || new Date().toISOString(),
+  };
+}
+
 export function normalize(raw) {
   const d = raw && typeof raw === "object" ? raw : {};
   const buildings = (d.buildings || []).map(makeBuilding);
@@ -169,6 +229,7 @@ export function normalize(raw) {
     feeAgreements: migrateFees(buildings, d.feeAgreements),
     notes: (d.notes || []).map(makeNote),
     inspections: (d.inspections || []).map(makeInspection),
+    policies: (d.policies || []).map(makePolicy),
     meta: { ...EMPTY.meta, ...(d.meta || {}) },
   };
 }

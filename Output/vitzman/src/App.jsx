@@ -13,10 +13,11 @@ import SettingsView from "./components/SettingsView.jsx";
 import AssignmentsView from "./components/AssignmentsView.jsx";
 import NotesReview from "./components/NotesReview.jsx";
 import GridView from "./components/GridView.jsx";
+import InsuranceView from "./components/InsuranceView.jsx";
 import AsOfBar from "./components/AsOfBar.jsx";
 import BackupBar from "./components/BackupBar.jsx";
 import { Button } from "./components/ui/Button.jsx";
-import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog, IconList, IconNote, IconTable } from "./components/ui/icons.jsx";
+import { IconBuilding, IconChart, IconWarning, IconShield, IconUsers, IconDatabase, IconCog, IconList, IconNote, IconTable, IconUmbrella } from "./components/ui/icons.jsx";
 import { todayISO, isISODate } from "./utils/dates.js";
 
 const TABS = [
@@ -25,6 +26,7 @@ const TABS = [
   { id: "assignments", label: "רשימת בניינים", Icon: IconList },
   { id: "grid", label: "הטבלה המלאה", Icon: IconTable },
   { id: "inspections", label: "רישום ביקורות", Icon: IconShield },
+  { id: "insurance", label: "ביטוחים", Icon: IconUmbrella },
   { id: "vendors", label: "ספקים", Icon: IconUsers },
   { id: "findings", label: "ממצאים בגיליון", Icon: IconWarning },
   { id: "notes", label: "הערות", Icon: IconNote },
@@ -167,6 +169,17 @@ export default function App() {
         )}
         {tab === "inspections" && (
           <InspectionsView data={data} applyBatch={applyBatch} asOf={asOf} readOnly={isHistorical} onOpenBuilding={openBuilding} />
+        )}
+        {tab === "insurance" && (
+          <InsuranceView
+            data={data}
+            asOf={asOf}
+            readOnly={isHistorical}
+            applyBatch={applyBatch}
+            update={update}
+            remove={remove}
+            onOpenBuilding={openBuilding}
+          />
         )}
         {tab === "vendors" && (
           <VendorsView data={data} contractIndex={contractIndex} feeIndex={feeIndex} asOf={asOf} onOpenBuilding={openBuilding} />

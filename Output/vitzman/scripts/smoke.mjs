@@ -48,10 +48,20 @@ import {
   vendorUsage, canDeleteVendor, employeeUsage, canDeleteEmployee,
   buildingDeletionImpact, buildingDependentIds, validateAddress,
 } from "../src/utils/entities.js";
+import { makePolicy } from "../src/schema.js";
+import {
+  RENEWAL_WARN_DAYS, policyStatus, policyQueue, policySummary, policyTotals,
+  insurerBreakdown, agencyBreakdown, spellingConflicts, indexPolicies,
+  canDeletePolicy, planUnlinkBuilding,
+} from "../src/utils/policies.js";
+import {
+  importInsurance, matchPolicyToBuilding, addressParts, buildBuildingIndex,
+} from "../src/utils/importInsurance.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SEED = resolve(HERE, "../seed/vitzman.json");
 const SEED_XLSX = resolve(HERE, "../seed/vitzman-buildings-2025.xlsx");
+const SEED_INSURANCE = resolve(HERE, "../seed/vitzman-insurance.xlsx");
 
 let pass = 0, fail = 0, skipped = 0;
 const failures = [];
@@ -1139,6 +1149,175 @@ if (!existsSync(SEED)) {
   const withAliases = data.buildings.filter((b) => b.aliases.length > 0);
   ok("נמצאו בניינים עם איותים חלופיים", withAliases.length > 0,
     "אם אין — מנגנון ה-aliases לא נבדק על נתונים אמיתיים");
+}
+
+// ============================================================================
+// 26. ביטוחים — מנוע, ייבוא, והנעילה שהפרמיה אינה נוגעת ברווח
+// ============================================================================
+console.log("\n--- ביטוחים ---");
+{
+  const P = (o) => makePolicy({ insurerName: "מנורה", premiumAnnual: 1000, ...o });
+  const today = "2026-09-07";
+
+  // --- ארבעת המצבים, באותו אוצר מילים של הביקורות ---
+  eq("פוליסה שפגה", policyStatus(P({ endDate: "2026-01-01" }), today).status, "overdue");
+  eq("פוליסה שמסתיימת בתוך החלון", policyStatus(P({ endDate: "2026-10-01" }), today).status, "dueSoon");
+  eq("פוליסה בתוקף", policyStatus(P({ endDate: "2027-10-01" }), today).status, "ok");
+  eq("חלון ההתראה 90 יום", RENEWAL_WARN_DAYS, 90);
+  eq("היום האחרון בחלון עדיין dueSoon",
+    policyStatus(P({ endDate: "2026-12-06" }), today).status, "dueSoon");
+  eq("יום אחרי החלון כבר ok",
+    policyStatus(P({ endDate: "2026-12-07" }), today).status, "ok");
+
+  // ⚠ הבחנה שמגינה על 12 שורות: ״ללא תאריך״ אינו ״בתוקף״ ואינו ״פג״.
+  eq("פוליסה בלי תאריך סיום היא never", policyStatus(P({ endDate: null }), today).status, "never");
+  eq("תאריך לא תקין אינו נחשב תאריך",
+    policyStatus(P({ endDate: "31/07/2026" }), today).status, "never");
+  eq("never אינו ok", policyStatus(P({ endDate: null }), today).status === "ok", false);
+
+  // --- תלת-ערכיות: null אינו false ---
+  eq("קיים-מבנה ריק נשמר כלא-ידוע", P({}).hasStructureCover, null);
+  eq("קיים-מבנה ׳לא׳ נשמר כ-false", P({ hasStructureCover: false }).hasStructureCover, false);
+  ok("לא-ידוע אינו ׳לא׳", P({}).hasStructureCover !== P({ hasStructureCover: false }).hasStructureCover);
+  eq("כלול בדמי ניהול אינו נגזר ממי משלם",
+    P({ payer: "vitzman" }).includedInFee, null);
+  eq("payer לא חוקי נשמר כלא-ידוע", P({ payer: "someone" }).payer, null);
+
+  // --- סיכומים ---
+  const many = [
+    P({ id: "a", premiumAnnual: 1200, buildingIds: ["b1", "b2", "b3"], payer: "vitzman" }),
+    P({ id: "b", premiumAnnual: 2400, buildingIds: ["b1"], payer: "building" }),
+    P({ id: "c", premiumAnnual: null, buildingIds: [], payer: null }),
+  ];
+  // ⚠ הנעילה על ניפוח: פוליסה שמכסה שלושה בניינים נספרת **פעם אחת**.
+  eq("הסך מסוכם על פוליסות ולא על קשרי בניין", policyTotals(many).annualPremium, 3600);
+  eq("פוליסה בלי סכום נספרת ולא מסוכמת", policyTotals(many).unpricedCount, 1);
+  eq("החודשי נגזר מהשנתי", policyTotals(many).monthlyPremium, 300);
+  eq("סינון לפי משלם", policyTotals(many, { payer: "vitzman" }).annualPremium, 1200);
+  eq("פוליסה בלי שיוך נספרת כלא-משויכת", policySummary(many, today).unlinked, 1);
+  eq("מפתח הבניינים כולל פוליסה רב-בניינית תחת כל בניין",
+    indexPolicies(many).get("b1").length, 2);
+
+  const bd = insurerBreakdown(many);
+  eq("הפילוח מסתכם לסך הפרמיות",
+    bd.reduce((a, r) => a + r.annualPremium, 0), policyTotals(many).annualPremium);
+  eq("סוכנות לא רשומה מקובצת תחת ׳לא רשום׳", agencyBreakdown(many)[0].name, "(לא רשום)");
+
+  // --- תור הטיפול ---
+  const q = policyQueue([
+    P({ id: "ok", endDate: "2028-01-01" }),
+    P({ id: "soon", endDate: "2026-10-01" }),
+    P({ id: "over", endDate: "2025-01-01" }),
+    P({ id: "none", endDate: null }),
+  ], today);
+  eq("תקינות אינן בתור", q.length, 3);
+  eq("הפגות ראשונות", q[0].id, "over");
+  eq("ואחריהן חסרות התאריך — גם הן חוסר כיסוי אפשרי", q[1].id, "none");
+
+  // --- איות: מדווח, לא ממזג ---
+  const spell = spellingConflicts([
+    P({ insurerName: "פניקס" }), P({ insurerName: "פניקס" }),
+    P({ insurerName: "הפניקס" }), P({ insurerName: "מנורה" }),
+  ]);
+  eq("התנגשות איות אחת זוהתה", spell.length, 1);
+  eq("שני הווריאנטים דווחו", spell[0].variants.length, 2);
+  eq("הנפוץ ראשון", spell[0].variants[0].name, "פניקס");
+  eq("הפילוח עדיין סופר אותן בנפרד — לא מוזגו",
+    insurerBreakdown([P({ insurerName: "פניקס" }), P({ insurerName: "הפניקס" })]).length, 2);
+
+  // --- מחיקה וניתוק ---
+  eq("פוליסה משויכת אינה נמחקת", canDeletePolicy(many[0]).ok, false);
+  eq("פוליסה בלי שיוך נמחקת", canDeletePolicy(many[2]).ok, true);
+  const unlink = planUnlinkBuilding("b1", many);
+  eq("ניתוק נוגע רק בפוליסות המשויכות", unlink.updates.length, 2);
+  eq("הניתוק שומר על שאר הבניינים", unlink.updates[0].patch.buildingIds.join(","), "b2,b3");
+  eq("ניתוק אינו יוצר ואינו מוחק", unlink.creates.length, 0);
+
+  // --- התאמת כתובות ---
+  eq("פירוק בניין מרובה כניסות", addressParts("הרשקו 2 +ברמן 8").length, 2);
+  eq("מספר בלי רחוב יורש את הרחוב שלפניו", addressParts("כהנמן 5+7")[1].street, "כהנמן");
+  eq("עיר שנדבקה לכתובת מנוקה", addressParts("החושן 7 נס ציונה").length, 1);
+  eq("אות לפני המספר מנורמלת", addressParts("הר הצופים ג7")[0].no, "7ג");
+
+  const bs = [
+    { id: "b1", address: "אהרוני 10" },
+    { id: "b2", address: "אינשטיין 12+14" },
+    { id: "b3", address: "הרשקו8+קציר 21" },
+  ];
+  const bi = buildBuildingIndex(bs);
+  eq("שם רחוב מקוצר מול מלא — התאמה ודאית",
+    matchPolicyToBuilding({ street: "אהרוני ישראל", houseNumber: "10" }, bs, bi).buildingId, "b1");
+  eq("מחבר שונה בין כניסות — עדיין ודאית",
+    matchPolicyToBuilding({ street: "אפרים קציר 21/הרשקו", houseNumber: "8" }, bs, bi).buildingId, "b3");
+  // ⚠ הנעילה החשובה בהתאמה: כניסה אחת מול בניין דו-כניסתי **אינה** ודאית.
+  const half = matchPolicyToBuilding({ street: "אינשטיין", houseNumber: "12" }, bs, bi);
+  eq("כניסה אחת מתוך שתיים אינה מתאימה אוטומטית", half.kind, "candidates");
+  eq("אבל מוצעת כמועמדת להכרעה", half.candidates[0].id, "b2");
+  eq("מועמד אינו משויך", half.buildingId, null);
+  eq("רחוב שאינו ברשימה אינו מומצא",
+    matchPolicyToBuilding({ street: "שדרות חן", houseNumber: "29" }, bs, bi).kind, "none");
+  eq("איות שונה של שם רחוב אינו התאמה",
+    matchPolicyToBuilding({ street: "גורודיסקי", houseNumber: "37" }, bs, bi).kind, "none");
+}
+
+// --- ייבוא מול קובץ הביטוחים האמיתי ---
+if (!existsSync(SEED_INSURANCE)) {
+  skip("ייבוא ביטוחים מול הקובץ האמיתי", "seed/vitzman-insurance.xlsx לא קיים");
+} else {
+  const wb = XLSX.read(readFileSync(SEED_INSURANCE));
+  const buildings = existsSync(SEED)
+    ? normalize(JSON.parse(readFileSync(SEED, "utf8"))).buildings
+    : [];
+  const r = importInsurance(wb, "vitzman-insurance.xlsx", buildings);
+  eq("הייבוא עבר", r.ok, true);
+  eq("139 פוליסות", r.payload.policies.length, 139);
+
+  // ⚠ שלוש השורות האחרונות אינן פוליסות אלא מקרא צבעים. בלי הזיהוי הזה
+  // הספירה הייתה 142, ושלוש רשומות ריקות היו יושבות לנצח ב״ללא שיוך״.
+  eq("3 שורות מקרא זוהו ודולגו", r.payload.meta.legendRows.length, 3);
+  ok("המקרא מדבר על צבע", r.payload.meta.legendRows[0].text.includes("צהוב"));
+
+  eq("סה\"כ פרמיה שנתית", policyTotals(r.payload.policies).annualPremium, 898940);
+  eq("29 פוליסות שפג תוקפן", policySummary(r.payload.policies, "2026-09-07").counts.overdue, 29);
+  eq("12 בלי תאריך סיום", policySummary(r.payload.policies, "2026-09-07").counts.never, 12);
+  eq("״כו״ לא תורגם ל״כן״",
+    r.payload.policies.find((p) => p.sourceRow === 17).hasStructureCover, null);
+  eq("״23+23״ אינו מספר דירות",
+    r.payload.policies.find((p) => p.sourceRow === 69).unitCount, null);
+  eq("כלול בדמי הניהול אינו קיים בקובץ ונשאר לא-ידוע",
+    r.payload.policies.filter((p) => p.includedInFee !== null).length, 0);
+  ok("״פניקס״ ו״הפניקס״ יובאו כשתי חברות ולא מוזגו",
+    spellingConflicts(r.payload.policies).length === 1);
+
+  if (buildings.length) {
+    const linked = r.payload.policies.filter((p) => p.buildingIds.length).length;
+    eq("117 פוליסות שויכו לבניין", linked, 117);
+    eq("22 נשארו להכרעה ידנית", r.payload.policies.length - linked, 22);
+    ok("אף פוליסה לא שויכה ליותר מבניין אחד",
+      r.payload.policies.every((p) => p.buildingIds.length <= 1));
+    ok("התאמות שנשענו על ווריאנט שם מדווחות", r.payload.meta.variantMatches.length > 0);
+  }
+
+  // ⚠⚠ **הנעילה החשובה ביותר בקובץ הזה.**
+  // 898,940 ₪ בשנה נכנסים למערכת. אם לפרמיה היה נתיב אל `buildingCost`,
+  // הרווח היה נמחק. הבדיקה טוענת שהוא **לא זז באגורה**.
+  if (existsSync(SEED)) {
+    const raw = JSON.parse(readFileSync(SEED, "utf8"));
+    const before = portfolioTotals(
+      normalize(raw).buildings.filter((b) => b.status === "active"),
+      indexContracts(normalize(raw).contracts), "2026-08-30",
+      indexFees(normalize(raw).feeAgreements));
+    const withPolicies = normalize({ ...raw, policies: r.payload.policies });
+    const after = portfolioTotals(
+      withPolicies.buildings.filter((b) => b.status === "active"),
+      indexContracts(withPolicies.contracts), "2026-08-30",
+      indexFees(withPolicies.feeAgreements));
+    eq("139 הפוליסות נשמרו במודל", withPolicies.policies.length, 139);
+    eq("ההכנסה לא זזה אחרי טעינת הפוליסות", after.income, before.income);
+    eq("העלות לא זזה אחרי טעינת הפוליסות", after.cost, before.cost);
+    eq("הרווח לא זז אחרי טעינת הפוליסות", after.profit, before.profit);
+    eq("והוא עדיין המספר של הגיליון", after.profit, raw.meta?.sheetTotals?.profit);
+  }
 }
 
 // ============================================================================

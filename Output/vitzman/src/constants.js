@@ -104,6 +104,23 @@ export const SOURCE_COLUMNS = {
   profitPct: "AD",
 };
 
+// --- ביטוחים -----------------------------------------------------------------
+/**
+ * ⚠ **מי משלם ו״כלול בדמי הניהול״ הן שתי שאלות נפרדות**, ולא אחת.
+ * ויצמן יכולה לשלם את הפרמיה ולחייב עליה בנפרד; והוועד יכול לשלם ישירות
+ * בעוד השירות עצמו כלול. מיזוגן לשדה אחד היה מאבד מידע אמיתי.
+ */
+export const POLICY_PAYERS = ["vitzman", "building"];
+export const POLICY_PAYER_LABEL = { vitzman: "ויצמן", building: "הבניין / הוועד" };
+
+/** סטטוס פוליסה — **אותו אוצר מילים** של הביקורות, כדי שלא ילמדו שפה שנייה. */
+export const POLICY_STATUS_LABEL = {
+  overdue: "פג תוקף",
+  dueSoon: "מתקרב לסיום",
+  ok: "בתוקף",
+  never: "ללא תאריך",
+};
+
 // --- ישויות ואוספים ----------------------------------------------------------
 export const ENTITY_COLLECTIONS = [
   "buildings",
@@ -113,6 +130,7 @@ export const ENTITY_COLLECTIONS = [
   "feeAgreements",
   "notes",
   "inspections",
+  "policies",
 ];
 
 export const EMPTY = {
@@ -124,6 +142,7 @@ export const EMPTY = {
   feeAgreements: [],
   notes: [],
   inspections: [],
+  policies: [],
   meta: { sourceFile: null, importedAt: null, discrepancies: [] },
 };
 
