@@ -4,7 +4,7 @@ import {
   seasonOf, halfOf, periodOf, seasonOfPeriod, periodsOfSeason, periodLabel,
   progressKey, parseProgressKey, buildProgress, markRead, isUnread, unreadCount,
   hasContent, progressFor, rosterFor, playerLabel, missingFor, writtenCount,
-  progressCountFor, staleSeasons, canWriteProgress,
+  progressCountFor, staleSeasons, canWriteProgress, progressKeysFor,
 } from "../src/utils/playerProgress.js";
 
 let pass = 0;
@@ -252,6 +252,34 @@ t("an unknown map counts 0 on purpose — a caller that GUARDS on this must chec
   // is why PlayersView asks progressReady before it asks this. See gate #12, M1.
   assert.equal(progressCountFor(null, "p1"), 0);
   assert.equal(progressCountFor({}, ""), 0);
+});
+
+console.log("- the notes deleted together with the player -");
+t("every half of one player's record comes out, not just the current one", () => {
+  const map = { ...written("p1", "2026-27-A"), ...written("p1", "2026-27-B"), ...written("p2", "2026-27-A") };
+  assert.deepEqual(progressKeysFor(map, "p1").sort(), ["p1__2026-27-A", "p1__2026-27-B"]);
+});
+t("a whole squad at once", () => {
+  const map = { ...written("p1", "2026-27-A"), ...written("p2", "2026-27-A"), ...written("p3", "2026-27-A") };
+  assert.equal(progressKeysFor(map, ["p1", "p3"]).length, 2);
+});
+t("p1 must not drag p10's note out with it", () => {
+  // The exact counterpart of the progressCountFor test above. What the guard COUNTS and
+  // what the deletion REMOVES have to match on the same rule, or one day they will differ.
+  const map = { ...written("p10", "2026-27-A") };
+  assert.deepEqual(progressKeysFor(map, "p1"), []);
+  assert.equal(progressKeysFor(map, "p10").length, 1);
+});
+t("a player with nothing written gives nothing to delete", () =>
+  assert.deepEqual(progressKeysFor({ ...written("p2", "2026-27-A") }, "p1"), []));
+t("no map, no ids, nothing thrown", () => {
+  assert.deepEqual(progressKeysFor(null, "p1"), []);
+  assert.deepEqual(progressKeysFor({}, []), []);
+  assert.deepEqual(progressKeysFor({ ...written("p1", "2026-27-A") }, ""), []);
+});
+t("counting and keying always agree", () => {
+  const map = { ...written("p1", "2026-27-A"), ...written("p1", "2026-27-B") };
+  assert.equal(progressKeysFor(map, "p1").length, progressCountFor(map, "p1"));
 });
 
 console.log("- who may write about a child (gate #12 S1) -");

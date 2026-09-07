@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { progressCountFor } from "../utils/playerProgress";
+import { progressKeysFor } from "../utils/playerProgress";
 import { uid } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import {
@@ -100,7 +100,7 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
   );
 }
 
-export function PlayersView({ data, save, canEdit, progress, progressReady }) {
+export function PlayersView({ data, save, canEdit, progress, removeProgress, progressReady }) {
   const players = data.players || [];
   const [teamId, setTeamId] = useState(data.teams[0]?.id || "");
   const [editing, setEditing] = useState(null); // player id | "new" | null
@@ -141,27 +141,50 @@ export function PlayersView({ data, save, canEdit, progress, progressReady }) {
     return false;
   };
 
-  // A player may not be removed while a progress note about them survives.
+  // Removing a player removes the notes written about them, in that order.
   //
-  // The note is filed under the player's id and deliberately does not carry their name, so
-  // taking the roster entry away severs the only link between the record and the child —
-  // and from that moment a parent's request to see or delete what was written cannot be
-  // answered at all. The same guard already protects coaches and halls from being deleted
-  // out from under their records; it was simply never applied to players.
-  const handleDelete = (id) => {
-    if (!knowsAboutProgress()) return;
-    const n = progressCountFor(progress, id);
-    if (n > 0) {
-      window.alert(
-        `לשחקן/ית זה/זו ${n === 1 ? "הערכת התקדמות אחת" : `${n} הערכות התקדמות`}. יש למחוק אותן תחילה — ` +
-        "לאחר ההסרה מהרשימה לא ניתן לקשר בין הרשומות לבין השחקן/ית, ולא נוכל לענות על בקשת עיון או מחיקה של הורה."
-      );
-      return;
+  // The block that used to sit here was the wrong shape. It refused the deletion and told
+  // the manager to remove the notes first — but nothing in the app can remove a note, so
+  // "first" meant the Firebase console, and in practice a child with one note written
+  // about them could not be taken off the roster at all.
+  //
+  // The reasoning behind the refusal was still right, and it is what decides the ORDER
+  // here: a note is filed under the player's id and deliberately carries no name, so a
+  // note that outlives its roster entry cannot be linked back to the child — and a
+  // parent's request to see or delete it could no longer be answered. So the notes go
+  // first and the roster entry second, and if the notes fail to delete, nothing else
+  // happens. The one outcome that must never occur is a surviving note with no owner.
+  const confirmWithNotes = (n, head) =>
+    window.confirm(
+      n === 0
+        ? head
+        : head +
+          (n === 1
+            ? "\n\nנכתבה עליו/ה הערכת התקדמות אחת, והמחיקה תמחק גם אותה — לצמיתות.\n"
+            : `\n\nנכתבו ${n} הערכות התקדמות, והמחיקה תמחק גם אותן — לצמיתות.\n`) +
+          "זה הסדר הנכון: הערכה שנשארת אחרי שהשם הוסר אינה ניתנת לקישור חזרה לשחקן/ית, " +
+          "ולא נוכל לענות עליה לבקשת עיון או מחיקה של הורה."
+    );
+
+  const dropNotes = async (keys) => {
+    if (keys.length === 0) return true;
+    try {
+      await removeProgress(keys);
+      return true;
+    } catch {
+      window.alert("מחיקת ההערכות נכשלה, ולכן לא נמחק דבר. בדוק/בדקי את החיבור ונסה/י שוב.");
+      return false;
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (!knowsAboutProgress()) return;
+    const keys = progressKeysFor(progress, id);
     // No confirmation existed here at all, while deleting a coach or a hall has always
     // asked. One misplaced tap removed a child's record with nothing in between.
-    if (!window.confirm("למחוק את השחקן/ית מהרשימה?")) return;
-    save({ ...data, players: players.filter((p) => p.id !== id) });
+    if (!confirmWithNotes(keys.length, "למחוק את השחקן/ית מהרשימה?")) return;
+    if (!(await dropNotes(keys))) return;
+    save({ ...data, players: players.filter((pl) => pl.id !== id) });
   };
 
   // Undoing a mis-aimed import.
@@ -172,40 +195,37 @@ export function PlayersView({ data, save, canEdit, progress, progressReady }) {
   //
   // The confirmation names the squad and the count rather than asking "are you sure",
   // because choosing the wrong squad is the exact mistake being undone here — the number
-  // and the name are what tell the manager whether this is the list they meant.
-  //
-  // Same guard as the single delete, and for the same reason: a progress note is filed
-  // under a player id and carries no name, so removing the roster entry severs the only
-  // link between the note and the child. Here it matters more, not less — one action
-  // could sever thirty.
-  const handleClearTeam = () => {
+  // and the name are what tell the manager whether this is the list they meant. Notes are
+  // counted across the whole squad and deleted with it, on the same rule as above; here it
+  // matters more, not less, because one action can sever thirty links at once.
+  const handleClearTeam = async () => {
     if (!knowsAboutProgress()) return;
-    const guarded = teamPlayers.filter((pl) => progressCountFor(progress, pl.id) > 0);
-    if (guarded.length > 0) {
-      window.alert(
-        `לא ניתן למחוק את הרשימה: ל-${guarded.length} מהשחקנים כבר נכתבו הערכות התקדמות ` +
-        `(${guarded.map((pl) => pl.name).join(", ")}). יש למחוק את ההערכות תחילה — ` +
-        "לאחר ההסרה מהרשימה לא ניתן לקשר בין הרשומות לבין השחקן/ית, ולא נוכל לענות על בקשת עיון או מחיקה של הורה."
-      );
-      return;
-    }
-    if (
-      !window.confirm(
-        (teamPlayers.length === 1
-          ? `למחוק את השחקן/ית היחיד/ה בקבוצת "${teamName}"?
+    const keys = progressKeysFor(progress, teamPlayers.map((pl) => pl.id));
+    const head =
+      teamPlayers.length === 1
+        ? `למחוק את השחקן/ית היחיד/ה בקבוצת "${teamName}"?
 
-`
-          : `למחוק את כל ${teamPlayers.length} השחקנים מקבוצת "${teamName}"?
+הפעולה אינה הפיכה. אם הרשימה יובאה בטעות לקבוצה הזו — זו הדרך לבטל אותה.`
+        : `למחוק את כל ${teamPlayers.length} השחקנים מקבוצת "${teamName}"?
 
-`) +
-        "הפעולה אינה הפיכה. אם הרשימה יובאה בטעות לקבוצה הזו — זו הדרך לבטל אותה."
-      )
-    )
-      return;
+הפעולה אינה הפיכה. אם הרשימה יובאה בטעות לקבוצה הזו — זו הדרך לבטל אותה.`;
+    if (!confirmWithNotes(keys.length, head)) return;
+    if (!(await dropNotes(keys))) return;
     const removed = teamPlayers.length;
     save({ ...data, players: players.filter((pl) => pl.teamId !== teamId) });
     setEditing(null);
-    setMsg({ type: "success", text: `נמחקו ${removed} שחקנים מקבוצת "${teamName}".` });
+    setMsg({
+      type: "success",
+      text:
+        (removed === 1
+          ? `נמחק שחקן/ית אחד/ת מקבוצת "${teamName}"`
+          : `נמחקו ${removed} שחקנים מקבוצת "${teamName}"`) +
+        (keys.length === 0
+          ? "."
+          : keys.length === 1
+            ? ", ונמחקה גם הערכת התקדמות אחת."
+            : `, ונמחקו גם ${keys.length} הערכות התקדמות.`),
+    });
   };
 
   const handleFile = async (e) => {

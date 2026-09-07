@@ -100,7 +100,7 @@ export default function App() {
   // refused outright rather than filtered.
   // progressReady is not a spinner: it is what tells PlayersView whether the deletion
   // guard sitting on this map can be trusted. See the hook's error handler.
-  const { progress, saveProgress, progressReady } = usePlayerProgress(user, isAdmin, myEmail);
+  const { progress, saveProgress, removeProgress, progressReady } = usePlayerProgress(user, isAdmin, myEmail);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -331,7 +331,14 @@ export default function App() {
             authorEmail={myEmail}
           />
         ) : activeTab === "players" ? (
-          <PlayersView data={data} save={save} canEdit={canEdit} progress={progress} progressReady={progressReady} />
+          <PlayersView
+            data={data}
+            save={save}
+            canEdit={canEdit}
+            progress={progress}
+            removeProgress={removeProgress}
+            progressReady={progressReady}
+          />
         ) : (
           <ReportView data={data} weekStart={weekStart} />
         )}

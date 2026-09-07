@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { collection, doc, onSnapshot, query, setDoc, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 
 // Half-season progress notes, one document per player per half, under
@@ -32,7 +32,19 @@ function useLocalProgress() {
     });
   }, []);
 
-  return { progress, saveProgress, progressReady: true };
+  // Deleting a player has to be able to take their notes with it. Until it could, the only
+  // way out was the Firebase console — so the guard on the roster screen was, in practice,
+  // "you cannot delete this child at all".
+  const removeProgress = useCallback((keys) => {
+    setProgress((prev) => {
+      const next = { ...prev };
+      (Array.isArray(keys) ? keys : [keys]).forEach((k) => { delete next[k]; });
+      try { window.localStorage.setItem(LOCAL_KEY, JSON.stringify(next)); } catch { /* quota */ }
+      return next;
+    });
+  }, []);
+
+  return { progress, saveProgress, removeProgress, progressReady: true };
 }
 
 function useCloudProgress(user, isAdmin, email) {
@@ -81,7 +93,17 @@ function useCloudProgress(user, isAdmin, email) {
     await setDoc(doc(db, "clubs", CLUB_ID, "playerProgress", key), entry);
   }, []);
 
-  return { progress, saveProgress, progressReady };
+  // Deletes are sequential and awaited, so a caller that removes the player afterwards
+  // only does so once the notes are actually gone. The rule allows a club admin to delete
+  // any note and a coach only their own — the roster screen is admin-only either way.
+  const removeProgress = useCallback(async (keys) => {
+    const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
+    for (const k of list) {
+      await deleteDoc(doc(db, "clubs", CLUB_ID, "playerProgress", k));
+    }
+  }, []);
+
+  return { progress, saveProgress, removeProgress, progressReady };
 }
 
 export function usePlayerProgress(user, isAdmin, email) {

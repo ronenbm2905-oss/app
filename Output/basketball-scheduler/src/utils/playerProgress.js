@@ -211,6 +211,17 @@ export function progressCountFor(map, playerId) {
   return Object.keys(map || {}).filter((k) => k.startsWith(`${id}__`)).length;
 }
 
+// Every note key belonging to a set of players.
+//
+// Same prefix rule as `progressCountFor`, and deliberately the same one: what the guard
+// counts and what the deletion removes must not be able to drift apart. Both halves match
+// on `id__` so that "p1" never matches "p10".
+export function progressKeysFor(map, playerIds) {
+  const ids = (Array.isArray(playerIds) ? playerIds : [playerIds]).map(str).filter(Boolean);
+  if (ids.length === 0) return [];
+  return Object.keys(map || {}).filter((k) => ids.some((id) => k.startsWith(`${id}__`)));
+}
+
 // Who may type into one player's card.
 //
 // This is the rule that replaced a decision taken deliberately at the legal review: the
