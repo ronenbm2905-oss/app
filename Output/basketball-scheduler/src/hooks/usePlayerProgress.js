@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { collection, deleteDoc, doc, onSnapshot, query, setDoc, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, setDoc, where, writeBatch } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 
 // Half-season progress notes, one document per player per half, under
@@ -93,14 +93,22 @@ function useCloudProgress(user, isAdmin, email) {
     await setDoc(doc(db, "clubs", CLUB_ID, "playerProgress", key), entry);
   }, []);
 
-  // Deletes are sequential and awaited, so a caller that removes the player afterwards
-  // only does so once the notes are actually gone. The rule allows a club admin to delete
-  // any note and a coach only their own — the roster screen is admin-only either way.
+  // One batch, all or nothing — and that is not a performance choice.
+  //
+  // Deleting the notes one at a time meant a failure halfway through left three of five
+  // notes gone, the player still on the roster, and the caller telling the manager "so
+  // nothing was deleted" — which by then was false. A batch makes that sentence true
+  // again instead of making it longer. The 500-write limit is far above the ceiling here
+  // (a squad of thirty holds at most sixty notes, two per player per season).
+  //
+  // The rule allows a club admin to delete any note and a coach only their own; the roster
+  // screen is admin-only either way.
   const removeProgress = useCallback(async (keys) => {
     const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
-    for (const k of list) {
-      await deleteDoc(doc(db, "clubs", CLUB_ID, "playerProgress", k));
-    }
+    if (list.length === 0) return;
+    const batch = writeBatch(db);
+    list.forEach((k) => batch.delete(doc(db, "clubs", CLUB_ID, "playerProgress", k)));
+    await batch.commit();
   }, []);
 
   return { progress, saveProgress, removeProgress, progressReady };

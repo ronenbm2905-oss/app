@@ -101,6 +101,7 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
 }
 
 export function PlayersView({ data, save, canEdit, progress, removeProgress, progressReady }) {
+  const [deleting, setDeleting] = useState(false);
   const players = data.players || [];
   const [teamId, setTeamId] = useState(data.teams[0]?.id || "");
   const [editing, setEditing] = useState(null); // player id | "new" | null
@@ -166,6 +167,10 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
           "ולא נוכל לענות עליה לבקשת עיון או מחיקה של הורה."
     );
 
+  // Offline, deleteDoc's promise never settles: the write applies to the local cache, the
+  // notes vanish from the screen, and the player is never removed — with nothing on screen
+  // saying so. A manager who pressed again would be shown "0 notes", because the map had
+  // already updated locally. So the buttons go quiet until it resolves.
   const dropNotes = async (keys) => {
     if (keys.length === 0) return true;
     try {
@@ -178,12 +183,18 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
   };
 
   const handleDelete = async (id) => {
-    if (!knowsAboutProgress()) return;
+    if (deleting || !knowsAboutProgress()) return;
     const keys = progressKeysFor(progress, id);
     // No confirmation existed here at all, while deleting a coach or a hall has always
     // asked. One misplaced tap removed a child's record with nothing in between.
-    if (!confirmWithNotes(keys.length, "למחוק את השחקן/ית מהרשימה?")) return;
-    if (!(await dropNotes(keys))) return;
+    const who = players.find((pl) => pl.id === id);
+    // Named, because the roster is a dense table with a bin icon on every row and the
+    // squad-wide delete already had to name what it was about to remove.
+    if (!confirmWithNotes(keys.length, `למחוק את ${who?.name || "השחקן/ית"} מהרשימה?`)) return;
+    setDeleting(true);
+    const ok = await dropNotes(keys);
+    setDeleting(false);
+    if (!ok) return;
     save({ ...data, players: players.filter((pl) => pl.id !== id) });
   };
 
@@ -199,7 +210,7 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
   // counted across the whole squad and deleted with it, on the same rule as above; here it
   // matters more, not less, because one action can sever thirty links at once.
   const handleClearTeam = async () => {
-    if (!knowsAboutProgress()) return;
+    if (deleting || !knowsAboutProgress()) return;
     const keys = progressKeysFor(progress, teamPlayers.map((pl) => pl.id));
     const head =
       teamPlayers.length === 1
@@ -210,7 +221,10 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
 
 הפעולה אינה הפיכה. אם הרשימה יובאה בטעות לקבוצה הזו — זו הדרך לבטל אותה.`;
     if (!confirmWithNotes(keys.length, head)) return;
-    if (!(await dropNotes(keys))) return;
+    setDeleting(true);
+    const ok = await dropNotes(keys);
+    setDeleting(false);
+    if (!ok) return;
     const removed = teamPlayers.length;
     save({ ...data, players: players.filter((pl) => pl.teamId !== teamId) });
     setEditing(null);
@@ -298,10 +312,11 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
             {teamPlayers.length > 0 && (
               <button
                 onClick={handleClearTeam}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-50"
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-40"
                 title={`מחיקת כל ${teamPlayers.length} השחקנים מקבוצת "${teamName}"`}
               >
-                <IconTrash size={15} /> מחק את כל הרשימה
+                <IconTrash size={15} /> {deleting ? "מוחק..." : "מחק את כל הרשימה"}
               </button>
             )}
           </div>
@@ -376,7 +391,7 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
                             <button onClick={() => setEditing(p.id)} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500" aria-label="ערוך">
                               <IconPencil size={14} />
                             </button>
-                            <button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-stone-600 hover:text-red-600" aria-label="מחק">
+                            <button onClick={() => handleDelete(p.id)} disabled={deleting} className="p-1.5 rounded-lg hover:bg-red-50 text-stone-600 hover:text-red-600 disabled:opacity-40" aria-label="מחק">
                               <IconTrash size={14} />
                             </button>
                           </div>
