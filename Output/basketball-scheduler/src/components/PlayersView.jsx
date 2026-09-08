@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { progressKeysFor } from "../utils/playerProgress";
+import { exportPlayersXlsx, exportSizesXlsx } from "../utils/playerExport";
 import { uid } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import {
@@ -304,6 +305,27 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
             <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-50">
               <IconUpload size={15} /> ייבוא מאקסל
             </button>
+            {/* Both exports cover EVERY squad, not the one on screen — a uniform order and
+                a club roster are both club-wide, and a per-team file would be assembled by
+                hand from six downloads. The labels say so; the tooltips repeat it. */}
+            {players.length > 0 && (
+              <>
+                <button
+                  onClick={() => exportPlayersXlsx(players, data.teams)}
+                  title="כל הקבוצות · שם, מספר, טלפון, תאריך לידה ומידות — לשימוש פנימי"
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-50"
+                >
+                  <IconDownload size={15} /> ייצוא כל השחקנים
+                </button>
+                <button
+                  onClick={() => exportSizesXlsx(players, data.teams)}
+                  title="כל הקבוצות · שם, מספר ומידות בלבד — בלי טלפון ובלי תאריך לידה"
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-stone-300 text-stone-700 hover:bg-stone-50"
+                >
+                  <IconDownload size={15} /> מידות להזמנה
+                </button>
+              </>
+            )}
             <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleFile} className="hidden" />
             <button onClick={() => setEditing("new")} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700">
               <IconPlus size={15} /> הוסף שחקן
