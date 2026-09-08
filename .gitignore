@@ -44,6 +44,14 @@ itai/Outputs/run2dream-web/
 .tmp-logo/
 .tmp-preview/
 
+# --- דוחות תיבת דואר ---
+# הריפו פאבליק. דוחות הטריאז' ומתכוני המסננים מכילים נתוני תיבה אמיתיים: סכומי
+# תקבולים, 4 ספרות של חשבון בנק וכרטיס, שמות ישויות, כתובות נכסים ושמות שותפים.
+# הפלט הזה שייך ל-C:\Users\RONEN\Desktop\us-investments\ ולא לכאן.
+maya/Outputs/*-inbox-triage.md
+maya/Outputs/*-inbox-filter-recipe.md
+maya/Outputs/gmail-filters-*
+
 # --- עותקי עבודה מקוננים ---
 # .saas-review הוא clone מלא עם .git משלו (~693MB). ריפו בתוך ריפו = צרות.
 .saas-review/
