@@ -4,12 +4,13 @@ import { colorFor } from "../utils/colors";
 import { uid } from "../utils/dates";
 import { looksIndoor } from "../utils/indoorBalance";
 import { looksLikeSchoolTeam, isHoursExempt } from "../utils/hoursReport";
+import { exportCoachesXlsx } from "../utils/coachExport";
 import { AccessCard } from "./AccessCard";
 import { sortByName } from "../utils/names";
 import { Select } from "./ui/Select";
 import {
   IconPlus, IconTrash, IconPencil, IconCheck, IconAlert, IconX,
-  IconUsers, IconUserPlus, IconBuilding, IconChevronUp, IconChevronDown,
+  IconUsers, IconUserPlus, IconBuilding, IconChevronUp, IconChevronDown, IconDownload,
 } from "./ui/icons";
 
 // Short DD/MM label for a stored ISO birth date (YYYY-MM-DD). Year is intentionally dropped in the list.
@@ -478,6 +479,19 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
     </button>
   ) : null;
 
+  // The coach list as a file. Everything in it is already on this screen — the export
+  // changes who can end up holding it, not who can see it, which is why the sheet itself
+  // says what it contains and who it is for.
+  const coachExport = data.coaches.length ? (
+    <button
+      onClick={() => exportCoachesXlsx(data.coaches)}
+      title="שם, דוא״ל, טלפון ותאריך לידה — קובץ אקסל"
+      className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+    >
+      <IconDownload size={13} /> ייצוא לאקסל
+    </button>
+  ) : null;
+
   const indoorHelper = unmarkedIndoor.length ? (
     <button
       onClick={markIndoorByName}
@@ -566,7 +580,7 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
             is not a way to find a name. Display only — the stored array keeps its order,
             and every row still edits and deletes by id. Teams are left alone; their order
             is chosen by hand with the up/down arrows and means something. */}
-        <RosterList title="מאמנים" icon={<IconUserPlus size={16} />} items={sortByName(data.coaches)} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withEmail withBirthDate withParallelGroups />
+        <RosterList headerExtra={coachExport} title="מאמנים" icon={<IconUserPlus size={16} />} items={sortByName(data.coaches)} label="מאמן" usageCount={coachUsage} onSave={handleSaveCoach} onDelete={handleDeleteCoach} canEdit={canEdit} withPhone withEmail withBirthDate withParallelGroups />
         {/* Halls are maintained by managers — which court a session sits in is decided on
             the scheduling screen, not here. A coach reading this screen wants teams and
             who trains them, so the card is left out of their copy of it entirely and the
