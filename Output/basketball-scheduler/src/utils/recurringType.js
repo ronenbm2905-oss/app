@@ -62,14 +62,23 @@ export function templateWeekForType(sessions, type, weekStart, maxBack = 8) {
 // say where they came from rather than asking the manager to trust it. Empty `sessions`
 // means there is nothing to offer, either because the week is complete or because no
 // template exists.
+//
+// The template is de-duplicated against ITSELF before anything else, and that is not
+// defensive tidiness — the live data needs it. The 30.8 copy-week incident left the source
+// weeks holding the same row twice (קטסל ב 15:45 appears twice in both 30.8 and 6.9), and
+// without this a doubled row would be copied twice into every week from here on: one
+// mistake made permanent, spreading forward, by a button meant to save typing. The last
+// occurrence wins, matching how the board reads a week top to bottom.
 export function pendingTypeSessions(data, type, weekStart, maxBack = 8) {
   const sessions = arr((data || {}).sessions);
   const from = templateWeekForType(sessions, type, weekStart, maxBack);
   if (!from) return { from: "", sessions: [] };
   const here = new Set(sessionsOfType(sessions, type, weekStart).map(sessionKey));
+  const template = new Map();
+  sessionsOfType(sessions, type, from).forEach((s) => template.set(sessionKey(s), s));
   return {
     from,
-    sessions: sessionsOfType(sessions, type, from).filter((s) => !here.has(sessionKey(s))),
+    sessions: [...template.values()].filter((s) => !here.has(sessionKey(s))),
   };
 }
 

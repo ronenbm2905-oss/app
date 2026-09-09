@@ -93,6 +93,28 @@ t("no data, no throw", () => {
   assert.deepEqual(pendingTypeSessions({}, "יורם", THIS), { from: "", sessions: [] });
 });
 
+t("a doubled row in the template is copied once, not twice", () => {
+  // Not hypothetical: the 30.8 copy-week incident left the live source weeks holding the
+  // same row twice. Without the de-dupe, one old mistake would be replicated into every
+  // week from here on — by the button meant to save typing.
+  const doubled = [
+    yoram(LAST, "kat1", "09:00", "09:45"),
+    { ...yoram(LAST, "kat1", "09:00", "09:45"), id: "dup" },
+    yoram(LAST, "kat2", "09:45", "10:30"),
+  ];
+  const { sessions } = pendingTypeSessions({ sessions: doubled }, "יורם", THIS);
+  assert.equal(sessions.length, 2);
+  assert.deepEqual(sessions.map((x) => x.teamId).sort(), ["kat1", "kat2"]);
+});
+t("a doubled row already present this week still blocks both copies", () => {
+  const doubled = [
+    yoram(LAST, "kat1", "09:00", "09:45"),
+    { ...yoram(LAST, "kat1", "09:00", "09:45"), id: "dup" },
+    yoram(THIS, "kat1", "09:00", "09:45"),
+  ];
+  assert.deepEqual(pendingTypeSessions({ sessions: doubled }, "יורם", THIS).sessions, []);
+});
+
 console.log("- what gets written -");
 t("fresh ids, this week, everything else carried", () => {
   const pending = pendingTypeSessions({ sessions: base }, "יורם", THIS);
