@@ -69,10 +69,13 @@ canvas{display:block;border-radius:10px;touch-action:none}
 }
 #hint.show{opacity:1}
 
-.panel{flex:0 0 auto;border-top:1px solid var(--line);padding:10px 12px;display:grid;gap:10px}
-.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.row.scroll{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
-.row.scroll::-webkit-scrollbar{display:none}
+.panel{flex:0 0 auto;border-top:1px solid var(--line);padding:10px 12px;display:grid;gap:10px;
+  grid-template-columns:minmax(0,1fr)}   /* בלי זה עמודת הגריד מתרחבת לרוחב רצועת השלבים */
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+/* רק תוכן שאורכו לא חסום נכנס לרצועה נגללת. שורה עם מספר קבוע של כפתורים גולשת לשורה הבאה
+   ולא נחתכת — אחרת כפתור כמו "מחק שלב" יוצא מהמסך בלי שום סימן שהוא שם. */
+.chips{display:flex;gap:8px;flex:1 1 100%;min-width:0;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
 .lbl{color:var(--muted);font-size:12px;font-weight:500;flex:0 0 auto}
 
 button.btn{
@@ -112,10 +115,15 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 #note:focus{outline:none;border-color:var(--ball)}
 #note::placeholder{color:var(--muted)}
 #dlgText{white-space:pre-line}
+@media (max-width:819px){
+  /* בטלפון הלוח חשוב מהפאנל. עכשיו שהשורות גולשות במקום להיגלל, הפאנל גבוה יותר —
+     אז מגבילים אותו ונותנים לו לגלול, במקום לדחוס את המגרש. */
+  .panel{max-height:46dvh;overflow-y:auto}
+}
 @media (min-width:820px){
   main{flex-direction:row}
   #board{flex:1 1 auto}
-  .panel{width:330px;border-top:0;border-inline-start:1px solid var(--line);overflow-y:auto;align-content:start}
+  .panel{width:368px;border-top:0;border-inline-start:1px solid var(--line);overflow-y:auto;align-content:start}
 }
 </style>
 </head>
@@ -133,7 +141,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     <div id="board"><canvas id="cv"></canvas><div id="hint"></div></div>
 
     <div class="panel">
-      <div class="row scroll" id="stepsRow"></div>
+      <div class="row" id="stepsRow"></div>
 
       <div class="row">
         <span class="lbl">הערה</span>
@@ -148,7 +156,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <input type="range" id="speed" min="0.5" max="2.5" step="0.1" value="1.2">
       </div>
 
-      <div class="row scroll">
+      <div class="row">
         <span class="lbl">הוסף</span>
         <button class="chip" id="addOff"><span class="dot" style="background:var(--off)"></span></button>
         <button class="chip" id="addDef"><span class="dot" style="background:var(--def)"></span></button>
@@ -159,7 +167,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <button class="btn" id="preset131">הגנה 1-3-1</button>
       </div>
 
-      <div class="row scroll" id="selRow" hidden>
+      <div class="row" id="selRow" hidden>
         <span class="lbl" id="selName"></span>
         <button class="btn" id="pathBtn">צייר מסלול</button>
         <span id="styleChips" style="display:flex;gap:6px"></span>
@@ -175,7 +183,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <button class="btn" id="newBtn">חדש</button>
       </div>
 
-      <div class="row scroll">
+      <div class="row">
         <span class="lbl">כל התרגילים</span>
         <button class="btn" id="exportBtn">גיבוי</button>
         <button class="btn" id="importBtn">שחזור</button>
@@ -700,13 +708,17 @@ function renderSteps(){
   const row = document.getElementById("stepsRow");
   row.innerHTML = "";
   const lbl = document.createElement("span"); lbl.className="lbl"; lbl.textContent="שלבים"; row.appendChild(lbl);
+  const strip = document.createElement("div"); strip.className="chips"; row.appendChild(strip);
+  let active = null;
   D.steps.forEach((s,i)=>{
     const b = document.createElement("button");
     b.className="chip"; b.textContent = i===0 ? "פתיחה" : String(i+1);
     b.setAttribute("aria-pressed", i===cur ? "true":"false");
     b.onclick = ()=>{ stopPlay(); cur=i; sel=null; mode="move"; syncSel(); renderSteps(); draw(); };
-    row.appendChild(b);
+    strip.appendChild(b);
+    if(i===cur) active = b;
   });
+  if(active) active.scrollIntoView({block:"nearest", inline:"nearest"});
   const add = document.createElement("button");
   add.className="btn"; add.textContent="+ שלב";
   add.onclick = ()=>{
