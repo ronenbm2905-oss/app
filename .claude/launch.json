@@ -165,6 +165,16 @@
       ],
       "cwd": "Output/project-budget",
       "port": 5192
+    },
+    {
+      "name": "basketball-drills",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "serve.mjs",
+        "5193"
+      ],
+      "cwd": "Output/basketball-drills",
+      "port": 5193
     }
   ]
 }

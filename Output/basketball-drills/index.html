@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#12161B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-title" content="לוח תרגילים">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<title>לוח תרגילים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#12161B;
+  --panel:#1B2129;
+  --panel-2:#232B35;
+  --line:#333E4B;
+  --chalk:#F2EFE6;
+  --muted:#93A0AF;
+  --off:#2166D8;
+  --def:#D93A2B;
+  --ball:#F08A24;
+  --wood:#DDB07A;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* .row / .btn מנצחים את [hidden] בספציפיות, ולכן שורת הבחירה וכפתור הסיבוב הוצגו תמיד */
+[hidden]{display:none !important}
+html,body{height:100%}
+body{
+  margin:0;background:var(--ink);color:var(--chalk);
+  font-family:Rubik,"Segoe UI",Arial,sans-serif;
+  font-size:15px;line-height:1.35;
+  overscroll-behavior:none;
+}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:1180px;margin:0 auto}
+
+header{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-bottom:1px solid var(--line);flex:0 0 auto;
+}
+#name{
+  flex:1 1 auto;min-width:0;background:transparent;border:0;color:var(--chalk);
+  font:700 18px Rubik,sans-serif;padding:4px 2px;
+}
+#name:focus{outline:none;border-bottom:1px solid var(--ball)}
+.seg{display:flex;background:var(--panel);border-radius:999px;padding:3px;gap:2px}
+.seg button{
+  border:0;background:transparent;color:var(--muted);font:500 13px Rubik,sans-serif;
+  padding:6px 11px;border-radius:999px;cursor:pointer;
+}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--chalk)}
+
+main{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+#board{
+  flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;
+  padding:8px;position:relative;touch-action:none;
+}
+canvas{display:block;border-radius:10px;touch-action:none}
+#hint{
+  position:absolute;bottom:12px;right:50%;transform:translateX(50%);
+  background:rgba(18,22,27,.9);border:1px solid var(--line);color:var(--chalk);
+  padding:7px 14px;border-radius:999px;font-size:13px;pointer-events:none;
+  opacity:0;transition:opacity .2s;white-space:nowrap;max-width:92%;
+}
+#hint.show{opacity:1}
+
+.panel{flex:0 0 auto;border-top:1px solid var(--line);padding:10px 12px;display:grid;gap:10px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row.scroll{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.row.scroll::-webkit-scrollbar{display:none}
+.lbl{color:var(--muted);font-size:12px;font-weight:500;flex:0 0 auto}
+
+button.btn{
+  border:1px solid var(--line);background:var(--panel);color:var(--chalk);
+  font:500 14px Rubik,sans-serif;padding:9px 13px;border-radius:10px;cursor:pointer;
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;
+}
+button.btn:active{background:var(--panel-2)}
+button.btn[disabled]{opacity:.4}
+button.btn.primary{background:var(--ball);border-color:var(--ball);color:#1a1206;font-weight:700}
+button.btn.on{border-color:var(--ball);color:var(--ball)}
+button.btn.danger{color:#FF8B7E}
+
+.chip{
+  border:1px solid var(--line);background:var(--panel);color:var(--chalk);
+  border-radius:10px;padding:8px 12px;font:600 14px Rubik,sans-serif;cursor:pointer;flex:0 0 auto;
+  min-width:44px;text-align:center;
+}
+.chip[aria-pressed="true"]{background:var(--chalk);color:var(--ink);border-color:var(--chalk)}
+.dot{width:22px;height:22px;border-radius:50%;display:inline-block;flex:0 0 auto}
+
+input[type=range]{accent-color:var(--ball);flex:1 1 90px;min-width:80px}
+select{
+  background:var(--panel);color:var(--chalk);border:1px solid var(--line);
+  border-radius:10px;padding:9px;font:500 14px Rubik,sans-serif;max-width:180px;
+}
+#status{color:var(--muted);font-size:12px;min-height:16px}
+dialog{
+  border:1px solid var(--line);background:var(--panel);color:var(--chalk);
+  border-radius:14px;padding:18px;max-width:340px;font-family:Rubik,sans-serif;
+}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+#note{
+  flex:1 1 160px;min-width:120px;background:var(--panel);border:1px solid var(--line);
+  color:var(--chalk);border-radius:10px;padding:9px 11px;font:500 14px Rubik,sans-serif;
+}
+#note:focus{outline:none;border-color:var(--ball)}
+#note::placeholder{color:var(--muted)}
+#dlgText{white-space:pre-line}
+@media (min-width:820px){
+  main{flex-direction:row}
+  #board{flex:1 1 auto}
+  .panel{width:330px;border-top:0;border-inline-start:1px solid var(--line);overflow-y:auto;align-content:start}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <input id="name" value="תרגיל חדש" aria-label="שם התרגיל" autocomplete="off">
+    <div class="seg" role="group" aria-label="סוג מגרש">
+      <button id="halfBtn" aria-pressed="true">חצי</button>
+      <button id="fullBtn" aria-pressed="false">שלם</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="board"><canvas id="cv"></canvas><div id="hint"></div></div>
+
+    <div class="panel">
+      <div class="row scroll" id="stepsRow"></div>
+
+      <div class="row">
+        <span class="lbl">הערה</span>
+        <input id="note" type="text" maxlength="90" autocomplete="off"
+               placeholder="מה קורה בשלב הזה? יופיע על הסרטון" aria-label="הערה לשלב">
+      </div>
+
+      <div class="row">
+        <button class="btn primary" id="playBtn">נגן</button>
+        <button class="btn" id="undoBtn" disabled>בטל</button>
+        <span class="lbl">מהירות</span>
+        <input type="range" id="speed" min="0.5" max="2.5" step="0.1" value="1.2">
+      </div>
+
+      <div class="row scroll">
+        <span class="lbl">הוסף</span>
+        <button class="chip" id="addOff"><span class="dot" style="background:var(--off)"></span></button>
+        <button class="chip" id="addDef"><span class="dot" style="background:var(--def)"></span></button>
+        <button class="chip" id="addBall"><span class="dot" style="background:var(--ball)"></span></button>
+        <button class="chip" id="addCone">חרוט</button>
+        <button class="chip" id="addScreen">חסימה</button>
+        <button class="btn" id="preset5">5 בחוץ</button>
+        <button class="btn" id="preset131">הגנה 1-3-1</button>
+      </div>
+
+      <div class="row scroll" id="selRow" hidden>
+        <span class="lbl" id="selName"></span>
+        <button class="btn" id="pathBtn">צייר מסלול</button>
+        <span id="styleChips" style="display:flex;gap:6px"></span>
+        <button class="btn" id="rotBtn" hidden>סובב</button>
+        <button class="btn danger" id="delTok">מחק</button>
+      </div>
+
+      <div class="row">
+        <button class="btn" id="gifBtn">ייצוא GIF</button>
+        <button class="btn" id="pngBtn">תמונה</button>
+        <button class="btn" id="saveBtn">שמור</button>
+        <select id="loadSel"><option value="">תרגילים שמורים…</option></select>
+        <button class="btn" id="newBtn">חדש</button>
+      </div>
+
+      <div class="row scroll">
+        <span class="lbl">כל התרגילים</span>
+        <button class="btn" id="exportBtn">גיבוי</button>
+        <button class="btn" id="importBtn">שחזור</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+      <div id="status"></div>
+    </div>
+  </main>
+</div>
+
+<dialog id="dlg"><div id="dlgText"></div><br><button class="btn" id="dlgOk">סגור</button></dialog>
+
+<script>
+"use strict";
+/* ---------- מודל ---------- */
+const CW = 15, HALF = 14, FULL = 28;          // מידות מגרש במטרים
+const STYLES = {
+  cut:{label:"ריצה"}, dribble:{label:"כדרור"}, pass:{label:"מסירה"}, screen:{label:"חסימה"}
+};
+const STYLE_ORDER = ["cut","dribble","pass","screen"];
+
+let D = newDrill();
+let cur = 0;                 // שלב נוכחי
+let sel = null;              // שחקן מסומן
+let mode = "move";           // move | path
+let play = {on:false, seg:0, t:0, last:0};
+let uid = 1;
+
+function newDrill(){
+  return {id:newId(), name:"תרגיל חדש", court:"half", tokens:[],
+          steps:[{pos:{}, moves:{}, attach:{}, note:""}]};
+}
+/* הערת שלב: steps[i].note. הרצועה מצוירת רק אם יש לפחות הערה אחת בתרגיל. */
+const BAND = 1.15;                                   // גובה רצועת ההערה במטרים
+function hasNotes(){ return D.steps.some(s=>s.note && s.note.trim()); }
+function addToken(type, x, y, label){
+  const id = "t"+(uid++);
+  const auto = label || nextLabel(type);
+  D.tokens.push({id, type, label:auto, angle:0});
+  D.steps.forEach(s=>{ s.pos[id] = {x, y}; });
+  return id;
+}
+function nextLabel(type){
+  if(type==="ball") return "";
+  if(type==="cone" || type==="screen") return "";
+  const n = D.tokens.filter(t=>t.type===type).length + 1;
+  return String(n);
+}
+function removeToken(id){
+  D.tokens = D.tokens.filter(t=>t.id!==id);
+  D.steps.forEach(s=>{ delete s.pos[id]; delete s.moves[id]; });
+  if(sel===id) sel=null;
+}
+function tok(id){ return D.tokens.find(t=>t.id===id); }
+function courtH(){ return D.court==="full" ? FULL : HALF; }
+
+/* כדור צמוד לשחקן */
+const BALL_OFF = {x:0.62, y:-0.44};
+function attachOf(stepIdx, ballId){
+  const s = D.steps[stepIdx];
+  if(!s || !s.attach) return null;
+  const h = s.attach[ballId];
+  return (h && s.pos[h]) ? h : null;
+}
+function setAttach(stepIdx, ballId, holder){
+  const s = D.steps[stepIdx];
+  s.attach = s.attach || {};
+  if(holder) s.attach[ballId] = holder; else delete s.attach[ballId];
+}
+function posOf(stepIdx, id){
+  const s = D.steps[stepIdx];
+  if(!s) return null;
+  const t = tok(id);
+  if(t && t.type==="ball"){
+    const h = attachOf(stepIdx, id);
+    if(h) return {x:s.pos[h].x+BALL_OFF.x, y:s.pos[h].y+BALL_OFF.y};
+  }
+  return s.pos[id];
+}
+function nearestHolder(p, ballId){
+  let best=null, bd=1.35;
+  D.tokens.forEach(t=>{
+    if(t.type!=="off" && t.type!=="def") return;
+    const q = D.steps[cur].pos[t.id]; if(!q) return;
+    const d = Math.hypot(q.x-p.x, q.y-p.y);
+    if(d<bd){ bd=d; best=t.id; }
+  });
+  return best;
+}
+
+/* ביטול פעולה */
+let undoStack = [];
+function snapshot(){
+  undoStack.push(JSON.stringify({d:D, c:cur}));
+  if(undoStack.length>40) undoStack.shift();
+  syncUndo();
+}
+function undo(){
+  const s = undoStack.pop(); if(!s) return;
+  const o = JSON.parse(s);
+  D = o.d; cur = Math.min(o.c, D.steps.length-1); sel = null; mode = "move";
+  document.getElementById("name").value = D.name;
+  setCourt(D.court||"half");
+  renderSteps(); syncSel(); syncUndo(); layout();
+}
+function syncUndo(){
+  const b = document.getElementById("undoBtn");
+  if(b) b.disabled = undoStack.length===0;
+}
+
+/* ---------- תצוגה וטרנספורם ---------- */
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let V = {S:20, padX:0, padY:0, rot:false, w:0, h:0};
+
+function layout(){
+  const box = document.getElementById("board");
+  const availW = Math.max(200, box.clientWidth - 16);
+  const availH = Math.max(200, box.clientHeight - 16);
+  const H = courtH();
+  const band = hasNotes() ? BAND : 0;
+  const rot = (availW/availH) > (H/CW) && (H/CW) > 1.2;   // מגרש שלם לרוחב במסך רחב
+  const cw = rot ? H : CW, ch = rot ? CW : H;
+  const S = Math.min(availW/(cw+1.2), availH/(ch+1.2+band));
+  const w = Math.round((cw+1.2)*S), h = Math.round((ch+1.2+band)*S);
+  const dpr = Math.min(window.devicePixelRatio||1, 2.5);
+  cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  cv.style.width = w+"px"; cv.style.height = h+"px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  V = {S, padX:0.6*S, padY:0.6*S, rot, w, h, band:band*S};
+  draw();
+}
+function P(x,y,v){ v=v||V; return v.rot ? {x:v.padX+y*v.S, y:v.padY+(CW-x)*v.S} : {x:v.padX+x*v.S, y:v.padY+y*v.S}; }
+function unP(px,py){
+  if(V.rot) return {x:CW-(py-V.padY)/V.S, y:(px-V.padX)/V.S};
+  return {x:(px-V.padX)/V.S, y:(py-V.padY)/V.S};
+}
+function A(th,v){ return (v||V).rot ? th - Math.PI/2 : th; }
+
+/* ---------- ציור המגרש ---------- */
+function drawCourt(c,v){
+  const H = courtH();
+  const a = P(0,0,v), b = P(CW,H,v);
+  c.save();
+  c.fillStyle = "#DDB07A";
+  const x0=Math.min(a.x,b.x), y0=Math.min(a.y,b.y);
+  c.fillRect(x0, y0, Math.abs(b.x-a.x), Math.abs(b.y-a.y));
+  c.strokeStyle = "rgba(255,255,255,.92)";
+  c.lineWidth = Math.max(1.5, v.S*0.045);
+  c.lineJoin="round"; c.lineCap="round";
+  c.strokeRect(x0, y0, Math.abs(b.x-a.x), Math.abs(b.y-a.y));
+  marks(c,v,0,1);
+  if(D.court==="full"){
+    marks(c,v,FULL,-1);
+    line(c,v,0,FULL/2,CW,FULL/2);
+    circle(c,v,CW/2,FULL/2,1.8);
+  } else {
+    circle(c,v,CW/2,HALF,1.8,Math.PI,0,false,1);
+  }
+  c.restore();
+}
+function line(c,v,x1,y1,x2,y2){
+  const p=P(x1,y1,v), q=P(x2,y2,v);
+  c.beginPath(); c.moveTo(p.x,p.y); c.lineTo(q.x,q.y); c.stroke();
+}
+function circle(c,v,x,y,r,a1,a2,ccw,s){
+  const p=P(x,y,v); s = s||1;
+  if(a1===undefined){ a1=0; a2=Math.PI*2; ccw=false; }
+  let s1 = s>0? a1 : -a1, s2 = s>0? a2 : -a2, cc = s>0? !!ccw : !ccw;
+  c.beginPath(); c.arc(p.x,p.y,r*v.S, A(s1,v), A(s2,v), cc); c.stroke();
+}
+function marks(c,v,base,s){
+  const fy = y => base + s*y;
+  const bx = CW/2, byB = 1.575;
+  // רחבה
+  const px1 = CW/2-2.45, px2 = CW/2+2.45;
+  line(c,v,px1,fy(0),px1,fy(5.8));
+  line(c,v,px2,fy(0),px2,fy(5.8));
+  line(c,v,px1,fy(5.8),px2,fy(5.8));
+  // עיגול עונשין
+  circle(c,v,bx,fy(5.8),1.8,0,Math.PI*2,false,s);
+  // קווי 3
+  line(c,v,0.9,fy(0),0.9,fy(2.99));
+  line(c,v,CW-0.9,fy(0),CW-0.9,fy(2.99));
+  const a1 = Math.atan2(1.415,-6.6), a2 = Math.atan2(1.415,6.6);
+  circle(c,v,bx,fy(byB),6.75,a1,a2,true,s);
+  // אזור חצי עיגול מתחת לסל
+  circle(c,v,bx,fy(byB),1.25,Math.PI,0,true,s);
+  // לוח וטבעת
+  line(c,v,bx-0.9,fy(1.2),bx+0.9,fy(1.2));
+  c.save(); c.lineWidth = Math.max(1.2,v.S*0.035);
+  circle(c,v,bx,fy(byB),0.225,0,Math.PI*2,false,s);
+  c.restore();
+}
+
+/* ---------- ציור קווי תנועה ---------- */
+function movePts(step, id){
+  const prev = D.steps[step-1], nowS = D.steps[step];
+  if(!prev || !nowS) return null;
+  const t = tok(id);
+  if(t && t.type==="ball"){
+    const h0 = attachOf(step-1, id), h1 = attachOf(step, id);
+    if(h1 && h1===h0) return null;
+  }
+  const a = posOf(step-1, id), b = posOf(step, id);
+  if(!a || !b) return null;
+  const mv = nowS.moves[id];
+  if(mv && mv.path && mv.path.length>1) return mv.path;
+  if(Math.hypot(b.x-a.x, b.y-a.y) < 0.15) return null;
+  return [a,b];
+}
+function pathLen(pts){ let L=0; for(let i=1;i<pts.length;i++) L+=Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y); return L; }
+function pointAt(pts, f){
+  const total = pathLen(pts); if(total===0) return pts[0];
+  let d = f*total;
+  for(let i=1;i<pts.length;i++){
+    const seg = Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+    if(d<=seg || i===pts.length-1){
+      const k = seg? d/seg : 1;
+      return {x:pts[i-1].x+(pts[i].x-pts[i-1].x)*k, y:pts[i-1].y+(pts[i].y-pts[i-1].y)*k};
+    }
+    d-=seg;
+  }
+  return pts[pts.length-1];
+}
+function drawMove(c,v,pts,style,color,upto){
+  if(!pts||pts.length<2) return;
+  let use = pts;
+  if(upto!==undefined && upto<1){
+    const total = pathLen(pts); let d = upto*total; use=[pts[0]];
+    for(let i=1;i<pts.length;i++){
+      const seg = Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+      if(d<=seg){ const k=seg?d/seg:0; use.push({x:pts[i-1].x+(pts[i].x-pts[i-1].x)*k, y:pts[i-1].y+(pts[i].y-pts[i-1].y)*k}); break; }
+      use.push(pts[i]); d-=seg;
+    }
+  }
+  if(use.length<2) return;
+  c.save();
+  c.strokeStyle = color; c.lineWidth = Math.max(2, v.S*0.075); c.lineCap="round"; c.lineJoin="round";
+  if(style==="pass") c.setLineDash([v.S*0.35, v.S*0.3]);
+  const draw = style==="dribble" ? wavy(use) : use;
+  c.beginPath();
+  draw.forEach((p,i)=>{ const q=P(p.x,p.y,v); i? c.lineTo(q.x,q.y) : c.moveTo(q.x,q.y); });
+  c.stroke();
+  c.setLineDash([]);
+  const last = use[use.length-1], prev = use[use.length-2];
+  const ang = Math.atan2(last.y-prev.y, last.x-prev.x);
+  if(style==="screen") bar(c,v,last,ang,color); else head(c,v,last,ang,color);
+  c.restore();
+}
+function wavy(pts){
+  const out=[]; const amp=0.16, per=0.55; let acc=0;
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1], b=pts[i];
+    const seg=Math.hypot(b.x-a.x,b.y-a.y); if(seg===0) continue;
+    const ux=(b.x-a.x)/seg, uy=(b.y-a.y)/seg, nx=-uy, ny=ux;
+    const n=Math.max(2, Math.ceil(seg/0.08));
+    for(let k=0;k<=n;k++){
+      const d=seg*k/n, t=acc+d, o=Math.sin(t/per*Math.PI*2)*amp;
+      out.push({x:a.x+ux*d+nx*o, y:a.y+uy*d+ny*o});
+    }
+    acc+=seg;
+  }
+  return out.length?out:pts;
+}
+function head(c,v,p,ang,color){
+  const L=0.42, W=0.26;
+  const t=P(p.x,p.y,v);
+  const b1=P(p.x-Math.cos(ang)*L-Math.sin(ang)*-W, p.y-Math.sin(ang)*L-Math.cos(ang)*W, v);
+  const b2=P(p.x-Math.cos(ang)*L+Math.sin(ang)*-W, p.y-Math.sin(ang)*L+Math.cos(ang)*W, v);
+  c.fillStyle=color; c.beginPath(); c.moveTo(t.x,t.y); c.lineTo(b1.x,b1.y); c.lineTo(b2.x,b2.y); c.closePath(); c.fill();
+}
+function bar(c,v,p,ang,color){
+  const W=0.5, nx=-Math.sin(ang), ny=Math.cos(ang);
+  const a=P(p.x+nx*W,p.y+ny*W,v), b=P(p.x-nx*W,p.y-ny*W,v);
+  c.strokeStyle=color; c.lineWidth=Math.max(3, v.S*0.13); c.lineCap="round";
+  c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.stroke();
+}
+
+/* ---------- ציור הערת השלב ---------- */
+function noteText(o){
+  if(o && o.playing){
+    const i = o.t<=0 ? o.seg : Math.min(o.seg+1, D.steps.length-1);
+    return (D.steps[i]||{}).note || "";
+  }
+  return (D.steps[cur]||{}).note || "";
+}
+function roundRect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.quadraticCurveTo(x+w,y,x+w,y+r);
+  c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r);
+  c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y);
+  c.closePath();
+}
+function drawNote(c,v,text){
+  if(!v.band) return;
+  const y0 = v.h - v.band, pad = 8;
+  c.save();
+  c.fillStyle="#1B2129"; c.strokeStyle="#333E4B"; c.lineWidth=1;
+  roundRect(c, 2, y0+2, v.w-4, v.band-6, Math.min(10, v.band*0.28));
+  c.fill(); c.stroke();
+  if(text){
+    c.direction="rtl"; c.textAlign="center"; c.textBaseline="middle";
+    c.fillStyle="#F2EFE6";
+    const maxW = v.w - pad*2;
+    let size = Math.max(11, Math.round(v.band*0.42));
+    const setF = ()=> c.font = "500 "+size+"px Rubik, sans-serif";
+    setF();
+    while(size>9 && c.measureText(text).width > maxW){ size--; setF(); }
+    let t = text;
+    if(c.measureText(t).width > maxW){
+      while(t.length>1 && c.measureText(t+"…").width > maxW) t = t.slice(0,-1);
+      t += "…";
+    }
+    c.fillText(t, v.w/2, y0 + (v.band-4)/2);
+  }
+  c.restore();
+}
+
+/* ---------- ציור שחקנים ---------- */
+const R = 0.66;
+function tokColor(t){ return t.type==="off"?"#2166D8" : t.type==="def"?"#D93A2B" : t.type==="ball"?"#F08A24" : "#F2EFE6"; }
+function drawToken(c,v,t,p,isSel){
+  const q=P(p.x,p.y,v);
+  const r = (t.type==="ball"? R*0.5 : t.type==="cone"? R*0.5 : t.type==="screen"? R*1.1 : R)*v.S;
+  c.save();
+  if(t.type==="cone"){
+    c.fillStyle="#F0D08A";
+    c.beginPath(); c.moveTo(q.x,q.y-r); c.lineTo(q.x+r,q.y+r*0.8); c.lineTo(q.x-r,q.y+r*0.8); c.closePath(); c.fill();
+  } else if(t.type==="screen"){
+    const a = t.angle||0, L=0.78;
+    const p1=P(p.x+Math.cos(a)*L, p.y+Math.sin(a)*L, v);
+    const p2=P(p.x-Math.cos(a)*L, p.y-Math.sin(a)*L, v);
+    const s2=P(p.x-Math.sin(a)*0.5, p.y+Math.cos(a)*0.5, v);
+    c.lineCap="round";
+    c.strokeStyle="rgba(18,22,27,.5)"; c.lineWidth=Math.max(5,v.S*0.24);
+    c.beginPath(); c.moveTo(p1.x,p1.y); c.lineTo(p2.x,p2.y); c.stroke();
+    c.strokeStyle="#F2EFE6"; c.lineWidth=Math.max(3,v.S*0.15);
+    c.beginPath(); c.moveTo(p1.x,p1.y); c.lineTo(p2.x,p2.y); c.stroke();
+    c.beginPath(); c.moveTo(q.x,q.y); c.lineTo(s2.x,s2.y); c.stroke();
+  } else {
+    c.beginPath(); c.arc(q.x,q.y,r,0,Math.PI*2);
+    c.fillStyle = tokColor(t); c.fill();
+    c.lineWidth = Math.max(1.5, v.S*0.05); c.strokeStyle = "rgba(255,255,255,.9)"; c.stroke();
+    if(t.type==="ball"){
+      c.strokeStyle="rgba(30,15,0,.7)"; c.lineWidth=Math.max(1,v.S*0.03);
+      c.beginPath(); c.moveTo(q.x-r,q.y); c.lineTo(q.x+r,q.y); c.stroke();
+      c.beginPath(); c.arc(q.x,q.y-r*0.9,r*1.25,0.5,Math.PI-0.5); c.stroke();
+    } else {
+      c.fillStyle="#fff"; c.textAlign="center"; c.textBaseline="middle";
+      c.font = "700 "+Math.round(r*1.05)+"px Rubik, sans-serif";
+      c.fillText((t.type==="def"?"X":"")+t.label, q.x, q.y+r*0.06);
+    }
+  }
+  if(isSel){
+    c.strokeStyle="#F08A24"; c.lineWidth=Math.max(2,v.S*0.06); c.setLineDash([v.S*0.18,v.S*0.14]);
+    c.beginPath(); c.arc(q.x,q.y,r*1.6,0,Math.PI*2); c.stroke(); c.setLineDash([]);
+  }
+  c.restore();
+}
+
+/* ---------- רינדור ---------- */
+function animPos(seg, f, e, id){
+  const from = posOf(seg, id), to = posOf(seg+1, id);
+  if(!from) return to;
+  if(!to || f<=0) return from;
+  const pts = movePts(seg+1, id);
+  return pts ? pointAt(pts, e) : {x:from.x+(to.x-from.x)*e, y:from.y+(to.y-from.y)*e};
+}
+function positionsAt(seg, f){
+  const res = {}, e = ease(f);
+  D.tokens.forEach(t=>{ if(t.type!=="ball"){ const p=animPos(seg,f,e,t.id); if(p) res[t.id]=p; } });
+  D.tokens.forEach(t=>{
+    if(t.type!=="ball") return;
+    const h0 = attachOf(seg, t.id), h1 = attachOf(seg+1, t.id);
+    if(h1 && res[h1]){
+      const to = {x:res[h1].x+BALL_OFF.x, y:res[h1].y+BALL_OFF.y};
+      if(h1===h0){ res[t.id]=to; return; }
+      const from = posOf(seg, t.id);
+      res[t.id] = from ? {x:from.x+(to.x-from.x)*e, y:from.y+(to.y-from.y)*e} : to;
+      return;
+    }
+    const p = animPos(seg,f,e,t.id); if(p) res[t.id]=p;
+  });
+  return res;
+}
+function ease(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+
+function render(c,v,opts){
+  c.clearRect(0,0,v.w,v.h);
+  c.fillStyle="#12161B"; c.fillRect(0,0,v.w,v.h);   // בלי זה הייצוא יוצא עם רקע שקוף
+  drawCourt(c,v);
+  const o = opts||{};
+  if(o.playing){
+    const pos = positionsAt(o.seg, o.t);
+    D.tokens.forEach(t=>{
+      const pts = movePts(o.seg+1, t.id);
+      if(pts) drawMove(c,v,pts, (D.steps[o.seg+1].moves[t.id]||{}).style||defStyle(t), tokColor(t), o.t);
+    });
+    D.tokens.forEach(t=>{ if(pos[t.id]) drawToken(c,v,t,pos[t.id],false); });
+  } else {
+    D.tokens.forEach(t=>{
+      const pts = movePts(cur, t.id);
+      if(pts) drawMove(c,v,pts, (D.steps[cur].moves[t.id]||{}).style||defStyle(t), tokColor(t), 1);
+    });
+    if(drawing && drawing.pts.length>1){
+      drawMove(c,v,drawing.pts, drawing.style, "#F08A24", 1);
+    }
+    D.tokens.forEach(t=>{
+      const p = posOf(cur, t.id);
+      if(p) drawToken(c,v,t,p, !o.clean && sel===t.id);
+    });
+  }
+  drawNote(c,v,noteText(o));
+}
+function defStyle(t){ return t.type==="ball" ? "pass" : "cut"; }
+function draw(){ render(ctx,V, play.on ? {playing:true, seg:play.seg, t:play.t} : null); }
+
+/* ---------- אינטראקציה ---------- */
+let drag=null, drawing=null;
+cv.addEventListener("pointerdown", e=>{
+  if(play.on) stopPlay();
+  cv.setPointerCapture(e.pointerId);
+  const r = cv.getBoundingClientRect();
+  const p = unP(e.clientX-r.left, e.clientY-r.top);
+  if(mode==="path" && sel){
+    const s = posOf(cur, sel);
+    if(!s) return;
+    drawing = {pts:[{x:s.x,y:s.y},p], style:(D.steps[cur].moves[sel]||{}).style || defStyle(tok(sel))};
+    draw(); return;
+  }
+  const hit = hitTest(p);
+  if(hit){ sel = hit; drag = {id:hit}; syncSel(); draw(); }
+  else { sel=null; syncSel(); draw(); }
+});
+cv.addEventListener("pointermove", e=>{
+  if(!drag && !drawing) return;
+  const r = cv.getBoundingClientRect();
+  const p = unP(e.clientX-r.left, e.clientY-r.top);
+  const H = courtH();
+  p.x = Math.max(-0.4, Math.min(CW+0.4, p.x)); p.y = Math.max(-0.4, Math.min(H+0.4, p.y));
+  if(drawing){ drawing.pts.push(p); draw(); return; }
+  if(!drag.moved){ drag.moved=true; snapshot(); }
+  if(tok(drag.id).type==="ball") setAttach(cur, drag.id, null);
+  D.steps[cur].pos[drag.id] = p;
+  if(D.steps[cur].moves[drag.id]) delete D.steps[cur].moves[drag.id].path;
+  draw();
+});
+cv.addEventListener("pointerup", ()=>{
+  if(drawing){
+    if(drawing.pts.length>2 && cur>0){
+      snapshot();                       // רק כאן המודל באמת משתנה
+      const end = drawing.pts[drawing.pts.length-1];
+      D.steps[cur].moves[sel] = D.steps[cur].moves[sel] || {};
+      D.steps[cur].moves[sel].path = simplify(drawing.pts);
+      D.steps[cur].moves[sel].style = drawing.style;
+      D.steps[cur].pos[sel] = end;
+      toast("המסלול נשמר בשלב "+(cur+1));   // שלב 0 מוצג כ"פתיחה", ולכן התווית היא cur+1
+    } else if(cur===0){
+      toast("מסלול מציירים משלב 2 והלאה");
+    }
+    drawing=null; mode="move"; syncSel(); draw(); return;
+  }
+  if(drag && drag.moved && tok(drag.id) && tok(drag.id).type==="ball"){
+    const h = nearestHolder(D.steps[cur].pos[drag.id], drag.id);
+    if(h){
+      setAttach(cur, drag.id, h);
+      const t = tok(h);
+      toast("הכדור אצל " + (t.type==="def" ? "מגן X"+t.label : "שחקן "+t.label));
+      if(cur>0 && attachOf(cur-1, drag.id)!==h){
+        D.steps[cur].moves[drag.id] = D.steps[cur].moves[drag.id] || {};
+        D.steps[cur].moves[drag.id].style = "pass";
+        delete D.steps[cur].moves[drag.id].path;
+      }
+    }
+  }
+  drag=null; renderSteps(); syncSel(); draw();
+});
+function simplify(pts){
+  const out=[pts[0]]; const min=0.25;
+  for(const p of pts){ const l=out[out.length-1]; if(Math.hypot(p.x-l.x,p.y-l.y)>min) out.push(p); }
+  const last=pts[pts.length-1];
+  if(Math.hypot(last.x-out[out.length-1].x,last.y-out[out.length-1].y)>0.02) out.push(last);
+  return out;
+}
+function hitTest(p){
+  let best=null, bd=1e9;
+  for(let i=D.tokens.length-1;i>=0;i--){
+    const t=D.tokens[i], q=posOf(cur, t.id); if(!q) continue;
+    const d=Math.hypot(q.x-p.x,q.y-p.y);
+    if(d < R*1.5 && d<bd){ bd=d; best=t.id; }
+  }
+  return best;
+}
+
+/* ---------- ניגון ---------- */
+function startPlay(){
+  if(D.steps.length<2){ toast("צריך לפחות שני שלבים"); return; }
+  play = {on:true, seg:0, t:0, last:performance.now()};
+  document.getElementById("playBtn").textContent = "עצור";
+  requestAnimationFrame(tick);
+}
+function stopPlay(){
+  play.on=false; document.getElementById("playBtn").textContent="נגן"; draw();
+}
+function tick(now){
+  if(!play.on) return;
+  const sp = parseFloat(document.getElementById("speed").value);
+  const dt = Math.min(0.05,(now-play.last)/1000); play.last=now;
+  play.t += dt*sp/1.6;
+  if(play.t>=1.25){
+    play.t=0; play.seg++;
+    if(play.seg >= D.steps.length-1){ play.seg=0; }
+  }
+  render(ctx,V,{playing:true, seg:play.seg, t:Math.min(1,play.t)});
+  requestAnimationFrame(tick);
+}
+
+/* ---------- ממשק ---------- */
+function renderSteps(){
+  const row = document.getElementById("stepsRow");
+  row.innerHTML = "";
+  const lbl = document.createElement("span"); lbl.className="lbl"; lbl.textContent="שלבים"; row.appendChild(lbl);
+  D.steps.forEach((s,i)=>{
+    const b = document.createElement("button");
+    b.className="chip"; b.textContent = i===0 ? "פתיחה" : String(i+1);
+    b.setAttribute("aria-pressed", i===cur ? "true":"false");
+    b.onclick = ()=>{ stopPlay(); cur=i; sel=null; mode="move"; syncSel(); renderSteps(); draw(); };
+    row.appendChild(b);
+  });
+  const add = document.createElement("button");
+  add.className="btn"; add.textContent="+ שלב";
+  add.onclick = ()=>{
+    stopPlay(); snapshot();
+    const last = D.steps[D.steps.length-1];
+    D.steps.push({pos:JSON.parse(JSON.stringify(last.pos)), moves:{}, attach:JSON.parse(JSON.stringify(last.attach||{}))});
+    cur = D.steps.length-1; renderSteps(); draw();
+    toast("הזז שחקנים כדי להגדיר את השלב");
+  };
+  row.appendChild(add);
+  if(D.steps.length>1){
+    const del = document.createElement("button");
+    del.className="btn danger"; del.textContent="מחק שלב";
+    del.onclick = ()=>{ stopPlay(); snapshot(); D.steps.splice(cur,1); cur=Math.max(0,cur-1); renderSteps(); layout(); };
+    row.appendChild(del);
+  }
+  syncNote();
+}
+function syncNote(){
+  const el = document.getElementById("note");
+  if(el) el.value = (D.steps[cur]||{}).note || "";
+}
+function syncSel(){
+  const row=document.getElementById("selRow");
+  if(!sel){ row.hidden=true; return; }
+  const t=tok(sel); if(!t){ row.hidden=true; return; }
+  row.hidden=false;
+  document.getElementById("selName").textContent =
+    t.type==="off" ? "שחקן "+t.label : t.type==="def" ? "מגן "+t.label :
+    t.type==="ball" ? "כדור" : t.type==="screen" ? "חסימה" : "חרוט";
+  const still = (t.type==="cone" || t.type==="screen");
+  document.getElementById("rotBtn").hidden = t.type!=="screen";
+  document.getElementById("pathBtn").hidden = still;
+  document.getElementById("pathBtn").classList.toggle("on", mode==="path");
+  const box = document.getElementById("styleChips");
+  box.innerHTML = "";
+  if(still) return;
+  const now = (D.steps[cur].moves[sel]||{}).style || defStyle(t);
+  STYLE_ORDER.forEach(k=>{
+    const b=document.createElement("button");
+    b.className="chip"; b.textContent=STYLES[k].label;
+    b.setAttribute("aria-pressed", k===now ? "true":"false");
+    b.onclick = ()=>{
+      snapshot();
+      D.steps[cur].moves[sel] = D.steps[cur].moves[sel] || {};
+      D.steps[cur].moves[sel].style = k;
+      syncSel(); draw();
+    };
+    box.appendChild(b);
+  });
+}
+let hintT;
+function toast(msg){
+  const h=document.getElementById("hint"); h.textContent=msg; h.classList.add("show");
+  clearTimeout(hintT); hintT=setTimeout(()=>h.classList.remove("show"), 2200);
+}
+function status(msg){ document.getElementById("status").textContent = msg||""; }
+
+document.getElementById("playBtn").onclick = ()=> play.on ? stopPlay() : startPlay();
+document.getElementById("halfBtn").onclick = ()=> setCourt("half");
+document.getElementById("fullBtn").onclick = ()=> setCourt("full");
+function setCourt(m){
+  D.court=m;
+  document.getElementById("halfBtn").setAttribute("aria-pressed", m==="half");
+  document.getElementById("fullBtn").setAttribute("aria-pressed", m==="full");
+  layout();
+}
+document.getElementById("name").oninput = e=> D.name = e.target.value;
+/* הערה לשלב: snapshot אחד לכל סבב עריכה, לא אחד לכל תו */
+let noteDirty = false;
+document.getElementById("note").addEventListener("focus", ()=>{ noteDirty = false; });
+document.getElementById("note").addEventListener("input", e=>{
+  if(!noteDirty){ noteDirty = true; snapshot(); }
+  const had = hasNotes();
+  D.steps[cur].note = e.target.value;
+  if(had !== hasNotes()) layout(); else draw();   // הרצועה נכנסת/יוצאת = שינוי גובה הקנבס
+});
+document.getElementById("addOff").onclick = ()=> place("off");
+document.getElementById("addDef").onclick = ()=> place("def");
+document.getElementById("addBall").onclick = ()=> place("ball");
+document.getElementById("addCone").onclick = ()=> place("cone");
+document.getElementById("addScreen").onclick = ()=> place("screen");
+function place(type){
+  stopPlay(); snapshot();
+  const y = Math.min(courtH()-2, 8) + (D.tokens.length%3)*0.9;
+  const id = addToken(type, 2 + (D.tokens.length%6)*2, y);
+  sel=id; syncSel(); draw();
+}
+document.getElementById("delTok").onclick = ()=>{ if(sel){ snapshot(); removeToken(sel); syncSel(); draw(); } };
+document.getElementById("undoBtn").onclick = undo;
+document.getElementById("pathBtn").onclick = ()=>{
+  if(cur===0){ toast("מסלול מציירים משלב 2 והלאה"); return; }
+  mode = mode==="path" ? "move" : "path"; syncSel();
+  if(mode==="path") toast("גרור על המגרש את מסלול השחקן");
+};
+document.getElementById("rotBtn").onclick = ()=>{
+  if(!sel) return;
+  const t=tok(sel); if(t.type!=="screen") return;
+  snapshot();
+  t.angle = ((t.angle||0) + Math.PI/6) % (Math.PI*2);
+  draw();
+};
+document.getElementById("preset5").onclick = ()=>{
+  stopPlay(); snapshot();
+  let pg=null;
+  [[7.5,9.2],[2.8,7.6],[12.2,7.6],[1.3,2.6],[13.7,2.6]].forEach((p,i)=>{
+    const id = addToken("off",p[0],p[1]); if(i===0) pg=id;
+  });
+  const ball = addToken("ball", 8.2, 9.4);
+  D.steps.forEach((s,i)=> setAttach(i, ball, pg));
+  draw(); toast("מערך 5 בחוץ נוסף");
+};
+document.getElementById("preset131").onclick = ()=>{
+  stopPlay(); snapshot();
+  [[7.5,7.0],[3.6,5.4],[11.4,5.4],[7.5,4.4],[7.5,1.7]].forEach(p=> addToken("def",p[0],p[1]));
+  draw(); toast("הגנת 1-3-1 נוספה");
+};
+document.getElementById("newBtn").onclick = ()=>{
+  if(!confirm("להתחיל תרגיל חדש?")) return;
+  D=newDrill(); cur=0; sel=null; undoStack=[]; syncUndo();
+  document.getElementById("name").value=D.name;
+  renderSteps(); syncSel(); layout();
+};
+
+/* ---------- שמירה ---------- */
+const mem = {};
+function store(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+function fetchK(k){ try{ const v=localStorage.getItem(k); return v!==null?v:(mem[k]||null); }catch(e){ return mem[k]||null; } }
+
+const LS_V2 = "bb_drills_v2", LS_V1 = "bb_drills";
+function newId(){ return "d"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function nowISO(){ return new Date().toISOString(); }
+function readLib(){
+  try{ const raw = fetchK(LS_V2); if(raw){ const o = JSON.parse(raw); if(o && o.drills) return o; } }catch(e){}
+  return {version:2, drills:{}};
+}
+function writeLib(lib){ store(LS_V2, JSON.stringify(lib)); }
+
+/* כל תרגיל שנכנס מבחוץ עובר כאן. קובץ פגום לא מפיל את האפליקציה בטעינה הבאה. */
+function sanitizeDrill(raw){
+  if(!raw || typeof raw!=="object" || !Array.isArray(raw.steps) || !raw.steps.length) return null;
+  return {
+    id: (typeof raw.id==="string" && raw.id) ? raw.id : null,
+    name: (typeof raw.name==="string" && raw.name.trim()) ? raw.name : "תרגיל",
+    court: raw.court==="full" ? "full" : "half",
+    tokens: Array.isArray(raw.tokens) ? raw.tokens.filter(t=>t && typeof t.id==="string") : [],
+    steps: raw.steps.map(st=>({
+      pos:    (st && typeof st.pos==="object"    && st.pos)    || {},
+      moves:  (st && typeof st.moves==="object"  && st.moves)  || {},
+      attach: (st && typeof st.attach==="object" && st.attach) || {},
+      note:   (st && typeof st.note==="string") ? st.note.slice(0,90) : ""
+    })),
+    createdAt: typeof raw.createdAt==="string" ? raw.createdAt : nowISO(),
+    updatedAt: typeof raw.updatedAt==="string" ? raw.updatedAt : nowISO()
+  };
+}
+
+/* מיגרציה חד-פעמית מהפורמט הישן {שם: תרגיל}.
+   המפתח הישן נשאר על הדיסק בכוונה — "אין גיבוי" הוא הבאג שאנחנו פותרים כאן. */
+function migrate(){
+  if(fetchK(LS_V2)) return;
+  let old = null;
+  try{ old = JSON.parse(fetchK(LS_V1)||"null"); }catch(e){}
+  const lib = {version:2, drills:{}};
+  if(old && typeof old==="object"){
+    Object.keys(old).forEach(name=>{
+      const d = sanitizeDrill(old[name]);
+      if(!d) return;
+      d.id = newId();
+      if(!old[name].name) d.name = name;
+      lib.drills[d.id] = d;
+    });
+  }
+  writeLib(lib);
+}
+function nextUid(d){
+  let m = 0;
+  (d.tokens||[]).forEach(t=>{ const k = parseInt(String(t.id).replace(/^t/,""),10); if(k>m) m=k; });
+  return m+1;
+}
+
+document.getElementById("saveBtn").onclick = ()=>{
+  const lib = readLib();
+  if(!D.id) D.id = newId();
+  if(!D.name || !D.name.trim()){
+    D.name = "תרגיל "+(Object.keys(lib.drills).length+1);
+    document.getElementById("name").value = D.name;
+  }
+  const prev = lib.drills[D.id];
+  const rec = JSON.parse(JSON.stringify(D));
+  rec.createdAt = (prev && prev.createdAt) || nowISO();
+  rec.updatedAt = nowISO();
+  lib.drills[D.id] = rec;
+  writeLib(lib); fillLoad();
+  status((prev ? "עודכן: " : "נשמר: ") + D.name);
+};
+function fillLoad(){
+  const el = document.getElementById("loadSel");
+  const list = Object.values(readLib().drills)
+    .sort((a,b)=> String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+  el.innerHTML = '<option value="">תרגילים שמורים…</option>';
+  list.forEach(d=>{
+    const o = document.createElement("option");
+    o.value = d.id; o.textContent = d.name;
+    el.appendChild(o);
+  });
+  el.value = "";
+}
+document.getElementById("loadSel").onchange = e=>{
+  const rec = readLib().drills[e.target.value];
+  if(!rec) return;
+  stopPlay();
+  D = JSON.parse(JSON.stringify(rec));     // עותק — עריכה לא נוגעת בשמור
+  D.steps.forEach(st=>{ st.pos = st.pos||{}; st.moves = st.moves||{}; st.attach = st.attach||{}; });
+  cur=0; sel=null; mode="move"; uid = nextUid(D); undoStack=[]; syncUndo();
+  document.getElementById("name").value = D.name;
+  setCourt(D.court||"half"); renderSteps(); syncSel(); layout();
+  status("נטען: "+D.name);
+};
+
+/* ---------- גיבוי ושחזור ---------- */
+document.getElementById("exportBtn").onclick = ()=>{
+  const list = Object.values(readLib().drills);
+  if(!list.length){ toast("אין תרגילים שמורים לגיבוי"); return; }
+  const payload = {app:"drills", version:2, exportedAt:nowISO(), drills:list};
+  const blob = new Blob([JSON.stringify(payload, null, 1)], {type:"application/json"});
+  const d = new Date(), pad = k=>String(k).padStart(2,"0");
+  const fn = "תרגילים-"+d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+".json";
+  deliver(blob, fn, "application/json");
+  status("גיבוי: "+list.length+" תרגילים");
+};
+document.getElementById("importBtn").onclick = ()=> document.getElementById("importFile").click();
+document.getElementById("importFile").onchange = async e=>{
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  let data;
+  try{ data = JSON.parse(await f.text()); }
+  catch(err){ dialog("הקובץ אינו JSON תקין. לא שיניתי כלום."); return; }
+  if(!data || data.app!=="drills" || !Array.isArray(data.drills)){
+    dialog("זה לא קובץ גיבוי של לוח התרגילים. בחר קובץ שנוצר בכפתור הגיבוי. לא שיניתי כלום.");
+    return;
+  }
+  const lib = readLib();
+  const names = new Set(Object.values(lib.drills).map(d=>d.name));
+  let added=0, updated=0, skipped=0;
+  data.drills.forEach(raw=>{
+    const d = sanitizeDrill(raw);
+    if(!d){ skipped++; return; }
+    if(!d.id){                                  // קובץ ישן או ערוך ביד
+      d.id = newId();
+      if(names.has(d.name)) d.name += " (מיובא)";
+      lib.drills[d.id] = d; names.add(d.name); added++; return;
+    }
+    const have = lib.drills[d.id];
+    if(!have){ lib.drills[d.id] = d; names.add(d.name); added++; return; }
+    if(String(d.updatedAt||"") > String(have.updatedAt||"")){ lib.drills[d.id] = d; updated++; }
+    else skipped++;                             // ייבוא חוזר של אותו קובץ = לא כלום
+  });
+  writeLib(lib); fillLoad();
+  status("יובאו "+added+" חדשים · "+updated+" עודכנו · "+skipped+" דולגו");
+  dialog("יובאו "+added+" תרגילים חדשים, "+updated+" עודכנו ו-"+skipped+" דולגו.\n\n" +
+         "התרגיל שפתוח על המסך לא השתנה — בחר תרגיל מהרשימה כדי לפתוח אותו.");
+};
+
+/* ---------- ייצוא ---------- */
+function exportView(px){
+  const H = courtH();
+  const rot = D.court === "full";          // מגרש שלם מיוצא לרוחב, אחרת יוצא עמוד צר וארוך
+  const cw = rot ? H : CW, ch = rot ? CW : H;
+  const band = hasNotes() ? BAND : 0;
+  const S = px/(cw+1.2);
+  return {S, padX:0.6*S, padY:0.6*S, rot,
+          w:Math.round((cw+1.2)*S), h:Math.round((ch+1.2+band)*S), band:band*S};
+}
+document.getElementById("pngBtn").onclick = ()=>{
+  const v = exportView(1000);
+  const c2 = document.createElement("canvas"); c2.width=v.w; c2.height=v.h;
+  const c = c2.getContext("2d");
+  c.fillStyle="#12161B"; c.fillRect(0,0,v.w,v.h);
+  render(c,v,{clean:true});
+  c2.toBlob(b=> deliver(b, (D.name||"תרגיל")+".png", "image/png"));
+};
+let gifReady = false;
+function loadGif(){
+  return new Promise((res,rej)=>{
+    if(gifReady) return res();
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js";
+    s.onload=()=>{ gifReady=true; res(); }; s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+document.getElementById("gifBtn").onclick = async ()=>{
+  if(D.steps.length<2){ toast("צריך לפחות שני שלבים"); return; }
+  stopPlay(); status("מכין GIF…");
+  try{
+    await loadGif();
+    const wRes = await fetch("https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js");
+    const wUrl = URL.createObjectURL(await wRes.blob());
+    const v = exportView(720);
+    const c2 = document.createElement("canvas"); c2.width=v.w; c2.height=v.h;
+    const c = c2.getContext("2d");
+    const gif = new window.GIF({workers:2, quality:8, width:v.w, height:v.h, workerScript:wUrl});
+    const fps = 14, secPerStep = 1.6;
+    const frame = (seg,t,delay)=>{
+      c.fillStyle="#12161B"; c.fillRect(0,0,v.w,v.h);
+      render(c,v,{playing:true, seg, t});
+      gif.addFrame(c, {copy:true, delay});
+    };
+    frame(0,0,700);
+    for(let seg=0; seg<D.steps.length-1; seg++){
+      const n = Math.round(fps*secPerStep);
+      for(let i=1;i<=n;i++) frame(seg, i/n, Math.round(1000/fps));
+      frame(seg,1,450);
+    }
+    gif.on("progress", p=> status("מכין GIF… "+Math.round(p*100)+"%"));
+    gif.on("finished", blob=>{ status(""); deliver(blob, (D.name||"תרגיל")+".gif", "image/gif"); });
+    gif.render();
+  }catch(err){
+    status("");
+    dialog("ייצוא ה-GIF נכשל כי לא הייתה גישה לרשת. חבר לאינטרנט ונסה שוב — או ייצא תמונה בינתיים.");
+  }
+};
+async function deliver(blob, filename, type){
+  const file = new File([blob], filename, {type});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file], title:D.name}); return; }catch(e){}
+  }
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+function dialog(text){
+  document.getElementById("dlgText").textContent=text;
+  document.getElementById("dlg").showModal();
+}
+document.getElementById("dlgOk").onclick = ()=> document.getElementById("dlg").close();
+
+/* ---------- אתחול ---------- */
+window.addEventListener("resize", layout);
+window.addEventListener("orientationchange", ()=> setTimeout(layout,150));
+migrate();
+document.getElementById("preset5").click();
+undoStack=[]; syncUndo();
+renderSteps(); fillLoad(); layout();
+setTimeout(()=>toast("גרור שחקנים, ואז הוסף שלב"), 400);
+</script>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
