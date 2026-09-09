@@ -1,5 +1,8 @@
-const CACHE = "drills-v3";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
+const CACHE = "drills-v4";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest",
+  "./icon-180.png", "./icon-192.png", "./icon-512.png",
+  "./vendor/gif.js", "./vendor/gif.worker.js",
+  "./vendor/rubik-hebrew.woff2", "./vendor/rubik-latin.woff2"];
 
 self.addEventListener("install", e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
@@ -15,9 +18,8 @@ self.addEventListener("fetch", e=>{
       if(hit) return hit;
       return fetch(req).then(res=>{
         const url = new URL(req.url);
-        const cacheable = url.origin === location.origin ||
-          /fonts\.(googleapis|gstatic)\.com$/.test(url.hostname) ||
-          url.hostname === "cdnjs.cloudflare.com";
+        // origin בלבד. מטמון cache-first על מקור חיצוני צורב תשובה שהוחלפה לצמיתות.
+        const cacheable = url.origin === location.origin;
         if(cacheable && res && (res.ok || res.type === "opaque")){
           const copy = res.clone();
           caches.open(CACHE).then(c=>c.put(req, copy));

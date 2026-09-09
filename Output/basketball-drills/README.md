@@ -18,10 +18,22 @@ node serve.mjs
 
 ## פריסה
 
-גרירת התיקייה ל-[Netlify Drop](https://app.netlify.com/drop). `serve.mjs`, `README.md`
-ו-`CLAUDE.md` נגררים איתה ולא מפריעים — הם פשוט לא נטענים.
+**לא לגרור את התיקייה כמו שהיא.** `README.md`, `CLAUDE.md` ו-`serve.mjs` הם קבצי פיתוח,
+והם אמנם לא *נטענים* — אבל הם כן **נגישים** ככתובות (`/CLAUDE.md`). מעלים רק את קבצי הריצה:
 
-> **אחרי כל שינוי בקבצים — להעלות את `CACHE` ב-`sw.js`** (`drills-v2` → `drills-v3`).
+```
+index.html · sw.js · manifest.webmanifest · robots.txt
+icon-180.png · icon-192.png · icon-512.png
+vendor/
+```
+
+גוררים אותם (או קובץ ZIP שמכיל אותם) ל-[Netlify Drop](https://app.netlify.com/drop).
+
+`robots.txt` ותגית `noindex` מונעים אינדוקס. **הם לא הופכים את הכתובת לסודית** — כל תעודת
+TLS של `*.netlify.app` נרשמת ביומני Certificate Transparency הפומביים ונסרקת אוטומטית.
+"אף אחד לא יודע את הכתובת" אינו מנגנון אבטחה.
+
+> **אחרי כל שינוי בקבצים — להעלות את `CACHE` ב-`sw.js`** (כרגע `drills-v4` → `drills-v5`).
 > בלי זה מי שכבר התקין את האפליקציה ימשיך לראות את הגרסה הישנה מהמטמון.
 
 ## גיבוי
@@ -36,6 +48,8 @@ node serve.mjs
 | קובץ | תפקיד |
 |---|---|
 | `index.html` | האפליקציה כולה — מודל, רינדור, אינטראקציה, אחסון, ייצוא |
+| `vendor/` | gif.js ופונט Rubik, מאוחסנים מקומית + `NOTICES.txt` (OFL + MIT) |
+| `robots.txt` | חסימת אינדוקס |
 | `sw.js` | Service Worker (מטמון offline) |
 | `manifest.webmanifest`, `icon-*.png` | PWA — התקנה למסך הבית |
 | `serve.mjs` | שרת סטטי לפיתוח בלבד |

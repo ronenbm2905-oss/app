@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#12161B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
@@ -11,15 +11,25 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <title>לוח תרגילים</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet">
+<meta name="robots" content="noindex, nofollow">
 <style>
+/* Rubik מתארח כאן ולא ב-Google Fonts: אפס בקשות לשרת חיצוני, ואפס דליפת IP למי שפותח את הדף.
+   שני קבצים בלבד — Google מגישה פונט משתנה שמכסה את כל טווח המשקלים. רישיון: vendor/NOTICES.txt */
+@font-face{
+  font-family:Rubik;font-style:normal;font-weight:300 900;font-display:swap;
+  src:url(vendor/rubik-hebrew.woff2) format("woff2");
+  unicode-range:U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F;
+}
+@font-face{
+  font-family:Rubik;font-style:normal;font-weight:300 900;font-display:swap;
+  src:url(vendor/rubik-latin.woff2) format("woff2");
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 :root{
   --ink:#12161B;
   --panel:#1B2129;
   --panel-2:#232B35;
-  --line:#333E4B;
+  --line:#4A5666;
   --chalk:#F2EFE6;
   --muted:#93A0AF;
   --off:#2166D8;
@@ -93,9 +103,10 @@ button.btn.danger{color:#FF8B7E}
   border:1px solid var(--line);background:var(--panel);color:var(--chalk);
   border-radius:10px;padding:8px 12px;font:600 14px Rubik,sans-serif;cursor:pointer;flex:0 0 auto;
   min-width:44px;text-align:center;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
 }
 .chip[aria-pressed="true"]{background:var(--chalk);color:var(--ink);border-color:var(--chalk)}
-.dot{width:22px;height:22px;border-radius:50%;display:inline-block;flex:0 0 auto}
+.dot{width:18px;height:18px;border-radius:50%;display:inline-block;flex:0 0 auto}
 
 input[type=range]{accent-color:var(--ball);flex:1 1 90px;min-width:80px}
 select{
@@ -130,7 +141,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 <body>
 <div id="app">
   <header>
-    <input id="name" value="תרגיל חדש" aria-label="שם התרגיל" autocomplete="off">
+    <input id="name" value="תרגיל חדש" aria-label="שם התרגיל" autocomplete="off" maxlength="60">
     <div class="seg" role="group" aria-label="סוג מגרש">
       <button id="halfBtn" aria-pressed="true">חצי</button>
       <button id="fullBtn" aria-pressed="false">שלם</button>
@@ -138,7 +149,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   </header>
 
   <main>
-    <div id="board"><canvas id="cv"></canvas><div id="hint"></div></div>
+    <div id="board"><canvas id="cv" aria-label="לוח המגרש. עריכת התרגיל נעשית בגרירה ואינה נגישה למקלדת."></canvas><div id="hint"></div></div>
 
     <div class="panel">
       <div class="row" id="stepsRow"></div>
@@ -146,21 +157,21 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       <div class="row">
         <span class="lbl">הערה</span>
         <input id="note" type="text" maxlength="90" autocomplete="off"
-               placeholder="מה קורה בשלב הזה? יופיע על הסרטון" aria-label="הערה לשלב">
+               placeholder="מה קורה בשלב — תפקידים ולא שמות (למשל: 1 מוסר ל-4)" aria-label="הערה לשלב">
       </div>
 
       <div class="row">
         <button class="btn primary" id="playBtn">נגן</button>
         <button class="btn" id="undoBtn" disabled>בטל</button>
         <span class="lbl">מהירות</span>
-        <input type="range" id="speed" min="0.5" max="2.5" step="0.1" value="1.2">
+        <input type="range" id="speed" min="0.5" max="2.5" step="0.1" value="1.2" aria-label="מהירות ניגון">
       </div>
 
       <div class="row">
         <span class="lbl">הוסף</span>
-        <button class="chip" id="addOff"><span class="dot" style="background:var(--off)"></span></button>
-        <button class="chip" id="addDef"><span class="dot" style="background:var(--def)"></span></button>
-        <button class="chip" id="addBall"><span class="dot" style="background:var(--ball)"></span></button>
+        <button class="chip" id="addOff" aria-label="הוסף מתקיף"><span class="dot" style="background:var(--off)"></span>מתקיף</button>
+        <button class="chip" id="addDef" aria-label="הוסף מגן"><span class="dot" style="background:var(--def)"></span>מגן</button>
+        <button class="chip" id="addBall" aria-label="הוסף כדור"><span class="dot" style="background:var(--ball)"></span>כדור</button>
         <button class="chip" id="addCone">חרוט</button>
         <button class="chip" id="addScreen">חסימה</button>
         <button class="btn" id="preset5">5 בחוץ</button>
@@ -179,7 +190,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <button class="btn" id="gifBtn">ייצוא GIF</button>
         <button class="btn" id="pngBtn">תמונה</button>
         <button class="btn" id="saveBtn">שמור</button>
-        <select id="loadSel"><option value="">תרגילים שמורים…</option></select>
+        <select id="loadSel" aria-label="פתיחת תרגיל שמור"><option value="">תרגילים שמורים…</option></select>
         <button class="btn" id="newBtn">חדש</button>
       </div>
 
@@ -187,14 +198,15 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <span class="lbl">כל התרגילים</span>
         <button class="btn" id="exportBtn">גיבוי</button>
         <button class="btn" id="importBtn">שחזור</button>
+        <button class="btn" id="aboutBtn">אודות</button>
         <input type="file" id="importFile" accept=".json,application/json" hidden>
       </div>
-      <div id="status"></div>
+      <div id="status" role="status"></div>
     </div>
   </main>
 </div>
 
-<dialog id="dlg"><div id="dlgText"></div><br><button class="btn" id="dlgOk">סגור</button></dialog>
+<dialog id="dlg" aria-label="הודעה"><div id="dlgText"></div><br><button class="btn" id="dlgOk">סגור</button></dialog>
 
 <script>
 "use strict";
@@ -862,7 +874,7 @@ function sanitizeDrill(raw){
   if(!raw || typeof raw!=="object" || !Array.isArray(raw.steps) || !raw.steps.length) return null;
   return {
     id: (typeof raw.id==="string" && raw.id) ? raw.id : null,
-    name: (typeof raw.name==="string" && raw.name.trim()) ? raw.name : "תרגיל",
+    name: (typeof raw.name==="string" && raw.name.trim()) ? raw.name.trim().slice(0,60) : "תרגיל",
     court: raw.court==="full" ? "full" : "half",
     tokens: Array.isArray(raw.tokens) ? raw.tokens.filter(t=>t && typeof t.id==="string") : [],
     steps: raw.steps.map(st=>({
@@ -1007,7 +1019,7 @@ function loadGif(){
   return new Promise((res,rej)=>{
     if(gifReady) return res();
     const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js";
+    s.src="vendor/gif.js";
     s.onload=()=>{ gifReady=true; res(); }; s.onerror=rej;
     document.head.appendChild(s);
   });
@@ -1017,7 +1029,7 @@ document.getElementById("gifBtn").onclick = async ()=>{
   stopPlay(); status("מכין GIF…");
   try{
     await loadGif();
-    const wRes = await fetch("https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js");
+    const wRes = await fetch("vendor/gif.worker.js");
     const wUrl = URL.createObjectURL(await wRes.blob());
     const v = exportView(720);
     const c2 = document.createElement("canvas"); c2.width=v.w; c2.height=v.h;
@@ -1040,7 +1052,7 @@ document.getElementById("gifBtn").onclick = async ()=>{
     gif.render();
   }catch(err){
     status("");
-    dialog("ייצוא ה-GIF נכשל כי לא הייתה גישה לרשת. חבר לאינטרנט ונסה שוב — או ייצא תמונה בינתיים.");
+    dialog("ייצוא ה-GIF נכשל. נסה שוב, או ייצא תמונה בינתיים.");
   }
 };
 async function deliver(blob, filename, type){
@@ -1057,6 +1069,13 @@ function dialog(text){
   document.getElementById("dlg").showModal();
 }
 document.getElementById("dlgOk").onclick = ()=> document.getElementById("dlg").close();
+/* שורת הגילוי. תוכן קבוע בלבד — אין כאן שום קלט משתמש. */
+document.getElementById("aboutBtn").onclick = ()=>{
+  document.getElementById("dlgText").innerHTML =
+    "הכלי פועל במכשיר שלך בלבד. התרגילים נשמרים בדפדפן הזה, ולא נשלחת שום בקשה לשרת חיצוני." +
+    "<br><br><a href=\"vendor/NOTICES.txt\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--ball)\">רישיונות</a>";
+  document.getElementById("dlg").showModal();
+};
 
 /* ---------- אתחול ---------- */
 window.addEventListener("resize", layout);
