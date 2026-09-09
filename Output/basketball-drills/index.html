@@ -126,6 +126,14 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 #note:focus{outline:none;border-color:var(--ball)}
 #note::placeholder{color:var(--muted)}
 #dlgText{white-space:pre-line}
+
+/* בזמן הקלטה הפאנל מתרוקן חוץ משורת ההקלטה — אין מה לערוך כשמדברים */
+.panel.recording > .row:not(#narBar){display:none}
+#narBar .btn{padding:13px 17px}          /* מקליקים תוך כדי דיבור: יעד מגע גדול */
+#narDot{color:#FF5A47;animation:narBlink 1s steps(2,start) infinite}
+#narBar .btn[aria-disabled="true"]{opacity:.4}
+@keyframes narBlink{50%{opacity:.2}}
+@media (prefers-reduced-motion:reduce){ #narDot{animation:none} }
 @media (max-width:819px){
   /* בטלפון הלוח חשוב מהפאנל. עכשיו שהשורות גולשות במקום להיגלל, הפאנל גבוה יותר —
      אז מגבילים אותו ונותנים לו לגלול, במקום לדחוס את המגרש. */
@@ -152,6 +160,13 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     <div id="board"><canvas id="cv" aria-label="לוח המגרש. עריכת התרגיל נעשית בגרירה ואינה נגישה למקלדת."></canvas><div id="hint"></div></div>
 
     <div class="panel">
+      <div class="row" id="narBar" hidden>
+        <span class="lbl"><span id="narDot">●</span> <span id="narTime">0:00</span></span>
+        <span class="lbl" id="narStep"></span>
+        <button class="btn primary" id="narNextBtn">השלב הבא</button>
+        <button class="btn danger" id="narStopBtn">סיים</button>
+      </div>
+
       <div class="row" id="stepsRow"></div>
 
       <div class="row">
@@ -188,6 +203,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 
       <div class="row">
         <button class="btn" id="gifBtn">ייצוא GIF</button>
+        <button class="btn" id="narBtn">הקלט הסבר</button>
         <button class="btn" id="pngBtn">תמונה</button>
         <button class="btn" id="saveBtn">שמור</button>
         <select id="loadSel" aria-label="פתיחת תרגיל שמור"><option value="">תרגילים שמורים…</option></select>
@@ -821,6 +837,10 @@ function place(type){
 }
 document.getElementById("delTok").onclick = ()=>{ if(sel){ snapshot(); removeToken(sel); syncSel(); draw(); } };
 document.getElementById("undoBtn").onclick = undo;
+document.getElementById("narBtn").onclick = narStart;
+document.getElementById("narNextBtn").onclick = narNext;
+document.getElementById("narStopBtn").onclick = narEnd;
+/* הכפתור נשאר תמיד. אם הדפדפן לא תומך — אומרים בדיוק מה חסר, במקום להיעלם בשקט. */
 document.getElementById("pathBtn").onclick = ()=>{
   if(cur===0){ toast("מסלול מציירים משלב 2 והלאה"); return; }
   mode = mode==="path" ? "move" : "path"; syncSel();
@@ -1055,6 +1075,164 @@ document.getElementById("gifBtn").onclick = async ()=>{
     dialog("ייצוא ה-GIF נכשל. נסה שוב, או ייצא תמונה בינתיים.");
   }
 };
+/* ---------- הקלטת הסבר: וידאו עם קול ---------- */
+/* המאמן מדבר ומקליק בין השלבים, וההסבר מסונכרן לתנועה כי הוא זה שמסנכרן אותם.
+   הווידאו נבנה מקנבס ייצוא בגודל קבוע (720) ולא מהקנבס שעל המסך — כך התוצאה לא תלויה
+   בגודל המכשיר ולא משתנה אם המסך מסתובב באמצע ההקלטה. */
+const BUILD = "drills-v7";               // חייב להתאים ל-CACHE ב-sw.js
+const NAR_MAX_SEC = 180;                 // תקרה, שלא תישאר הקלטה פתוחה בכיס
+let nar = null;
+
+function narMime(){
+  if(typeof MediaRecorder === "undefined") return null;
+  return ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4",
+          "video/webm;codecs=vp8,opus", "video/webm"]
+         .find(t => MediaRecorder.isTypeSupported(t)) || null;
+}
+function narMissing(){
+  const m = [];
+  if(!isSecureContext) m.push("חיבור מאובטח (https)");
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) m.push("גישה למיקרופון");
+  if(typeof MediaRecorder === "undefined") m.push("הקלטת מדיה (MediaRecorder)");
+  if(typeof cv.captureStream !== "function") m.push("צילום הלוח (captureStream)");
+  else if(!narMime()) m.push("פורמט וידאו נתמך");
+  return m;
+}
+function narSync(){
+  const atEnd = cur >= D.steps.length-1;
+  const b = document.getElementById("narNextBtn");
+  document.getElementById("narStep").textContent =
+    (cur+1) + " מתוך " + D.steps.length + (cur===0 ? " · פתיחה" : "");
+  /* aria-disabled ולא disabled: המטפל ממילא חוסם, ו-disabled מעיף את הפוקוס בכל שלב */
+  b.setAttribute("aria-disabled", (atEnd || !!(nar && nar.playing)) ? "true" : "false");
+  b.textContent = atEnd ? "סוף התרגיל" : "השלב הבא";
+}
+
+async function narStart(){
+  if(D.steps.length < 2){ toast("צריך לפחות שני שלבים"); return; }
+  if(document.hidden){ toast("צריך שהאפליקציה תהיה על המסך כדי להקליט"); return; }
+  const missing = narMissing();
+  if(missing.length){
+    dialog("הדפדפן הזה לא תומך בהקלטת הסבר.\n\nחסר: " + missing.join(" · ") + "\n\n" +
+           "באנדרואיד — Chrome. באייפון — Safari מגרסה 15 ומעלה.\n" +
+           "ייצוא GIF ממשיך לעבוד בכל מקרה.\n\nגרסה " + BUILD);
+    return;
+  }
+  stopPlay();
+  let mic;
+  try{
+    mic = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}});
+  }catch(e){
+    dialog("לא ניתנה גישה למיקרופון, ולכן אי אפשר להקליט הסבר.\nאפשר לאשר אותה בהגדרות הדפדפן ולנסות שוב.");
+    return;
+  }
+  const mime = narMime();
+  const view = exportView(720);
+  view.h += view.h % 2;                  // גובה אי-זוגי מפיל קידוד H.264
+  const c2 = document.createElement("canvas");
+  c2.width = view.w; c2.height = view.h;
+  const stream = c2.captureStream(30);
+  mic.getAudioTracks().forEach(t => stream.addTrack(t));
+
+  let rec;
+  try{
+    rec = new MediaRecorder(stream, {mimeType:mime, videoBitsPerSecond:1800000, audioBitsPerSecond:96000});
+  }catch(e){
+    mic.getTracks().forEach(t=>t.stop());
+    dialog("הדפדפן לא הצליח להתחיל הקלטה. נסה דפדפן אחר, או ייצא GIF בינתיים.");
+    return;
+  }
+
+  /* nar נקבע רק אחרי ש-start() הצליח. אם הוא זורק, אין שורת הקלטה, narTick לא מתחיל,
+     תקרת שלוש הדקות לא נאכפת — והמיקרופון היה נשאר פתוח בלי שום כפתור לעצור אותו. */
+  const state = {rec, mic, stream, canvas:c2, ctx:c2.getContext("2d"), view, mime,
+                 chunks:[], seg:0, t:0, playing:false, stopping:false,
+                 last:performance.now(), t0:Date.now(), raf:0};
+  rec.ondataavailable = e => { if(e.data && e.data.size) state.chunks.push(e.data); };
+  rec.onstop = narFinish;
+  rec.onerror = () => { if(nar && !nar.stopping) narEnd(); };
+  try{
+    rec.start(1000);
+  }catch(e){
+    mic.getTracks().forEach(t=>t.stop());
+    stream.getTracks().forEach(t=>t.stop());
+    dialog("הדפדפן לא הצליח להתחיל את ההקלטה, והמיקרופון נסגר.\nנסה שוב, או ייצא GIF בינתיים.");
+    return;
+  }
+  nar = state;
+  cur = 0; sel = null; mode = "move";
+  if(navigator.wakeLock && navigator.wakeLock.request){          // שהמסך לא ייכבה באמצע
+    navigator.wakeLock.request("screen").then(w=>{ if(nar) nar.wake = w; }).catch(()=>{});
+  }
+
+  document.querySelector(".panel").classList.add("recording");
+  document.getElementById("narBar").hidden = false;
+  renderSteps(); syncSel(); narSync(); layout();
+  nar.raf = requestAnimationFrame(narTick);
+  toast("מקליט · מדברים על תפקידים ומספרים, לא בשמות");
+}
+
+function narTick(now){
+  if(!nar) return;
+  const dt = Math.min(0.05, (now - nar.last)/1000); nar.last = now;
+  if(nar.playing){
+    const sp = parseFloat(document.getElementById("speed").value);
+    nar.t += dt*sp/1.6;
+    if(nar.t >= 1){
+      nar.t = 1; nar.playing = false;
+      cur = Math.min(nar.seg + 1, D.steps.length-1);
+      renderSteps(); narSync();
+    }
+  }
+  const opts = nar.playing ? {playing:true, seg:nar.seg, t:nar.t} : {clean:true};
+  render(nar.ctx, nar.view, opts);        // הפריים שנכנס לווידאו
+  render(ctx, V, opts);                   // ואותו מצב על המסך
+  const secs = Math.floor((Date.now() - nar.t0)/1000);
+  document.getElementById("narTime").textContent =
+    Math.floor(secs/60) + ":" + String(secs%60).padStart(2,"0");
+  if(secs >= NAR_MAX_SEC){ toast("שלוש דקות — מסיים את ההקלטה"); narEnd(); return; }
+  nar.raf = requestAnimationFrame(narTick);
+}
+
+/* דפדפן לא מייצר פריימים מקנבס כשהדף אינו גלוי — הקול ממשיך והתמונה קופאת, והתוצאה
+   היא קובץ עם ערוץ וידאו ריק. עדיף לעצור ולהגיד למה, מאשר להקליט שקופית שחורה. */
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden && nar && !nar.stopping){ nar.interrupted = true; narEnd(); }
+});
+function narNext(){
+  if(!nar || nar.playing || cur >= D.steps.length-1) return;
+  nar.seg = cur; nar.t = 0; nar.playing = true;
+  narSync();
+}
+function narEnd(){
+  if(!nar || nar.stopping) return;
+  nar.stopping = true;
+  cancelAnimationFrame(nar.raf);
+  try{ nar.rec.stop(); }catch(e){ narFinish(); }
+  status("מכין את הסרטון…");
+}
+function narFinish(){
+  const o = nar; if(!o) return;
+  nar = null;
+  o.mic.getTracks().forEach(t=>t.stop());      // משחרר את המיקרופון — הנורה חייבת להיכבות
+  o.stream.getTracks().forEach(t=>t.stop());
+  if(o.wake) o.wake.release().catch(()=>{});
+  document.querySelector(".panel").classList.remove("recording");
+  document.getElementById("narBar").hidden = true;
+  status(""); renderSteps(); syncSel(); layout();
+  const isMp4 = o.mime.indexOf("video/mp4") === 0;
+  const blob = new Blob(o.chunks, {type:o.mime.split(";")[0]});
+  if(!blob.size){ dialog("ההקלטה יצאה ריקה ולא נשמר קובץ. נסה שוב."); return; }
+  deliver(blob, (D.name||"תרגיל") + (isMp4 ? ".mp4" : ".webm"), blob.type);
+  if(o.interrupted){
+    dialog("ההקלטה נעצרה כי המסך כובה או שיצאת מהאפליקציה.\n" +
+           "הדפדפן לא מצלם את הלוח כשהוא לא על המסך, ולכן שמרתי את מה שהספקנו.\n\n" +
+           "בהקלטה הבאה — להשאיר את המסך דולק ואת האפליקציה פתוחה.");
+  } else if(!isMp4){
+    toast("נשמר כ-WebM. אם וואטסאפ מסרב לו, שלח מהמחשב");
+  }
+}
+
 async function deliver(blob, filename, type){
   const file = new File([blob], filename, {type});
   if(navigator.canShare && navigator.canShare({files:[file]})){
@@ -1073,6 +1251,9 @@ document.getElementById("dlgOk").onclick = ()=> document.getElementById("dlg").c
 document.getElementById("aboutBtn").onclick = ()=>{
   document.getElementById("dlgText").innerHTML =
     "הכלי פועל במכשיר שלך בלבד. התרגילים נשמרים בדפדפן הזה, ולא נשלחת שום בקשה לשרת חיצוני." +
+    "<br><br>הקלטת הסבר משתמשת במיקרופון בלבד — לא במצלמה — והסרטון נוצר במכשיר ונשאר בו " +
+    "עד שאתה בוחר לשתף אותו." +
+    "<br><br><span style=\"color:var(--muted)\">גרסה " + BUILD + "</span>" +
     "<br><br><a href=\"vendor/NOTICES.txt\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--ball)\">רישיונות</a>";
   document.getElementById("dlg").showModal();
 };
