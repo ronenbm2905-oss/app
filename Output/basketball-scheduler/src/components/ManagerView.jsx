@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { DAYS } from "../constants";
-import { timeToMinutes, shiftWeek } from "../utils/dates";
+import { timeToMinutes, shiftWeek, formatWeekRange } from "../utils/dates";
 import { uid } from "../utils/dates";
 import { colorFor, sessionTypeColor } from "../utils/colors";
 import { findConflicts, findConstraintViolations } from "../utils/conflicts";
@@ -10,11 +10,17 @@ import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { WeekNav } from "./ui/WeekNav";
 import { FixedTeamsStrip } from "./FixedTeamsStrip";
+import { pendingTypeSessions, buildTypeCopies } from "../utils/recurringType";
 import { SessionForm } from "./SessionForm";
 import {
   IconUpload, IconPlus, IconTrash, IconAlert, IconX, IconDownload,
   IconMapPin, IconPencil, IconShield, IconBan, IconCopy,
 } from "./ui/icons";
+
+// The specialist whose slot repeats every week. One of the ids in SESSION_TYPES, and the
+// only place in the app that names him — the module behind this knows nothing but "a type
+// that repeats", so a second standing slot is one more line here.
+const RECURRING_TYPE = "יורם";
 
 export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [editingId, setEditingId] = useState(null);
@@ -89,6 +95,27 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   // The key itself lives in `utils/rowCopy.js`, next to the row-level copy that has to
   // agree with this one about what a duplicate is. Two definitions of "the same training"
   // is one more than the app can afford.
+
+  // יורם takes the קט-סל squads every Sunday, and those rows were being re-entered by
+  // hand every week. The whole-week copy below cannot serve this: it is all-or-nothing, and
+  // by the time the manager wants this row the rest of the week is usually already built.
+  //
+  // The type is named here and nowhere else — `recurringType.js` knows only "a type that
+  // repeats", so a second specialist is one more constant, not a second implementation.
+  const pendingRecurring = useMemo(
+    () => pendingTypeSessions(data, RECURRING_TYPE, weekStart),
+    [data, weekStart]
+  );
+
+  const handleCopyRecurringType = () => {
+    const copies = buildTypeCopies(pendingRecurring, weekStart, uid);
+    if (copies.length === 0) return;
+    save({ ...data, sessions: [...data.sessions, ...copies] });
+    setImportMsg({
+      type: "success",
+      text: `הועתקו ${copies.length} אימוני ${RECURRING_TYPE} מהשבוע של ${formatWeekRange(pendingRecurring.from)}.`,
+    });
+  };
 
   const handleCopyPrevWeek = () => {
     const prev = shiftWeek(weekStart, -1);
@@ -170,6 +197,17 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
             title="העתק את כל האימונים (הידניים) מהשבוע הקודם לשבוע זה"
           >
             <IconCopy size={15} /> שכפל שבוע קודם
+          </button>
+        )}
+        {/* Offered only when there is something to add — a button that does nothing when
+            pressed teaches the manager to stop reading the toolbar. */}
+        {canEdit && pendingRecurring.sessions.length > 0 && (
+          <button
+            onClick={handleCopyRecurringType}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+            title={`הוסף ${pendingRecurring.sessions.length} אימוני ${RECURRING_TYPE} מהשבוע של ${formatWeekRange(pendingRecurring.from)} — בלי לגעת בשאר הלו"ז`}
+          >
+            <IconCopy size={15} /> שכפל אימוני {RECURRING_TYPE} ({pendingRecurring.sessions.length})
           </button>
         )}
       </div>
