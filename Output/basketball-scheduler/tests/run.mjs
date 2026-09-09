@@ -17,6 +17,7 @@ const FILES = [
   "./coachexport.test.mjs",
   "./playerexport.test.mjs",
   "./recurringtype.test.mjs",
+  "./archive.test.mjs",
 ];
 
 for (const f of FILES) {

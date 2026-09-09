@@ -148,5 +148,28 @@ service cloud.firestore {
     match /clubs/{clubId}/pendingImports/{importId} {
       allow read, write: if isClubAdmin(clubId);
     }
+
+    // Finished months moved out of the club document, one per month.
+    //
+    // Read is the same audience as the club document itself — admins AND members — and
+    // that is on purpose: this is the club's own schedule, just older. Making it
+    // admin-only would mean a coach could read a session in September and be refused the
+    // identical row in July, which is a rule that protects nothing and confuses everyone.
+    //
+    // Write is managers only, like the club document it came out of.
+    //
+    // Update is allowed, and refusing it would have been a trap rather than a control. The
+    // archive document is written BEFORE the club document is trimmed, so a failure in
+    // between leaves the month archived but not yet recorded in the index — which means
+    // the screen offers it again, and the retry is an UPDATE. A create-only rule would
+    // make that retry fail for ever, in exactly the situation where recovery matters.
+    //
+    // Delete stays closed. Removing a season is a deliberate act that belongs in the
+    // console with the deletion procedure open, not one API call from a weekly screen.
+    match /clubs/{clubId}/archive/{month} {
+      allow read: if isClubAdmin(clubId) || isClubMember(clubId);
+      allow create, update: if isClubAdmin(clubId);
+      allow delete: if false;
+    }
   }
 }

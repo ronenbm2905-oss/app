@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { currentMonth, shiftMonth, monthLabel } from "../utils/dates";
 // The arithmetic lives in a tested module, not here. This number decides what a coach is
 // paid, and in August 2026 it reported a doubled month without anyone noticing until the
@@ -7,21 +7,57 @@ import {
   hoursRows, hoursTotals, fmtHours, excludedLabel, exportHoursXlsx, HOURS_PER_UNIT,
   exemptTeamNames,
 } from "../utils/hoursReport";
+import { isArchivedMonth } from "../utils/archive";
+import { useArchive } from "../hooks/useArchive";
 import { IconDownload, IconChevronRight, IconChevronLeft, IconFileSpreadsheet } from "./ui/icons";
 import { IndoorBalanceCard } from "./IndoorBalanceCard";
 
 export function ReportView({ data, weekStart }) {
   const [month, setMonth] = useState(currentMonth());
 
-  const rows = useMemo(() => hoursRows(data, month), [data, month]);
+  // An archived month still has to answer.
+  //
+  // Archiving moves a finished month's sessions out of the club document, and this report
+  // is the one screen that still needs them — it is what people are paid against, and a
+  // payroll question about November does not stop being asked in March. So a month the
+  // index says is archived is fetched on demand and the report runs on it exactly as it
+  // runs on a live month. Nothing else in the app reads the archive.
+  const { loadMonth } = useArchive(data, null);
+  const archived = isArchivedMonth(data, month);
+  const [restored, setRestored] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!archived) { setRestored(null); return; }
+    setRestored(undefined); // loading
+    loadMonth(month).then((sessions) => { if (!cancelled) setRestored(sessions); });
+    return () => { cancelled = true; };
+  }, [archived, month, loadMonth]);
+
+  // The report reads `data.sessions`, so an archived month is served the same shape with
+  // the archived rows swapped in. Everything downstream — the exemptions, the exports, the
+  // totals — is untouched and has no idea where the sessions came from.
+  const source = useMemo(
+    () => (archived && Array.isArray(restored) ? { ...data, sessions: restored } : data),
+    [archived, restored, data]
+  );
+
+  const rows = useMemo(() => hoursRows(source, month), [source, month]);
   // Named, not merely omitted. A report that quietly drops squads is a report nobody can
   // check — and this one decides what people are paid.
   const exempt = useMemo(() => exemptTeamNames(data?.teams), [data?.teams]);
-  const totals = useMemo(() => hoursTotals(rows, data, month), [rows, data, month]);
+  const totals = useMemo(() => hoursTotals(rows, source, month), [rows, source, month]);
 
   return (
     <div className="space-y-4" dir="rtl">
       <IndoorBalanceCard data={data} weekStart={weekStart} />
+      {archived && (
+        <div role="status" className="no-print text-xs rounded-lg border border-stone-300 bg-stone-50 text-stone-700 p-2.5">
+          {restored === undefined
+            ? `${monthLabel(month)} בארכיון — טוען את הנתונים...`
+            : `${monthLabel(month)} בארכיון. הדוח מוצג מתוכו, והמספרים זהים לאלה שהיו לפני הארכוב.`}
+        </div>
+      )}
       {/* Controls */}
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

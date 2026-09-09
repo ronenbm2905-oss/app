@@ -70,6 +70,10 @@ export const EMPTY = {
   changes: [],
   // Weeks where the manager answered "לא השבוע" to the fixed-teams strip. See utils/fixedTeams.js.
   fixedWeekSkips: [],
+  // Months whose sessions were moved to clubs/{id}/archive/{YYYY-MM}. A list of month
+  // strings and nothing more — it exists so the UI can tell what is archived without
+  // reading the archive documents, which is the whole point of moving them out.
+  archivedMonths: [],
   // Fold the fixed teams away on the weekly board — club-wide, set by a manager.
   hideFixedTeams: false,
   // Minutes before tip-off that a squad gathers for an away game. Club-wide, because the

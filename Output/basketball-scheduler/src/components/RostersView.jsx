@@ -6,6 +6,7 @@ import { looksIndoor } from "../utils/indoorBalance";
 import { looksLikeSchoolTeam, isHoursExempt } from "../utils/hoursReport";
 import { exportCoachesXlsx } from "../utils/coachExport";
 import { AccessCard } from "./AccessCard";
+import { ArchiveCard } from "./ArchiveCard";
 import { sortByName } from "../utils/names";
 import { Select } from "./ui/Select";
 import {
@@ -595,6 +596,9 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
           document either way. It is a list of everyone's addresses, and there is nothing
           a coach can do with it. */}
       {canEdit && <AccessCard data={data} save={save} currentEmail={currentEmail} />}
+      {/* Directly under the storage meter: that is where a manager finds out there is a
+          problem, and this is the only thing they can do about it. */}
+      {canEdit && <ArchiveCard data={data} save={save} />}
     </div>
   );
 }

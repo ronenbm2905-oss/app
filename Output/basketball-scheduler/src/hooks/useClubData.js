@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY } from "../constants";
+import { DOC_FULL_MESSAGE, isTooLarge } from "../utils/access";
 import { withScheduleChanges } from "../utils/scheduleChanges";
 
 // Merge stored data over defaults so older/partial documents don't crash the UI.
@@ -92,8 +93,15 @@ function useCloudClubData(user) {
       try {
         await setDoc(doc(db, "clubs", CLUB_ID), next);
         setError(null);
-      } catch {
-        setError("השמירה נכשלה, נסה שוב.");
+      } catch (err) {
+        // The 1 MiB ceiling deserves its own sentence.
+        //
+        // Firestore refuses an oversized document rather than truncating it, and because
+        // the whole club is one document that refusal takes EVERY save with it — the app
+        // goes read-only. Reported as "try again" it is indistinguishable from a dropped
+        // connection, so the manager retries for a day before anyone works out why. There
+        // is nothing to retry: the fix is to archive a finished month.
+        setError(isTooLarge(err) ? DOC_FULL_MESSAGE : "השמירה נכשלה, נסה שוב.");
       }
     },
     [isAdmin]

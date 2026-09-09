@@ -89,6 +89,27 @@ export function documentBytes(data) {
   }
 }
 
+// The one save error that no amount of retrying will clear.
+//
+// It lives here, next to the limit it is about, and not inside the hook that catches it —
+// because the thing most likely to go wrong with it is silent: Firestore rewords the
+// message in some future SDK, the match stops firing, and the ceiling starts reporting
+// itself as "try again" once more. A matcher nobody can test is a matcher nobody notices
+// breaking.
+export const DOC_FULL_MESSAGE =
+  "נפח נתוני המועדון מלא (1 MB) והשמירה נדחתה — שום שינוי לא נשמר. " +
+  'פתח/י "קבוצות ואולמות" ← ארכוב חודשים, וארכב/י חודש שהסתיים. ניסיון חוזר לא יעזור.';
+
+export function isTooLarge(err) {
+  const code = String(err?.code || "").toLowerCase();
+  const msg = String(err?.message || "").toLowerCase();
+  return (
+    msg.includes("maximum allowed size") ||
+    msg.includes("longer than 1048487") ||
+    (code.includes("invalid-argument") && msg.includes("size"))
+  );
+}
+
 export function sizeStatus(bytes) {
   const pct = bytes / DOC_LIMIT_BYTES;
   if (pct >= 0.8) return "critical";
