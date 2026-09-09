@@ -17,10 +17,21 @@ import {
   IconMapPin, IconPencil, IconShield, IconBan, IconCopy,
 } from "./ui/icons";
 
-// The specialist whose slot repeats every week. One of the ids in SESSION_TYPES, and the
-// only place in the app that names him — the module behind this knows nothing but "a type
-// that repeats", so a second standing slot is one more line here.
-const RECURRING_TYPE = "יורם";
+// The specialist slots that repeat every week. Ids from SESSION_TYPES, and the only place
+// in the app that names them — `recurringType.js` knows nothing but "a type that repeats",
+// so a fourth slot is one more entry here.
+//
+// One button each, never one button for all three, and that is a decision rather than a
+// layout accident: the three run on different days for different squads, and a manager who
+// wants ספורטתרפיה back this week has no reason to also be told about חד"כ. A single
+// combined button would also make a partly-built week ambiguous — you could no longer see
+// WHICH slot is missing without pressing it.
+//
+// Deliberately NOT reusing hoursReport's EXCLUDED_TYPES, which today holds the same three
+// strings. "Does not count towards a coach's hours" and "repeats every week" are two
+// different facts that happen to coincide right now; tying them together means the day one
+// changes, the other changes silently with it.
+const RECURRING_TYPES = ["יורם", "ספורטתרפיה", 'חד"כ'];
 
 export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   const [editingId, setEditingId] = useState(null);
@@ -103,17 +114,19 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
   // The type is named here and nowhere else — `recurringType.js` knows only "a type that
   // repeats", so a second specialist is one more constant, not a second implementation.
   const pendingRecurring = useMemo(
-    () => pendingTypeSessions(data, RECURRING_TYPE, weekStart),
+    () =>
+      RECURRING_TYPES.map((type) => ({ type, ...pendingTypeSessions(data, type, weekStart) }))
+        .filter((e) => e.sessions.length > 0),
     [data, weekStart]
   );
 
-  const handleCopyRecurringType = () => {
-    const copies = buildTypeCopies(pendingRecurring, weekStart, uid);
+  const handleCopyRecurringType = (entry) => {
+    const copies = buildTypeCopies(entry, weekStart, uid);
     if (copies.length === 0) return;
     save({ ...data, sessions: [...data.sessions, ...copies] });
     setImportMsg({
       type: "success",
-      text: `הועתקו ${copies.length} אימוני ${RECURRING_TYPE} מהשבוע של ${formatWeekRange(pendingRecurring.from)}.`,
+      text: `הועתקו ${copies.length} אימוני ${entry.type} מהשבוע של ${formatWeekRange(entry.from)}.`,
     });
   };
 
@@ -199,17 +212,22 @@ export function ManagerView({ data, save, canEdit, weekStart, setWeekStart }) {
             <IconCopy size={15} /> שכפל שבוע קודם
           </button>
         )}
-        {/* Offered only when there is something to add — a button that does nothing when
-            pressed teaches the manager to stop reading the toolbar. */}
-        {canEdit && pendingRecurring.sessions.length > 0 && (
-          <button
-            onClick={handleCopyRecurringType}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
-            title={`הוסף ${pendingRecurring.sessions.length} אימוני ${RECURRING_TYPE} מהשבוע של ${formatWeekRange(pendingRecurring.from)} — בלי לגעת בשאר הלו"ז`}
-          >
-            <IconCopy size={15} /> שכפל אימוני {RECURRING_TYPE} ({pendingRecurring.sessions.length})
-          </button>
-        )}
+        {/* One button per slot, and only for slots that actually have something to add — a
+            button that does nothing when pressed teaches the manager to stop reading the
+            toolbar. Each carries the type's own colour from the board, so the button and
+            the rows it creates read as the same thing. */}
+        {canEdit &&
+          pendingRecurring.map((entry) => (
+            <button
+              key={entry.type}
+              onClick={() => handleCopyRecurringType(entry)}
+              style={{ borderColor: sessionTypeColor(entry.type), color: sessionTypeColor(entry.type) }}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border bg-white hover:bg-stone-50"
+              title={`הוסף ${entry.sessions.length} אימוני ${entry.type} מהשבוע של ${formatWeekRange(entry.from)} — בלי לגעת בשאר הלו"ז`}
+            >
+              <IconCopy size={15} /> שכפל אימוני {entry.type} ({entry.sessions.length})
+            </button>
+          ))}
       </div>
 
       {canEdit && (
