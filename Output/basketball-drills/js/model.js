@@ -11,8 +11,12 @@ export const STYLES = {
 
 export const STYLE_ORDER = ["cut","dribble","pass","screen","handoff"];
 
+/* אוצר מילים סגור ולא טקסט חופשי: על טלפון מקישים על צ'יפ ולא מקלידים,
+   ורשימה סגורה שומרת על התגיות עקביות בין תרגילים. להרחבה — כאן. */
+export const TAGS = ["התקפה","הגנה","חימום","מעבר מהיר","הוצאה","1-3-1"];
+
 export function newDrill(){
-  return {id:newId(), name:"תרגיל חדש", court:"half", tokens:[],
+  return {id:newId(), name:"תרגיל חדש", court:"half", tokens:[], tags:[],
           steps:[{pos:{}, moves:{}, attach:{}, note:""}]};
 }
 
@@ -120,6 +124,7 @@ export function sanitizeDrill(raw){
     id: (typeof raw.id==="string" && raw.id) ? raw.id : null,
     name: (typeof raw.name==="string" && raw.name.trim()) ? raw.name.trim().slice(0,60) : "תרגיל",
     court: raw.court==="full" ? "full" : "half",
+    tags: Array.isArray(raw.tags) ? raw.tags.filter(t=>typeof t==="string" && t).slice(0,8) : [],
     tokens: Array.isArray(raw.tokens) ? raw.tokens.filter(t=>t && typeof t.id==="string") : [],
     steps: raw.steps.map(st=>({
       pos:    (st && typeof st.pos==="object"    && st.pos)    || {},

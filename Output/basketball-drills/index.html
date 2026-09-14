@@ -131,6 +131,42 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 #note::placeholder{color:var(--muted)}
 #dlgText{white-space:pre-line}
 
+/* ---------- ספריית התרגילים ---------- */
+#lib{width:min(920px,96vw);max-width:96vw;height:min(88dvh,920px);padding:0;border-radius:16px;overflow:hidden}
+#lib::backdrop{background:rgba(0,0,0,.72)}
+#libWrap{display:flex;flex-direction:column;height:100%}
+#libHead{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap}
+#libHead h2{margin:0;font:700 17px Rubik,sans-serif;flex:0 0 auto}
+#libSearch{
+  flex:1 1 150px;min-width:120px;background:var(--panel-2);border:1px solid var(--line);
+  color:var(--chalk);border-radius:10px;padding:9px 11px;font:500 14px Rubik,sans-serif;
+}
+#libSearch:focus{outline:none;border-color:var(--ball)}
+#libSearch::placeholder{color:var(--muted)}
+#libTags{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line);flex:0 0 auto}
+#libList{
+  flex:1 1 auto;overflow-y:auto;padding:12px;display:grid;gap:12px;
+  grid-template-columns:repeat(auto-fill,minmax(148px,1fr));align-content:start;
+}
+.card{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:8px;
+  cursor:pointer;display:flex;flex-direction:column;gap:6px;text-align:start;
+  color:var(--chalk);font-family:Rubik,sans-serif;
+}
+.card:hover,.card:focus-visible{border-color:var(--ball);outline:none}
+.card .pv{background:var(--ink);border-radius:8px;height:104px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.card .pv canvas{max-width:100%;max-height:100%;display:block}
+.card .nm{font-weight:700;font-size:14px;line-height:1.25;overflow-wrap:anywhere}
+.card .meta{color:var(--muted);font-size:11px}
+.card .tg{display:flex;gap:4px;flex-wrap:wrap}
+.card .tg span{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-size:11px}
+#libEmpty{grid-column:1/-1;color:var(--muted);text-align:center;padding:28px 12px;font-size:14px}
+@media (max-width:560px){        /* בטלפון: כותרת וסגירה בשורה אחת, החיפוש ברוחב מלא מתחת */
+  #libHead h2{flex:1 1 auto}
+  #libClose{order:1}
+  #libSearch{flex:1 1 100%;order:2}
+}
+
 /* בזמן הקלטה הפאנל מתרוקן חוץ משורת ההקלטה — אין מה לערוך כשמדברים */
 .panel.recording > .row:not(#narBar){display:none}
 #narBar .btn{padding:13px 17px}          /* מקליקים תוך כדי דיבור: יעד מגע גדול */
@@ -174,6 +210,11 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       <div class="row" id="stepsRow"></div>
 
       <div class="row">
+        <span class="lbl">תגיות</span>
+        <span id="tagChips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+      </div>
+
+      <div class="row">
         <span class="lbl">הערה</span>
         <input id="note" type="text" maxlength="90" autocomplete="off"
                placeholder="מה קורה בשלב — תפקידים ולא שמות (למשל: 1 מוסר ל-4)" aria-label="הערה לשלב">
@@ -212,7 +253,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         <button class="btn" id="narBtn">הקלט הסבר</button>
         <button class="btn" id="pngBtn">תמונה</button>
         <button class="btn" id="saveBtn">שמור</button>
-        <select id="loadSel" aria-label="פתיחת תרגיל שמור"><option value="">תרגילים שמורים…</option></select>
+        <button class="btn" id="libBtn">תרגילים שמורים</button>
         <button class="btn" id="newBtn">חדש</button>
         <button class="btn danger" id="delDrillBtn">מחק תרגיל</button>
       </div>
@@ -228,6 +269,19 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     </div>
   </main>
 </div>
+
+<dialog id="lib" aria-label="ספריית תרגילים">
+  <div id="libWrap">
+    <div id="libHead">
+      <h2>תרגילים שמורים</h2>
+      <input id="libSearch" type="search" autocomplete="off"
+             placeholder="חיפוש בשם, בתגית ובהערות" aria-label="חיפוש תרגילים">
+      <button class="btn" id="libClose">סגור</button>
+    </div>
+    <div id="libTags"></div>
+    <div id="libList"></div>
+  </div>
+</dialog>
 
 <dialog id="dlg" aria-label="הודעה"><div id="dlgText"></div><br><button class="btn" id="dlgOk">סגור</button></dialog>
 

@@ -1,6 +1,6 @@
 /* שכבת התצוגה: פריסה, ניגון, שורת השלבים, הודעות ודיאלוגים. */
 import { ST } from "./state.js";
-import { BAND, CW, STYLES, STYLE_ORDER, addToken, courtH, editablePath, hasNotes, readLib, tok } from "./model.js";
+import { BAND, CW, STYLES, STYLE_ORDER, TAGS, addToken, courtH, editablePath, hasNotes, nextUid, readLib, tok } from "./model.js";
 import { defStyle, render } from "./render.js";
 
 export function snapshot(){
@@ -15,7 +15,7 @@ export function undo(){
   ST.D = o.d; ST.cur = Math.min(o.c, ST.D.steps.length-1); ST.sel = null; ST.mode = "move";
   document.getElementById("name").value = ST.D.name;
   setCourt(ST.D.court||"half");
-  renderSteps(); syncSel(); syncUndo(); layout();
+  renderSteps(); syncSel(); syncTags(); syncUndo(); layout();
 }
 
 export function syncUndo(){
@@ -174,17 +174,139 @@ export function place(type){
   if(type==="screen" || type==="handoff") toast("גרור למקם · הכפתור סובב מכוון את הזווית");
 }
 
+/* ---------- ספריית התרגילים ---------- */
+/* השם fillLoad נשאר כי הוא נקרא מכל מקום שמשנה את האחסון. הוא כבר לא ממלא select
+   אלא מעדכן את כפתור הספרייה, ומרענן את הרשימה אם היא פתוחה באותו רגע. */
 export function fillLoad(){
-  const el = document.getElementById("loadSel");
-  const list = Object.values(readLib().drills)
-    .sort((a,b)=> String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
-  el.innerHTML = '<option value="">תרגילים שמורים…</option>';
-  list.forEach(d=>{
-    const o = document.createElement("option");
-    o.value = d.id; o.textContent = d.name;
-    el.appendChild(o);
+  const b = document.getElementById("libBtn");
+  if(!b) return;
+  const n = Object.keys(readLib().drills).length;
+  b.textContent = n ? "תרגילים שמורים (" + n + ")" : "תרגילים שמורים";
+  const lib = document.getElementById("lib");
+  if(lib && lib.open) renderLibrary();
+}
+
+/* תצוגה מקדימה: אותו render בדיוק, על תרגיל אחר. ST.D מוחלף ומוחזר באותה פעימה
+   סינכרונית, ולכן אף אחד לא יכול לראות את המצב המוחלף. זו גם הסיבה שהתצוגה
+   המקדימה לא יכולה לשקר — היא לא ציור נפרד, היא הציור. */
+function thumbView(px){
+  const H = courtH(), rot = ST.D.court === "full";
+  const cw = rot ? H : CW, ch = rot ? CW : H;
+  const S = px/(cw+1.2);
+  return {S, padX:0.6*S, padY:0.6*S, rot,
+          w:Math.round((cw+1.2)*S), h:Math.round((ch+1.2)*S), band:0};
+}
+export function thumb(drill, px){
+  const d0=ST.D, c0=ST.cur, s0=ST.sel, w0=ST.drawing;
+  ST.D = drill; ST.cur = 0; ST.sel = null; ST.drawing = null;
+  let canvas;
+  try{
+    const v = thumbView(px);
+    canvas = document.createElement("canvas");
+    canvas.width = v.w; canvas.height = v.h;
+    render(canvas.getContext("2d"), v, {clean:true});
+  } finally {
+    ST.D = d0; ST.cur = c0; ST.sel = s0; ST.drawing = w0;
+  }
+  return canvas;
+}
+
+export function openDrill(id){
+  const rec = readLib().drills[id];
+  if(!rec) return false;
+  stopPlay();
+  ST.D = JSON.parse(JSON.stringify(rec));     // עותק — עריכה לא נוגעת בשמור
+  ST.D.steps.forEach(st=>{ st.pos = st.pos||{}; st.moves = st.moves||{}; st.attach = st.attach||{}; });
+  if(!Array.isArray(ST.D.tags)) ST.D.tags = [];
+  ST.cur=0; ST.sel=null; ST.mode="move"; ST.uid = nextUid(ST.D); ST.undoStack=[]; syncUndo();
+  document.getElementById("name").value = ST.D.name;
+  setCourt(ST.D.court||"half"); renderSteps(); syncSel(); syncTags(); layout();
+  status("נטען: "+ST.D.name); toast("נטען: "+ST.D.name);
+  return true;
+}
+
+/* תגיות התרגיל הפתוח */
+export function syncTags(){
+  const box = document.getElementById("tagChips");
+  if(!box) return;
+  if(!Array.isArray(ST.D.tags)) ST.D.tags = [];
+  const cur = ST.D.tags;
+  box.innerHTML = "";
+  TAGS.forEach(t=>{
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = t;
+    b.setAttribute("aria-pressed", cur.includes(t) ? "true" : "false");
+    b.onclick = ()=>{
+      snapshot();
+      const i = cur.indexOf(t);
+      if(i < 0) cur.push(t); else cur.splice(i, 1);
+      syncTags();
+    };
+    box.appendChild(b);
   });
-  el.value = "";
+}
+
+const libFilter = new Set();
+function haystack(d){
+  return [d.name, ...(d.tags||[]), ...(d.steps||[]).map(s=>s.note||"")].join(" ").toLowerCase();
+}
+function dateHe(iso){
+  const d = new Date(iso||"");
+  return isNaN(d) ? "" : d.getDate()+"."+(d.getMonth()+1)+"."+String(d.getFullYear()).slice(2);
+}
+function card(d){
+  const b = document.createElement("button");
+  b.className = "card"; b.type = "button";
+  const pv = document.createElement("div"); pv.className = "pv";
+  pv.appendChild(thumb(d, 220));
+  const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = d.name;
+  const meta = document.createElement("div"); meta.className = "meta";
+  const n = (d.steps||[]).length;
+  meta.textContent = (n === 1 ? "שלב אחד" : n + " שלבים") + " · " +
+                     (d.court==="full" ? "מגרש שלם" : "חצי מגרש") + " · " + dateHe(d.updatedAt);
+  b.append(pv, nm, meta);
+  if((d.tags||[]).length){
+    const tg = document.createElement("div"); tg.className = "tg";
+    d.tags.forEach(t=>{ const s = document.createElement("span"); s.textContent = t; tg.appendChild(s); });
+    b.appendChild(tg);
+  }
+  b.onclick = ()=>{ if(openDrill(d.id)) document.getElementById("lib").close(); };
+  return b;
+}
+export function renderLibrary(){
+  const list = document.getElementById("libList");
+  const q = (document.getElementById("libSearch").value || "").trim().toLowerCase();
+  const all = Object.values(readLib().drills)
+    .sort((a,b)=> String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+  let shown = all;
+  if(libFilter.size) shown = shown.filter(d => (d.tags||[]).some(t => libFilter.has(t)));
+  if(q) shown = shown.filter(d => haystack(d).includes(q));
+  list.innerHTML = "";
+  if(!shown.length){
+    const e = document.createElement("div"); e.id = "libEmpty";
+    e.textContent = all.length ? "אין תרגיל שמתאים לחיפוש" : "עוד לא שמרת תרגילים";
+    list.appendChild(e);
+    return;
+  }
+  shown.forEach(d => list.appendChild(card(d)));
+}
+export function openLibrary(){
+  const tags = document.getElementById("libTags");
+  tags.innerHTML = "";
+  TAGS.forEach(t=>{
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = t;
+    b.setAttribute("aria-pressed", libFilter.has(t) ? "true" : "false");
+    b.onclick = ()=>{
+      if(libFilter.has(t)) libFilter.delete(t); else libFilter.add(t);
+      b.setAttribute("aria-pressed", libFilter.has(t) ? "true" : "false");
+      renderLibrary();
+    };
+    tags.appendChild(b);
+  });
+  renderLibrary();
+  /* בלי focus על שדה החיפוש: בטלפון זה מקפיץ מקלדת שמכסה חצי מהרשימה */
+  document.getElementById("lib").showModal();
 }
 
 export function dialog(text){

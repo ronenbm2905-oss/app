@@ -2,7 +2,7 @@
 import { ST } from "./state.js";
 import { addToken, attachOf, courtH, editablePath, hasNotes, migrate, newDrill, newId, nextUid, nowISO, posOf, readLib, removeToken, sanitizeDrill, setAttach, tok, writeLib } from "./model.js";
 import { ease, movePts, noteText, pathLen, pointAt, positionsAt, render } from "./render.js";
-import { dialog, draw, fillLoad, layout, place, renderSteps, setCourt, snapshot, startPlay, status, stopPlay, syncSel, syncUndo, toast, undo } from "./ui.js";
+import { dialog, draw, fillLoad, layout, openLibrary, place, renderLibrary, renderSteps, setCourt, snapshot, startPlay, status, stopPlay, syncSel, syncTags, syncUndo, toast, undo } from "./ui.js";
 import { simplify } from "./interact.js";
 import { BUILD, deliver, exportView, loadGif, narEnd, narNext, narStart } from "./export.js";
 
@@ -107,7 +107,7 @@ document.getElementById("newBtn").onclick = ()=>{
   if(!confirm("להתחיל תרגיל חדש?")) return;
   ST.D=newDrill(); ST.cur=0; ST.sel=null; ST.undoStack=[]; syncUndo();
   document.getElementById("name").value=ST.D.name;
-  renderSteps(); syncSel(); layout();
+  renderSteps(); syncSel(); syncTags(); layout();
 };
 
 document.getElementById("saveBtn").onclick = ()=>{
@@ -128,18 +128,11 @@ document.getElementById("saveBtn").onclick = ()=>{
   toast(word + ": " + ST.D.name);          // שורת ההודעה לבדה נעלמת מתחת לקצה הפאנל בטלפון
 };
 
-document.getElementById("loadSel").onchange = e=>{
-  const rec = readLib().drills[e.target.value];
-  if(!rec) return;
-  stopPlay();
-  ST.D = JSON.parse(JSON.stringify(rec));     // עותק — עריכה לא נוגעת בשמור
-  ST.D.steps.forEach(st=>{ st.pos = st.pos||{}; st.moves = st.moves||{}; st.attach = st.attach||{}; });
-  ST.cur=0; ST.sel=null; ST.mode="move"; ST.uid = nextUid(ST.D); ST.undoStack=[]; syncUndo();
-  document.getElementById("name").value = ST.D.name;
-  setCourt(ST.D.court||"half"); renderSteps(); syncSel(); layout();
-  status("נטען: "+ST.D.name);
-  toast("נטען: "+ST.D.name);
-};
+document.getElementById("libBtn").onclick = openLibrary;
+
+document.getElementById("libClose").onclick = ()=> document.getElementById("lib").close();
+
+document.getElementById("libSearch").oninput = renderLibrary;
 
 /* ---------- גיבוי ושחזור ---------- */
 document.getElementById("exportBtn").onclick = ()=>{
@@ -259,7 +252,7 @@ document.getElementById("preset5").click();
 
 ST.undoStack=[]; syncUndo();
 
-renderSteps(); fillLoad(); layout();
+renderSteps(); syncTags(); fillLoad(); layout();
 
 setTimeout(()=>toast("גרור שחקנים, ואז הוסף שלב"), 400);
 
