@@ -82,6 +82,19 @@ document.getElementById("preset131").onclick = ()=>{
   draw(); toast("הגנת 1-3-1 נוספה");
 };
 
+/* מחיקת התרגיל הפתוח מהרשימה. הוא נשאר על המסך בכוונה — "שמור" מחזיר אותו,
+   וזו הבקרה היחידה שיש כאן במקום "בצע שוב" שאין. */
+document.getElementById("delDrillBtn").onclick = ()=>{
+  const lib = readLib();
+  const rec = lib.drills[ST.D.id];
+  if(!rec){ toast("התרגיל הזה עדיין לא נשמר, אז אין מה למחוק"); return; }
+  if(!confirm("למחוק את \"" + rec.name + "\" מהרשימה?\n\nהוא יישאר פתוח על המסך, ולחיצה על \"שמור\" תחזיר אותו.")) return;
+  delete lib.drills[ST.D.id];
+  writeLib(lib); fillLoad();
+  status("נמחק: " + rec.name);
+  toast("נמחק: " + rec.name + " · עדיין פתוח על המסך");
+};
+
 document.getElementById("newBtn").onclick = ()=>{
   if(!confirm("להתחיל תרגיל חדש?")) return;
   ST.D=newDrill(); ST.cur=0; ST.sel=null; ST.undoStack=[]; syncUndo();
