@@ -1,6 +1,8 @@
-const CACHE = "drills-v7";
+const CACHE = "drills-v10";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest",
   "./icon-180.png", "./icon-192.png", "./icon-512.png",
+  "./js/state.js", "./js/model.js", "./js/court.js", "./js/render.js",
+  "./js/ui.js", "./js/interact.js", "./js/export.js", "./js/main.js",
   "./vendor/gif.js", "./vendor/gif.worker.js",
   "./vendor/rubik-hebrew.woff2", "./vendor/rubik-latin.woff2"];
 
