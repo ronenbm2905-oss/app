@@ -1,8 +1,8 @@
 /* מגע ועכבר על הקנבס: גרירה, ציור מסלול, בחירה. */
 import { ST } from "./state.js";
-import { CW, attachOf, courtH, nearestHolder, posOf, setAttach, tok } from "./model.js";
+import { CW, attachOf, courtH, editablePath, nearestHolder, posOf, setAttach, tok } from "./model.js";
 import { unP } from "./court.js";
-import { R, defStyle } from "./render.js";
+import { HANDLE_HIT, R, defStyle } from "./render.js";
 import { cv, draw, renderSteps, snapshot, stopPlay, syncSel, toast } from "./ui.js";
 
 cv.addEventListener("pointerdown", e=>{
@@ -16,6 +16,8 @@ cv.addEventListener("pointerdown", e=>{
     ST.drawing = {pts:[{x:s.x,y:s.y},p], style:(ST.D.steps[ST.cur].moves[ST.sel]||{}).style || defStyle(tok(ST.sel))};
     draw(); return;
   }
+  const hi = hitHandle(p, editablePath());      // ידית קודמת לשחקן — היא מצוירת מעליו
+  if(hi > 0){ ST.drag = {handle:hi}; draw(); return; }
   const hit = hitTest(p);
   if(hit){ ST.sel = hit; ST.drag = {id:hit}; syncSel(); draw(); }
   else { ST.sel=null; syncSel(); draw(); }
@@ -29,9 +31,16 @@ cv.addEventListener("pointermove", e=>{
   p.x = Math.max(-0.4, Math.min(CW+0.4, p.x)); p.y = Math.max(-0.4, Math.min(H+0.4, p.y));
   if(ST.drawing){ ST.drawing.pts.push(p); draw(); return; }
   if(!ST.drag.moved){ ST.drag.moved=true; snapshot(); }
+  if(ST.drag.handle != null){                   // גרירת נקודת ביניים במסלול
+    const path = editablePath();
+    if(path) path[ST.drag.handle] = p;
+    draw(); return;
+  }
   if(tok(ST.drag.id).type==="ball") setAttach(ST.cur, ST.drag.id, null);
   ST.D.steps[ST.cur].pos[ST.drag.id] = p;
-  if(ST.D.steps[ST.cur].moves[ST.drag.id]) delete ST.D.steps[ST.cur].moves[ST.drag.id].path;
+  const mv = ST.D.steps[ST.cur].moves[ST.drag.id];
+  /* פעם המסלול נמחק כאן. עכשיו הזנב נגרר עם השחקן — למחיקה יש כפתור משלה. */
+  if(mv && mv.path && mv.path.length > 1) mv.path[mv.path.length-1] = {x:p.x, y:p.y};
   draw();
 });
 
@@ -72,6 +81,17 @@ export function simplify(pts){
   const last=pts[pts.length-1];
   if(Math.hypot(last.x-out[out.length-1].x,last.y-out[out.length-1].y)>0.02) out.push(last);
   return out;
+}
+
+/* רק נקודות הביניים. 0 הוא העוגן והאחרונה היא השחקן. */
+export function hitHandle(p, pts){
+  if(!pts || pts.length < 3) return -1;
+  let best = -1, bd = HANDLE_HIT;
+  for(let i=1; i<pts.length-1; i++){
+    const d = Math.hypot(pts[i].x-p.x, pts[i].y-p.y);
+    if(d < bd){ bd = d; best = i; }
+  }
+  return best;
 }
 
 export function hitTest(p){

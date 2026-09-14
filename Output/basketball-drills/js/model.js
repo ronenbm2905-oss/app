@@ -73,6 +73,15 @@ export function posOf(stepIdx, id){
   return s.pos[id];
 }
 
+/* המסלול המצויר של השחקן המסומן בשלב הנוכחי, אם יש כזה. מקור אמת אחד
+   לציור הידיות, לפגיעה בהן ולכפתור המחיקה — כדי שהשלושה לא יוכלו לא להסכים. */
+export function editablePath(){
+  if(!ST.sel) return null;
+  const st = ST.D.steps[ST.cur];
+  const mv = st && st.moves ? st.moves[ST.sel] : null;
+  return (mv && mv.path && mv.path.length > 1) ? mv.path : null;
+}
+
 export function nearestHolder(p, ballId){
   let best=null, bd=1.35;
   ST.D.tokens.forEach(t=>{

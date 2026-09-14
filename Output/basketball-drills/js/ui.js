@@ -1,6 +1,6 @@
 /* שכבת התצוגה: פריסה, ניגון, שורת השלבים, הודעות ודיאלוגים. */
 import { ST } from "./state.js";
-import { BAND, CW, STYLES, STYLE_ORDER, addToken, courtH, hasNotes, readLib, tok } from "./model.js";
+import { BAND, CW, STYLES, STYLE_ORDER, addToken, courtH, editablePath, hasNotes, readLib, tok } from "./model.js";
 import { defStyle, render } from "./render.js";
 
 export function snapshot(){
@@ -129,6 +129,7 @@ export function syncSel(){
   /* הזווית על הכפתור: בלעדיה אי אפשר לדעת שזה פקד סיבוב ומה מצבו */
   if(canRotate) rot.textContent = "סובב " + Math.round((t.angle||0)*180/Math.PI) + "° ↻";
   document.getElementById("pathBtn").hidden = still;
+  document.getElementById("delPathBtn").hidden = still || !editablePath();
   document.getElementById("pathBtn").classList.toggle("on", ST.mode==="path");
   const box = document.getElementById("styleChips");
   box.innerHTML = "";

@@ -1,6 +1,6 @@
 /* ציור: קווי תנועה, שחקנים, רצועת ההערה, ומיקומים בזמן אנימציה. */
 import { ST } from "./state.js";
-import { BALL_OFF, attachOf, posOf, tok } from "./model.js";
+import { BALL_OFF, attachOf, editablePath, posOf, tok } from "./model.js";
 import { P, drawCourt } from "./court.js";
 
 /* ---------- ציור קווי תנועה ---------- */
@@ -150,6 +150,24 @@ export function drawNote(c,v,text){
 /* ---------- ציור שחקנים ---------- */
 export const R = 0.66;
 
+/* ידיות עריכת מסלול. נקודת ההתחלה היא עוגן ואינה נגררת, והנקודה האחרונה היא
+   השחקן עצמו — כך לאותה נגיעה אין שתי משמעויות. נגררות רק נקודות הביניים. */
+export const HANDLE_R = 0.30;      // רדיוס ציור, במטרים
+export const HANDLE_HIT = 0.62;    // רדיוס פגיעה — נדיב יותר, זו אצבע על מסך
+export function drawHandles(c,v,pts){
+  if(!pts || pts.length < 2) return;
+  c.save();
+  const a = P(pts[0].x, pts[0].y, v);
+  c.strokeStyle="rgba(242,239,230,.85)"; c.lineWidth=Math.max(1.5, v.S*0.04);
+  c.beginPath(); c.arc(a.x, a.y, Math.max(2.5, HANDLE_R*0.62*v.S), 0, Math.PI*2); c.stroke();
+  for(let i=1; i<pts.length-1; i++){
+    const q = P(pts[i].x, pts[i].y, v);
+    c.fillStyle="#F08A24"; c.strokeStyle="#12161B"; c.lineWidth=Math.max(1.5, v.S*0.045);
+    c.beginPath(); c.arc(q.x, q.y, Math.max(4, HANDLE_R*v.S), 0, Math.PI*2); c.fill(); c.stroke();
+  }
+  c.restore();
+}
+
 export function tokColor(t){ return t.type==="off"?"#2166D8" : t.type==="def"?"#D93A2B" : t.type==="ball"?"#F08A24" : "#F2EFE6"; }
 
 export function drawToken(c,v,t,p,isSel){
@@ -257,6 +275,8 @@ export function render(c,v,opts){
       const p = posOf(ST.cur, t.id);
       if(p) drawToken(c,v,t,p, !o.clean && ST.sel===t.id);
     });
+    /* לא בייצוא ולא בזמן ציור מסלול חדש */
+    if(!o.clean && !ST.drawing) drawHandles(c, v, editablePath());
   }
   drawNote(c,v,noteText(o));
 }

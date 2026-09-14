@@ -1,6 +1,6 @@
 /* חיווט הממשק ואתחול. המודול היחיד שרושם מאזינים לכפתורים. */
 import { ST } from "./state.js";
-import { addToken, attachOf, courtH, hasNotes, migrate, newDrill, newId, nextUid, nowISO, posOf, readLib, removeToken, sanitizeDrill, setAttach, tok, writeLib } from "./model.js";
+import { addToken, attachOf, courtH, editablePath, hasNotes, migrate, newDrill, newId, nextUid, nowISO, posOf, readLib, removeToken, sanitizeDrill, setAttach, tok, writeLib } from "./model.js";
 import { ease, movePts, noteText, pathLen, pointAt, positionsAt, render } from "./render.js";
 import { dialog, draw, fillLoad, layout, place, renderSteps, setCourt, snapshot, startPlay, status, stopPlay, syncSel, syncUndo, toast, undo } from "./ui.js";
 import { simplify } from "./interact.js";
@@ -39,6 +39,14 @@ document.getElementById("addCone").onclick = ()=> place("cone");
 document.getElementById("addScreen").onclick = ()=> place("screen");
 
 document.getElementById("addHandoff").onclick = ()=> place("handoff");
+
+document.getElementById("delPathBtn").onclick = ()=>{
+  if(!editablePath()) return;
+  snapshot();
+  delete ST.D.steps[ST.cur].moves[ST.sel].path;
+  syncSel(); draw();
+  toast("המסלול נמחק · התנועה חזרה לקו ישר");
+};
 
 document.getElementById("delTok").onclick = ()=>{ if(ST.sel){ snapshot(); removeToken(ST.sel); syncSel(); draw(); } };
 

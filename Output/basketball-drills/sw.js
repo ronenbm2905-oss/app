@@ -1,4 +1,4 @@
-const CACHE = "drills-v11";
+const CACHE = "drills-v12";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest",
   "./icon-180.png", "./icon-192.png", "./icon-512.png",
   "./js/state.js", "./js/model.js", "./js/court.js", "./js/render.js",
