@@ -4,6 +4,7 @@ import { timeToMinutes, overlaps, toISODate } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { absencesOn, absenceCoversSession, absenceLabel } from "../utils/availability";
+import { HallFreeSlots } from "./HallFreeSlots";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { IconAlert, IconBan, IconPlus, IconCheck } from "./ui/icons";
@@ -177,6 +178,23 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
           />
         </div>
       </div>
+
+      {/* The hall's day, under the fields that ask about it. Choosing a slot is a search,
+          and until now the app made the manager guess an hour and then scored the guess. */}
+      <HallFreeSlots
+        data={data}
+        hallId={hallId}
+        day={day}
+        weekOf={weekOf}
+        excludeId={initial?.id}
+        start={start}
+        end={end}
+        onPick={(slot) => {
+          if (!slot) return;
+          setStart(slot.start);
+          setEnd(slot.end);
+        }}
+      />
 
       {!valid && (start || end) && timeToMinutes(start) >= timeToMinutes(end) && (
         <p className="text-xs text-red-600">שעת הסיום צריכה להיות אחרי שעת ההתחלה.</p>

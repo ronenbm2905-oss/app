@@ -18,6 +18,7 @@ const FILES = [
   "./playerexport.test.mjs",
   "./recurringtype.test.mjs",
   "./archive.test.mjs",
+  "./hallavailability.test.mjs",
 ];
 
 for (const f of FILES) {
