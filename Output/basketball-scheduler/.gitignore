@@ -35,3 +35,8 @@ serviceAccount*.json
 # A --data dump of the club document contains players[]: names, phone numbers and birth
 # dates of children. Name such a file seed-test-*.json or club-dump-*.json, never anything else.
 club-dump*.json
+
+# Generated at deploy time by functions/copy-shared.mjs — the source of truth is src/utils/.
+# A checked-in copy is a copy someone will eventually fix in the wrong place.
+functions/shared/
+functions/node_modules/

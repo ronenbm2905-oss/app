@@ -1,0 +1,15 @@
+{
+  "name": "basketball-scheduler-functions",
+  "description": "Phone notifications for schedule changes. Nothing else runs here.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "scripts": {
+    "shared": "node copy-shared.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  }
+}
