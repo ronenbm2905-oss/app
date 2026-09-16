@@ -45,6 +45,16 @@
         ]
       },
       {
+        "_comment": "The service worker decides whether a notification arrives at all, and its name never changes — so an hour of default caching is an hour in which a fix does not reach a phone. Browsers re-check it on their own schedule; this makes sure the re-check actually gets the new file.",
+        "source": "/firebase-messaging-sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "_comment": "The home-screen icons and the manifest have stable names. An immutable year here would pin every phone to today's icon for a year, with no way to correct it.",
         "source": "**/*.@(png|ico|svg|webmanifest)",
         "headers": [
