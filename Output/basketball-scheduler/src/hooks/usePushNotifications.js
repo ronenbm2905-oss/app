@@ -175,7 +175,10 @@ export function usePushNotifications({ coachId, email }) {
     setStatus("");
     try {
       const reg = await navigator.serviceWorker.getRegistration(SW_URL);
-      await reg?.showNotification("בדיקה — ClubCal קרית אונו", {
+      // The name is the one on the home screen (manifest `name`) and nowhere else. An
+      // earlier draft carried a competitor product name here, picked up while researching
+      // them — the only user-visible string in the app that was not the club’s own.
+      await reg?.showNotification("בדיקה — קרית אונו לו״ז אימונים", {
         body: "אם ההודעה הזו הגיעה, ההתראות פועלות במכשיר הזה.",
         icon: "/icon-192.png",
         dir: "rtl",
