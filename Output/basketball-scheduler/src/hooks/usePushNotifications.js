@@ -22,7 +22,12 @@ const SW_URL = "/firebase-messaging-sw.js";
 // because the person who hits this is holding the phone and I am not.
 const failure = (label, err) => {
   const code = err?.code || err?.name || "";
-  return code ? label + " (" + code + ")" : label;
+  // The MESSAGE, not only the name. "TypeError" on its own sent us looking in the wrong
+  // place; "Importing a module script failed" would have said it outright. Trimmed,
+  // because this is a coach’s phone screen and not a console.
+  const detail = String(err?.message || "").replace(/s+/g, " ").trim().slice(0, 120);
+  const tail = [code, detail].filter(Boolean).join(": ");
+  return tail ? label + " (" + tail + ")" : label;
 };
 
 // iOS grants Push API only to a home-screen installed PWA (16.4+). In plain Safari the API
@@ -113,7 +118,24 @@ export function usePushNotifications({ coachId, email }) {
         return;
       }
 
-      const { getMessaging, getToken } = await import("firebase/messaging");
+      // The app loads this part on demand, as a separate file. A deploy replaces those
+      // files, and a missing one does NOT come back as a 404 here — the SPA rewrite answers
+      // with index.html, the browser tries to parse HTML as a module, and all that reaches
+      // us is a bare TypeError. Anyone whose app was open BEFORE a deploy and taps a button
+      // after it lands here, which is an ordinary thing for a coach to do.
+      let messaging;
+      try {
+        messaging = await import("firebase/messaging");
+      } catch (err) {
+        setStatus(
+          failure(
+            "המערכת עודכנה מאז שפתחת את האפליקציה. סגור/סגרי אותה לגמרי (באייפון — להחליק אותה החוצה ממסך האפליקציות הפתוחות), לפתוח שוב ולנסות.",
+            err
+          )
+        );
+        return;
+      }
+      const { getMessaging, getToken } = messaging;
       const q = new URLSearchParams({
         apiKey: firebaseConfig.apiKey || "",
         authDomain: firebaseConfig.authDomain || "",
