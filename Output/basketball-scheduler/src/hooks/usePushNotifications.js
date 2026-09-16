@@ -16,6 +16,15 @@ import { tokenDoc } from "../utils/pushTargets";
 
 const SW_URL = "/firebase-messaging-sw.js";
 
+// A failure here is invisible by nature — no notification looks exactly like no change.
+// "Something went wrong" was true and useless: it took four rounds of guessing to find
+// that the real answer was a denied Firestore write. The step and the code go ON SCREEN,
+// because the person who hits this is holding the phone and I am not.
+const failure = (label, err) => {
+  const code = err?.code || err?.name || "";
+  return code ? label + " (" + code + ")" : label;
+};
+
 // iOS grants Push API only to a home-screen installed PWA (16.4+). In plain Safari the API
 // is absent entirely — which is why this asks about capability, not about the browser name.
 function deviceSupport() {
@@ -91,21 +100,42 @@ export function usePushNotifications({ coachId, email }) {
         senderId: firebaseConfig.messagingSenderId || "",
         appId: firebaseConfig.appId || "",
       });
-      const reg = await navigator.serviceWorker.register(`${SW_URL}?${q}`);
-      const t = await getToken(getMessaging(), {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-        serviceWorkerRegistration: reg,
-      });
+      let reg;
+      try {
+        reg = await navigator.serviceWorker.register(SW_URL + "?" + q);
+      } catch (err) {
+        setStatus(failure("לא הצלחנו להתקין את רכיב ההתראות בדפדפן.", err));
+        return;
+      }
+
+      let t;
+      try {
+        t = await getToken(getMessaging(), {
+          vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+          serviceWorkerRegistration: reg,
+        });
+      } catch (err) {
+        setStatus(failure("הדפדפן לא הצליח לקבל מזהה להתראות.", err));
+        return;
+      }
       if (!t) {
         setStatus("לא הצלחנו לרשום את המכשיר. נסה/י שוב, או בדוק/בדקי את הרשאות הדפדפן.");
         return;
       }
 
-      await setDoc(doc(db, "clubs", CLUB_ID, "pushTokens", t), tokenDoc({ token: t, coachId, email }));
+      // The step that actually failed on 16.9, and the one the old single catch hid: the
+      // token was fine, the write was denied. Naming it separately is the difference
+      // between "try again" and knowing there is nothing to try.
+      try {
+        await setDoc(doc(db, "clubs", CLUB_ID, "pushTokens", t), tokenDoc({ token: t, coachId, email }));
+      } catch (err) {
+        setStatus(failure("קיבלנו מזהה, אך לא הצלחנו לשמור אותו — כנראה חסרה הרשאה.", err));
+        return;
+      }
       setToken(t);
       setStatus("ההתראות פועלות במכשיר הזה.");
-    } catch {
-      setStatus("משהו השתבש בהפעלת ההתראות. נסה/י שוב.");
+    } catch (err) {
+      setStatus(failure("משהו השתבש בהפעלת ההתראות.", err));
     } finally {
       setBusy(false);
     }

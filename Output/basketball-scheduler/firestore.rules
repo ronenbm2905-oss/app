@@ -163,9 +163,14 @@ service cloud.firestore {
     // with a service account and bypasses these rules entirely, so nothing here is in its
     // way; this block exists solely to constrain the browser.
     match /clubs/{clubId}/pushTokens/{token} {
-      allow read: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
-      allow create: if isClubMember(clubId) && ownsIncoming();
-      allow update: if isClubMember(clubId) && ownsExisting() && ownsIncoming();
+      // The shared helpers, exactly as trainingPlans uses them. These four lines were
+      // written out by hand instead, and the admin arm went missing from create and
+      // update — so the three admins, who are NOT in members[], could not register their
+      // own device. Coaches could. Which meant the only person who tested it was the
+      // only kind of person it did not work for.
+      allow read: if canRead(clubId);
+      allow create: if canCreate(clubId);
+      allow update: if canChange(clubId);
       allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
     }
 
