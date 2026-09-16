@@ -146,7 +146,10 @@ export function tokenDoc({ token, coachId, email, now = new Date().toISOString()
 export const DEAD_TOKEN_CODES = [
   "messaging/registration-token-not-registered",
   "messaging/invalid-registration-token",
-  "messaging/invalid-argument",
+  // NOT messaging/invalid-argument. FCM returns it for a malformed REQUEST as well as a
+  // bad token, so one wrong payload would delete every coach’s registration at once and
+  // the feature would go quiet for everybody with nothing on screen to say so. Only the
+  // two codes that can mean nothing but "this device is gone" belong here.
 ];
 
 export function isDeadToken(error) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured, firebaseConfig } from "../firebase";
 import { tokenDoc } from "../utils/pushTargets";
 
@@ -51,25 +51,46 @@ export function usePushNotifications({ coachId, email }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
 
-  // What this device already had, before anything is asked. Read from the browser's own
-  // registration rather than from Firestore: the question is "is this device subscribed",
-  // and only the device can answer it.
+  // What this device is ACTUALLY registered for.
+  //
+  // An earlier version asked the browser alone, reasoning that "is this device
+  // subscribed" is a question only the device can answer. That reasoning was wrong: the
+  // question is "will a notification arrive", and only the stored row answers it. On 16.9
+  // the two disagreed — the token was valid, the write had been denied by rules, and the
+  // screen said notifications were working while nothing would ever be sent. The local
+  // test notification agreed, because it never touches the server either.
+  //
+  // So the row is the authority, and anything else counts as OFF.
   useEffect(() => {
     let cancelled = false;
     if (!isFirebaseConfigured || !support.ok || Notification.permission !== "granted") return;
     (async () => {
+      let t = "";
       try {
         const { getMessaging, getToken } = await import("firebase/messaging");
         const reg = await navigator.serviceWorker.getRegistration(SW_URL);
         if (!reg) return;
-        const t = await getToken(getMessaging(), {
+        t = await getToken(getMessaging(), {
           vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
           serviceWorkerRegistration: reg,
         });
-        if (!cancelled && t) setToken(t);
       } catch {
         /* a device that cannot report its token is simply treated as off */
       }
+      if (cancelled || !t) return;
+
+      // A missing row reads as PERMISSION_DENIED for a coach, not as "not found" — the
+      // ownership rule cannot match a document that is not there. Both mean the same
+      // thing here, and both mean: not registered.
+      let registered = false;
+      try {
+        registered = (await getDoc(doc(db, "clubs", CLUB_ID, "pushTokens", t))).exists();
+      } catch {
+        registered = false;
+      }
+      if (cancelled) return;
+      if (registered) setToken(t);
+      else setStatus("המכשיר הזה אינו רשום לקבלת התראות. לחץ/י על הכפתור כדי לרשום אותו.");
     })();
     return () => { cancelled = true; };
   }, [support.ok]);
@@ -166,7 +187,11 @@ export function usePushNotifications({ coachId, email }) {
     }
   }, [busy, token]);
 
-  // "I hope it works" → "I saw it work".
+  // This checks ONE thing: that this device can draw a notification on screen. It is
+  // created locally and never touches FCM or the Cloud Function, so it CANNOT tell you
+  // that a real change would arrive. On 16.9 it said yes while the device was not
+  // registered at all. The wording on the button and in the result says so plainly now,
+  // because the earlier wording was read — reasonably — as proof of the whole chain.
   //
   // Adi called this the only control that actually answers the reliance problem, and she is
   // right: nothing else tells a coach on an iPhone whether the button did anything.
@@ -185,7 +210,7 @@ export function usePushNotifications({ coachId, email }) {
         lang: "he",
         tag: "push-test",
       });
-      setStatus("נשלחה התראת בדיקה. אם היא לא הופיעה — ההתראות חסומות ברמת המכשיר.");
+      setStatus("זו בדיקת תצוגה בלבד — היא נוצרה כאן ולא הגיעה מהשרת. כדי לוודא שהכל עובד, שנה/י אימון בלו״ז וראה/י שההתראה מגיעה.");
     } catch {
       setStatus("לא הצלחנו להציג התראת בדיקה במכשיר הזה.");
     }

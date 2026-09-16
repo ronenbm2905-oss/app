@@ -183,6 +183,9 @@ t("FCM's own codes are recognised", () => {
 t("a network blip is not a dead device", () => {
   // Deleting a token because the send timed out would silence a coach permanently.
   assert.equal(isDeadToken({ code: "messaging/server-unavailable" }), false);
+  // A malformed payload is OUR bug, not a dead device. Treating it as dead would delete
+  // every registration on one bad send — the exact "silence everybody at once" failure.
+  assert.equal(isDeadToken({ code: "messaging/invalid-argument" }), false);
   assert.equal(isDeadToken(new Error("ETIMEDOUT")), false);
   assert.equal(isDeadToken(null), false);
 });

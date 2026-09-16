@@ -62,7 +62,7 @@ export function PushToggle({ coachId, coachName, email }) {
                 disabled={busy}
                 className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-40"
               >
-                שלח לי התראת בדיקה
+                בדיקת תצוגה במכשיר
               </button>
               <button
                 onClick={disable}
