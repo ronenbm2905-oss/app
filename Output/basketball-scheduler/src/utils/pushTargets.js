@@ -29,6 +29,54 @@ export function newEntriesSince(prevChanges, nextChanges) {
   return next.filter((e) => str(e?.at) > newest);
 }
 
+// The quiet window — 22:00 to 07:00, Israel time.
+//
+// **There is no legislated right to disconnect in Israel**, and Adi said so explicitly: a
+// notification at 23:00 is not an offence. This is risk management, and it is Ronen's
+// decision, recorded. What it protects against is the thing that actually happens — a
+// coach woken at midnight once turns the feature off for ever, and then misses the change
+// that mattered.
+//
+// A change made inside the window is not dropped. It waits, and the morning job sends it.
+export const QUIET_START_HOUR = 22;
+export const QUIET_END_HOUR = 7;
+
+// Israel time, whatever the server thinks it is. A Cloud Function runs in UTC, so asking
+// the Date object for its own hour would silence 01:00–10:00 Israel time and wake people
+// at 02:00 — the exact inverse of the intent.
+export function israelHour(date = new Date()) {
+  const h = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jerusalem",
+    hour: "2-digit",
+    hour12: false,
+  }).format(date instanceof Date ? date : new Date(date));
+  return Number(h) % 24;
+}
+
+export function inQuietWindow(date = new Date()) {
+  const h = israelHour(date);
+  return h >= QUIET_START_HOUR || h < QUIET_END_HOUR;
+}
+
+// How old a change may be and still be worth interrupting someone for.
+//
+// Two different failures land here. A restored backup or a migration arrives with no
+// `before` snapshot, so every entry in the log looks new — up to 150 of them, a month old.
+// And the morning job, after a quiet night, must send last night's changes and not last
+// week's. A notification about a change from two weeks ago is not a notification.
+export const MAX_AGE_HOURS = 12;
+
+export function isFresh(entry, now = new Date(), maxAgeHours = MAX_AGE_HOURS) {
+  const at = Date.parse(str(entry?.at));
+  if (!Number.isFinite(at)) return false;
+  const age = (now instanceof Date ? now.getTime() : Date.parse(now)) - at;
+  return age >= 0 && age <= maxAgeHours * 3600 * 1000;
+}
+
+export function freshEntries(entries, now = new Date(), maxAgeHours = MAX_AGE_HOURS) {
+  return arr(entries).filter((e) => isFresh(e, now, maxAgeHours));
+}
+
 // One notification per coach, however many of their sessions moved.
 //
 // Five separate buzzes for one evening's re-shuffle is how a person turns notifications off
@@ -75,11 +123,19 @@ export function tokensForCoach(tokenRows, coachId) {
 //
 // Keyed by the token itself, because that is what FCM invalidates — when a token dies the
 // thing to delete is identified by the token, not by the person.
+//
+// THE FIELD IS `authorEmail`, AND THAT NAME IS NOT A PREFERENCE. Every ownership rule in
+// `firestore.rules` reads `authorEmail` — `ownsExisting()` and `ownsIncoming()` are
+// written once and reused by every collection. Storing this row under `email` would give
+// a rules block that reviews cleanly, looks identical to the others, and fails only at
+// run time: the coach could not delete their own row, which means **they could not turn
+// notifications off**. The promise in privacy policy §2ז would be unkeepable by a field
+// name. (Adi, push gate, M1א.)
 export function tokenDoc({ token, coachId, email, now = new Date().toISOString() }) {
   return {
     token: str(token),
     coachId: str(coachId),
-    email: str(email).toLowerCase(),
+    authorEmail: str(email).toLowerCase(),
     updatedAt: now,
   };
 }

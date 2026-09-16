@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   newEntriesSince, notificationsFor, tokensForCoach, tokenDoc, isDeadToken,
+  israelHour, inQuietWindow, isFresh, freshEntries, MAX_AGE_HOURS,
 } from "../src/utils/pushTargets.js";
 
 let pass = 0;
@@ -108,6 +109,50 @@ t("nothing in, nothing out", () => {
   assert.deepEqual(notificationsFor(null), []);
 });
 
+console.log("- the quiet window (Ronen's decision, 16.9 — not a legal duty) -");
+t("Israel time, not the server's — a Cloud Function runs in UTC", () => {
+  // 19:30 UTC is 22:30 in Israel (UTC+3, summer). Asking the Date its own hour would
+  // silence 01:00–10:00 Israel time and wake people at 02:00 — the exact inverse.
+  assert.equal(israelHour(new Date("2026-09-16T19:30:00Z")), 22);
+  assert.equal(israelHour(new Date("2026-09-16T07:00:00Z")), 10);
+});
+t("22:00 to 07:00 is quiet; the working day is not", () => {
+  assert.equal(inQuietWindow(new Date("2026-09-16T19:30:00Z")), true);  // 22:30
+  assert.equal(inQuietWindow(new Date("2026-09-16T22:00:00Z")), true);  // 01:00
+  assert.equal(inQuietWindow(new Date("2026-09-16T03:30:00Z")), true);  // 06:30
+  assert.equal(inQuietWindow(new Date("2026-09-16T04:30:00Z")), false); // 07:30
+  assert.equal(inQuietWindow(new Date("2026-09-16T14:00:00Z")), false); // 17:00
+});
+t("the boundaries belong to the side that lets a person sleep", () => {
+  assert.equal(inQuietWindow(new Date("2026-09-16T18:59:00Z")), false); // 21:59
+  assert.equal(inQuietWindow(new Date("2026-09-16T19:00:00Z")), true);  // 22:00
+  assert.equal(inQuietWindow(new Date("2026-09-16T03:59:00Z")), true);  // 06:59
+  assert.equal(inQuietWindow(new Date("2026-09-16T04:00:00Z")), false); // 07:00
+});
+
+console.log("- old enough to stop being news -");
+const NOW = new Date("2026-09-16T12:00:00.000Z");
+t("a change from an hour ago is news; one from two days ago is not", () => {
+  assert.equal(isFresh({ at: "2026-09-16T11:00:00.000Z" }, NOW), true);
+  assert.equal(isFresh({ at: "2026-09-14T12:00:00.000Z" }, NOW), false);
+});
+t("a restored backup does not wake 24 coaches about last month", () => {
+  // No `before` snapshot means every entry in the log looks new — up to 150 of them. The
+  // age cap is what stops a restore or a migration from becoming a broadcast.
+  const monthOld = Array.from({ length: 150 }, (_, i) => ({ at: `2026-08-${String((i % 28) + 1).padStart(2, "0")}T08:00:00.000Z`, coachId: "c1" }));
+  assert.deepEqual(freshEntries(monthOld, NOW), []);
+});
+t("a clock skew into the future is not fresh either", () =>
+  assert.equal(isFresh({ at: "2026-09-17T12:00:00.000Z" }, NOW), false));
+t("an unreadable stamp is dropped rather than sent", () => {
+  assert.equal(isFresh({ at: "" }, NOW), false);
+  assert.equal(isFresh({}, NOW), false);
+  assert.equal(isFresh(null, NOW), false);
+});
+t("the window is twelve hours — a night plus the morning job", () =>
+  assert.equal(MAX_AGE_HOURS, 12));
+
+
 console.log("- devices, not people -");
 t("a coach with a phone and a tablet gets both", () => {
   const rows = [
@@ -125,9 +170,9 @@ t("no coach, no tokens", () => {
 });
 
 console.log("- the stored row -");
-t("email is normalised, the rest is carried", () => {
+t("the field is authorEmail — the name every ownership rule reads", () => {
   const d = tokenDoc({ token: "T", coachId: "c1", email: "Ronen@Club.IL", now: "2026-09-16T08:00:00.000Z" });
-  assert.deepEqual(d, { token: "T", coachId: "c1", email: "ronen@club.il", updatedAt: "2026-09-16T08:00:00.000Z" });
+  assert.deepEqual(d, { token: "T", coachId: "c1", authorEmail: "ronen@club.il", updatedAt: "2026-09-16T08:00:00.000Z" });
 });
 
 console.log("- dead tokens -");

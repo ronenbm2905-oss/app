@@ -18,6 +18,7 @@ import { VideosView } from "./components/VideosView";
 import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
+import { PushToggle } from "./components/PushToggle";
 import { PlayersView } from "./components/PlayersView";
 import { PlayerProgressView } from "./components/PlayerProgressView";
 import { ReportView } from "./components/ReportView";
@@ -298,6 +299,17 @@ export default function App() {
         ) : activeTab === "weekly" ? (
           <WeeklyScheduleView data={data} save={save} canEdit={canEdit} weekStart={weekStart} setWeekStart={setWeekStart} myCoachId={myCoachId} />
         ) : activeTab === "coach" ? (
+          <>
+          {/* On the coach's own board and nowhere else: it is about THIS person's schedule
+              and THIS device, and a manager browsing another coach's week has nothing to
+              subscribe to. `selfCoachId` rather than `myCoachId` so a manager who also
+              coaches can subscribe to their own squads — the same distinction the progress
+              screen needed. */}
+          <PushToggle
+            coachId={selfCoachId}
+            coachName={user?.displayName || ""}
+            email={myEmail}
+          />
           <CoachView
             data={data}
             fixedCoachId={myCoachId}
@@ -309,6 +321,7 @@ export default function App() {
             authorName={user?.displayName || user?.email || ""}
             authorEmail={myEmail}
           />
+          </>
         ) : activeTab === "videos" ? (
           <VideosView
             data={data}

@@ -149,6 +149,26 @@ service cloud.firestore {
       allow read, write: if isClubAdmin(clubId);
     }
 
+    // One row per device: clubs/{id}/pushTokens/{token}
+    //
+    // NOTE THE FIELD NAME. Ownership here is measured by `authorEmail`, exactly as in every
+    // other collection — if the row were stored under `email`, this block would review
+    // cleanly, look right, and fail only at run time: the coach could not delete their own
+    // row, which means they could not turn notifications OFF. That is the warning already
+    // written at the top of this file, and this is where it would have cost the most.
+    //
+    // Read is OWNER-ONLY, not `isClubMember`. A single device row is not sensitive; the
+    // collection is — it is a map of which coach holds which devices, next to their email
+    // addresses, and no coach has any reason to read another's. The sending process runs
+    // with a service account and bypasses these rules entirely, so nothing here is in its
+    // way; this block exists solely to constrain the browser.
+    match /clubs/{clubId}/pushTokens/{token} {
+      allow read: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
+      allow create: if isClubMember(clubId) && ownsIncoming();
+      allow update: if isClubMember(clubId) && ownsExisting() && ownsIncoming();
+      allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
+    }
+
     // Finished months moved out of the club document, one per month.
     //
     // Read is the same audience as the club document itself — admins AND members — and

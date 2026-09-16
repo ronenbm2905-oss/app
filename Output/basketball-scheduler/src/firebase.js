@@ -14,6 +14,10 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Exported for the messaging service worker, which is fetched standalone and therefore
+// cannot read import.meta.env — it receives these in its registration URL instead.
+export { firebaseConfig };
+
 // Consider Firebase "configured" only when the essential keys are present.
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
