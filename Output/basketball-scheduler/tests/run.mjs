@@ -19,6 +19,7 @@ const FILES = [
   "./recurringtype.test.mjs",
   "./archive.test.mjs",
   "./hallavailability.test.mjs",
+  "./pushtargets.test.mjs",
 ];
 
 for (const f of FILES) {
