@@ -4,6 +4,7 @@ import {
   wouldLockOut, brokenEntries, documentBytes, sizeStatus, DOC_LIMIT_BYTES,
 } from "../utils/access";
 import { IconTrash, IconCheck, IconAlert, IconUserPlus } from "./ui/icons";
+import { usePushTokenCleanup } from "../hooks/usePushTokenCleanup";
 
 // Under half a kilobyte still deserves a number rather than a bare 0.
 const KB = (b) => (b < 512 ? "פחות מ-1 KB" : `${Math.round(b / 1024)} KB`);
@@ -15,6 +16,10 @@ const wontEnter = (n) =>
     ? "כתובת אחת לא תיכנס בפועל — היא שמורה עם אותיות גדולות"
     : `${n} כתובות לא ייכנסו בפועל — הן שמורות עם אותיות גדולות`;
 const wereFixed = (n) => (n === 1 ? "כתובת אחת תוקנה" : `${n} כתובות תוקנו`);
+const devicesDropped = (n) =>
+  n === 1
+    ? " נמחק גם רישום ההתראות במכשיר שלו/ה."
+    : ` נמחקו גם רישומי ההתראות ב-${n} מכשירים שלו/ה.`
 
 // Managing who can open the club, without going into the Firebase console.
 //
@@ -25,6 +30,8 @@ export function AccessCard({ data, save, currentEmail }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [msg, setMsg] = useState("");
+  const [removing, setRemoving] = useState("");
+  const dropPushTokens = usePushTokenCleanup();
 
   const rows = accessList(data);
   const broken = brokenEntries(data);
@@ -41,13 +48,23 @@ export function AccessCard({ data, save, currentEmail }) {
     setMsg(`${e} נוסף${role === "admin" ? " כמנהל" : " כצופה"}.`);
   };
 
-  const remove = (target) => {
+  // Access and the phone go together. See usePushTokenCleanup for why the device rows are
+  // removed FIRST, and why a failure to remove them is said out loud instead of swallowed.
+  const remove = async (target) => {
     if (wouldLockOut(data, target)) {
       setMsg("זה המנהל האחרון. אם תסיר אותו, איש לא יוכל לערוך — ואי אפשר לתקן את זה מתוך האפליקציה.");
       return;
     }
+    if (removing) return;
+    setRemoving(target);
+    const cleanup = await dropPushTokens(target);
     save(revokeAccess(data, target));
-    setMsg(`${target} הוסר.`);
+    setRemoving("");
+    setMsg(
+      cleanup.ok
+        ? `${target} הוסר.${cleanup.removed ? devicesDropped(cleanup.removed) : ""}`
+        : `${target} הוסר, אך לא הצלחנו למחוק את רישומי ההתראות במכשירים שלו/ה — ייתכן שימשיכו להגיע אליו/ה. נסה/י להסיר שוב.`
+    );
   };
 
   const setRoleOf = (target, next) => {
@@ -140,8 +157,9 @@ export function AccessCard({ data, save, currentEmail }) {
                 </select>
                 <button
                   onClick={() => remove(r.email)}
+                  disabled={Boolean(removing)}
                   aria-label={`הסר ${r.email}`}
-                  className="w-11 h-11 flex items-center justify-center rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50"
+                  className="w-11 h-11 flex items-center justify-center rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
                 >
                   <IconTrash size={15} />
                 </button>
