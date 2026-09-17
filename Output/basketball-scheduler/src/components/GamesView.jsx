@@ -543,7 +543,12 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                 {filtered.map((g, i) => {
                   const result = gameResult(g);
                   const resultColor = result === "win" ? "#16A34A" : result === "loss" ? "#DC2626" : "#CA8A04";
-                  if (canEdit && editingCode === g.federationCode && (g.manual || !g.isHome)) {
+                  // A federation HOME fixture used to be the one thing on this screen that
+                  // could not be opened at all — its hall was assumed known, because it is
+                  // ours. It is not: the club plays in fifteen halls, and a cup fixture
+                  // arrives with the federation's own venue text or with none. So the same
+                  // editor opens for it, and the hall is the field it is for.
+                  if (canEdit && editingCode === g.federationCode ) {
                     const saveGame = (game) => {
                       const nextGames = games.map((x) =>
                         x.federationCode === game.federationCode ? game : x
@@ -639,12 +644,12 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                             </button>
                           </div>
                         )}
-                        {canEdit && !g.manual && !g.isHome && (
+                        {canEdit && !g.manual && (
                           <button
                             onClick={() => setEditingCode(g.federationCode)}
                             className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0"
-                            aria-label="ערוך כתובת"
-                            title={g.isHome ? "ערוך כתובת" : "ערוך כתובת ונהג (להסעות)"}
+                            aria-label={g.isHome ? "ערוך אולם" : "ערוך כתובת"}
+                            title={g.isHome ? "ערוך אולם" : "ערוך כתובת ונהג (להסעות)"}
                           >
                             <IconPencil size={14} />
                           </button>
