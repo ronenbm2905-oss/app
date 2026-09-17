@@ -38,7 +38,12 @@ function useLocalPendingImport(isAdmin) {
     }
   }, []);
 
-  return { pending, resolvePending };
+  // The same shape offline, so the review screen never has to ask which mode it is in.
+  const narrowPending = useCallback((_id, next) => {
+    setPending(next && !next.empty ? { ...next, status: "pending" } : null);
+  }, []);
+
+  return { pending, resolvePending, narrowPending };
 }
 
 function useCloudPendingImport(user, isAdmin) {
@@ -88,7 +93,29 @@ function useCloudPendingImport(user, isAdmin) {
     [user?.email]
   );
 
-  return { pending, resolvePending };
+  // Part of a proposal approved, the rest still waiting.
+  //
+  // The document SHRINKS rather than being marked up. Anything still listed is still open,
+  // so a proposal half-approved this morning and reopened tonight cannot offer the same
+  // fixtures a second time — and the count on the banner stays true without a second field
+  // to keep in step with the first.
+  const narrowPending = useCallback(
+    async (id, next) => {
+      if (!isFirebaseConfigured || !id) return;
+      await updateDoc(doc(db, "clubs", CLUB_ID, "pendingImports", id), {
+        added: next.added || [],
+        updated: next.updated || [],
+        cancelled: next.cancelled || [],
+        restored: next.restored || [],
+        summary: next.summary || {},
+        partiallyApprovedAt: new Date().toISOString(),
+        partiallyApprovedBy: user?.email || "",
+      });
+    },
+    [user?.email]
+  );
+
+  return { pending, resolvePending, narrowPending };
 }
 
 export function usePendingImport(user, isAdmin) {

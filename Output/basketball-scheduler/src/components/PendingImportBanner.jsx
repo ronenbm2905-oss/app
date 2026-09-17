@@ -12,7 +12,7 @@ const when = (iso) => {
 // It names the numbers rather than saying "there is an update", because the decision the
 // manager is being asked for is whether those numbers look right. "3 changed" invites a
 // look; "an update is available" invites a reflexive yes.
-export function PendingImportBanner({ pending, data, save, resolvePending }) {
+export function PendingImportBanner({ pending, data, save, resolvePending, narrowPending }) {
   const [open, setOpen] = useState(false);
   if (!pending) return null;
 
@@ -64,6 +64,7 @@ export function PendingImportBanner({ pending, data, save, resolvePending }) {
           data={data}
           save={save}
           resolvePending={resolvePending}
+          narrowPending={narrowPending}
           onClose={() => setOpen(false)}
         />
       )}

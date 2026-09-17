@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { applyProposal } from "../utils/pendingImport";
+import { applyProposal, groupProposalByTeam, withoutCodes } from "../utils/pendingImport";
 import { IconX, IconCheck, IconAlert } from "./ui/icons";
 
 // The list of everything a federation file would change, and the decision.
@@ -21,12 +21,16 @@ function Section({ title, tone = "stone", items, children }) {
   );
 }
 
-export function ImportReview({ pending, data, save, resolvePending, onClose }) {
+export function ImportReview({ pending, data, save, resolvePending, narrowPending, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // A file the checks flagged has to be acknowledged on its own before the approve button
   // will do anything. It is the one case where a habitual click is the actual danger.
   const [acknowledged, setAcknowledged] = useState(false);
+  const [openTeam, setOpenTeam] = useState("");
+  // Resolved against the games the club holds NOW, so a change keyed by code alone still
+  // lands under the squad it belongs to.
+  const groups = groupProposalByTeam(pending, data.teams, data.games);
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && !busy && onClose();
@@ -37,12 +41,23 @@ export function ImportReview({ pending, data, save, resolvePending, onClose }) {
   const s = pending.summary || {};
   const blocked = Boolean(s.suspicious) && !acknowledged;
 
-  async function approve() {
+  // `group` omitted approves everything, exactly as before.
+  async function approve(group) {
     if (busy || blocked) return;
     setBusy(true);
     setError("");
     try {
-      await save(applyProposal(data, pending, new Date().toISOString()));
+      const codes = group ? group.codes : null;
+      await save(applyProposal(data, pending, new Date().toISOString(), codes));
+      const rest = codes ? withoutCodes(pending, codes) : null;
+      // The board is written FIRST. If narrowing then fails, the squad is on the board and
+      // still listed as pending — an offer to redo something already done, which the apply
+      // itself is built to absorb. The other order loses the fixtures with no trace.
+      if (rest && !rest.empty) {
+        await narrowPending(pending.id, rest);
+        setBusy(false);
+        return;
+      }
       await resolvePending(pending.id, "approved");
       onClose();
     } catch {
@@ -96,36 +111,59 @@ export function ImportReview({ pending, data, save, resolvePending, onClose }) {
             </div>
           )}
 
-          <Section title="משחקים חדשים" tone="green" items={pending.added}>
-            {(pending.added || []).map((a) => (
-              <p key={a.code} className="text-xs text-stone-700 px-3 py-1.5">{a.label}</p>
-            ))}
-          </Section>
-
-          <Section title="שינויים" tone="amber" items={pending.updated}>
-            {(pending.updated || []).map((u) => (
-              <div key={u.code} className="px-3 py-1.5">
-                <p className="text-xs text-stone-700">{u.label}</p>
-                {u.fields.map((f) => (
-                  <p key={f.key} className="text-[11px] text-stone-500 mt-0.5">
-                    {f.label}: <span className="line-through">{f.before}</span> ← <span className="font-semibold text-stone-800">{f.after}</span>
-                  </p>
-                ))}
+          {/* One squad at a time.
+              A season published in one go is three hundred rows, and three hundred rows
+              approved in one click is a review nobody performed. Twenty fixtures for one
+              squad is a list a person can look at and actually say yes to — and a squad
+              approved leaves the proposal, so the rest can wait until tomorrow. */}
+          {groups.map((g) => {
+            const isOpen = openTeam === g.teamId;
+            return (
+              <div key={g.teamId || "none"} className={`border rounded-lg overflow-hidden ${g.teamId ? "border-stone-200" : "border-amber-300"}`}>
+                <div className="flex items-center gap-2 bg-stone-50 px-3 py-1.5 border-b border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setOpenTeam(isOpen ? "" : g.teamId)}
+                    aria-expanded={isOpen}
+                    className="flex-1 text-right text-xs font-semibold text-stone-700"
+                  >
+                    {isOpen ? "▾" : "▸"} {g.name} ({g.count})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => approve(g)}
+                    disabled={busy || blocked}
+                    className="text-[11px] font-semibold text-white bg-brand-600 hover:bg-brand-700 px-2 py-1 rounded-md disabled:opacity-40"
+                  >
+                    אשר קבוצה
+                  </button>
+                </div>
+                {isOpen && (
+                  <div className="divide-y divide-stone-100 max-h-56 overflow-y-auto">
+                    {g.added.map((a) => (
+                      <p key={a.code} className="text-xs text-green-800 px-3 py-1.5">חדש · {a.label}</p>
+                    ))}
+                    {g.updated.map((u) => (
+                      <div key={u.code} className="px-3 py-1.5">
+                        <p className="text-xs text-stone-700">שינוי · {u.label}</p>
+                        {(u.fields || []).map((f) => (
+                          <p key={f.key} className="text-[11px] text-stone-500 mt-0.5">
+                            {f.label}: <span className="line-through">{f.before}</span> ← <span className="font-semibold text-stone-800">{f.after}</span>
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                    {g.cancelled.map((c) => (
+                      <p key={c.code} className="text-xs text-red-700 px-3 py-1.5">בוטל · {c.label}</p>
+                    ))}
+                    {g.restored.map((c) => (
+                      <p key={c.code} className="text-xs text-green-800 px-3 py-1.5">חזר ללוח · {c.label}</p>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </Section>
-
-          <Section title="בוטלו" tone="red" items={pending.cancelled}>
-            {(pending.cancelled || []).map((c) => (
-              <p key={c.code} className="text-xs text-stone-700 px-3 py-1.5">{c.label}</p>
-            ))}
-          </Section>
-
-          <Section title="חזרו ללוח" tone="green" items={pending.restored}>
-            {(pending.restored || []).map((c) => (
-              <p key={c.code} className="text-xs text-stone-700 px-3 py-1.5">{c.label}</p>
-            ))}
-          </Section>
+            );
+          })}
 
           <p className="text-[11px] text-stone-500">
             משחק שבוטל נשאר בלוח עם סימון, ולא נמחק — מאמן שכבר ראה אותו צריך לדעת שהוא ירד.
@@ -144,12 +182,12 @@ export function ImportReview({ pending, data, save, resolvePending, onClose }) {
             </button>
             <button
               type="button"
-              onClick={approve}
+              onClick={() => approve()}
               disabled={busy || blocked}
               title={blocked ? "אשר את ההערה למעלה קודם" : ""}
               className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 py-1.5 rounded-md disabled:opacity-40"
             >
-              <IconCheck size={13} /> {busy ? "מעדכן…" : "אשר ועדכן"}
+              <IconCheck size={13} /> {busy ? "מעדכן…" : "אשר הכל"}
             </button>
           </div>
         </div>

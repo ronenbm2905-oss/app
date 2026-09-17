@@ -97,7 +97,7 @@ function ClubApp() {
   const { plans, savePlan } = useTrainingPlans(user, isAdmin, myEmail);
   // Only a manager is offered the nightly federation proposal — a coach has nothing to
   // decide about an import, and the listener is not even opened for them.
-  const { pending, resolvePending } = usePendingImport(user, isAdmin);
+  const { pending, resolvePending, narrowPending } = usePendingImport(user, isAdmin);
   // Cup fixtures are published separately from the weekly file, one page per age group.
   // Same arrangement: the scanner proposes, a manager decides. See scripts/scan-cups.mjs.
   const { scan: cupScan, resolveScan: resolveCupScan } = useCupScan(user, isAdmin);
@@ -241,7 +241,7 @@ function ClubApp() {
 
         {isAdmin && pending && (
           <div className="mb-4">
-            <PendingImportBanner pending={pending} data={data} save={save} resolvePending={resolvePending} />
+            <PendingImportBanner pending={pending} data={data} save={save} resolvePending={resolvePending} narrowPending={narrowPending} />
           </div>
         )}
 
