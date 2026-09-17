@@ -173,3 +173,62 @@ t("the vendor's sheet and the coach's board agree by construction", () => {
 });
 
 console.log("\n" + pass + " tests passed (incl. gate #7)");
+
+// ── one trip that does not follow the club's standing rule ────────────────────────────
+{
+  const { departureFor, withDeparture, buildTransportRows } = await import("../src/utils/transport.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+
+  const game = { federationCode: "g1", teamId: "t1", isHome: false, time: "16:30", date: "08-10-2026", opponent: "חולון" };
+
+  ok("with no override, the club rule decides", () => {
+    const d = departureFor(game, 90);
+    a.equal(d.time, "15:00");
+    a.equal(d.manual, false);
+    a.equal(d.stale, false);
+  });
+
+  ok("a manual departure wins over the rule", () => {
+    const [g] = withDeparture([game], "g1", "14:15");
+    const d = departureFor(g, 90);
+    a.equal(d.time, "14:15");
+    a.equal(d.manual, true);
+  });
+
+  ok("it is stored against the game time it was decided for", () => {
+    const [g] = withDeparture([game], "g1", "14:15");
+    a.deepEqual(g.departOverride, { at: "14:15", forGameTime: "16:30" });
+  });
+
+  ok("THE ONE THAT MATTERS: a fixture that moved drops the manual time and says so", () => {
+    const [g] = withDeparture([game], "g1", "14:15");
+    const moved = { ...g, time: "20:00" };
+    const d = departureFor(moved, 90);
+    a.equal(d.time, "18:30");       // the rule, recomputed from the new tip-off
+    a.equal(d.manual, false);
+    a.equal(d.stale, true);         // and the screen is told to say why
+  });
+
+  ok("clearing it returns the game to the rule, leaving no empty field behind", () => {
+    const [set] = withDeparture([game], "g1", "14:15");
+    const [cleared] = withDeparture([set], "g1", "");
+    a.equal("departOverride" in cleared, false);
+    a.equal(departureFor(cleared, 90).time, "15:00");
+  });
+
+  ok("only the game named is touched", () => {
+    const other = { ...game, federationCode: "g2" };
+    const out = withDeparture([game, other], "g1", "14:15");
+    a.equal("departOverride" in out[1], false);
+  });
+
+  ok("the sheet carries the manual time, and marks the row", () => {
+    const [g] = withDeparture([game], "g1", "14:15");
+    const rows = buildTransportRows([g], { teams: [{ id: "t1", name: "ילדים א" }], coaches: [], departBefore: 90, pickupPoint: "ברק" });
+    a.equal(rows[0].arriveTime, "14:15");
+    a.equal(rows[0].manualDeparture, true);
+  });
+
+  console.log("\n7 departure tests passed");
+}

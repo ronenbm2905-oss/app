@@ -5,7 +5,7 @@ import { colorFor, sessionTypeColor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { absencesOn, absenceLabel, absenceCoversSession, hallClosuresOn } from "../utils/availability";
 import { secretaryDutiesFor, secretaryLabel, secretaryWhen, shortDate } from "../utils/secretary";
-import { driverLine, assemblyTime, departBeforeOf } from "../utils/transport";
+import { driverLine, assemblyTime, departureFor, departBeforeOf } from "../utils/transport";
 import { Select } from "./ui/Select";
 import { AddToCalendarButton } from "./AddToCalendarButton";
 import { TrainingPlanForm } from "./TrainingPlanForm";
@@ -138,7 +138,7 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
       // NOT folded into `what` — that cell already carries opponent, venue and two clock
       // times, and the one line a parent has to act on would be the easiest to miss. The
       // driver's name and number stay out of this table entirely; it leaves the building.
-      assembly: assemblyTime(gameForSession(s), departBefore),
+      assembly: departureFor(gameForSession(s), departBefore).time,
     })),
     ...reportDuties.map((d, i) => ({
       key: `duty-${d.gameKey || i}`,
@@ -350,7 +350,7 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                                   same rule as everywhere else — own board only. */}
                               {(() => {
                                 const game = gameForSession(s);
-                                const assembly = assemblyTime(game, departBefore);
+                                const assembly = departureFor(game, departBefore).time;
                                 const driver = driverLine(game, isOwnBoard);
                                 if (!assembly && !driver) return null;
                                 return (

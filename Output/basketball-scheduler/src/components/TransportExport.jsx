@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { CLUB_PICKUP_POINT } from "../constants";
+import { TransportRowEdits } from "./TransportRowEdits";
 import { formatWeekRange } from "../utils/dates";
 import {
   awayGamesForWeek,
@@ -158,6 +159,10 @@ export function TransportExport({ data, save, weekStart, setWeekStart }) {
           </table>
         </div>
       )}
+
+      {/* Editing one trip lives with the sheet it changes, not on the games screen: the
+          person moving a departure is looking at this table when they decide to. */}
+      <TransportRowEdits data={data} save={save} awayGames={awayGames} />
 
       <div className="flex flex-wrap gap-2">
         <button

@@ -223,12 +223,17 @@ export function importGamesFile(rawRows, data) {
           // phone number does — it is for one journey. Carried unconditionally, the nightly
           // sync would copy it onto a finished game every night for ever, on a record
           // nobody ever opens again.
-          const { addressOverride, timeOverride, driverName, driverPhone } = nextGames[idx];
+          const { addressOverride, timeOverride, driverName, driverPhone, departOverride, hallId } = nextGames[idx];
           const keepDriver = !isPastGame(game);
           nextGames[idx] = {
             ...game,
             ...(addressOverride ? { addressOverride } : {}),
             ...(timeOverride ? { timeOverride } : {}),
+            // A departure set by hand for ONE trip, and the hall chosen for a home fixture.
+            // Both are decisions about a game the federation file has no opinion on, so a
+            // nightly re-sync must not quietly undo them — the same bargain the address has.
+            ...(departOverride ? { departOverride } : {}),
+            ...(hallId ? { hallId } : {}),
             ...(keepDriver && driverName ? { driverName } : {}),
             ...(keepDriver && driverPhone ? { driverPhone } : {}),
           };

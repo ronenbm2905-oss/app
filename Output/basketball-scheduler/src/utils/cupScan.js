@@ -153,7 +153,8 @@ export function draftToGame(draft, teamId, hallId) {
 // replace would quietly undo a decision — the squad it was filed under, a block nudged on
 // the board, an address typed because the federation's was wrong, the driver for the bus.
 export const MANAGER_OWNED = [
-  "teamId", "hallId", "timeOverride", "addressOverride", "driverName", "driverPhone",
+  "teamId", "hallId", "timeOverride", "addressOverride", "departOverride",
+  "driverName", "driverPhone",
   "ourScore", "theirScore",
 ];
 

@@ -66,6 +66,38 @@ export function departBeforeOf(data) {
 // A home game returns "" — the club orders no bus to its own hall — and so does a game
 // that was called off, which is the same rule `awayGamesForWeek` applies to the vendor's
 // sheet. Two screens, one answer.
+// One game's departure, when the club's standing rule does not fit it.
+//
+// The rule is a single number for the whole club — gather N minutes before tip-off. Most
+// weeks that is right. Some weeks it is not: a long drive, a coach who wants the squad
+// there early, a bus that can only come later. Before this, the only way to move one trip
+// was to change the number for every trip.
+//
+// The override stores an ABSOLUTE time, because that is what a person decides — "we leave
+// at three" — and it stores the game time it was decided against. THAT SECOND FIELD IS THE
+// POINT: if the fixture later moves, an absolute departure quietly becomes wrong, and a
+// sheet that says 15:00 for a game that is now at 20:00 is worse than no sheet. So a moved
+// fixture drops back to the club rule and SAYS it did, rather than carrying a stale time
+// that still looks deliberate.
+export function departureFor(game, departBefore = DEFAULT_DEPART_BEFORE) {
+  const computed = assemblyTime(game, departBefore);
+  const at = String(game?.departOverride?.at || "").trim();
+  if (!at) return { time: computed, manual: false, stale: false };
+  const setFor = String(game?.departOverride?.forGameTime || "");
+  if (setFor !== String(game?.time || "")) return { time: computed, manual: false, stale: true };
+  return { time: at, manual: true, stale: false };
+}
+
+// Setting and clearing it, on the game record itself so it travels with the fixture and
+// survives a re-import the same way the address and the driver do.
+export function withDeparture(games, federationCode, at) {
+  return (Array.isArray(games) ? games : []).map((g) => {
+    if (String(g?.federationCode) !== String(federationCode)) return g;
+    const clean = String(at || "").trim();
+    if (!clean) { const { departOverride, ...rest } = g; return rest; }
+    return { ...g, departOverride: { at: clean, forGameTime: String(g.time || "") } };
+  });
+}
 export function assemblyTime(game, departBefore = DEFAULT_DEPART_BEFORE) {
   if (!game || game.isHome || game.cancelled) return "";
   return timeMinus(game.time, departBefore);
@@ -119,7 +151,9 @@ export function buildTransportRows(awayGames, { teams, coaches, departBefore, pi
       address: g.addressOverride || g.venue || "", // manual override wins over the file's מיקום column
       coachName: coach?.name || "",
       coachPhone: coach?.phone || "",
-      arriveTime: assemblyTime(g, departBefore), // gather at pickup point
+      arriveTime: departureFor(g, departBefore).time, // gather at pickup point
+      manualDeparture: departureFor(g, departBefore).manual,
+      staleDeparture: departureFor(g, departBefore).stale,
       pickupPoint: pickupPoint || "",
       returnTime: timePlus(g.time, GAME_DURATION_MIN), // end of game
       vehicle: team?.vehicleType || "",
