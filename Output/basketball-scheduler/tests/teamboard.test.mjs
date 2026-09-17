@@ -137,3 +137,53 @@ T("the token index adds and removes without touching the rest", () => {
 });
 
 console.log("\n" + count + " tests passed");
+
+// ── a fixture typed straight onto the board, with no game record behind it ────────────
+{
+  const { buildBoard: build } = await import("../src/utils/teamBoard.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+  const W2 = "2026-09-13";
+  const base = {
+    teams: [{ id: "t1", name: "נוער מחוזית" }],
+    halls: [{ id: "h1", name: "רימונים" }],
+    games: [],
+    sessions: [{
+      id: "x", teamId: "t1", hallId: "h1", day: "שלישי", start: "20:00", end: "22:00",
+      weekOf: W2, type: "משחק בית", opponent: "גבעתיים", notes: "אלון לא מגיע",
+    }],
+  };
+  const at = (iso) => new Date(iso + "T10:00:00");
+
+  ok("it reads as a GAME, not a training", () => {
+    const row = build(base, "t1", { now: at("2026-09-16") }).weeks[W2][0];
+    a.equal(row.kind, "game");
+    a.equal(row.home, true);
+  });
+
+  ok("the opponent comes from its own field", () => {
+    const row = build(base, "t1", { now: at("2026-09-16") }).weeks[W2][0];
+    a.equal(row.opponent, "גבעתיים");
+  });
+
+  ok("and the free-text note is STILL not published", () => {
+    const s = JSON.stringify(build(base, "t1", { now: at("2026-09-16") }));
+    a.equal(s.includes("אלון"), false);
+  });
+
+  ok("an away fixture typed this way is marked away", () => {
+    const away = { ...base, sessions: [{ ...base.sessions[0], type: "משחק חוץ" }] };
+    a.equal(build(away, "t1", { now: at("2026-09-16") }).weeks[W2][0].home, false);
+  });
+
+  ok("no fixture record means no invented gathering time", () => {
+    a.equal(build(base, "t1", { now: at("2026-09-16") }).weeks[W2][0].assembly, "");
+  });
+
+  ok("a plain training is untouched by any of this", () => {
+    const tr = { ...base, sessions: [{ ...base.sessions[0], type: "אימון", opponent: "" }] };
+    a.equal(build(tr, "t1", { now: at("2026-09-16") }).weeks[W2][0].kind, "training");
+  });
+
+  console.log("\n6 typed-fixture tests passed");
+}

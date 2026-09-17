@@ -62,6 +62,29 @@ export function TeamBoardPage({ token }) {
   const [state, setState] = useState("loading");
   const [weekIdx, setWeekIdx] = useState(0);
 
+  // Saving this page to a phone's home screen, and having it open THIS board.
+  //
+  // The club's manifest declares `start_url: "/"`, so a parent who added the page would get
+  // an icon that opens the club's login screen instead of their team's board — the one
+  // place they cannot go. Removing the manifest link is what fixes it: with no start_url to
+  // obey, both iOS and Android use the page that is open, which is exactly this board.
+  //
+  // The title is set too, because it is what the icon is labelled with.
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]');
+    if (link) link.remove();
+    return () => {
+      // Put it back if this page is ever rendered inside the app rather than on its own.
+      if (link && !document.querySelector('link[rel="manifest"]')) document.head.appendChild(link);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!board?.teamName) return;
+    document.title = board.teamName;
+    const apple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (apple) apple.setAttribute("content", board.teamName);
+  }, [board?.teamName]);
   useEffect(() => {
     let cancelled = false;
     if (!isFirebaseConfigured) { setState("error"); return; }

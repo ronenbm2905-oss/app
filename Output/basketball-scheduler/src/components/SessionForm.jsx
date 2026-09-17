@@ -21,6 +21,10 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
   const [end, setEnd] = useState(initial?.end || "17:00");
   const [type, setType] = useState(initial?.type || "אימון");
   const [notes, setNotes] = useState(initial?.notes || "");
+  // Its own field rather than the free-text note. The note is not published to parents —
+  // "אלון לא מגיע השבוע" is exactly what lands there — so an opponent written into it was
+  // invisible to everyone outside the club, and to the transport sheet as well.
+  const [opponent, setOpponent] = useState(initial?.opponent || "");
   const sessionIdRef = useRef(initial?.id || uid());
   const [copyMsg, setCopyMsg] = useState("");
 
@@ -34,11 +38,13 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
     setEnd(initial?.end || "17:00");
     setType(initial?.type || "אימון");
     setNotes(initial?.notes || "");
+    setOpponent(initial?.opponent || "");
   }, [initial]);
 
   const valid =
     teamId && coachId && hallId && day && start && end && timeToMinutes(start) < timeToMinutes(end);
 
+  const isGame = /^משחק/.test(type);
   const nameOf = (list, id) => list.find((x) => x.id === id)?.name || "—";
 
   // Team dropdown labels show the coach too ("קבוצה – מאמן"), so the manager sees who runs each team.
@@ -156,6 +162,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
     end,
     type,
     notes: notes.trim(),
+    ...(isGame && opponent.trim() ? { opponent: opponent.trim() } : {}),
     weekOf,
   };
 
@@ -205,6 +212,22 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
           <label className="text-xs text-stone-500 mb-1 block">סוג</label>
           <Select value={type} onChange={setType} options={SESSION_TYPES} placeholder="בחר סוג" />
         </div>
+
+      {/* Only for a fixture, and in its own field. The note beside it is never published */}
+      {isGame && (
+        <div>
+          <label className="text-xs text-stone-500 mb-1 block">יריב</label>
+          <input
+            type="text"
+            value={opponent}
+            onChange={(e) => setOpponent(e.target.value)}
+            placeholder="שם הקבוצה היריבה"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            dir="rtl"
+          />
+          <p className="text-[11px] text-stone-500 mt-1">מופיע להורים בלוח הקבוצה. הערה חופשית אינה מתפרסמת.</p>
+        </div>
+      )}
         <div>
           <label className="text-xs text-stone-500 mb-1 block">הערות (אופציונלי)</label>
           <input

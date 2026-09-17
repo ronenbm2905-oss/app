@@ -87,6 +87,26 @@ function rowFor(session, { hallName, gameOf, departBefore }) {
     };
   }
 
+  // A fixture the manager typed straight onto the board rather than entering on the games
+  // screen — ten of them existed on 17.9.2026. It is a game to everyone who reads it, so it
+  // reads as one here. The opponent comes from its own field and NOT from `notes`, which is
+  // free text and the one place a child's name turns up.
+  if (/^משחק/.test(session.type || "")) {
+    return {
+      kind: "game",
+      day: session.day,
+      start,
+      end,
+      opponent: String(session.opponent || "").trim(),
+      home: session.type === "משחק בית",
+      where: hallName(session.hallId),
+      // No fixture record means no tip-off time, so nothing to count back from. An
+      // invented gathering time would be worse than none.
+      assembly: "",
+      cancelled: Boolean(session.cancelled),
+    };
+  }
+
   return {
     kind: "training",
     day: session.day,
