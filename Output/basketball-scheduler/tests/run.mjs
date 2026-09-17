@@ -22,6 +22,7 @@ const FILES = [
   "./pushtargets.test.mjs",
   "./daycopy.test.mjs",
   "./teamboard.test.mjs",
+  "./cupscan.test.mjs",
 ];
 
 for (const f of FILES) {

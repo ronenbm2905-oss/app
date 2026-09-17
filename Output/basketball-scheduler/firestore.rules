@@ -149,6 +149,13 @@ service cloud.firestore {
       allow read, write: if isClubAdmin(clubId);
     }
 
+    // Cup fixtures found on the federation site, filed by scripts/scan-cups.mjs for a
+    // manager to accept. Same shape as pendingImports and for the same reason: nothing
+    // automated writes to the club document, so the proposal needs somewhere of its own.
+    match /clubs/{clubId}/cupScans/{scanId} {
+      allow read, write: if isClubAdmin(clubId);
+    }
+
     // One row per device: clubs/{id}/pushTokens/{token}
     //
     // NOTE THE FIELD NAME. Ownership here is measured by `authorEmail`, exactly as in every
