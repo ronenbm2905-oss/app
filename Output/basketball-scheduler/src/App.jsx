@@ -242,6 +242,14 @@ function ClubApp() {
         {isAdmin && pending && (
           <div className="mb-4">
             <PendingImportBanner pending={pending} data={data} save={save} resolvePending={resolvePending} />
+          </div>
+        )}
+
+        {/* Its own condition, not the import's. The two arrive from different jobs and one
+            is routinely empty — hanging this on `pending` meant the cup fixtures were
+            invisible on every day the federation file had not changed, which is most days. */}
+        {isAdmin && cupScan && (
+          <div className="mb-4">
             <CupScanBanner scan={cupScan} data={data} save={save} resolveScan={resolveCupScan} />
           </div>
         )}
