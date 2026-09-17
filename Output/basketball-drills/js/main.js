@@ -1,8 +1,8 @@
 /* חיווט הממשק ואתחול. המודול היחיד שרושם מאזינים לכפתורים. */
 import { ST } from "./state.js";
-import { addToken, attachOf, courtH, editablePath, hasNotes, migrate, newDrill, newId, nextUid, nowISO, posOf, readLib, removeToken, sanitizeDrill, setAttach, tok, writeLib } from "./model.js";
+import { addToken, attachOf, courtH, editablePath, hasNotes, migrate, newDrill, newId, nextUid, nowISO, posOf, readLib, removeToken, sanitizeDrill, setAttach, tok, tokLabel, writeLib } from "./model.js";
 import { ease, movePts, noteText, pathLen, pointAt, positionsAt, render } from "./render.js";
-import { dialog, draw, fillLoad, layout, openLibrary, place, renderLibrary, renderSteps, setCourt, snapshot, startPlay, status, stopPlay, syncSel, syncTags, syncUndo, toast, undo } from "./ui.js";
+import { dialog, draw, fillLoad, layout, openLibrary, place, renderLibrary, renderSteps, setCourt, snapshot, startPlay, status, stopPlay, syncSaveBtn, syncSel, syncTags, syncUndo, toast, undo } from "./ui.js";
 import { simplify } from "./interact.js";
 import { BUILD, deliver, exportView, loadGif, narEnd, narNext, narStart } from "./export.js";
 
@@ -48,7 +48,12 @@ document.getElementById("delPathBtn").onclick = ()=>{
   toast("המסלול נמחק · התנועה חזרה לקו ישר");
 };
 
-document.getElementById("delTok").onclick = ()=>{ if(ST.sel){ snapshot(); removeToken(ST.sel); syncSel(); draw(); } };
+document.getElementById("delTok").onclick = ()=>{
+  if(!ST.sel) return;
+  const label = tokLabel(tok(ST.sel));
+  snapshot(); removeToken(ST.sel); syncSel(); draw();
+  toast("נמחק: " + label);
+};
 
 document.getElementById("undoBtn").onclick = undo;
 
@@ -107,7 +112,7 @@ document.getElementById("newBtn").onclick = ()=>{
   if(!confirm("להתחיל תרגיל חדש?")) return;
   ST.D=newDrill(); ST.cur=0; ST.sel=null; ST.undoStack=[]; syncUndo();
   document.getElementById("name").value=ST.D.name;
-  renderSteps(); syncSel(); syncTags(); layout();
+  renderSteps(); syncSel(); syncTags(); syncSaveBtn(); layout();
 };
 
 document.getElementById("saveBtn").onclick = ()=>{

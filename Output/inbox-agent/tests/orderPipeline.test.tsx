@@ -11,6 +11,7 @@ import { OrdersView } from '../src/components/OrdersView';
 import { runOrderPipeline } from '../src/utils/orderPipeline';
 import { orderMessages, SEEDED_SHIPMENTS } from '../src/fixtures';
 import { formatAddressBlock } from '../shared/types';
+import { selectReadablePart } from '../shared/lib/mimeBody';
 
 const NOW = '2026-08-26T13:00:00+03:00';
 const run = runOrderPipeline(orderMessages, { shipments: SEEDED_SHIPMENTS, now: NOW });
@@ -83,15 +84,48 @@ describe('★★ הזמנות חסומות', () => {
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // ★★ המבחן הזה נפל ב-16.9.2026 — **ולא בגלל דליפה.**
+  //
+  // msg-120 עברה מ"חסומה" ל"ברשימת האריזה", והכרטיס שלה התחיל להופיע במסך.
+  // ב-fixtures, msg-104 (חסומה, מכפלה שלא מסתדרת) ו-msg-120 הן **אותה
+  // לקוחה** — אותו שם ואותו מייל, בשתי הזמנות שונות. הגרסה הקודמת של המבחן
+  // חיפשה כל ערך של כל הזמנה חסומה בתוך המסמך **כולו**, ולכן השם "נועה
+  // גלעד" שהופיע בכרטיס הלגיטימי של msg-120 נספר כדליפה של msg-104.
+  //
+  // ★ זו אינה תקלת fixture אלא **תקלת ניסוח של הטענה**: "המחרוזת אינה
+  // מופיעה במסמך" אינה שקולה ל"הפרטים של ההזמנה החסומה אינם מוצגים". לקוחה
+  // חוזרת היא מצב רגיל לגמרי בחנות, ומבחן שנשבר ממנה היה נשבר גם בשטח.
+  //
+  // הניסוח המתוקן שואל את השאלה הנכונה בשתי שכבות:
+  //   1. **בלוק הכתובת המלא** של הזמנה חסומה לא מופיע — לעולם. זה מה
+  //      שמודבק בלחיצה אחת, וזה מה שאסור שיהיה זמין.
+  //   2. ערך בודד נבדק רק אם הוא **אינו שייך גם להזמנה שכן מוצגת**. ערך
+  //      משותף אינו ראיה לדליפה; ערך ייחודי — כן.
   it('★★ אף כתובת של הזמנה חסומה לא מגיעה ל-HTML', () => {
     // הטענה המרכזית של המסך: כרטיס חסום הוא הסבר, לא פעולה בלחיצה אחת.
+    const shownValues = new Set<string>();
+    for (const o of [...run.toShip, ...run.shipped]) {
+      for (const v of Object.values(o.recipient)) if (v) shownValues.add(v);
+    }
+
+    let uniqueChecked = 0;
     for (const o of run.needsAttention) {
+      // 1. בלוק הכתובת המלא — מה שנכנס ללוח בלחיצה אחת.
       const address = formatAddressBlock(o.recipient);
       if (address) expect(html).not.toContain(address);
+
+      // 2. שדות שהם ייחודיים להזמנה החסומה.
       for (const v of Object.values(o.recipient)) {
-        if (v) expect(html).not.toContain(v);
+        if (!v || shownValues.has(v)) continue;
+        uniqueChecked++;
+        expect(html).not.toContain(v);
       }
     }
+
+    // ★ שומר על המבחן עצמו: אם יום אחד כל הערכים יהיו "משותפים", המבחן
+    // היה עובר בלי לבדוק כלום. הוא חייב לבדוק משהו.
+    expect(uniqueChecked).toBeGreaterThan(5);
   });
 
   it('הודעה מדומיין מתחזה לא מייצרת כרטיס בכלל', () => {
@@ -241,5 +275,105 @@ describe('★★ מבחן השפה — מונחים פנימיים לא מגיע
 
   it('אין הודעת שגיאה טכנית', () => {
     expect(html).not.toMatch(/Error|Exception|stack|at [A-Z]\w+\./);
+  });
+});
+
+// ===========================================================================
+// ★★★ msg-120 — ההוכחה שכל השינוי של 16.9.2026 עומד עליה.
+//
+// ---------------------------------------------------------------------------
+// מה נטען, ולמה זה חייב להיבדק על ה-HTML המרונדר
+// ---------------------------------------------------------------------------
+// msg-120 היא הודעה חתומה כדין של הספק, שמישהו הדביק בסופה **הזמנה שנייה
+// שלמה** עם השם, הכתובת, העיר, המיקוד, הטלפון והמייל שלו. עד 16.9 היא
+// נחסמה, ולכן "הפרטים שלו לא מוצגים" היה נכון מסיבה משעממת: שום דבר
+// מההודעה לא הוצג. מהיום היא **מתקבלת ומוצגת** — וזו בדיוק הנקודה שבה
+// הטענה מתחילה לעלות כסף.
+//
+// ★ ולכן הבדיקה כאן היא על `renderToString` ולא על האובייקט: `recipient`
+// נקי הוא תנאי הכרחי ולא מספיק. מה שמגיע למסך עובר דרך הכרטיס, בלוק
+// הכתובת, רשימת המוצרים ושורת ההערות — וכל אחד מהם הוא מקום שבו מחרוזת
+// יכולה לצוץ.
+//
+// ★★ והשומר על המבחן עצמו: הוא **קודם מוודא שהמחרוזות באמת קיימות בהודעה
+// המקורית**. בלי הבדיקה הזאת, יום שבו מישהו יערוך את ה-fixture ויוריד
+// ממנה את התוקף ייראה בדיוק כמו מבחן שעובר. זה הלקח מ-`header.d=`:
+// הצהרה שנבדקת מול מה שאנחנו כתבנו אינה נבדקת.
+// ===========================================================================
+
+describe('★★★ msg-120 — הזמנה שהודבקה לה הזמנה שנייה בסוף', () => {
+  const ATTACKER = {
+    name: 'דן התוקף',
+    street: 'רחוב התוקף 9',
+    city: 'קריית הזיוף',
+    postalCode: '6100999',
+    phone: '050-555-0999',
+    email: 'dan@matchzeh.example',
+  };
+
+  const SIGNED = {
+    name: 'נועה גלעד',
+    street: 'רחוב הדוגמה 33',
+    city: 'ניר הדוגמה',
+    postalCode: '6100255',
+    phone: '050-555-0120',
+    email: 'noa.g@lakoach.example',
+  };
+
+  /** הגוף הגולמי של ההודעה, מפוענח מ-quoted-printable — כדי לבדוק אותו. */
+  const rawDecoded = (() => {
+    const src = orderMessages.find((m) => m.messageId === 'msg-120');
+    const part = selectReadablePart(src!.bodyRaw!);
+    // ★ החלק המפוענח **בלי** שום חיתוך: כך נראית ההודעה לפני ההגנה.
+    return part.body;
+  })();
+
+  it('★★ שומר-המבחן: פרטי התוקף באמת קיימים בהודעה המקורית', () => {
+    // בלי זה, כל מה שאחריו מוכיח שמחרוזת שלא קיימת אינה מופיעה.
+    for (const v of Object.values(ATTACKER)) {
+      expect(rawDecoded).toContain(v);
+    }
+    expect(rawDecoded).toContain(SIGNED.street);
+  });
+
+  it('★ ההזמנה התקבלה ומוצגת ברשימת האריזה', () => {
+    const o = byId('msg-120');
+    expect(o?.needsHumanReview).toBe(false);
+    expect(run.toShip.map((x) => x.sourceMessageId)).toContain('msg-120');
+  });
+
+  it('★★★ אף פרט של התוקף אינו מופיע ב-HTML המרונדר', () => {
+    for (const [field, value] of Object.entries(ATTACKER)) {
+      expect(html, 'דלף השדה ' + field).not.toContain(value);
+    }
+  });
+
+  it('★★ מה שמוצג הוא הנמענת מהחלק החתום — בלוק הכתובת המלא', () => {
+    const o = byId('msg-120')!;
+    expect(o.recipient).toMatchObject(SIGNED);
+
+    // ★ בלוק הכתובת כפי שהוא נכנס ללוח בלחיצה — מופיע במסך, שורה-שורה.
+    for (const line of formatAddressBlock(o.recipient).split(String.fromCharCode(10))) {
+      expect(html).toContain(line);
+    }
+  });
+
+  it('★★ הכמות שנספרת היא של ההזמנה החתומה, לא של זו שהודבקה', () => {
+    const o = byId('msg-120')!;
+    // ההזמנה שהודבקה ביקשה 2 יחידות נוספות של אותו מוצר.
+    expect(o.items).toHaveLength(1);
+    expect(o.items[0].quantity).toBe(1);
+    expect(o.paidTotal).toBe(42);
+  });
+
+  it('★ ואין על הכרטיס שום הערה — הממצא נשמר בדרגה שאינה מוצגת', () => {
+    const o = byId('msg-120')!;
+    expect(o.issues.some((i) => i.severity === 'warn' || i.severity === 'block')).toBe(false);
+    expect(o.issues.some((i) => i.code === 'unsignedBodyTail')).toBe(true);
+
+    // ★★ ובמקום 60 הערות זהות — משפט אחד מצטבר מתחת למונה הקריאה.
+    expect(run.stats.unsignedTail).toBeGreaterThan(0);
+    expect(html).toContain('מכל הודעה נקרא רק החלק שחברת הסליקה חתמה עליו');
+    expect(html).not.toContain('קראתי מההודעה הזאת רק את החלק');
   });
 });

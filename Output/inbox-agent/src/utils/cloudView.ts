@@ -25,12 +25,23 @@
 import { applyRetention, expiringSoon } from '../../shared/lib/orderRetention';
 import { EMPTY_RECIPIENT, type Order } from '../../shared/types';
 import { ORDER_SOURCE_QUERY } from '../../shared/lib/orderSource';
+import {
+  EMPTY_READ_DIAGNOSTICS,
+  hydrateDiagnostics,
+  type ReadDiagnostics,
+} from '../../shared/lib/readDiagnostics';
 import type { OrderRunResult } from './orderPipeline';
 
 export interface CloudStats {
   /** ★ M18 — כמה הודעות נקראו בריצה האחרונה, ומאיפה. */
   messagesRead: number | null;
   readSources: string[];
+  /**
+   * ★★ המונים מהריצה האחרונה בשרת. `null` = עוד לא רצה ריצה שמדדה אותם
+   * (למשל חשבון שסונכרן לפני שהמדידה נוספה), ואז מוצג סיכום ריק ולא
+   * מספרים שנראים כמו אפס אמיתי.
+   */
+  diagnostics: ReadDiagnostics | null;
 }
 
 /**
@@ -95,6 +106,12 @@ export function cloudRunResult(
       unsignedTail: orders.filter((o) =>
         o.issues.some((i) => i.code === 'unsignedBodyTail'),
       ).length,
+      // ★★ השלמה ולא השמה: הריצה האחרונה נשמרה במסד **לפי הטיפוס של אז**,
+      // וכל מדד שנוסף מאז חסר בה. בלי ההשלמה, שדה חדש מפיל את המסך של מי
+      // שכבר סינכרן — נפילה שנראית כמו "הכלי נשבר" ואין לה קשר לנתונים.
+      diagnostics: stats.diagnostics
+        ? hydrateDiagnostics(stats.diagnostics)
+        : EMPTY_READ_DIAGNOSTICS,
       sourceQuery: ORDER_SOURCE_QUERY,
     },
   };

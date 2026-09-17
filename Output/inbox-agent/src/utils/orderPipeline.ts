@@ -40,7 +40,8 @@ import {
   type OrderBodyPart,
   type OrderSourceCandidate,
 } from '../../shared/lib/orderSource';
-import { isOrderSubject } from '../../shared/lib/orderParse';
+import { isOrderSubject, type OrderStructureMeasure } from '../../shared/lib/orderParse';
+import { summarizeReads, type ReadDiagnostics } from '../../shared/lib/readDiagnostics';
 import type { Order, OrderIssue } from '../../shared/types';
 import { LOCAL_USER_ID } from '../constants';
 
@@ -116,6 +117,14 @@ export interface OrderRunResult {
     readParts: string[];
     /** ★★ כמה הודעות היה בהן תוכן שנוסף אחרי החתימה, ונחתך. */
     unsignedTail: number;
+    /**
+     * ★★ המונים. **מספרים וקטגוריות בלבד** — ראה `readDiagnostics.ts`.
+     *
+     * הם נמדדים גם כאן, במסלול המקומי, ולא רק בענן — וזו לא כפילות: מה
+     * שנמדד במסלול המקומי הוא מה שנבדק במבחנים, ולכן הנוסחה שרונן יראה
+     * בצילום המסך היא נוסחה שיש עליה מבחן.
+     */
+    diagnostics: ReadDiagnostics;
     /** השאילתה הקבועה שממנה יגיעו ההודעות בפרוסה 1. מוצגת כמות שהיא. */
     sourceQuery: string;
   };
@@ -141,7 +150,7 @@ export function buildOrder(
   opts: OrderRunOptions = {},
   part?: OrderBodyPart,
 ): Order | null {
-  return buildOrderEntry(msg, opts, part)?.order ?? null;
+  return buildOrderEntry(msg, opts, part).entry?.order ?? null;
 }
 
 /** הזמנה + מפתח התוכן שלה. המפתח לא נשמר ברשומה — ראה `markDuplicates`. */
@@ -150,11 +159,18 @@ interface OrderEntry {
   contentKey: string | null;
 }
 
+/**
+ * ★★ מחזירה **גם** את מדידת המבנה, וגם כשההזמנה לא נבנתה.
+ *
+ * זה נראה כמו סיבוך של חתימה, והוא ההפך: הודעה שנחסמה היא בדיוק זו שצריך
+ * לדעת עליה עד איפה הקריאה הגיעה. חתימה שמחזירה `null` בלבד זורקת את
+ * המידע הזה — וזה מה שאילץ אותנו לנחש שלוש פעמים.
+ */
 function buildOrderEntry(
   msg: OrderFixtureMessage,
   opts: OrderRunOptions = {},
   part?: OrderBodyPart,
-): OrderEntry | null {
+): { entry: OrderEntry | null; structure: OrderStructureMeasure | null } {
   const parsed = parseOrderMessage({
     fromAddress: msg.fromAddress,
     subject: msg.subject,
@@ -168,7 +184,7 @@ function buildOrderEntry(
   });
 
   // הודעה שאינה מתיימרת להיות הזמנה כלל אינה עניינו של המסך הזה.
-  if (!parsed.isOrderCandidate) return null;
+  if (!parsed.isOrderCandidate) return { entry: null, structure: parsed.structure };
 
   const mark = opts.shipments?.[msg.messageId];
   const ts = nowIso(opts.now);
@@ -194,8 +210,11 @@ function buildOrderEntry(
   };
 
   return {
-    order: { ...base, purgeAfter: purgeDateFor(base, opts) },
-    contentKey: parsed.contentKey,
+    entry: {
+      order: { ...base, purgeAfter: purgeDateFor(base, opts) },
+      contentKey: parsed.contentKey,
+    },
+    structure: parsed.structure,
   };
 }
 
@@ -267,9 +286,13 @@ export function runOrderPipeline(
 
   const entries: OrderEntry[] = [];
   const openQuestions: OrderOpenQuestion[] = [];
+  const structures: OrderStructureMeasure[] = [];
 
   for (const msg of messages) {
-    const entry = buildOrderEntry(msg, opts, read.bodies.get(msg.messageId));
+    const { entry, structure } = buildOrderEntry(msg, opts, read.bodies.get(msg.messageId));
+    // ★ נאסף לפני הענף, בדיוק כמו `measures` ב-`readOrderBodies`.
+    if (structure) structures.push(structure);
+
     if (entry) {
       entries.push(entry);
       continue;
@@ -335,6 +358,7 @@ export function runOrderPipeline(
       readSources: read.sources,
       readParts: read.parts,
       unsignedTail: read.unsignedTailCount,
+      diagnostics: summarizeReads(read.measures, structures),
       sourceQuery: ORDER_SOURCE_QUERY,
     },
   };

@@ -4,10 +4,16 @@
 //   googleAuthStart      onCall      — מתחיל זרימת הרשאה. מחזיר URL.
 //   googleAuthCallback   onRequest   — הקולבק מגוגל. פודה code, שומר טוקן.
 //   checkConnection      onCall      — "האם החיבור חי?" בלי לגעת בתוכן.
+//   disconnectGoogle     onCall      — ניתוק יזום. מוחק טוקן, לא הזמנות.
 //   setSupportMode       onCall      — ★ B3′. **רק הבעלים.**
+//   markOrderShipped     onCall      — ★ סימון "נשלח" וביטולו. אחת או רבות.
 //   syncOrdersNow        onCall      — "לבדוק אם הגיעו הזמנות חדשות".
 //   syncOrders           onSchedule  — כל בוקר, שעון ישראל. ★ מדווח ריצה.
 //   purgeOrders          onSchedule  — 03:15, שעון ישראל. ★ A7.
+//
+// תשע, וכולן כאן. ★ הרשימה הזאת היא גם בדיקה: פונקציה שנוספה בקוד ולא
+// בשורות האלה היא פונקציה שאיש לא יודע שהיא קיימת — וב-`disconnectGoogle`
+// זה כבר קרה פעם אחת.
 //
 // ---------------------------------------------------------------------------
 // ★ `me-west1` — תל אביב
@@ -52,6 +58,11 @@ import {
   startAuthorization,
 } from './lib/oauthFlow';
 import { syncOrdersForUser, writeFailedRun } from './lib/orderSync';
+import {
+  applyShippedMarks,
+  MarkShippedError,
+  parseMarkShippedInput,
+} from './lib/shippedMarks';
 import { TokenStore } from './lib/tokenStore';
 
 setGlobalOptions({ region: 'me-west1', maxInstances: 4 });
@@ -210,6 +221,38 @@ export const setSupportMode = onCall(async (request) => {
 });
 
 // ---------------------------------------------------------------------------
+// ★ הסימון "נשלח"
+// ---------------------------------------------------------------------------
+
+/**
+ * ★★ **למה זו קריאה לשרת ולא כתיבה מהקליינט.**
+ *
+ * המצב "נשלח" שייך לדורית לגמרי — היא היחידה שיודעת אם החבילה יצאה, והיא
+ * היחידה שמשנה אותו. ובכל זאת הכתיבה עוברת כאן, כי `firestore.rules` הם
+ * `allow write: if false` על **כל** אוסף, בלי חריג אחד.
+ *
+ * זה לא עודף זהירות. ברגע שנפתח `allow update` על `orders` — ולו על שדה
+ * אחד — הכלל צריך לפרט **אילו** שדות מותרים, והוא הופך לבקרה שנשענת על
+ * ניסוח נכון של rules. כאן, לעומת זאת, ברור לגמרי מה נכתב: ארבעה שדות
+ * ב-`shippedMarks.ts`, ושום דבר אחר לא יכול להיכתב מהדפדפן בשום מסלול.
+ *
+ * ⚠️ ולכן גם: **`purgeAfter` מחושב כאן ולא בקליינט.** מסך ששולח תאריך
+ * מחיקה הוא מסך שיכול לשלוח תאריך אחר.
+ *
+ * ★ מסלול אחד לבודדת ולרבות — ראה ההערה בראש `shippedMarks.ts`.
+ */
+export const markOrderShipped = onCall(async (request) => {
+  try {
+    const input = parseMarkShippedInput(request.auth, request.data);
+    return await applyShippedMarks(db, input);
+  } catch (err) {
+    // ★ קוד ומשפט בעברית. **אין כאן פרטי שגיאה** — לא מהמסמך ולא מהמסד.
+    if (err instanceof MarkShippedError) throw new HttpsError(err.code, err.messageHe);
+    throw err;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // ★ הסנכרון
 // ---------------------------------------------------------------------------
 
@@ -270,6 +313,10 @@ export const syncOrdersNow = onCall({ secrets: SECRETS }, async (request) => {
     messagesRead: summary.messagesRead,
     readSources: summary.readSources,
     written: summary.written,
+    // ★★ המונים חוזרים גם בתשובה של הקריאה היזומה, ולא רק ב-`syncRuns`:
+    // מי שלוחצת "לבדוק אם הגיעו הזמנות" רוצה לראות מה קרה **עכשיו**, ולא
+    // להמתין ל-`onSnapshot` על מסמך המשתמשת.
+    diagnostics: summary.diagnostics,
     errorHe: summary.errorHe,
   };
 });

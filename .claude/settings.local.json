@@ -24,7 +24,24 @@
       "Bash(echo \"exit=$?\")",
       "Bash(npm install *)",
       "Bash(npx vitest *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "PowerShell(\\(Get-Date -Date \"2026-09-07\"\\).DayOfWeek; Get-ChildItem \"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\\\\Reports\" | Select-Object -Last 5 Name)",
+      "mcp__mcp-registry__list_connectors",
+      "mcp__scheduled-tasks__list_scheduled_tasks",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__claude-in-chrome__navigate",
+      "mcp__claude-in-chrome__computer",
+      "mcp__claude-in-chrome__browser_batch",
+      "mcp__claude-in-chrome__find",
+      "mcp__claude-in-chrome__file_upload",
+      "mcp__c10f0f4a-d5f7-4e1b-8195-f312597adc2e__get_message",
+      "PowerShell(\\(Get-Date -Date \"2026-09-09\"\\).DayOfWeek)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\" -Recurse -Depth 2 | Select-Object FullName, Length | Format-Table -AutoSize; \"---DOW---\"; \\(Get-Date\\).DayOfWeek; \\(Get-Date\\).ToString\\(\"yyyy-MM-dd\"\\))",
+      "mcp__c10f0f4a-d5f7-4e1b-8195-f312597adc2e__get_thread",
+      "PowerShell($d=Get-Date; \"TODAY: $\\($d.ToString\\('yyyy-MM-dd'\\)\\) $\\($d.DayOfWeek\\)\"; Get-ChildItem -Recurse \"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\" -File | Select-Object FullName,Length,LastWriteTime | Format-Table -AutoSize)",
+      "PowerShell($p=\"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\\\\Ledgers\\\\dealflow.csv\"; $b=[System.IO.File]::ReadAllBytes\\($p\\); \"First3: $\\($b[0..2] -join ','\\)\"; \"Last4: $\\($b[-4..-1] -join ','\\)\")",
+      "PowerShell($p=\"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\\\\Ledgers\\\\dealflow.csv\"; $b=[System.IO.File]::ReadAllBytes\\($p\\); \"BOM: \" + \\($b[0..2] -join ','\\); $s=[System.Text.Encoding]::UTF8.GetString\\($b\\); \"CRLF: \" + \\([regex]::Matches\\($s,\"`r`n\"\\)\\).Count; \"LF: \" + \\([regex]::Matches\\($s,\"`n\"\\)\\).Count; \"LastByte: \" + $b[$b.Length-1])",
+      "Bash(node -e ' *)"
     ]
   }
 }

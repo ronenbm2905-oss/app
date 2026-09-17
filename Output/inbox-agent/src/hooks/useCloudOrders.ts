@@ -30,7 +30,10 @@ import { db, functions, isFirebaseConfigured } from '../firebase';
 import { COLLECTIONS, collectionPath, userDocPath } from '../../shared/lib/firestorePaths';
 import type { GoogleConnectionState } from '../../shared/lib/googleConnection';
 import { isSupportModeActive, SUPPORT_MODE_OFF, type AccessLogEntry, type SupportModeState } from '../../shared/lib/supportMode';
+import { markShipped, unmarkShipped } from '../../shared/lib/orderRetention';
+import type { ReadDiagnostics } from '../../shared/lib/readDiagnostics';
 import type { Order } from '../../shared/types';
+import { t } from '../i18n';
 import type { AppUser } from './useAuth';
 
 /**
@@ -44,9 +47,25 @@ import type { AppUser } from './useAuth';
 export interface SyncNowSummary {
   messagesRead: number;
   readSources: string[];
+  /** ★★ המונים מהריצה הזאת. ראה `shared/lib/readDiagnostics.ts`. */
+  diagnostics?: ReadDiagnostics;
   /** כמה מסמכי הזמנה נכתבו בריצה. ★ **לא** מספר ההזמנות החדשות — ראה `useRefreshOrders`. */
   written: number;
   errorHe: string | null;
+}
+
+/**
+ * ★ מה ש-`markOrderShipped` מחזיר. אותם שדות בדיוק כמו
+ * `MarkShippedResult` ב-`functions/src/lib/shippedMarks.ts`.
+ *
+ * `skippedBlocked` הוא היחיד מהשלושה שהמסך **אומר** בקול: הזמנה שסומנה
+ * "צריך שתסתכלי" לא נכנסת לסימון ההמוני, ואם לא נאמר את זה — הספירה על
+ * המסך תסתור את מה שהיא רואה ברשימה.
+ */
+export interface BulkShippedResult {
+  updated: number;
+  skippedMissing: number;
+  skippedBlocked: number;
 }
 
 export interface CloudState {
@@ -59,6 +78,11 @@ export interface CloudState {
   /** ★ M18 — המונה שמוצג במסך. נגזר ממה שנקרא בפועל בריצה האחרונה. */
   lastReadCount: number | null;
   lastReadSources: string[];
+  /**
+   * ★★ המונים מהריצה האחרונה. `null` = הריצה האחרונה קדמה למדידה, ואז
+   * המסך לא מציג מספרים — ולא מציג אפסים שנראים כמו מדידה שהחזירה אפס.
+   */
+  lastDiagnostics: ReadDiagnostics | null;
   lastSyncAt: string | null;
   /** שגיאת טעינה, בעברית. `null` = תקין. */
   errorHe: string | null;
@@ -73,6 +97,7 @@ const EMPTY: CloudState = {
   supportModeActive: false,
   lastReadCount: null,
   lastReadSources: [],
+  lastDiagnostics: null,
   lastSyncAt: null,
   errorHe: null,
 };
@@ -88,10 +113,37 @@ export interface UseCloudOrders extends CloudState {
    * `scripts/check-hook-wiring.mjs`.
    */
   refreshNow: () => Promise<SyncNowSummary | null>;
+  /**
+   * ★ הצ׳קבוקס. הופך את המצב של הזמנה אחת — ועובר **באותה קריאה בדיוק**
+   * כמו הסימון ההמוני, עם מערך באורך 1.
+   */
+  toggleShipped: (messageId: string) => Promise<void>;
+  /**
+   * ★★ סימון רבות בבת אחת, ו**ביטולו** (`shipped=false`) — שזה אותו מסלול.
+   * מחזירה את מה שהשרת ספר, כדי שהמסך יוכל לומר כמה סומנו וכמה דולגו.
+   */
+  markManyShipped: (messageIds: string[], shipped: boolean) => Promise<BulkShippedResult | null>;
+  /** כישלון שמירה של סימון, בעברית. `null` = אין. */
+  shippedErrorHe: string | null;
 }
 
 export function useCloudOrders(user: AppUser | null): UseCloudOrders {
   const [state, setState] = useState<CloudState>(EMPTY);
+
+  /**
+   * ★★ **העדכון האופטימי.** מפה של `messageId` → המצב שהמשתמשת ביקשה,
+   * שמונחת מעל מה שהגיע מהמסד עד שהמסד מסכים.
+   *
+   * למה בכלל: הכתיבה עוברת קריאה לשרת, ומרגע הלחיצה ועד שה-`onSnapshot`
+   * חוזר עוברות מאות מילישניות. בלי השכבה הזאת הצ׳קבוקס נשאר ריק אחרי
+   * שלחצו עליו — ומי שאורזת שישים חבילות תלחץ עליו שוב, או תדלג עליו
+   * ותחשוב שהוא לא עובד.
+   *
+   * ★ ומה שהיא **אינה**: אחסון. שום דבר כאן לא נשמר בדפדפן. אם הקריאה
+   * נכשלה, הרשומה יורדת מהמפה והמסך חוזר בדיוק למה שהמסד אומר.
+   */
+  const [pendingShipped, setPendingShipped] = useState<Record<string, boolean>>({});
+  const [shippedErrorHe, setShippedErrorHe] = useState<string | null>(null);
 
   useEffect(() => {
     // ★★ יציאה מוקדמת. **בלי זה הכול נשבר** — ראה ההערה בראש הקובץ.
@@ -111,6 +163,7 @@ export function useCloudOrders(user: AppUser | null): UseCloudOrders {
           supportMode?: SupportModeState;
           lastReadCount?: number;
           lastReadSources?: string[];
+          lastDiagnostics?: ReadDiagnostics;
           lastSyncAt?: string;
         };
         setState((s) => ({
@@ -122,6 +175,7 @@ export function useCloudOrders(user: AppUser | null): UseCloudOrders {
           supportModeActive: isSupportModeActive(data.supportMode, new Date()),
           lastReadCount: typeof data.lastReadCount === 'number' ? data.lastReadCount : null,
           lastReadSources: data.lastReadSources ?? [],
+          lastDiagnostics: data.lastDiagnostics ?? null,
           lastSyncAt: data.lastSyncAt ?? null,
         }));
       },
@@ -187,8 +241,132 @@ export function useCloudOrders(user: AppUser | null): UseCloudOrders {
     return await call<SyncNowSummary>('syncOrdersNow');
   }, [call]);
 
+  // ---------------------------------------------------------------------------
+  // ★ הסימון "נשלח"
+  // ---------------------------------------------------------------------------
+
+  /**
+   * הרשימה שהמסך רואה: מה שבמסד, עם הסימונים שעוד בדרך מונחים מעליו.
+   *
+   * ★ החישוב עובר ב-`markShipped` / `unmarkShipped` — **אותן פונקציות
+   * שהשרת מריץ**. כך "מה שרואים עכשיו" ו"מה שיישמר בעוד רגע" אינם שני
+   * חישובים שאפשר להם להיפרד, כולל תאריך המחיקה שמוצג ליד ההזמנה.
+   */
+  const orders = useMemo(() => {
+    const ids = Object.keys(pendingShipped);
+    if (ids.length === 0) return state.orders;
+    const now = new Date();
+    return state.orders.map((order) => {
+      const want = pendingShipped[order.sourceMessageId];
+      if (want === undefined) return order;
+      if (want === (order.status === 'shipped')) return order;
+      // ★ הזמנה שסומנה "צריך שתסתכלי" — השרת מדלג עליה, ולכן גם המסך לא
+      // מראה אותה מסומנת. מסך שמקדים את השרת בדבר שהשרת יסרב לו הוא מסך
+      // שמראה משהו שלא קרה.
+      if (order.needsHumanReview) return order;
+      return want ? markShipped(order, { now }) : unmarkShipped(order, { now });
+    });
+  }, [state.orders, pendingShipped]);
+
+  /**
+   * ★ ניקוי: ברגע שהמסד מסכים, הרשומה יורדת מהמפה.
+   *
+   * בלי זה סימון ישן היה נשאר מונח מעל הנתונים לנצח — ואז שינוי שמגיע
+   * ממקום אחר (סנכרון, מחיקה מתוזמנת) היה מוסתר על ידי לחיצה מלפני שעה.
+   */
+  useEffect(() => {
+    setPendingShipped((prev) => {
+      const keys = Object.keys(prev);
+      if (keys.length === 0) return prev;
+      const byId = new Map(state.orders.map((o) => [o.sourceMessageId, o]));
+      const next = { ...prev };
+      let changed = false;
+      for (const key of keys) {
+        const order = byId.get(key);
+        if (order && (order.status === 'shipped') === prev[key]) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [state.orders]);
+
+  const markManyShipped = useCallback(
+    async (messageIds: string[], shipped: boolean): Promise<BulkShippedResult | null> => {
+      const ids = Array.from(
+        new Set((messageIds ?? []).filter((id) => typeof id === 'string' && id.length > 0)),
+      );
+      if (ids.length === 0) return null;
+
+      setShippedErrorHe(null);
+      setPendingShipped((prev) => {
+        const next = { ...prev };
+        for (const id of ids) next[id] = shipped;
+        return next;
+      });
+
+      /** החזרת המצב הקודם. הסימון יורד, והמסך חוזר למה שהמסד אומר. */
+      const rollback = () => {
+        setPendingShipped((prev) => {
+          const next = { ...prev };
+          for (const id of ids) delete next[id];
+          return next;
+        });
+        setShippedErrorHe(t('ordersMarkFailed'));
+      };
+
+      try {
+        const res = await call<BulkShippedResult>('markOrderShipped', {
+          messageIds: ids,
+          shipped,
+        });
+        // ★ `null` = אין שכבת ענן בכלל. שום דבר לא נשמר, ולכן זה נחשב
+        // כישלון ולא כהצלחה שקטה.
+        if (!res) {
+          rollback();
+          return null;
+        }
+        return res;
+      } catch {
+        // ★★ בלי קוד שגיאה ובלי stack: מה שנאמר הוא מה שהמשתמשת צריכה
+        // לדעת — שהסימון לא נשמר, ושמה שהיא רואה עכשיו נכון.
+        rollback();
+        return null;
+      }
+    },
+    [call],
+  );
+
+  /** ★ הבודדת עוברת דרך המרובה. מסלול אחד, כמו בשרת. */
+  const toggleShipped = useCallback(
+    async (messageId: string) => {
+      const current = orders.find((o) => o.sourceMessageId === messageId);
+      await markManyShipped([messageId], !(current?.status === 'shipped'));
+    },
+    [orders, markManyShipped],
+  );
+
   return useMemo(
-    () => ({ ...state, connectGoogle, setSupportMode, refreshNow }),
-    [state, connectGoogle, setSupportMode, refreshNow],
+    () => ({
+      ...state,
+      orders,
+      shippedErrorHe,
+      connectGoogle,
+      setSupportMode,
+      refreshNow,
+      toggleShipped,
+      markManyShipped,
+    }),
+    [
+      state,
+      orders,
+      shippedErrorHe,
+      connectGoogle,
+      setSupportMode,
+      refreshNow,
+      toggleShipped,
+      markManyShipped,
+    ],
   );
 }

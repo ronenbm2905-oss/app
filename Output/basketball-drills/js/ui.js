@@ -1,6 +1,6 @@
 /* שכבת התצוגה: פריסה, ניגון, שורת השלבים, הודעות ודיאלוגים. */
 import { ST } from "./state.js";
-import { BAND, CW, STYLES, STYLE_ORDER, TAGS, addToken, courtH, editablePath, hasNotes, nextUid, readLib, tok } from "./model.js";
+import { BAND, CW, STYLES, STYLE_ORDER, TAGS, addToken, courtH, editablePath, hasNotes, nextUid, readLib, tok, tokLabel } from "./model.js";
 import { defStyle, render } from "./render.js";
 
 export function snapshot(){
@@ -15,7 +15,7 @@ export function undo(){
   ST.D = o.d; ST.cur = Math.min(o.c, ST.D.steps.length-1); ST.sel = null; ST.mode = "move";
   document.getElementById("name").value = ST.D.name;
   setCourt(ST.D.court||"half");
-  renderSteps(); syncSel(); syncTags(); syncUndo(); layout();
+  renderSteps(); syncSel(); syncTags(); syncUndo(); syncSaveBtn(); layout();
 }
 
 export function syncUndo(){
@@ -118,10 +118,9 @@ export function syncSel(){
   if(!ST.sel){ row.hidden=true; return; }
   const t=tok(ST.sel); if(!t){ row.hidden=true; return; }
   row.hidden=false;
-  document.getElementById("selName").textContent =
-    t.type==="off" ? "שחקן "+t.label : t.type==="def" ? "מגן "+t.label :
-    t.type==="ball" ? "כדור" : t.type==="screen" ? "חסימה" :
-    t.type==="handoff" ? "יד ליד" : "חרוט";
+  const label = tokLabel(t);
+  document.getElementById("selName").textContent = label;
+  document.getElementById("delTok").textContent = "מחק " + label;
   const still = (t.type==="cone" || t.type==="screen" || t.type==="handoff");
   const canRotate = (t.type==="screen" || t.type==="handoff");
   const rot = document.getElementById("rotBtn");
@@ -177,7 +176,14 @@ export function place(type){
 /* ---------- ספריית התרגילים ---------- */
 /* השם fillLoad נשאר כי הוא נקרא מכל מקום שמשנה את האחסון. הוא כבר לא ממלא select
    אלא מעדכן את כפתור הספרייה, ומרענן את הרשימה אם היא פתוחה באותו רגע. */
+export function syncSaveBtn(){
+  const b = document.getElementById("saveBtn");
+  if(!b) return;
+  b.textContent = readLib().drills[ST.D.id] ? "שמור שינויים" : "שמור תרגיל";
+}
+
 export function fillLoad(){
+  syncSaveBtn();
   const b = document.getElementById("libBtn");
   if(!b) return;
   const n = Object.keys(readLib().drills).length;
@@ -220,7 +226,7 @@ export function openDrill(id){
   if(!Array.isArray(ST.D.tags)) ST.D.tags = [];
   ST.cur=0; ST.sel=null; ST.mode="move"; ST.uid = nextUid(ST.D); ST.undoStack=[]; syncUndo();
   document.getElementById("name").value = ST.D.name;
-  setCourt(ST.D.court||"half"); renderSteps(); syncSel(); syncTags(); layout();
+  setCourt(ST.D.court||"half"); renderSteps(); syncSel(); syncTags(); syncSaveBtn(); layout();
   status("נטען: "+ST.D.name); toast("נטען: "+ST.D.name);
   return true;
 }

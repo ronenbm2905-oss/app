@@ -53,7 +53,7 @@ import {
 } from './orderParse';
 import { domainOf } from './addresses';
 // ★★ החיתוך לגוף החתום קורה **כאן**, לפני שהגוף עובר הלאה. ראה למטה.
-import { limitToSignedBody, signatureForDomain } from './dkimSignature';
+import { limitToSignedBody, signatureForDomain, utf8ByteLength } from './dkimSignature';
 import { selectReadablePart } from './mimeBody';
 
 /**
@@ -94,6 +94,60 @@ export interface OrderSourceCandidate extends MessageMeta {
   dkimSignature?: string | readonly string[] | null;
 }
 
+/**
+ * ★★ מדידה של קריאה אחת. **מספרים וקטגוריות בלבד — אפס תוכן.**
+ *
+ * ---------------------------------------------------------------------------
+ * למה זה נוסף, ולמה דווקא בצורה הזאת
+ * ---------------------------------------------------------------------------
+ * 60 מתוך 60 ההזמנות האמיתיות נחסמו, ושלוש היפותזות ברצף על **מה** נשבר
+ * הופרכו. הסיבה שאפשר היה להמשיך ולנחש היא שאין בריפו אף גוף הודעה אמיתי —
+ * רק הכותרת — ולכן כל טענה על המבנה היא ספקולציה.
+ *
+ * הדרך היחידה לצאת מזה בלי להעתיק תוכן של לקוחה לשום מקום היא **למדוד**:
+ * כמה בתים היו, כמה מהם חתומים, איזה חלק נבחר, והאם הוא נסגר. כל שדה כאן
+ * הוא מספר, בוליאני, או מחרוזת מתוך רשימה סגורה שכתובה בקוד.
+ *
+ * ⛔ **אין כאן ולא יהיה כאן ערך מההודעה.** לא שם, לא כתובת, לא טלפון, לא
+ * נושא, ולא קטע גוף. זה נבדק ב-`tests/readDiagnostics.test.tsx` — לא כהערה
+ * אלא כמבחן שנכשל אם מישהו יוסיף שדה טקסט חופשי.
+ */
+export interface BodyMeasure {
+  /** אורך הגוף הגולמי בבתים, **לפני** החיתוך. */
+  bodyBytesRaw: number;
+  /**
+   * ★★ אורך הגוף ה**מקונן** — הגוף שעליו `l=` באמת נמדד.
+   *
+   * ההפרש בינו לבין `bodyBytesRaw` הוא מה שהקנוניזציה הורידה, והוא בדיוק
+   * גודל הטעות של החישוב הישן. ראה `canonicalizeBody` ב-`dkimSignature.ts`.
+   */
+  canonBodyBytes: number;
+  /** ★ ערך ה-`l=` שנקרא מחתימת הספק. `null` = אין תג, כלומר הכול חתום. */
+  signedLimit: number | null;
+  /** כמה בתים נחתכו בפועל. `0` = הגוף כולו היה בתוך הגבול. */
+  bytesDropped: number;
+  /**
+   * איזה חלק MIME נבחר לקריאה.
+   *
+   * ★ `'unknown'` הוא מצב אמיתי ולא "לא ידוע": גוף שאינו multipart מוחזר
+   * כמו שהוא. מיפוי שלו ל-`'none'` היה מדווח "לא נקרא כלום" על גוף שכן
+   * נקרא — ולכן הוא נשאר ערך נפרד.
+   */
+  partSelected: 'text' | 'html' | 'unknown' | 'none';
+  /**
+   * ★★ `c=` — הקנוניזציה שעליה `l=` נספר. ראה `dkimSignature.ts`.
+   *
+   * זה השדה שמכריע אם החיתוך שלנו נופל במקום הנכון בכלל: `relaxed` פירושו
+   * ש-`l=` נמדד על גוף מכווץ, וחיתוך של הגוף **הגולמי** באותו מספר בתים
+   * חותך מוקדם מדי — כלומר באמצע הזמנה תקינה.
+   */
+  bodyCanon: 'simple' | 'relaxed' | 'other';
+  /** ★★ האם החלק שנבחר נסגר בגבול MIME תקין, או נחתך באמצע. */
+  partComplete: boolean;
+  /** אורך החלק שנבחר, בבתים, **אחרי** החיתוך. */
+  partBytes: number;
+}
+
 /** ★ מה שנקרא מהודעה אחת: החלק שנבחר, וכמה בתים ירדו כי לא היו חתומים. */
 export interface OrderBodyPart {
   /** `text` = נקרא מ-`text/plain`, וזה המצב הרצוי. */
@@ -101,6 +155,8 @@ export interface OrderBodyPart {
   body: string;
   /** בתים שהיו מעבר ל-`l=` ולכן **לא הועברו הלאה**. `0` = הכול היה חתום. */
   unsignedBytes: number;
+  /** ★★ המדידה של הקריאה הזאת. ראה `BodyMeasure`. */
+  measure: BodyMeasure;
 }
 
 export interface OrderBodyRead {
@@ -124,6 +180,12 @@ export interface OrderBodyRead {
   parts: string[];
   /** כמה הודעות היה בהן זנב לא חתום שנחתך. כל אחת מהן תסומן לבדיקה. */
   unsignedTailCount: number;
+  /**
+   * ★★ מדידה לכל הודעה שעברה את בדיקת השולח — **גם כזאת שלא נקרא ממנה
+   * חלק** (`partSelected: 'none'`). דווקא היא החשובה: הודעה שלא נקרא ממנה
+   * דבר נעלמה עד עכשיו מכל מונה.
+   */
+  measures: BodyMeasure[];
 }
 
 /**
@@ -142,6 +204,7 @@ export function readOrderBodies(
   const bodies = new Map<string, OrderBodyPart>();
   const sources = new Set<string>();
   const parts = new Set<string>();
+  const measures: BodyMeasure[] = [];
   let refusedCount = 0;
   let unsignedTailCount = 0;
 
@@ -153,7 +216,11 @@ export function readOrderBodies(
       continue;
     }
 
-    const part = readOne(msg);
+    const { part, measure } = readOne(msg);
+    // ★ המדידה נרשמת **לפני** התנאי: הודעה שלא נקרא ממנה חלק היא בדיוק
+    // המקרה שצריך להופיע במונים, ולא להיעלם ב-`continue`.
+    measures.push(measure);
+
     if (!part) {
       // שולח נכון, אין גוף. זה לא סירוב אבטחתי אלא הודעה ריקה — הפענוח
       // יסמן אותה "לא הצלחתי לקרוא", וזה המסלול הנכון בשבילה.
@@ -173,6 +240,7 @@ export function readOrderBodies(
     sources: Array.from(sources).sort(),
     parts: Array.from(parts).sort(),
     unsignedTailCount,
+    measures,
   };
 }
 
@@ -195,16 +263,61 @@ export function readOrderBodies(
  * ולא גוף גולמי. גם היא עוברת דרך אותו חיתוך — מדידה פחות מדויקת, אבל לא
  * מסלול שני שבו הכלל לא חל.
  */
-function readOne(msg: OrderSourceCandidate): OrderBodyPart | null {
+function readOne(msg: OrderSourceCandidate): {
+  part: OrderBodyPart | null;
+  measure: BodyMeasure;
+} {
   const sig = signatureForDomain(msg.dkimSignature, ORDER_SIGNING_DOMAIN);
   const limit = sig.matchesDomain ? sig.bodyLengthLimit : null;
+  /**
+   * ★★ הקנוניזציה שעליה `l=` נמדד. בלעדיה החיתוך משווה בתים של גוף אחד
+   * למספר שנספר על גוף אחר — וזה מה שחסם 60 מתוך 60 הזמנות תקינות.
+   */
+  const canon = sig.matchesDomain ? sig.bodyCanonicalization : 'simple';
+
+  // ★★ `c=` שאיננו מכירים: **לא קוראים.** אותה הכרעה בדיוק כמו `l=` פגום —
+  // אי אפשר לדעת איזה חלק מהגוף חתום, וניחוש לכיוון "כנראה הכול" הוא בדיוק
+  // הניחוש המסוכן. הפענוח יסרב עם ההודעה הנכונה.
+  if (canon === 'other') {
+    return {
+      part: null,
+      measure: {
+        bodyBytesRaw: utf8ByteLength(msg.bodyRaw ?? msg.bodyText ?? msg.bodyHtml ?? ''),
+        canonBodyBytes: 0,
+        signedLimit: limit,
+        bytesDropped: 0,
+        bodyCanon: 'other',
+        partSelected: 'none',
+        partComplete: false,
+        partBytes: 0,
+      },
+    };
+  }
 
   const raw = msg.bodyRaw;
   if (typeof raw === 'string' && raw.length > 0) {
-    const signed = limitToSignedBody(raw, limit);
+    const signed = limitToSignedBody(raw, limit, canon);
     const picked = selectReadablePart(signed.body);
-    if (picked.body.length === 0) return null;
-    return { kind: picked.kind, body: picked.body, unsignedBytes: signed.bytesDropped };
+    const measure: BodyMeasure = {
+      bodyBytesRaw: utf8ByteLength(raw),
+      canonBodyBytes: signed.canonBytes,
+      signedLimit: limit,
+      bytesDropped: signed.bytesDropped,
+      bodyCanon: sig.bodyCanonicalization,
+      partSelected: picked.body.length === 0 ? 'none' : picked.kind,
+      partComplete: picked.complete,
+      partBytes: utf8ByteLength(picked.body),
+    };
+    if (picked.body.length === 0) return { part: null, measure };
+    return {
+      part: {
+        kind: picked.kind,
+        body: picked.body,
+        unsignedBytes: signed.bytesDropped,
+        measure,
+      },
+      measure,
+    };
   }
 
   const decoded =
@@ -213,8 +326,47 @@ function readOne(msg: OrderSourceCandidate): OrderBodyPart | null {
       : typeof msg.bodyHtml === 'string' && msg.bodyHtml.length > 0
         ? { kind: 'html' as const, body: msg.bodyHtml }
         : null;
-  if (!decoded) return null;
 
-  const signed = limitToSignedBody(decoded.body, limit);
-  return { kind: decoded.kind, body: signed.body, unsignedBytes: signed.bytesDropped };
+  if (!decoded) {
+    return {
+      part: null,
+      measure: {
+        bodyBytesRaw: 0,
+        canonBodyBytes: 0,
+        signedLimit: limit,
+        bytesDropped: 0,
+        bodyCanon: canon,
+        partSelected: 'none',
+        // ★ אין גוף בכלל. "לא נסגר" הוא התיאור הנכון, ולא "נסגר תקין".
+        partComplete: false,
+        partBytes: 0,
+      },
+    };
+  }
+
+  const signed = limitToSignedBody(decoded.body, limit, canon);
+  const measure: BodyMeasure = {
+    bodyBytesRaw: utf8ByteLength(decoded.body),
+    canonBodyBytes: signed.canonBytes,
+    signedLimit: limit,
+    bytesDropped: signed.bytesDropped,
+    bodyCanon: canon,
+    partSelected: signed.body.length === 0 ? 'none' : decoded.kind,
+    // ★ במסלול הזה המקור כבר פירק את ה-MIME בעצמו, ולכן אין גבול סגירה
+    // לבדוק. מה שכן ידוע: חיתוך אומר שמשהו ירד באמצע.
+    partComplete: !signed.truncated,
+    partBytes: utf8ByteLength(signed.body),
+  };
+
+  if (signed.body.length === 0) return { part: null, measure };
+
+  return {
+    part: {
+      kind: decoded.kind,
+      body: signed.body,
+      unsignedBytes: signed.bytesDropped,
+      measure,
+    },
+    measure,
+  };
 }

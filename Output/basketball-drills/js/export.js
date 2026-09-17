@@ -27,7 +27,7 @@ export function loadGif(){
   });
 }
 
-export const BUILD = "drills-v13";               // חייב להתאים ל-CACHE ב-sw.js
+export const BUILD = "drills-v14";               // חייב להתאים ל-CACHE ב-sw.js
 
 export const NAR_MAX_SEC = 180;                 // תקרה, שלא תישאר הקלטה פתוחה בכיס
 

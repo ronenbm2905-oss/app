@@ -86,6 +86,16 @@ export function editablePath(){
   return (mv && mv.path && mv.path.length > 1) ? mv.path : null;
 }
 
+/* השם שהמשתמש רואה לאובייקט. מקור אחד לכותרת הבחירה, לכפתור המחיקה ולהודעה. */
+export function tokLabel(t){
+  if(!t) return "";
+  return t.type==="off"     ? "שחקן "+t.label :
+         t.type==="def"     ? "מגן "+t.label :
+         t.type==="ball"    ? "כדור" :
+         t.type==="screen"  ? "חסימה" :
+         t.type==="handoff" ? "יד ליד" : "חרוט";
+}
+
 export function nearestHolder(p, ballId){
   let best=null, bd=1.35;
   ST.D.tokens.forEach(t=>{

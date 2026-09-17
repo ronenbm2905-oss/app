@@ -298,13 +298,63 @@ export function orderBodyToLines(raw: string): string[] {
  * ש-`sanitizeTypedValue` יוכל לתפוס אותם במקום שבו הם עולים כסף.
  */
 export function orderTextToLines(raw: string): string[] {
+  return normalizedTextLines(raw).filter((line) => line.length > 0);
+}
+
+/**
+ * ★★ אותו טקסט — אבל **השורות הריקות נשמרות כגבול**.
+ *
+ * ---------------------------------------------------------------------------
+ * למה זה נולד, ולמה זו לא כפילות של `orderTextToLines`
+ * ---------------------------------------------------------------------------
+ * בהודעה האמיתית, מה שהיה טבלת HTML משוטח ב-`text/plain` כך ש**כל תא יושב
+ * בשורה משלו**, בלי טאב ובלי רווח כפול, והקבוצות מופרדות בשורה ריקה:
+ *
+ *     שם מוצר
+ *     כמות
+ *     מחיר ליחידה
+ *     ⟨ריק⟩
+ *     מדבקות לדרך
+ *     1
+ *     99
+ *
+ * `orderTextToLines` מסננת את השורות הריקות — כלומר **מוחקת את המפריד
+ * היחיד שנשאר** בין רשומה לרשומה. בלעדיו "שלוש שורות = מוצר" הוא ספירה
+ * עיוורת: שורה אחת חסרה מזיזה את כל מה שאחריה, והכמות של מוצר אחד נדבקת
+ * למחיר של אחר — בלי שום סימן שמשהו השתבש.
+ *
+ * ★ עם הגבול הזה אותה תקלה הופכת לקבוצה בגודל 2 במקום 3, כלומר ל**ממצא
+ * ודאי**: אין צורך לנחש אם היישור זז — רואים את זה. ראה `findStackedTable`.
+ */
+export function orderTextToBlocks(raw: string): string[][] {
+  const blocks: string[][] = [];
+  let current: string[] = [];
+
+  for (const line of normalizedTextLines(raw)) {
+    if (line.length === 0) {
+      if (current.length > 0) blocks.push(current);
+      current = [];
+      continue;
+    }
+    current.push(line);
+  }
+  if (current.length > 0) blocks.push(current);
+
+  return blocks;
+}
+
+/**
+ * הנרמול המשותף לשתי הצורות. ★ השורות הריקות **אינן** מסוננות כאן — מי
+ * שרוצה אותן מסוננות עושה זאת אצלו, כדי ששני המסלולים יקראו בדיוק את אותו
+ * טקסט ולא יוכלו להשתנות בנפרד.
+ */
+function normalizedTextLines(raw: string): string[] {
   return String(raw ?? '')
     .normalize('NFKC')
     .replace(/\r\n?/g, '\n')
-    .replace(/ /g, ' ')
+    .replace(/\u00A0/g, ' ')
     .split('\n')
-    .map((line) => line.replace(/[ \t]+$/g, '').trim())
-    .filter((line) => line.length > 0);
+    .map((line) => line.replace(/[ \t]+$/g, '').trim());
 }
 
 /**
@@ -492,8 +542,29 @@ export function parseDkim(rawHeader: string | null | undefined): DkimVerdict {
   if (!segment) return { pass: false, domain: null, present: false };
 
   const pass = /^dkim\s*=\s*pass\b/i.test(segment);
-  const d = /(?:header\.)?d=([a-z0-9._-]+)/i.exec(segment);
-  return { pass, domain: d ? d[1].toLowerCase() : null, present: true };
+
+  // ★★ שני הכתיבים, ולא אחד. **הבאג שהודעה אמיתית חשפה ב-16.9.2026:**
+  //
+  // הפרסר חיפש `d=` בלבד, כי כך נבנו ה-fixtures. הכותרת ש-Gmail כותבת
+  // בפועל היא:
+  //
+  //     dkim=pass header.i=@tranzila.com header.s=default header.b=Gw8…
+  //
+  // **אין בה `header.d=` כלל.** התוצאה: `domain` יצא `null` על כל הודעה
+  // אמיתית, `isOrderSignatureValid` החזיר `false`, וכל 60 ההזמנות של
+  // המשתמשת נחסמו עם ההודעה "ככל הנראה מישהו מנסה להתחזות".
+  //
+  // ★ `header.d=` הוא הדומיין החותם, ו**הוא מדויק יותר** — לכן הוא קודם.
+  // `header.i=` הוא זהות החותם (AUID) ובא בצורה `@domain` או
+  // `user@domain`, ולכן לוקחים ממנו את מה שאחרי ה-`@`.
+  //
+  // ★★ והלקח: **fixture שנבנה מהנחה אינו בודק את המציאות.** המבחנים היו
+  // ירוקים לאורך כל הדרך, כי הם אימתו את הפרסר מול כותרת שאנחנו המצאנו.
+  const byD = /(?:^|[\s;])(?:header\.)?d=([a-z0-9._-]+)/i.exec(segment);
+  const byI = /(?:^|[\s;])header\.i=[^@\s]*@([a-z0-9._-]+)/i.exec(segment);
+  const domain = byD?.[1] ?? byI?.[1] ?? null;
+
+  return { pass, domain: domain ? domain.toLowerCase() : null, present: true };
 }
 
 /**
@@ -540,6 +611,39 @@ export function isOrderMessage(msg: Pick<MessageMeta, 'fromAddress' | 'subject'>
 // תוצאת הפענוח
 // ---------------------------------------------------------------------------
 
+/**
+ * ★★ מדידת המבנה. **שמות תוויות בלבד — לא ערכים.**
+ *
+ * התוויות הן מחרוזות קבועות מהקוד (`ORDER_LABELS`), כלומר `'עיר'`
+ * ו-`'שם לקוח'` — ולא מה שכתוב אחריהן בהודעה. זו ההבחנה שמאפשרת לדווח
+ * **איפה** הפענוח נשבר בלי להעתיק אף פרט של לקוחה.
+ *
+ * ★ מה שזה פותר: "חסר מבנה" הוא היום מסקנה בינארית שאי אפשר לחקור. עם
+ * הרשימה הזאת רואים שהחלק החתום הספיק ל-`שם לקוח` ולא הגיע ל-`עיר` —
+ * כלומר בדיוק היכן הגבול נפל.
+ */
+export interface OrderStructureMeasure {
+  /** תוויות שהופיעו בגוף שנקרא. שמות קבועים מהקוד. */
+  labelsFound: string[];
+  /** תוויות שלא הופיעו בו. */
+  labelsMissing: string[];
+  /** האם נמצאה טבלת מוצרים. */
+  productTableFound: boolean;
+  /**
+   * ★ כמה שורות מוצר זוהו בה. `0` עם `productTableFound === true` הוא מצב
+   * אמיתי ושונה לגמרי מ"לא נמצאה טבלה": מצאנו את הכותרת ולא הצלחנו לקרוא
+   * ממנה רשומה. עד היום שני המצבים נראו זהים במדידה.
+   */
+  productRows: number;
+  /**
+   * ★★ באיזו צורה נקראה הטבלה. **רשימה סגורה מהקוד**, לא טקסט מההודעה.
+   * זה המדד שיגיד בפעם הבאה אם ההנחה על צורת התאים עוד מחזיקה.
+   */
+  productCellMode: 'none' | ProductCellMode;
+  /** ★★ כמה קבוצות באזור הטבלה נראו כמו נתון ולא נקראו כרשומה שלמה. */
+  productRowsUnreadable: number;
+}
+
 export interface OrderParseResult {
   /** שולח ונושא תואמים — כלומר ההודעה מתיימרת להיות הזמנה. */
   isOrderCandidate: boolean;
@@ -569,6 +673,12 @@ export interface OrderParseResult {
    * לפתוח קוד ובלי לשאול.
    */
   reasonHe: string;
+
+  /**
+   * ★★ מדידת המבנה, כשהגענו עד שלב המבנה. `null` = נעצרנו לפני כן (שולח,
+   * נושא או חתימה), ואז לא נקראה אף שורה ואין מה למדוד.
+   */
+  structure: OrderStructureMeasure | null;
 }
 
 function issue(
@@ -585,6 +695,8 @@ function refused(
   isOrderCandidate: boolean,
   issues: OrderIssue[],
   reasonHe: string,
+  /** ★ נמסר רק כשהגענו לשלב המבנה. ראה `OrderStructureMeasure`. */
+  structure: OrderStructureMeasure | null = null,
 ): OrderParseResult {
   return {
     isOrderCandidate,
@@ -598,6 +710,7 @@ function refused(
     issues,
     contentKey: null,
     reasonHe,
+    structure,
   };
 }
 
@@ -711,6 +824,24 @@ export function parseOrderMessage(msg: OrderSourceMessage): OrderParseResult {
     );
   }
 
+  // ★★ `c=` שאיננו מכירים. אותה הכרעה כמו `l=` פגום, ומאותה סיבה: `l=`
+  // נספר על הגוף **המקונן**, ובלי לדעת איזו קנוניזציה אין לדעת על מה המספר
+  // מדבר. ניחוש כאן הוא ניחוש על היקף החתימה.
+  if (sig.present && sig.bodyCanonicalization === 'other') {
+    return refused(
+      true,
+      [
+        issue(
+          'source',
+          'signatureScopeUnreadable',
+          'block',
+          'לא הצלחתי להבין איזה חלק מההודעה הזאת באמת חתום, אז לא קראתי ממנה כלום. כדאי לפתוח את המייל המקורי',
+        ),
+      ],
+      'לא הצלחתי להבין איזה חלק מההודעה חתום, ולכן לא קראתי ממנה כלום',
+    );
+  }
+
   if (sig.present && sig.bodyLengthMalformed) {
     return refused(
       true,
@@ -752,13 +883,19 @@ export function parseOrderMessage(msg: OrderSourceMessage): OrderParseResult {
   // הטווח": ערך שנקרא כבר קיים במשתנה, וכל refactor עתידי יעביר אותו הלאה.
   const isPlainText = typeof msg.bodyText === 'string' && msg.bodyText.length > 0;
   const rawBody = isPlainText ? (msg.bodyText as string) : (msg.bodyHtml ?? '');
-  const signed = limitToSignedBody(rawBody, sig.bodyLengthLimit);
+  // ★ החיתוך השני — למי שקרא לפענוח בלי לעבור באתר הקריאה. הוא מקבל את
+  // `c=` מאותה חתימה, כי חיתוך שמתעלם מהקנוניזציה היה מחזיר כאן בדיוק את
+  // הבאג שתוקן באתר הקריאה.
+  const signed = limitToSignedBody(rawBody, sig.bodyLengthLimit, sig.bodyCanonicalization);
 
   // הבתים שאתר הקריאה כבר חתך נספרים כאן גם הם — החיתוך יכול לקרות שם
   // (על הגוף הגולמי, שהוא המקום הנכון) או כאן, אבל **הממצא אחד**.
   const unsignedBytes = signed.bytesDropped + Math.max(0, msg.unsignedTailBytes ?? 0);
 
   const lines = isPlainText ? orderTextToLines(signed.body) : orderBodyToLines(signed.body);
+  // ★★ הגבולות שהשורות הריקות תחמו. רק במסלול הטקסט — ב-HTML המבנה נשמר
+  // בתגיות, ושם השורה הריקה אינה מפריד אלא רווח. ראה `orderTextToBlocks`.
+  const blocks = isPlainText ? orderTextToBlocks(signed.body) : null;
   const { fields, labelsSeen, duplicates } = collectFields(lines);
 
   // ★ בדיקת המבנה שואלת אם ה**תוויות** קיימות, לא אם יש להן ערך.
@@ -767,17 +904,40 @@ export function parseOrderMessage(msg: OrderSourceMessage): OrderParseResult {
   // שונה". הודעה שאין בה בכלל תווית `עיר` היא משהו אחר לגמרי. שתי תקלות
   // שונות שדורשות ממנה שתי פעולות שונות, ולכן שני מסלולים.
   const missingStructure = REQUIRED_LABELS.filter((label) => !labelsSeen.has(label));
-  const table = findProductTable(lines);
+  const table = findProductTable(lines, blocks);
+
+  /**
+   * ★★ המדידה. נבנית **לפני** ההחלטה, ולכן היא קיימת בשני הענפים.
+   *
+   * `missingStructure` מסתכל על ארבע התוויות ההכרחיות בלבד; כאן נמדדות
+   * **כל** התוויות, כי השאלה שצריך לענות עליה אינה "האם המבנה תקין" (על זה
+   * כבר ידוע שלא) אלא "עד איפה החלק שנקרא הגיע".
+   */
+  const structure: OrderStructureMeasure = {
+    labelsFound: ALL_LABELS.filter((label) => labelsSeen.has(label)),
+    labelsMissing: ALL_LABELS.filter((label) => !labelsSeen.has(label)),
+    productTableFound: Boolean(table),
+    productRows: table ? table.rows.length : 0,
+    productCellMode: table ? table.cellMode : 'none',
+    productRowsUnreadable: table ? table.unreadableRows : 0,
+  };
 
   if (missingStructure.length > 0 || !table) {
     // ★ שני מצבים שנראים אותו דבר מבחוץ ואינם אותו דבר: "התבנית השתנתה" מול
-    // "החלק החתום נגמר לפני שהמבנה הושלם". השני פירושו שמישהו נגע בהודעה,
-    // והנימוק חייב להגיד את זה — אחרת היא תיראה כמו תקלה של הספק.
+    // "החלק החתום נגמר לפני שהמבנה הושלם". שניהם חוסמים, ושניהם אומרים לה
+    // משהו אחר לגמרי — ולכן שני מסלולים ושני משפטים.
+    //
+    // ★★ והנוסח כאן תוקן ב-16.9.2026. הוא אמר "יש תוספת שאינה חתומה", כלומר
+    // רמז שמישהו נגע בהודעה. **זו הסקה שאין לנו בסיס לעשות**: אצל הספק הזה
+    // כל הודעה אמיתית חוצה את גבול ה-`l=`, ולכן "יש זנב" אינו עדות לתקיפה
+    // אלא תיאור של המצב הרגיל. מה שכן קרה כאן — ורק זה — הוא שהחלק החתום
+    // לא הספיק כדי לקרוא הזמנה שלמה. זה מה שנאמר.
     return unsignedBytes > 0
       ? refused(
           true,
-          [issue('source', 'unsignedBodyTail', 'block', UNSIGNED_TAIL_HE)],
-          'בהודעה הזאת יש תוספת שאינה חתומה — לא קראתי אותה, ומה שכן חתום אינו הזמנה שלמה',
+          [issue('source', 'unsignedBodyTail', 'block', SIGNED_PART_INCOMPLETE_HE)],
+          'החלק שחברת הסליקה חתמה עליו נגמר לפני שההזמנה הושלמה, ולכן לא קראתי ממנה הזמנה שלמה',
+          structure,
         )
       : refused(
           true,
@@ -790,19 +950,39 @@ export function parseOrderMessage(msg: OrderSourceMessage): OrderParseResult {
             ),
           ],
           'ההודעה הגיעה מכתובת הסליקה אבל המבנה שלה שונה. לא קראתי ממנה כלום',
+          structure,
         );
   }
 
   // --- מכאן: המקור אומת. אוספים ממצאים ולא עוצרים. -------------------------
   const issues: OrderIssue[] = [];
 
-  // ★★ תוספת לא חתומה. **חוסם**, גם כשמה שנקרא נראה מושלם.
+  // ★★ זנב לא חתום, כשמה שנקרא הוא הזמנה שלמה. `info` — נרשם, לא חוסם,
+  // ולא מוצג על הכרטיס.
   //
-  // וזה העיקר: מה שמעבר לגבול לא נקרא בכלל, ולכן טבלת ההזמנה שהתוקף הדביק
-  // בסוף אינה יכולה להגיע לכרטיס. הסימון כאן אינו מה שמגן — הוא מה שמספר
-  // לבעלת העסק שמישהו ניסה.
+  // ---------------------------------------------------------------------------
+  // למה זה ירד מ-`block`, ומה בדיוק הטענה
+  // ---------------------------------------------------------------------------
+  // עד 16.9.2026 זה היה `block`. ההנחה שמאחורי ההחלטה הייתה ש"יש זנב" פירושו
+  // "מישהו הוסיף". **ההודעות האמיתיות הראשונות הפריכו אותה**: כל 60 ההזמנות
+  // של המשתמשת חצו את גבול ה-`l=`, כי כך מערכת החתימה של הספק בנויה. חסימה
+  // שפוסלת 100% מההזמנות התקינות אינה בקרה — היא תקלה יומית.
+  //
+  // ★★ ומה שמחזיק את הירידה הזאת הוא לא שיקול נוחות אלא הפרדה: **ההגנה היא
+  // החיתוך, לא הסימון.** `limitToSignedBody` חותך את הגוף ל-`l=` בתים
+  // ב-`orderSource.readOne`, לפני שנקרא ממנו ערך אחד, ושוב כאן לפני הפענוח.
+  // כל מה שמעבר לגבול אינו קיים בשום משתנה שממנו נבנים `recipient` ו-`items`.
+  // הורדת הסימון מ-`block` ל-`info` אינה נוגעת בחיתוך, ולכן אינה מחלישה
+  // שום דבר — היא רק מפסיקה לומר על הזמנה תקינה שמישהו ניסה לזייף אותה.
+  //
+  // ★ ולמה לא ניסינו להבחין בין "זנב רגיל" ל"זנב שנראה כמו הזמנה שנייה":
+  // כל מאפיין כזה הוא **בחירה של התוקף**. מי שרוצה לעקוף "הזנב נראה כמו
+  // הזמנה" מדביק את ההזמנה השנייה בצורה אחרת; מי שרוצה לעקוף "החלק שנקרא
+  // נחתך באמצע" מוסיף חלק MIME שלם במקום להאריך את הקיים. הבחנה שהתוקף
+  // שולט בה אינה בקרת אבטחה — היא לכל היותר תיאור של מה שנראה רגיל. הבקרה
+  // היא החיתוך, והיא לא ניתנת לבחירה שלו.
   if (unsignedBytes > 0) {
-    issues.push(issue('source', 'unsignedBodyTail', 'block', UNSIGNED_TAIL_HE));
+    issues.push(issue('source', 'unsignedBodyTail', 'info', UNSIGNED_TAIL_HE));
   }
 
   // ★ אין כותרת חתימה לבדוק את היקפה. לא חוסם — הודעה כזאת עדיין עברה
@@ -849,7 +1029,17 @@ export function parseOrderMessage(msg: OrderSourceMessage): OrderParseResult {
   // ההשוואה נעשית רק כששני הצדדים נקראו במלואם. אחרת היינו מדווחים על
   // "אי-התאמה" שכל כולה נובעת משדה שלא נקרא — הודעת שגיאה שמצביעה למקום הלא
   // נכון גרועה מהיעדר הודעה.
-  const itemsReadable = items.length > 0 && !issues.some((i) => i.code === 'quantityUnreadable' || i.code === 'priceUnreadable');
+  // ★ `rowUnreadable` ברשימה מאותה סיבה כמו השניים האחרים: כששורה שלמה לא
+  // נקראה, הסכום שלנו בהכרח חלקי, ו"החישוב לא מסתדר" היה מצביע על המספרים
+  // במקום על השורה שחסרה. ההזמנה ממילא חסומה — בהודעה שאומרת את הדבר הנכון.
+  const itemsReadable =
+    items.length > 0 &&
+    !issues.some(
+      (i) =>
+        i.code === 'quantityUnreadable' ||
+        i.code === 'priceUnreadable' ||
+        i.code === 'rowUnreadable',
+    );
   if (itemsReadable && paidTotal !== null) {
     const sum = round2(items.reduce((acc, i) => acc + i.lineTotal, 0));
     if (Math.abs(sum - paidTotal) > TOTAL_TOLERANCE) {
@@ -876,26 +1066,56 @@ export function parseOrderMessage(msg: OrderSourceMessage): OrderParseResult {
     installments,
     needsHumanReview,
     issues,
+    structure,
     // ★ נגזר מ**הגוף החתום שנקרא**, ולא מהגוף המקורי: שתי הודעות שההבדל
     // ביניהן הוא רק בזנב הלא-חתום הן אותה הזמנה, וכך הן ייספרו.
     contentKey: contentFingerprint(signed.body),
-    reasonHe: unsignedBytes > 0
-      ? 'בהודעה הזאת יש תוספת שאינה חתומה — לא קראתי אותה, ולא הצגתי כתובת להעתקה'
-      : needsHumanReview
-        ? 'קראתי את ההודעה ומשהו בה לא מסתדר. לא הצגתי כתובת להעתקה — כדאי לפתוח את המייל המקורי'
+    // ★★ הסדר התהפך ב-16.9.2026, ולא בגלל סגנון. הזנב הלא-חתום אינו חוסם
+    // יותר, ולכן הענף הראשון היה אומר "לא הצגתי כתובת להעתקה" על הזמנה
+    // ש**כן** מוצגת עם כתובת וכפתור העתקה. זה בדיוק הכשל שנתפס באותו בוקר
+    // במסך אחר: טקסט שמכחיש את מה שמעליו. `needsHumanReview` נבדק ראשון,
+    // כי הוא זה שקובע בפועל אם יש כתובת.
+    reasonHe: needsHumanReview
+      ? 'קראתי את ההודעה ומשהו בה לא מסתדר. לא הצגתי כתובת להעתקה — כדאי לפתוח את המייל המקורי'
+      : unsignedBytes > 0
+        ? 'קראתי את ההזמנה מתוך החלק שחברת הסליקה חתמה עליו: השולח, הנושא והמבנה תואמים, והחישוב מסתדר'
         : 'קראתי את ההזמנה במלואה: השולח, הנושא והמבנה תואמים, והחישוב מסתדר',
   };
 }
 
 /**
- * ★★ המשפט שנאמר לבעלת העסק כשהיה זנב לא חתום.
+ * ★★ שני משפטים, ולא אחד — וזו ההחלטה המרכזית של 16.9.2026.
  *
- * מנוסח כמו שהיא צריכה לשמוע אותו: **מה עשיתי** ("לא קראתי אותה"), ולא
- * "כשל אימות היקף חתימה". הוא יושב בקבוע אחד כי הוא מופיע בשני מסלולים —
- * כשמה שנשאר הוא הזמנה שלמה, וכשלא.
+ * עד אז היה כאן קבוע יחיד ששימש את שני המסלולים ("הוא יושב בקבוע אחד כי הוא
+ * מופיע בשני מסלולים"). **זו הייתה הטעות**: שני המסלולים אינם אומרים את אותו
+ * הדבר. באחד קראנו הזמנה שלמה מתוך החלק החתום, ובשני החלק החתום נגמר לפני
+ * שההזמנה הושלמה. משפט אחד שמשרת את שניהם חייב להיות שגוי באחד מהם.
+ *
+ * הנוסח הישן — "סביר שמישהו ניסה להוסיף להזמנה כתובת משלו, וכדאי לא ללחוץ על
+ * שום דבר במייל הזה" — נכתב מול תרחיש תקיפה, והופיע בפועל על כל הזמנה תקינה
+ * של הספק, כל יום.
+ */
+
+/**
+ * ★ המסלול התקין: נקראה הזמנה שלמה מתוך החלק החתום.
+ *
+ * דרגת `info` — נשמר ונספר, **ולא מוצג על הכרטיס**. המשפט קיים כדי שיהיה
+ * כתוב במקום אחד מה בדיוק נקרא, ובשביל לוג/תמיכה; מה שהמשתמשת רואה הוא
+ * השורה המצטברת מתחת למונה הקריאה, פעם אחת ולא 60 פעם.
  */
 const UNSIGNED_TAIL_HE =
-  'בהודעה הזאת יש תוספת שנוספה אחרי שחברת הסליקה חתמה עליה — לא קראתי אותה, ולא הצגתי מכאן כתובת. סביר שמישהו ניסה להוסיף להזמנה כתובת משלו, וכדאי לא ללחוץ על שום דבר במייל הזה';
+  'קראתי מההודעה הזאת רק את החלק שחברת הסליקה חתמה עליו. כל מה שמעבר לו לא נקרא ולא מוצג כאן';
+
+/**
+ * ★★ המסלול החוסם: החלק החתום נגמר באמצע, ולא יצאה ממנו הזמנה שלמה.
+ *
+ * כאן **אין** כתובת להעתקה, ולכן המשפט חייב לומר גם מה לא נקרא וגם מה לעשות.
+ * ★ ומה שהוא **לא** אומר, בכוונה: שמישהו ניסה. אין לנו ראיה לכך — גבול
+ * `l=` שנגמר מוקדם הוא התנהגות של מערכת החתימה, לא הודאה של תוקף. האשמה
+ * שאין מאחוריה ראיה היא בדיוק מה שהפחיד את המשתמשת בבוקר של 16.9.
+ */
+const SIGNED_PART_INCOMPLETE_HE =
+  'החלק שחברת הסליקה חתמה עליו נגמר לפני שההזמנה הושלמה, ולכן לא קראתי ממנה כתובת. כדאי לפתוח את המייל המקורי';
 
 // ---------------------------------------------------------------------------
 // איסוף זוגות תווית/ערך
@@ -981,20 +1201,68 @@ function collectFields(lines: readonly string[]): {
 // טבלת המוצרים
 // ---------------------------------------------------------------------------
 
+/**
+ * ★★ שתי הצורות שבהן טבלת המוצרים מגיעה בפועל — ולמה שתיהן ולא אחת.
+ *
+ *   `inline`  — כל רשומה בשורה אחת, והתאים מופרדים בטאב / רווח כפול / `|`.
+ *               זו הצורה שכל ה-fixtures שלנו נכתבו בה.
+ *   `stacked` — ★ הצורה שנמצאה בהודעה אמיתית: **כל תא בשורה משלו**, שלוש
+ *               שורות לרשומה, והקבוצות מופרדות בשורה ריקה.
+ *
+ * ⛔ **תוספת, לא החלפה.** ההנחה ש"תא = מקטע בתוך שורה" נולדה מקלט שאנחנו
+ * המצאנו — אותה טעות בדיוק כמו ב-`header.d=` וב-`c=`. להחליף הנחה מומצאת
+ * אחת בהנחה מומצאת אחרת אינו תיקון: אין לנו שום ודאות שכל ההודעות של הספק
+ * זהות, ולכן שתי הצורות נקראות, ו**איזו מהן נקראה נמדד** ולא מונח.
+ */
+export type ProductCellMode = 'inline' | 'stacked';
+
 interface ProductTable {
   /** אינדקס העמודה של כל שדה, כפי שנקרא **משורת הכותרת**. */
   columns: { productName: number; quantity: number; unitPrice: number };
   rows: string[][];
+  /** ★ באיזו צורה נקראה הטבלה. נכנס למדידה. */
+  cellMode: ProductCellMode;
+  /**
+   * ★★ כמה קבוצות בתוך אזור הטבלה נראו כמו נתון ו**לא** נקראו כרשומה שלמה.
+   *
+   * כל אחת מהן היא חסימה ולא השמטה שקטה. ראה `buildItems`.
+   */
+  unreadableRows: number;
+}
+
+/** שמות כותרות הטבלה, כמערך — לבדיקת "האם השורה הזאת כותרת ולא נתון". */
+const TABLE_HEADER_NAMES: readonly string[] = Object.values(ORDER_TABLE_HEADERS);
+
+/**
+ * שורה שהיא תווית מוכרת או כותרת טבלה — כלומר **לא** נתון של מוצר.
+ * זה מה שמסמן את סוף אזור הטבלה, ולכן גם מה שמונע מהפרסר לקרוא את
+ * `סכום ששולם` כשם מוצר.
+ */
+function isKnownLabelLine(line: string | undefined): boolean {
+  const label = cleanLabel(String(line ?? ''));
+  return ALL_LABELS.includes(label) || TABLE_HEADER_NAMES.includes(label);
 }
 
 /**
- * מאתר את שורת הכותרת ואת השורות שאחריה.
+ * מאתר את טבלת המוצרים — קודם בצורה השורתית, ואם אין, בצורה המוערמת.
  *
- * ★ סדר העמודות נקרא מהכותרת ולא מונח. הודעה שבה `כמות` ו`מחיר ליחידה`
- * מחליפות מקום היא בדיוק המקרה שבו פרסר עם אינדקסים קשיחים ידווח על 24
- * יחידות במחיר 2 ש״ח — בלי שום שגיאה ובלי שאף אחד ישים לב.
+ * ★ סדר העמודות נקרא מהכותרת ולא מונח, בשתי הצורות. הודעה שבה `כמות`
+ * ו`מחיר ליחידה` מחליפות מקום היא בדיוק המקרה שבו פרסר עם אינדקסים קשיחים
+ * ידווח על 24 יחידות במחיר 2 ש״ח — בלי שום שגיאה ובלי שאף אחד ישים לב.
+ *
+ * @param lines  השורות הלא-ריקות (משרת את שתי הצורות).
+ * @param blocks ★ הקבוצות כפי שהשורות הריקות תחמו אותן. `null` כשאין מידע
+ *               כזה (מסלול ה-HTML) — ואז כל הגוף נחשב קבוצה אחת.
  */
-function findProductTable(lines: readonly string[]): ProductTable | null {
+function findProductTable(
+  lines: readonly string[],
+  blocks: readonly (readonly string[])[] | null,
+): ProductTable | null {
+  return findInlineTable(lines) ?? findStackedTable(blocks ?? [lines]);
+}
+
+/** הצורה השורתית: כותרת אחת עם שלושה תאים, ואחריה שורה לכל מוצר. */
+function findInlineTable(lines: readonly string[]): ProductTable | null {
   for (let i = 0; i < lines.length; i++) {
     const cells = splitCells(lines[i]).map(cleanLabel);
     const productName = cells.indexOf(ORDER_TABLE_HEADERS.productName);
@@ -1009,12 +1277,149 @@ function findProductTable(lines: readonly string[]): ProductTable | null {
       // שורה שאינה בגודל הטבלה מסיימת אותה. תווית מוכרת מסיימת אותה גם היא —
       // בהודעות שראינו טבלת המוצרים באה אחרונה, אבל אין סיבה להישען על זה.
       if (row.length < needed) break;
-      if (ALL_LABELS.includes(cleanLabel(row[0]))) break;
+      if (isKnownLabelLine(row[0])) break;
       rows.push(row);
     }
-    return { columns: { productName, quantity, unitPrice }, rows };
+    return {
+      columns: { productName, quantity, unitPrice },
+      rows,
+      cellMode: 'inline',
+      unreadableRows: 0,
+    };
   }
   return null;
+}
+
+/**
+ * ★★ הצורה המוערמת: תא בשורה, שלוש שורות לרשומה, קבוצות מופרדות בשורה ריקה.
+ *
+ * ---------------------------------------------------------------------------
+ * הסיכון שהצורה הזאת מייצרת, וההכרעה מולו
+ * ---------------------------------------------------------------------------
+ * "שלוש שורות = מוצר" הוא מבנה מסוכן יותר משורה מופרדת: **שורה אחת חסרה
+ * מזיזה את כל מה שאחריה**, והכמות של מוצר אחד נדבקת למחיר של אחר. לשלוח 1
+ * במקום 4 היא הטעות היקרה במסך הזה, ולשלוח את המוצר הלא נכון גרוע ממנה.
+ *
+ * לכן שתי בקרות, ושתיהן מכריעות **לפני** שנוצר פריט:
+ *
+ *  1. ★ **הגבול נקרא ולא נספר.** הקיבוץ נשען על השורות הריקות
+ *     (`orderTextToBlocks`) ולא על ספירה מודולו 3. קבוצה בגודל 2 היא ממצא
+ *     ודאי, לא השערה על יישור.
+ *
+ *  2. ★★ **כל רשומה מאומתת בשלושת התאים שלה**: הכמות חייבת להיקרא כמספר
+ *     שלם, המחיר כמספר, והשם **לא** להיקרא כמספר. רשומה שלא עמדה בשלושתם
+ *     אינה נקראת חלקית ואינה מדולגת בשקט — היא **עוצרת את הטבלה ונספרת
+ *     כשורה שלא נקראה**, וזו חסימה.
+ *
+ * כלומר: כשאי אפשר לזהות בוודאות רשומה שלמה — חוסמים, לא מנחשים.
+ */
+function findStackedTable(blocks: readonly (readonly string[])[]): ProductTable | null {
+  for (let b = 0; b < blocks.length; b++) {
+    const block = blocks[b];
+    for (let i = 0; i + 2 < block.length; i++) {
+      const columns = stackedHeader(block.slice(i, i + 3));
+      if (!columns) continue;
+
+      // אזור הטבלה: מה שנשאר בקבוצת הכותרת, ואחריו הקבוצות הבאות.
+      const groups: string[][] = [];
+      const rest = block.slice(i + 3);
+      if (rest.length > 0) groups.push([...rest]);
+      for (let k = b + 1; k < blocks.length; k++) groups.push([...blocks[k]]);
+
+      const rows: string[][] = [];
+      let unreadableRows = 0;
+
+      for (const group of groups) {
+        // תווית מוכרת = אזור הטבלה נגמר וחזרנו לשדות. סיום נקי.
+        if (isKnownLabelLine(group[0])) break;
+
+        const read = readStackedGroup(group, columns);
+        if (read) {
+          rows.push(...read);
+          continue;
+        }
+
+        // ★★ הקבוצה אינה רשומה שלמה. שתי אפשרויות, ומפרידים ביניהן לפי **מה
+        // שיש בקבוצה** ולא לפי מה שנוח:
+        //
+        //   יש בה מספר  → זה נתון שלא הצלחנו לקרוא. חסימה.
+        //   אין בה מספר → זה טקסט סיום (ברכה, כתובת אתר). סיום נקי.
+        //
+        // ההפרדה נדרשת כי שני המצבים נראים אותו דבר מבחוץ, והכרעה אחידה
+        // לכל אחד מהם הייתה שגויה: "תמיד לחסום" הופך שורת תודה לחסימה
+        // יומית, ו"תמיד לעצור בשקט" מוחק מוצר מרשימת האריזה.
+        //
+        // ⚠️ ומה שההפרדה הזאת **לא** פותרת, וצריך להיות כתוב: קבוצה של
+        // תווית-לא-מוכרת וערך מספרי (`סה״כ לתשלום` / `99`) נראית בדיוק
+        // כמו רשומת מוצר שחסר בה תא. אין הבדל מקומי בין השתיים, ולכן
+        // נבחרה ההכרעה היקרה פחות: **לחסום**. אם יתברר שזה מה שקורה בכל
+        // ההודעות, המדידה תגיד את זה מיד — `badrows=` בשורה הקומפקטית —
+        // ואז מוסיפים את התווית לרשימה המוכרת. זו החלטה שניתן למדוד, לא
+        // הנחה שקטה.
+        if (group.some((line) => parseAmount(line) !== null)) unreadableRows++;
+        break;
+      }
+
+      return { columns, rows, cellMode: 'stacked', unreadableRows };
+    }
+  }
+  return null;
+}
+
+/**
+ * שלוש שורות → סדר העמודות, או `null`.
+ * כל אחת מהן חייבת להיות **תא בודד** ששווה לאחת משלוש הכותרות, וכולן שונות.
+ */
+function stackedHeader(triple: readonly string[]): ProductTable['columns'] | null {
+  const names: string[] = [];
+  for (const line of triple) {
+    const cells = splitCells(line);
+    if (cells.length !== 1) return null;
+    names.push(cleanLabel(cells[0]));
+  }
+  const productName = names.indexOf(ORDER_TABLE_HEADERS.productName);
+  const quantity = names.indexOf(ORDER_TABLE_HEADERS.quantity);
+  const unitPrice = names.indexOf(ORDER_TABLE_HEADERS.unitPrice);
+  if (productName === -1 || quantity === -1 || unitPrice === -1) return null;
+  return { productName, quantity, unitPrice };
+}
+
+/**
+ * קבוצה → רשומות, או `null` כשהיא אינה קבוצה שלמה של רשומות.
+ *
+ * ★ קבוצה שאינה כפולה של 3 נדחית **כולה**, ולא נקראת "עד כמה שאפשר".
+ * קבוצה שהיא כפולה של 3 נקראת כרשומות רצופות — זה המצב שבו הספק לא הפריד
+ * בשורה ריקה — וכל רשומה בה מאומתת בנפרד, כך שיישור שזז נתפס גם כשהספירה
+ * במקרה מסתדרת.
+ */
+function readStackedGroup(
+  group: readonly string[],
+  columns: ProductTable['columns'],
+): string[][] | null {
+  if (group.length === 0 || group.length % 3 !== 0) return null;
+
+  const rows: string[][] = [];
+  for (let i = 0; i < group.length; i += 3) {
+    const triple = group.slice(i, i + 3);
+    if (!isStackedRecord(triple, columns)) return null;
+    rows.push(triple);
+  }
+  return rows;
+}
+
+/**
+ * ★★ האם שלוש השורות האלה הן באמת רשומה אחת.
+ *
+ * שלושה תנאים, וכל אחד מהם וטו. השלישי — "השם אינו מספר" — הוא זה שתופס
+ * יישור שזז: ברגע ששורה אחת חסרה, מה שיושב במקום השם הוא מחיר או כמות.
+ */
+function isStackedRecord(triple: readonly string[], columns: ProductTable['columns']): boolean {
+  const name = triple[columns.productName] ?? '';
+  if (parseQuantity(triple[columns.quantity]) === null) return false;
+  if (parseAmount(triple[columns.unitPrice]) === null) return false;
+  if (parseAmount(name) !== null) return false;
+  if (isKnownLabelLine(name)) return false;
+  return true;
 }
 
 /**
@@ -1080,10 +1485,31 @@ function buildItems(table: ProductTable, issues: OrderIssue[]): OrderItem[] {
     });
   }
 
-  if (items.length === 0) {
+  // ★★ שורה שלא נקראה כרשומה שלמה. **חסימה, לא השמטה.**
+  //
+  // הפיתוי כאן הוא לדלג עליה ולהמשיך — והוא בדיוק מה שאסור: קבוצה שבורה
+  // פירושה שאיננו יודעים מה הוזמן או בכמה יחידות, ורשימת אריזה שחסר בה
+  // מוצר נראית בדיוק כמו רשימה שלמה. עדיף שתפתח מייל אחד מאשר שתארוז לא נכון.
+  if (table.unreadableRows > 0) {
     issues.push(
-      issue('items', 'noItems', 'block', 'לא מצאתי שום שורת מוצר בהודעה הזאת'),
+      issue(
+        'items',
+        'rowUnreadable',
+        'block',
+        'באזור טבלת המוצרים יש שורה שלא הצלחתי לקרוא כרשומה שלמה — חסר בה תא או שהיא זזה. לא ניחשתי מה היה שם, כי ניחוש כאן פירושו לארוז מוצר או כמות לא נכונים. כדאי לפתוח את המייל ולראות מה הוזמן',
+      ),
     );
+  }
+
+  // ★ "לא מצאתי שורת מוצר" נאמר רק כשבאמת לא היה שם כלום. כשהיה שם משהו
+  // שלא נקרא, המשפט שלמעלה כבר אמר את הדבר הנכון, ושני משפטים על אותה
+  // תקלה מלמדים להתעלם משניהם.
+  if (items.length === 0) {
+    if (table.unreadableRows === 0) {
+      issues.push(
+        issue('items', 'noItems', 'block', 'לא מצאתי שום שורת מוצר בהודעה הזאת'),
+      );
+    }
     return items;
   }
 

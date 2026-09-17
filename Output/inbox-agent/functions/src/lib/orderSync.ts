@@ -36,6 +36,8 @@ import {
   type FetchContractCode,
 } from '../shared/lib/gmailContract';
 import { readOrderBodies, type OrderSourceCandidate } from '../shared/lib/orderSource';
+import { summarizeReads, type ReadDiagnostics } from '../shared/lib/readDiagnostics';
+import type { OrderStructureMeasure } from '../shared/lib/orderParse';
 import { isOrderSubject, parseOrderMessage } from '../shared/lib/orderParse';
 import { domainOf } from '../shared/lib/addresses';
 import { purgeDateFor } from '../shared/lib/orderRetention';
@@ -60,6 +62,14 @@ export interface SyncSummary {
   needsAttention: number;
   /** ★★ הודעות שנפסלו בשער החוזה, לפי קוד. */
   contractRefusals: Partial<Record<FetchContractCode, number>>;
+  /**
+   * ★★ המונים. **מספרים וקטגוריות בלבד** — ראה `readDiagnostics.ts`.
+   *
+   * זה השדה שנוסף אחרי שלוש היפותזות שגויות ברצף על מה שובר 60 הזמנות
+   * אמיתיות. הוא לא נועד לרוץ פעם אחת ולרדת: כל עוד אין בריפו גוף הודעה
+   * אמיתי, הוא הדבר היחיד שאפשר להסיק ממנו במקום לנחש.
+   */
+  diagnostics: ReadDiagnostics;
   errorHe: string | null;
 }
 
@@ -92,6 +102,9 @@ const emptySummary = (): SyncSummary => ({
   unsignedTail: 0,
   needsAttention: 0,
   contractRefusals: {},
+  // ★ נבנה מחדש בכל קריאה ולא מקבוע משותף: קבוע היה מחזיר את **אותם
+  // מערכים** לכל הריצות, ושתי ריצות היו חולקות רשימת תוויות אחת.
+  diagnostics: summarizeReads([], []),
   errorHe: null,
 });
 
@@ -163,6 +176,9 @@ export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<Sy
   summary.readParts = read.parts;
   summary.unsignedTail = read.unsignedTailCount;
 
+  // ★★ מדידות המבנה נאספות בלולאה שלמטה, כי הן נולדות בפענוח ולא בקריאה.
+  const structures: OrderStructureMeasure[] = [];
+
   const at = now();
   const ts = at.toISOString();
   const ordersRef = deps.db.collection(collectionPath(uid, COLLECTIONS.orders));
@@ -186,6 +202,10 @@ export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<Sy
       dkimSignature: msg.dkimSignature,
       unsignedTailBytes: part?.unsignedBytes ?? 0,
     });
+
+    // ★ נאסף גם כשהפענוח נחסם — **דווקא אז**. זה כל מה שיש לנו על השאלה
+    // "עד איפה החלק שנקרא הגיע".
+    if (parsed.structure) structures.push(parsed.structure);
 
     if (!parsed.isOrderCandidate) {
       // הודעה שנשאה את הנושא ולא עברה אימות שולח — נשמרת כשאלה פתוחה, בלי
@@ -278,6 +298,10 @@ export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<Sy
     summary.written++;
   }
 
+  // ★★ הסיכום נבנה **אחרי** הלולאה, כי רק בסופה ידועות גם המדידות של
+  // הקריאה וגם אלה של המבנה.
+  summary.diagnostics = summarizeReads(read.measures, structures);
+
   await deps.db.doc(userDocPath(uid)).set(
     {
       googleConnection: 'connected',
@@ -285,6 +309,10 @@ export async function syncOrdersForUser(uid: string, deps: SyncDeps): Promise<Sy
       // ★ M18 — המונה שמוצג במסך. **נגזר ממה שנקרא בפועל.**
       lastReadCount: summary.messagesRead,
       lastReadSources: summary.readSources,
+      // ★★ המונים. נכתבים גם למסמך המשתמשת ולא רק ל-`syncRuns`, כי המסך
+      // מאזין לו — ובלי זה השורה במסך הייתה דורשת שאילתה שנייה על אוסף
+      // שכל כולו מטא-נתונים.
+      lastDiagnostics: summary.diagnostics,
     },
     { merge: true },
   );
@@ -322,6 +350,9 @@ async function writeRun(
     unsignedTail: summary.unsignedTail,
     needsAttention: summary.needsAttention,
     contractRefusals: summary.contractRefusals,
+    // ★★ ספירות וקטגוריות. ראה ההערה על `writeRun` — וראה גם את המבחן
+    // שמוודא שאין כאן ערך מההודעה.
+    diagnostics: summary.diagnostics,
     errorHe: summary.errorHe,
     purgeAfter: new Date(
       at.getTime() + SYNC_RUN_RETENTION_DAYS * 24 * 60 * 60 * 1000,

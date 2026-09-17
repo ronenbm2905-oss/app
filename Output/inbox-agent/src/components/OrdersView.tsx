@@ -37,8 +37,11 @@ import {
   type Order,
 } from '../../shared/types';
 import { retentionNoteHe } from '../../shared/lib/orderRetention';
+import { formatRange, type ReadDiagnostics } from '../../shared/lib/readDiagnostics';
 import type { OrderRunResult } from '../utils/orderPipeline';
+import type { BulkShippedResult } from '../hooks/useCloudOrders';
 import { t } from '../i18n';
+import { isFirebaseConfigured } from '../firebase';
 import { Badge, Banner } from './ui/Badge';
 
 const dateFmt = new Intl.DateTimeFormat('he-IL', {
@@ -60,11 +63,27 @@ function formatMoney(value: number | null, currency: string | null): string {
   return sign ? `${n} ${sign}` : n;
 }
 
+/**
+ * ★ הסימון ההמוני — וגם ביטולו, שזו אותה קריאה עם `shipped=false`.
+ * מחזירה את מה שהשרת ספר, או `null` כשלא נשמר כלום.
+ */
+export type MarkAllShippedFn = (
+  messageIds: string[],
+  shipped: boolean,
+) => Promise<BulkShippedResult | null>;
+
 export interface OrdersViewProps {
   result: OrderRunResult;
   canEdit: boolean;
   onToggleShipped: (messageId: string) => void;
   onPurgeRequest: (query: string) => string;
+  /**
+   * ★ אופציונלי בכוונה: במצב ההדגמה אין מסלול המוני, והכפתור פשוט לא
+   * מופיע. רכיב שמקבל פונקציה ריקה היה מציג כפתור שלא עושה כלום.
+   */
+  onMarkAllShipped?: MarkAllShippedFn;
+  /** כישלון שמירה של סימון. מוצג פעם אחת למעלה, ולא ליד כל כרטיס. */
+  shippedErrorHe?: string | null;
 }
 
 export function OrdersView({
@@ -72,6 +91,8 @@ export function OrdersView({
   canEdit,
   onToggleShipped,
   onPurgeRequest,
+  onMarkAllShipped,
+  shippedErrorHe,
 }: OrdersViewProps) {
   const [shippedOpen, setShippedOpen] = useState(false);
 
@@ -85,6 +106,13 @@ export function OrdersView({
             : `${t('ordersSummaryPrefix')} ${result.toShip.length} ${t('ordersSummaryMiddle')} ${result.stats.unitsToPack} ${t('ordersSummarySuffix')}`}
         </p>
       </header>
+
+      {/* ★ כישלון שמירה. למעלה, כי הוא נכון גם לצ׳קבוקס ברשימה התחתונה. */}
+      {shippedErrorHe ? (
+        <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+          <p className="text-sm text-amber-900">{shippedErrorHe}</p>
+        </div>
+      ) : null}
 
       {/* ★ עומדות להימחק — לפני הכול, כי זו הרשימה שיש עליה חלון זמן. */}
       {result.expiringSoon.length > 0 ? (
@@ -127,6 +155,17 @@ export function OrdersView({
             {result.toShip.length}
           </span>
         </h3>
+        {/* ★★ "סימון הכל" — **מרונדר בלי קשר לאורך הרשימה.**
+            הכפתור עצמו מופיע רק משתי הזמנות ומעלה, אבל הרכיב חייב להישאר
+            על המסך גם אחרי שהרשימה התרוקנה — אחרת באנר הביטול נעלם יחד עם
+            ההזמנות שהוא אמור להחזיר, ברגע שבו הוא הכי נחוץ. */}
+        {canEdit && onMarkAllShipped ? (
+          <MarkAllShipped
+            messageIds={result.toShip.map((o) => o.sourceMessageId)}
+            onMarkAll={onMarkAllShipped}
+          />
+        ) : null}
+
         {result.toShip.length === 0 ? (
           <p className="text-sm text-slate-500">{t('ordersToShipEmpty')}</p>
         ) : (
@@ -199,7 +238,7 @@ export function OrdersView({
       ) : null}
 
       {/* ★ מונה הקריאה (M18). ראה `orderSource.ts`. */}
-      <ReadCounter stats={result.stats} />
+      <ReadCounter stats={result.stats} blockedCount={result.needsAttention.length} />
 
       <PurgeRequestBox canEdit={canEdit} onPurgeRequest={onPurgeRequest} />
     </div>
@@ -218,7 +257,14 @@ export function OrdersView({
  * המקורות בפועל היא אחת. אם אי פעם ייקרא גוף ממקום אחר, המסך יראה את
  * הרשימה האמיתית — היא תגלה את זה לפנינו, וזו הכוונה.
  */
-function ReadCounter({ stats }: { stats: OrderRunResult['stats'] }) {
+function ReadCounter({
+  stats,
+  blockedCount,
+}: {
+  stats: OrderRunResult['stats'];
+  /** ★ כמה הזמנות נחסמו. הפרטים הטכניים מופיעים רק כשיש כאלה. */
+  blockedCount: number;
+}) {
   const singleSource = stats.readSources.length <= 1;
 
   return (
@@ -236,8 +282,314 @@ function ReadCounter({ stats }: { stats: OrderRunResult['stats'] }) {
       <p className="mt-1 text-xs text-slate-500">
         {t('readCounterSource')} <span className="font-mono">{stats.sourceQuery}</span>
       </p>
-      <p className="mt-1 text-xs text-slate-500">{t('readCounterDemo')}</p>
+      {/*
+        ★★ היקף הקריאה — **פעם אחת, מצטבר**, ולא הערה על כל כרטיס.
+        ראה `OrderIssueSeverity` ב-`shared/types/order.ts`: הממצא
+        `unsignedBodyTail` נדלק על כל הזמנה אמיתית של הספק, ולכן הוא נשמר
+        בדרגת `info` ומוצג כאן בשורה אחת במקום 60 פעם באמבר.
+      */}
+      {stats.unsignedTail > 0 && (
+        <p className="mt-1 text-xs text-slate-500">{t('readCounterSignedOnly')}</p>
+      )}
+      {/*
+        ★ רק במצב הדגמה. השורה הזאת נכתבה כשהאפליקציה הייתה הדגמה בלבד, וכשנוסף
+        מצב הענן היא נשארה ללא תנאי — כלומר היא הופיעה מתחת לשאילתה האמיתית
+        ואמרה למשתמשת שההודעות נקראו מקובץ דוגמה. **טקסט שמכחיש את מה שמעליו**
+        הוא גרוע מטקסט חסר: הוא גורם לה לא לסמוך על מספר נכון.
+      */}
+      {!isFirebaseConfigured && (
+        <p className="mt-1 text-xs text-slate-500">{t('readCounterDemo')}</p>
+      )}
+      {/*
+        ★★ הפרטים הטכניים — **רק כשיש הזמנות חסומות**, ורק מאחורי גילוי.
+        ראה `ReadDiagnosticsPanel`.
+      */}
+      {blockedCount > 0 && stats.diagnostics.messages > 0 && (
+        <ReadDiagnosticsPanel d={stats.diagnostics} />
+      )}
     </section>
+  );
+}
+
+/**
+ * ★★ מה נמדד כשהכלי קרא — ולמה זה על המסך ולא בלוג.
+ *
+ * ---------------------------------------------------------------------------
+ * הבעיה שזה פותר
+ * ---------------------------------------------------------------------------
+ * 60 מתוך 60 ההזמנות האמיתיות נחסמו, ושלוש היפותזות ברצף על הסיבה הופרכו —
+ * כי אין בריפו אף גוף הודעה אמיתי, רק הכותרת. כלומר: כל טענה על **מה** נשבר
+ * הייתה ניחוש, וניחוש שנכתב כקוד נראה כמו תיקון.
+ *
+ * הפאנל הזה מחליף את הניחוש במדידה. הוא **לא** מציג שום ערך מההודעה — רק
+ * מספרים ושמות תוויות שהם מחרוזות קבועות מהקוד. ראה `readDiagnostics.ts`,
+ * ואת המבחן שמפיל כל ניסיון להוסיף כאן טקסט מההודעה.
+ *
+ * ---------------------------------------------------------------------------
+ * ★ למה מאחורי `<details>`, ולמה רק כשיש חסומות
+ * ---------------------------------------------------------------------------
+ * זה מסך של בעלת עסק שרוצה לדעת מה לארוז. שורת מספרים גלויה מתחת למונה
+ * הקריאה נקראת כמו תקלה גם כשהכול תקין — ולכן היא סגורה, מנוסחת כ"אם ביקשו
+ * ממך צילום מסך", ומופיעה רק כשבאמת יש מה להסביר.
+ *
+ * ★★ ושורת ה-`code` למטה היא **ASCII בלבד** בכוונה: שורה שמערבבת עברית
+ * ומספרים בכיוון RTL מצטלמת ונקראת הפוך, וזו בדיוק השורה שאמורה לחצות
+ * טלפון בוואטסאפ בלי שאיש יפענח אותה מחדש.
+ */
+function ReadDiagnosticsPanel({ d }: { d: ReadDiagnostics }) {
+  const parts = `t${d.partsSelected.text}/h${d.partsSelected.html}/u${d.partsSelected.unknown}/n${d.partsSelected.none}`;
+  // ★★ צורת התאים של הטבלה. `table=0` לבדו אמר "לא נמצאה" ולא אמר למה —
+  // וזה בדיוק המקום שבו נשרפו שלושה סיבובי ניחוש.
+  const cellMode = `i${d.productCellMode.inline}/s${d.productCellMode.stacked}/n${d.productCellMode.none}`;
+  // ★ המונה הגבוה מבין התוויות החסרות. `missmax=60` מתוך `msgs=60` פירושו
+  // מבנה שהשתנה; `missmax=1` פירושו שדה שלקוחה אחת לא מילאה. שני מצבים
+  // שנראו זהים במדידה הקודמת, ודורשים שתי פעולות שונות לגמרי.
+  const missMax = d.labelsMissingCounts.reduce((max, m) => Math.max(max, m.count), 0);
+  const compact = [
+    `msgs=${d.messages}`,
+    `raw=${formatRange(d.bodyBytesRaw)}`,
+    `canonb=${formatRange(d.canonBodyBytes)}`,
+    `l=${d.signedLimit.min === null ? 'none' : formatRange(d.signedLimit)}`,
+    `nolimit=${d.signedLimitAbsent}`,
+    `drop=${formatRange(d.bytesDropped)}`,
+    `canon=s${d.bodyCanon.simple}/r${d.bodyCanon.relaxed}/o${d.bodyCanon.other}`,
+    `part=${parts}`,
+    `pbytes=${formatRange(d.partBytes)}`,
+    `incomplete=${d.partsIncomplete}`,
+    `struct=${d.structuresMeasured}`,
+    `table=${d.productTableFound}`,
+    `cellmode=${cellMode}`,
+    `rows=${formatRange(d.productRows)}`,
+    `badrows=${d.rowsUnreadable}`,
+    `found=${d.labelsFound.length}`,
+    `missing=${d.labelsMissing.length}`,
+    `missmax=${missMax}`,
+  ].join(' ');
+
+  const row = (label: string, value: string) => (
+    <li key={label} className="flex flex-wrap gap-x-1">
+      <span className="text-slate-500">{label}</span>
+      <span className="font-medium text-slate-700">{value}</span>
+    </li>
+  );
+
+  const list = (labels: string[]) => (labels.length > 0 ? labels.join(', ') : t('diagnosticsNone'));
+
+  return (
+    <details className="mt-2 border-t border-slate-200 pt-2">
+      <summary className="cursor-pointer text-xs text-slate-500">
+        {t('diagnosticsToggle')}
+      </summary>
+
+      <p className="mt-2 text-xs text-slate-500">{t('diagnosticsIntro')}</p>
+
+      <ul className="mt-2 space-y-0.5 text-xs">
+        {row(t('diagnosticsMessages'), String(d.messages))}
+        {row(t('diagnosticsBodyBytes'), formatRange(d.bodyBytesRaw))}
+        {row(t('diagnosticsCanonBytes'), formatRange(d.canonBodyBytes))}
+        {row(
+          t('diagnosticsSignedLimit'),
+          d.signedLimit.min === null ? t('diagnosticsNone') : formatRange(d.signedLimit),
+        )}
+        {row(t('diagnosticsBytesDropped'), formatRange(d.bytesDropped))}
+        {row(
+          t('diagnosticsCanon'),
+          `${d.bodyCanon.simple} / ${d.bodyCanon.relaxed} / ${d.bodyCanon.other}`,
+        )}
+        {row(t('diagnosticsPart'), parts)}
+        {row(t('diagnosticsPartBytes'), formatRange(d.partBytes))}
+        {row(t('diagnosticsPartIncomplete'), String(d.partsIncomplete))}
+        {row(
+          t('diagnosticsTable'),
+          `${d.productTableFound} ${t('diagnosticsOutOf')} ${d.structuresMeasured}`,
+        )}
+        {row(t('diagnosticsCellMode'), cellMode)}
+        {row(t('diagnosticsRows'), formatRange(d.productRows))}
+        {row(t('diagnosticsRowsUnreadable'), String(d.rowsUnreadable))}
+        {row(t('diagnosticsLabelsFound'), list(d.labelsFound))}
+        {/* ★ כאן, ורק כאן, השם והמונה יחד: "מיקוד (1 מתוך 60)" עונה על
+            השאלה ששם לבדו לא ענה — האם המבנה השתנה או שלקוחה אחת לא מילאה. */}
+        {row(
+          t('diagnosticsLabelsMissing'),
+          d.labelsMissingCounts.length > 0
+            ? d.labelsMissingCounts
+                .map((m) => `${m.label} (${m.count} ${t('diagnosticsOutOf')} ${d.structuresMeasured})`)
+                .join(', ')
+            : t('diagnosticsNone'),
+        )}
+      </ul>
+
+      <p className="mt-2 text-xs text-slate-500">{t('diagnosticsLine')}</p>
+      <code dir="ltr" className="mt-1 block break-all rounded bg-white p-2 text-[11px] text-slate-600">
+        {compact}
+      </code>
+    </details>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ★★ סימון הכל כנשלח
+// ---------------------------------------------------------------------------
+
+/** מה שקרה בסימון האחרון, ומה שצריך כדי להחזיר אותו. */
+interface MarkAllDone {
+  /** ★★ **בדיוק המזהים שנשלחו**, ולא "כל מה שמסומן עכשיו". */
+  messageIds: string[];
+  updated: number;
+  skippedBlocked: number;
+  undone: boolean;
+}
+
+/**
+ * ★★ הכפתור שנוגע בשישים רשומות בלחיצה — ושלוש הבקרות שמצדיקות אותו.
+ *
+ * ---------------------------------------------------------------------------
+ * למה הוא בכלל קיים
+ * ---------------------------------------------------------------------------
+ * שישים הזמנות פתוחות שכולן כבר ארוזות בפועל, ושישים לחיצות כדי להוריד אותן
+ * מהמסך. רשימה שעולה יותר מדי לתחזק היא רשימה שנזנחת — ומרגע שנזנחה, "עוד
+ * לא יצא" מפסיק להיות נכון, וכל המסך מפסיק להיות שווה משהו.
+ *
+ * ---------------------------------------------------------------------------
+ * ★ 1. אישור דו-שלבי **בתוך המסך**, ולא `window.confirm`
+ * ---------------------------------------------------------------------------
+ * `confirm` הוא חלון של הדפדפן: באנגלית לפי ההגדרות, בלי RTL, עם "OK"
+ * ו-"Cancel" — ובדיוק בשלב שבו צריך לקרוא מה עומד לקרות. כאן השאלה נשאלת
+ * בעברית, עם המספר בתוכה ועם משפט שמסביר לאן ההזמנות עוברות.
+ *
+ * ★ 2. **ביטול מתמשך.** הבאנר לא נעלם מעצמו — ראה ההערה על `ordersMarkAll*`
+ * ב-`i18n.ts`. הוא מחזיק את **אותם מזהים** ששלחנו, כדי שהביטול יחזיר בדיוק
+ * אותם ולא את מה שמסומן במקרה עכשיו.
+ *
+ * ★ 3. **משני ויזואלית.** מסגרת על לבן, כמו "להראות" — ולא כהה כמו "העתקת
+ * הכתובת". הפעולה שהמסך הזה קיים בשבילה היא לארוז ולשלוח; פעולה שמנקה את
+ * הרשימה לא אמורה למשוך את העין יותר ממנה.
+ */
+function MarkAllShipped({
+  messageIds,
+  onMarkAll,
+}: {
+  messageIds: string[];
+  onMarkAll: MarkAllShippedFn;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<MarkAllDone | null>(null);
+
+  const run = async () => {
+    // ★ צילום המזהים **לפני** הקריאה. מרגע שהסימון נכנס, `messageIds`
+    // מתרוקן (ההזמנות עברו ל"כבר יצא") — ואז לביטול לא היה מה להחזיר.
+    const sent = [...messageIds];
+    setBusy(true);
+    try {
+      const res = await onMarkAll(sent, true);
+      setConfirming(false);
+      if (res) {
+        setDone({
+          messageIds: sent,
+          updated: res.updated,
+          skippedBlocked: res.skippedBlocked,
+          undone: false,
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const undo = async () => {
+    if (!done) return;
+    setBusy(true);
+    try {
+      const res = await onMarkAll(done.messageIds, false);
+      if (res) setDone({ ...done, undone: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doneLine = done
+    ? done.undone
+      ? t('ordersMarkAllUndone')
+      : done.updated === 1
+        ? t('ordersMarkAllDoneOne')
+        : `${t('ordersMarkAllDonePrefix')} ${done.updated} ${t('ordersMarkAllDoneSuffix')}`
+    : '';
+
+  return (
+    <div className="mb-3 space-y-2">
+      {done ? (
+        <div role="status" className="rounded-lg border border-slate-300 bg-slate-50 p-3">
+          <p className="text-sm text-slate-800">{doneLine}</p>
+
+          {/* ★ מה שלא סומן, ולמה. דילוג שקט הוא גרוע מכישלון גלוי. */}
+          {done.skippedBlocked > 0 ? (
+            <p className="mt-1 text-xs text-slate-600">
+              {done.skippedBlocked === 1
+                ? t('ordersMarkAllSkippedOne')
+                : `${done.skippedBlocked} ${t('ordersMarkAllSkippedSuffix')}`}
+            </p>
+          ) : null}
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            {!done.undone ? (
+              <button
+                type="button"
+                onClick={() => void undo()}
+                disabled={busy}
+                className="min-h-[44px] rounded-lg border border-slate-900 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {busy ? t('ordersMarkAllWorking') : t('ordersMarkAllUndo')}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setDone(null)}
+              className="min-h-[44px] rounded-lg border border-slate-400 bg-white px-3 text-xs text-slate-700 hover:bg-slate-50"
+            >
+              {t('ordersMarkAllDismiss')}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ★ משתי הזמנות ומעלה. על הזמנה אחת "סימון הכל" הוא הצ׳קבוקס שכבר
+          נמצא על הכרטיס, בניסוח מבלבל ועם שלב אישור מיותר. */}
+      {messageIds.length >= 2 ? (
+        confirming ? (
+          <div className="rounded-lg border border-slate-300 bg-white p-3">
+            <p className="text-sm text-slate-700">{t('ordersMarkAllExplain')}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void run()}
+                disabled={busy}
+                className="min-h-[44px] rounded-lg border border-slate-900 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {busy
+                  ? t('ordersMarkAllWorking')
+                  : `${t('ordersMarkAllConfirmPrefix')} ${messageIds.length} ${t('ordersMarkAllConfirmSuffix')}`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(false)}
+                className="min-h-[44px] rounded-lg border border-slate-400 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {t('ordersMarkAllCancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="min-h-[44px] rounded-lg border border-slate-400 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          >
+            {`${t('ordersMarkAllAction')} (${messageIds.length})`}
+          </button>
+        )
+      ) : null}
+    </div>
   );
 }
 

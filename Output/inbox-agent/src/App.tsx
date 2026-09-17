@@ -137,6 +137,7 @@ export function App() {
   const cloudResult = cloudRunResult(cloud.orders, {
     messagesRead: cloud.lastReadCount,
     readSources: cloud.lastReadSources,
+    diagnostics: cloud.lastDiagnostics,
   });
 
   const openConnect = async () => {
@@ -238,11 +239,12 @@ export function App() {
             <OrdersView
               result={cloudResult}
               canEdit
-              onToggleShipped={() => {
-                /* ★ הסימון עובר ב-onCall — הקליינט אינו כותב ל-Firestore.
-                   ראה `firestore.rules`: אין `allow write` לאף אוסף.
-                   מסלול הכתיבה הזה נכנס בסבב הבא — ראה README. */
-              }}
+              /* ★★ הסימון עובר ב-`markOrderShipped` (onCall) — הקליינט אינו
+                 כותב ל-Firestore, כי `firestore.rules` הם deny-all לכתיבה.
+                 כאן ישבה פונקציה ריקה, והצ׳קבוקס פשוט לא שמר כלום. */
+              onToggleShipped={cloud.toggleShipped}
+              onMarkAllShipped={cloud.markManyShipped}
+              shippedErrorHe={cloud.shippedErrorHe}
               onPurgeRequest={() =>
                 'המחיקה לבקשת לקוחה עוברת דרך השרת, והיא עוד לא חוברה במסך הזה. בינתיים — לבקש מרונן.'
               }

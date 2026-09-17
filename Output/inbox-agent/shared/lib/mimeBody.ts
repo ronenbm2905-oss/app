@@ -60,6 +60,15 @@ export interface ReadablePart {
   contentType: string | null;
   /** כמה חלקים נמצאו בגוף. 1 = לא היה פירוק MIME בכלל. */
   partCount: number;
+  /**
+   * ★★ האם החלק שנבחר נסגר בגבול MIME תקין.
+   *
+   * `false` פירושו שהוא **נחתך באמצע** — וזה בדיוק מה שקורה כשגבול `l=`
+   * נופל בתוך החלק. העובדה הזאת הייתה ידועה ל-`MimePart` ונזרקה כאן;
+   * בלעדיה אי אפשר להבדיל בין "התבנית של הספק השתנתה" לבין "החלק החתום
+   * נגמר באמצע", וזו בדיוק ההבחנה שצריך למדוד.
+   */
+  complete: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -307,12 +316,19 @@ export function selectReadablePart(raw: string): ReadablePart {
   const parts = splitMimeParts(text);
 
   if (!parts || parts.length === 0) {
-    return { kind: 'unknown', body: text, contentType: null, partCount: 1 };
+    // גוף שאינו multipart אינו יכול להיחתך "באמצע חלק" — אין חלקים לסגור.
+    return { kind: 'unknown', body: text, contentType: null, partCount: 1, complete: true };
   }
 
   const picked = pickFrom(parts);
   if (!picked) {
-    return { kind: 'unknown', body: '', contentType: null, partCount: parts.length };
+    return {
+      kind: 'unknown',
+      body: '',
+      contentType: null,
+      partCount: parts.length,
+      complete: false,
+    };
   }
 
   const kind: ReadablePart['kind'] =
@@ -327,6 +343,7 @@ export function selectReadablePart(raw: string): ReadablePart {
     body: picked.body,
     contentType: picked.contentType || null,
     partCount: parts.length,
+    complete: picked.complete,
   };
 }
 

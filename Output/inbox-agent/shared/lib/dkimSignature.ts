@@ -44,6 +44,15 @@
 // מה שכן חסר שם ולכן נעשה כאן — **גבולות ההיקף.**
 // ============================================================================
 
+/**
+ * ★ קנוניזציית הגוף, מרשימה **סגורה**.
+ *
+ * `'other'` אינו ערך מהכותרת — הוא הדיווח שלנו על כך שלא זיהינו אותו.
+ * כותרת החתימה נכתבת על ידי מי ששלח, וערך חופשי ממנה היה טקסט של זר
+ * שנכתב ל-Firestore ומוצג במסך.
+ */
+export type BodyCanonicalization = 'simple' | 'relaxed' | 'other';
+
 export interface DkimSignatureTags {
   /** האם צורפה כותרת `DKIM-Signature` בכלל. */
   present: boolean;
@@ -59,6 +68,28 @@ export interface DkimSignatureTags {
   bodyLengthLimit: number | null;
   /** `l=` שאינו מספר שלם אי-שלילי. אין לדעת מה חתום → לא קוראים. */
   bodyLengthMalformed: boolean;
+  /**
+   * ★★ `c=` — **על איזה גוף `l=` נספר.**
+   *
+   * ---------------------------------------------------------------------------
+   * למה התג הזה נקרא עכשיו, אחרי שהוא לא נקרא קודם
+   * ---------------------------------------------------------------------------
+   * `l=` אינו סופר בתים "כפי שהם על החוט". הוא סופר בתים של הגוף **אחרי
+   * קנוניזציה**, ו-`c=` הוא שאומר איזו. ב-`relaxed` הקנוניזציה מכווצת
+   * רצפי רווחים, מוחקת רווחים בסוף שורה, ומסירה שורות ריקות בסוף הגוף —
+   * כלומר הגוף שנספר **קצר** מהגוף הגולמי.
+   *
+   * ולכן, כשחותכים גוף גולמי ב-`l=` בתים בלי לדעת את `c=`, החיתוך נופל
+   * **מוקדם מדי** בדיוק כשהקנוניזציה היא `relaxed` — ומוקדם מדי פירושו
+   * "ההזמנה נגמרה באמצע" על הודעה תקינה לגמרי. זו השערה שאפשר למדוד, וזה
+   * בדיוק מה שהשדה הזה נועד לאפשר.
+   *
+   * ★ הערך מוגבל ל**רשימה סגורה**: `'simple' | 'relaxed' | 'other'`. כותרת
+   * החתימה ניתנת לכתיבה על ידי מי ששלח את ההודעה, ולכן ערך חופשי ממנה היה
+   * טקסט של זר שנכתב ל-Firestore ומוצג במסך. הוא לא. היעדר `c=` הוא
+   * `'simple'` — ברירת המחדל של RFC 6376, ולא "לא ידוע".
+   */
+  bodyCanonicalization: BodyCanonicalization;
 }
 
 const EMPTY_TAGS: DkimSignatureTags = {
@@ -69,6 +100,7 @@ const EMPTY_TAGS: DkimSignatureTags = {
   signedHeaders: [],
   bodyLengthLimit: null,
   bodyLengthMalformed: false,
+  bodyCanonicalization: 'simple',
 };
 
 /** פורס כותרת מקופלת (המשך שורה בתחילת רווח) לשורה אחת. */
@@ -108,6 +140,13 @@ export function parseDkimSignature(raw: string | null | undefined): DkimSignatur
           .map((h) => h.trim().toLowerCase())
           .filter((h) => h.length > 0);
 
+  // ★ `c=header-canon[/body-canon]`. כשהחלק השני חסר — `simple` (RFC 6376
+  // §3.5). כשהתג כולו חסר — `simple/simple`.
+  const cTag = (tags.get('c') ?? '').toLowerCase();
+  const bodyCanonRaw = cTag.includes('/') ? cTag.split('/')[1].trim() : 'simple';
+  const bodyCanonicalization: BodyCanonicalization =
+    bodyCanonRaw === 'simple' ? 'simple' : bodyCanonRaw === 'relaxed' ? 'relaxed' : 'other';
+
   const lTag = tags.get('l');
   let bodyLengthLimit: number | null = null;
   let bodyLengthMalformed = false;
@@ -126,6 +165,7 @@ export function parseDkimSignature(raw: string | null | undefined): DkimSignatur
     signedHeaders,
     bodyLengthLimit,
     bodyLengthMalformed,
+    bodyCanonicalization,
   };
 }
 
@@ -182,6 +222,110 @@ export interface SignedBodySlice {
   truncated: boolean;
   /** האם בכלל הייתה הגבלה (`l=`). */
   limited: boolean;
+  /**
+   * ★★ אורך הגוף ה**מקונן** בבתים — כלומר הגוף שעליו `l=` נמדד.
+   *
+   * ההפרש בינו לבין אורך הגוף הגולמי הוא בדיוק מה שהקנוניזציה הורידה, והוא
+   * הסיבה שהחיתוך הישן נפל מוקדם מדי. ראה `canonicalizeBody`.
+   */
+  canonBytes: number;
+}
+
+// ---------------------------------------------------------------------------
+// ★★ קנוניזציה — RFC 6376 §3.4.4, והבאג שהיא מתקנת
+// ---------------------------------------------------------------------------
+
+/**
+ * ★★ קנוניזציית גוף `relaxed`, עם מיפוי חזרה לגוף הגולמי.
+ *
+ * ---------------------------------------------------------------------------
+ * הבאג שזה מתקן, ולמה הוא נראה כמו התקפה
+ * ---------------------------------------------------------------------------
+ * `l=` **אינו** סופר בתים כפי שהם על החוט. הוא סופר בתים של הגוף אחרי
+ * הקנוניזציה שהוכרזה ב-`c=`. הספק שלנו חותם `c=relaxed/relaxed`, כלומר
+ * `l=3694` מתייחס לגוף שבו רצפי רווחים כווצו, רווחים בסוף שורה נמחקו
+ * ושורות ריקות בסוף הוסרו — **גוף קצר מהגולמי**.
+ *
+ * עד היום חתכנו את הגוף ה**גולמי** ב-`l=` בתים, בלי לקרוא את `c=` בכלל.
+ * התוצאה: החיתוך נפל שיטתית מוקדם מדי, ההזמנה נגמרה באמצע, והמסך אמר
+ * *"החלק שחברת הסליקה חתמה עליו נגמר לפני שההזמנה הושלמה"* — על 60 מתוך 60
+ * הזמנות תקינות, בלי שאיש נגע בהן. באג אריתמטי שנראה כמו ממצא אבטחה.
+ *
+ * ---------------------------------------------------------------------------
+ * ★★ ולמה יש כאן **מיפוי** ולא רק קנוניזציה
+ * ---------------------------------------------------------------------------
+ * הפיתוי הוא לקנן, לחתוך, ולפרסר את הגוף המקונן. זה שגוי בכיוון אחר:
+ * הקנוניזציה **מוחקת טאבים** (הם WSP, והם מתכווצים לרווח יחיד), וטבלת
+ * המוצרים של הספק מופרדת בטאבים. פירסור של הגוף המקונן היה מחליף באג אחד
+ * באחר — הפעם "לא מצאתי טבלת מוצרים", על כל הזמנה.
+ *
+ * לכן: **הגוף המקונן קובע כמה נחתם, והגוף הגולמי הוא מה שנקרא.** מוצאים את
+ * המקום בגוף המקונן שבו `l=` נגמר, וחוזרים ממנו למקום המקביל בגולמי. שני
+ * הקטעים מתארים את אותו תוכן בדיוק — ההבדל היחיד ביניהם הוא הרווחים, ש-
+ * `relaxed` מכריז עליהם במפורש כחסרי משמעות לחתימה.
+ *
+ * ⚠️ מה שזה כן אומר, וצריך להיאמר: ב-`relaxed` תוקף **יכול** לשנות רווחים
+ * בלי לשבור את החתימה. זה נכון גם היום וגם אתמול — זו תכונה של `relaxed`
+ * ולא של הקוד הזה — ואינו משתנה מהתיקון.
+ */
+function relaxedBodyWithMap(raw: string): { canon: string; map: number[] } {
+  const s = String(raw ?? '');
+  const n = s.length;
+  let canon = '';
+  /** `map[i]` = האינדקס בגוף הגולמי שממנו נולד התו ה-`i` במקונן. */
+  const map: number[] = [];
+  let i = 0;
+
+  while (i <= n) {
+    let lineEnd = i;
+    while (lineEnd < n && s[lineEnd] !== '\n' && s[lineEnd] !== '\r') lineEnd++;
+
+    // ★ §3.4.4: רצף WSP מתכווץ לרווח אחד, ו-WSP בסוף שורה נמחק לגמרי.
+    let j = i;
+    while (j < lineEnd) {
+      const ch = s[j];
+      if (ch === ' ' || ch === '\t') {
+        const runStart = j;
+        while (j < lineEnd && (s[j] === ' ' || s[j] === '\t')) j++;
+        // רץ שנגמר בסוף השורה נמחק; אחרת הוא נהיה רווח אחד.
+        if (j < lineEnd) {
+          canon += ' ';
+          map.push(runStart);
+        }
+        continue;
+      }
+      canon += ch;
+      map.push(j);
+      j++;
+    }
+
+    if (lineEnd >= n) break;
+
+    // מפריד השורות נורמלי ל-CRLF. שני התווים ממופים לתחילת המפריד הגולמי.
+    canon += '\r\n';
+    map.push(lineEnd, lineEnd);
+    i = lineEnd + (s[lineEnd] === '\r' && s[lineEnd + 1] === '\n' ? 2 : 1);
+  }
+
+  return { canon, map };
+}
+
+/** ★ שורות ריקות בסוף הגוף אינן נספרות (§3.4.4). הגוף נגמר ב-CRLF אחד. */
+function trimTrailingEmptyLines(canon: string): string {
+  const trimmed = canon.replace(/(?:\r\n)+$/, '');
+  return trimmed.length === 0 ? '' : `${trimmed}\r\n`;
+}
+
+/**
+ * ★ הגוף כפי ש-`l=` סופר אותו. `simple` מוחזר כמות שהוא.
+ *
+ * ל-`simple` יש אמנם כלל משלו על שורות ריקות בסוף, אבל ההתנהגות הקיימת —
+ * הגוף כמו שהוא — היא שמרנית לכיוון הנכון (חותכת מוקדם יותר, לא מאוחר),
+ * והיא זו שרצה היום. אין סיבה לשנות אותה יחד עם תיקון אחר.
+ */
+export function canonicalizeBody(raw: string, canon: BodyCanonicalization): string {
+  if (canon !== 'relaxed') return String(raw ?? '');
+  return trimTrailingEmptyLines(relaxedBodyWithMap(raw).canon);
 }
 
 function utf8LenOf(cp: number): number {
@@ -206,10 +350,22 @@ export function utf8ByteLength(raw: string): number {
  *
  * החיתוך נעשה על גבול תו: תו רב-בתי שהגבול עובר באמצעו יורד כולו.
  */
-export function limitToSignedBody(raw: string, limit: number | null): SignedBodySlice {
+export function limitToSignedBody(
+  raw: string,
+  limit: number | null,
+  /**
+   * ★★ הקנוניזציה שהוכרזה ב-`c=`. ברירת המחדל `'simple'` שומרת על
+   * ההתנהגות הקודמת לכל קורא שלא עודכן — ובמיוחד למבחנים שנכתבו לפניה.
+   */
+  canon: BodyCanonicalization = 'simple',
+): SignedBodySlice {
   const body = String(raw ?? '');
+
+  if (canon === 'relaxed') return limitRelaxed(body, limit);
+
+  const canonBytes = utf8ByteLength(body);
   if (limit === null || !Number.isFinite(limit) || limit < 0) {
-    return { body, bytesDropped: 0, truncated: false, limited: false };
+    return { body, bytesDropped: 0, truncated: false, limited: false, canonBytes };
   }
 
   let used = 0;
@@ -228,7 +384,7 @@ export function limitToSignedBody(raw: string, limit: number | null): SignedBody
 
   if (cut === -1) {
     // הגוף כולו נכנס בתוך הגבול. זה גם המקרה של גוף באורך `l` בדיוק.
-    return { body, bytesDropped: 0, truncated: false, limited: true };
+    return { body, bytesDropped: 0, truncated: false, limited: true, canonBytes };
   }
 
   return {
@@ -236,5 +392,49 @@ export function limitToSignedBody(raw: string, limit: number | null): SignedBody
     bytesDropped: utf8ByteLength(body) - used,
     truncated: true,
     limited: true,
+    canonBytes,
+  };
+}
+
+/**
+ * ★★ `relaxed`: מודדים על המקונן, חותכים בגולמי.
+ *
+ * ראה את ההערה על `relaxedBodyWithMap` — שם מוסבר למה הפירסור נשאר על
+ * הגולמי ולא עובר למקונן.
+ */
+function limitRelaxed(body: string, limit: number | null): SignedBodySlice {
+  const { canon, map } = relaxedBodyWithMap(body);
+  const trimmed = trimTrailingEmptyLines(canon);
+  const canonBytes = utf8ByteLength(trimmed);
+
+  if (limit === null || !Number.isFinite(limit) || limit < 0) {
+    return { body, bytesDropped: 0, truncated: false, limited: false, canonBytes };
+  }
+
+  // ★ הגוף החתום כולו בתוך הגבול. זה המצב הרגיל אצל הספק — וזה המצב
+  // שהחישוב הישן פספס, כי הוא השווה את `l=` לאורך הגולמי.
+  if (canonBytes <= limit) {
+    return { body, bytesDropped: 0, truncated: false, limited: true, canonBytes };
+  }
+
+  // מוצאים את המקום במקונן שבו הגבול נגמר, וממפים אותו חזרה לגולמי.
+  let used = 0;
+  let canonIndex = 0;
+  for (const ch of trimmed) {
+    const size = utf8LenOf(ch.codePointAt(0) ?? 0);
+    if (used + size > limit) break;
+    used += size;
+    canonIndex += ch.length;
+  }
+
+  const rawCut = canonIndex < map.length ? map[canonIndex] : body.length;
+  const kept = body.slice(0, rawCut);
+
+  return {
+    body: kept,
+    bytesDropped: utf8ByteLength(body) - utf8ByteLength(kept),
+    truncated: rawCut < body.length,
+    limited: true,
+    canonBytes,
   };
 }

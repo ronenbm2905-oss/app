@@ -285,7 +285,20 @@ function parseWith(body: string, kind: 'text' | 'raw-derived', unsignedBytes: nu
 }
 
 describe('★★★ החיתוך ל-l= — והוכחה שהוא תלוי בגוף הגולמי ולא בפרסר', () => {
-  it('★★ מסלול raw: זנב שנוסף אחרי החתימה נחתך, ומדווח כממצא חוסם', () => {
+  // ---------------------------------------------------------------------------
+  // ★★ הכותרת הקודמת של המבחן הייתה "...**ומדווח כממצא חוסם**", והוא נכתב
+  // ב-16.9.2026 מחדש.
+  //
+  // מה שהמבחן הזה **באמת** מוכיח, ומה שהוא צריך להמשיך להוכיח, הוא שורה
+  // אחת: `part.body` אינו מכיל את מה שהתוקף הדביק. זו כל ההגנה. החסימה
+  // שהייתה כאן הייתה **דיווח** על אותה עובדה, לא הסיבה שהיא נכונה — וכשהיא
+  // ירדה ל-`info`, שום דבר במה שנחתך לא השתנה.
+  //
+  // ★ ולכן ההיפוך כאן אינו "להפוך assertion כדי שיהיה ירוק": הטענה על
+  // התוכן (`not.toContain`) **נשארה כפי שהיא**, ונוספה לה דרישה חדשה —
+  // שהממצא נשאר קיים ונספר, ורק הדרגה שלו ירדה. מבחן שהיה מקבל גם מחיקה
+  // שקטה של הממצא הוא מבחן חלש יותר מזה.
+  it('★★ מסלול raw: זנב שנוסף אחרי החתימה נחתך — וזו כל ההגנה', () => {
     const c = gmailMessageToCandidate(rawResponse({}, SAMPLE.bodyRaw! + forgedTail));
     const read = readOrderBodies([c]);
 
@@ -293,13 +306,20 @@ describe('★★★ החיתוך ל-l= — והוכחה שהוא תלוי בגו
     const part = read.bodies.get(c.messageId)!;
     expect(part.unsignedBytes).toBeGreaterThan(0);
 
-    // ★★ מה שהתוקף הדביק לא עבר הלאה בכלל.
+    // ★★ מה שהתוקף הדביק לא עבר הלאה בכלל. **זו הטענה.**
     expect(part.body).not.toContain(ATTACKER_STREET);
 
     const parsed = parseWith(part.body, 'raw-derived', part.unsignedBytes);
-    expect(parsed.needsHumanReview).toBe(true);
-    expect(parsed.issues.some((i) => i.code === 'unsignedBodyTail')).toBe(true);
     expect(JSON.stringify(parsed)).not.toContain(ATTACKER_STREET);
+
+    // ★ ההזמנה עצמה נקראה ועוברת — חסימה כאן הייתה פוסלת כל הזמנה אמיתית
+    // של הספק, כי כולן חוצות את גבול ה-`l=`.
+    expect(parsed.sourceVerified).toBe(true);
+    expect(parsed.needsHumanReview).toBe(false);
+
+    // ★ והממצא לא נמחק בשקט: הוא קיים, בדרגת `info`, וניתן לספירה.
+    const found = parsed.issues.find((i) => i.code === 'unsignedBodyTail');
+    expect(found?.severity).toBe('info');
   });
 
   it('★★★ מסלול מפוענח: אותה חתימה בדיוק — והחיתוך לא חותך כלום', () => {

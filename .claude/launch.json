@@ -175,6 +175,20 @@
       ],
       "cwd": "Output/basketball-drills",
       "port": 5193
+    },
+    {
+      "name": "basketball-saas-merge",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:offline",
+        "--",
+        "--port",
+        "5194",
+        "--strictPort"
+      ],
+      "cwd": ".saas-review/Output/basketball-scheduler",
+      "port": 5194
     }
   ]
 }
