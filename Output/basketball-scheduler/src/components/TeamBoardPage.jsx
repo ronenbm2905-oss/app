@@ -62,23 +62,9 @@ export function TeamBoardPage({ token }) {
   const [state, setState] = useState("loading");
   const [weekIdx, setWeekIdx] = useState(0);
 
-  // Saving this page to a phone's home screen, and having it open THIS board.
-  //
-  // The club's manifest declares `start_url: "/"`, so a parent who added the page would get
-  // an icon that opens the club's login screen instead of their team's board — the one
-  // place they cannot go. Removing the manifest link is what fixes it: with no start_url to
-  // obey, both iOS and Android use the page that is open, which is exactly this board.
-  //
-  // The title is set too, because it is what the icon is labelled with.
-  useEffect(() => {
-    const link = document.querySelector('link[rel="manifest"]');
-    if (link) link.remove();
-    return () => {
-      // Put it back if this page is ever rendered inside the app rather than on its own.
-      if (link && !document.querySelector('link[rel="manifest"]')) document.head.appendChild(link);
-    };
-  }, []);
-
+  // The manifest is kept OFF this page by index.html, while the head is parsed — by the
+  // time React runs, the phone has already read it. What is left to do here is the name
+  // under the icon, which iOS reads when the person taps "Add to Home Screen".
   useEffect(() => {
     if (!board?.teamName) return;
     document.title = board.teamName;

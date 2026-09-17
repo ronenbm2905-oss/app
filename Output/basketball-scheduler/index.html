@@ -7,7 +7,24 @@
 
     <!-- Added to the home screen, this is what the phone shows. Without it iOS invents a
          grey square with the first letter, and truncates the <title> to "מערכתשעותק…". -->
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- The manifest is attached HERE, while the head is being parsed, and only for the app
+         itself — never for a team board at /t/<token>.
+
+         The manifest declares start_url "/", so a parent who added a board to their home
+         screen got an icon that opened the club's login page: the one place they cannot go.
+         Removing the link from React was too late — the phone has already read the manifest
+         by the time any of our code runs. With no manifest at all, iOS and Android fall back
+         to the page that is open, which is exactly the board.
+
+         Not a build-time decision, because one index.html is served for every path. -->
+    <script>
+      if (location.pathname.indexOf("/t/") !== 0) {
+        var m = document.createElement("link");
+        m.rel = "manifest";
+        m.href = "/manifest.webmanifest";
+        document.head.appendChild(m);
+      }
+    </script>
     <meta name="theme-color" content="#2355a5" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
 
