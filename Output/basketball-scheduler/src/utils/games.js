@@ -118,6 +118,54 @@ export function adoptFixture(kept, incoming) {
   };
 }
 
+// Two records for one fixture, already on the board.
+//
+// This should not happen any more — the import and the proposal both adopt now — but it
+// happened once, on 17.9.2026, in the window between the federation publishing three cup
+// fixtures it had not carried before and the fix reaching the browser. And there was no way
+// out of it from inside the app: the delete button is offered only for games entered by
+// hand, so the duplicates could be seen and not removed.
+//
+// Grouped by the same three fields the adoption uses. The record kept is the one carrying
+// the federation's own code, because that is the one the weekly file will keep refreshing;
+// the scanned record is folded into it so the squad, hall, departure and driver survive.
+export function duplicateFixtures(games) {
+  const list = Array.isArray(games) ? games.filter(Boolean) : [];
+  const groups = new Map();
+  list.forEach((g) => {
+    const key = [g.teamId || "", g.date || "", g.time || ""].join("|");
+    if (!g.teamId || !g.date) return; // nothing to group on; left alone
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(g);
+  });
+  const out = [];
+  groups.forEach((rows) => {
+    if (rows.length < 2) return;
+    const official = rows.find((g) => !String(g.federationCode || "").startsWith("cup-"));
+    if (!official) return; // two scanned records: not this function's business
+    const drop = rows.filter((g) => g !== official);
+    out.push({ keep: official, drop });
+  });
+  return out;
+}
+
+// Fold each duplicate into the record that stays, and drop the rest.
+export function mergeDuplicateFixtures(games) {
+  const pairs = duplicateFixtures(games);
+  if (pairs.length === 0) return { games: Array.isArray(games) ? games : [], merged: 0 };
+  const dropped = new Set();
+  const replaced = new Map();
+  pairs.forEach(({ keep, drop }) => {
+    let merged = keep;
+    drop.forEach((d) => { merged = adoptFixture(d, merged); dropped.add(d); });
+    replaced.set(keep, merged);
+  });
+  const next = (Array.isArray(games) ? games : [])
+    .filter((g) => !dropped.has(g))
+    .map((g) => replaced.get(g) || g);
+  return { games: next, merged: pairs.reduce((n, p) => n + p.drop.length, 0) };
+}
+
 export function importGamesFile(rawRows, data) {
   const games = data.games || [];
   const mapping = data.gameMapping || [];

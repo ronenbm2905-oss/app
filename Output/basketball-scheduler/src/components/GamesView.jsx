@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { matchHall } from "../utils/halls";
+import { DuplicateFixturesCard } from "./DuplicateFixturesCard";
 import { uid, formatDateHe } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/games";
@@ -378,6 +379,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
 
   return (
     <div className="space-y-4" dir="rtl">
+      <DuplicateFixturesCard data={data} save={save} canEdit={canEdit} />
       <div className="flex gap-1 bg-stone-200/50 rounded-lg p-1 w-fit">
         <button
           onClick={() => setSubTab("games")}
