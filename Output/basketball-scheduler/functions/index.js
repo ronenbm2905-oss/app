@@ -13,7 +13,7 @@ import {
   inQuietWindow,
   isDeadToken,
 } from "./shared/utils/pushTargets.js";
-import { boardChanges } from "./shared/utils/boardChanges.js";
+import { boardChanges, changeSummary } from "./shared/utils/boardChanges.js";
 
 // Phone notifications for schedule changes. This is the only thing that runs in the cloud.
 //
@@ -150,8 +150,55 @@ export const morningPush = onSchedule(
       await stateRef(club.id).set({ lastSentAt: new Date().toISOString() }, { merge: true });
       console.log(`morning push: delivered ${sent}`);
     }
+
+    // And what the quiet window held back from the PARENTS' boards. Same job, because the
+    // alternative is a second schedule to keep in step with this one — and because a family
+    // and a coach should learn about the same change at the same hour.
+    for (const club of clubs.docs) {
+      const held = await db.collection("clubs").doc(club.id).collection("boardPush").get();
+      for (const row of held.docs) {
+        const x = row.data() || {};
+        if (!x.pending) continue;
+        const body = changeSummary(x) || "הלוח עודכן";
+        const sent = await deliverBoard(club.id, row.id, x.teamName || "לוח הקבוצה", body);
+        // Cleared before anything else can add to it, so a change arriving during the drain
+        // is held for tomorrow rather than lost between the send and the clear.
+        await row.ref.set({ pending: false, schedule: false, message: false, added: 0, removed: 0 }, { merge: true });
+        console.log(`morning board push: delivered ${sent}`);
+      }
+    }
   }
 );
+
+// Sending to every device that follows one board. Shared by the live path and by the
+// morning catch-up, so a change held overnight is delivered exactly as one sent at once.
+async function deliverBoard(clubId, token, title, body) {
+  const snap = await db
+    .collection("clubs").doc(clubId).collection("boardSubs")
+    .where("boardToken", "==", token)
+    .get();
+  if (snap.empty) return 0;
+  let sent = 0;
+  const dead = [];
+  for (const row of snap.docs) {
+    const fcmToken = row.data()?.fcmToken;
+    if (!fcmToken) continue;
+    try {
+      await getMessaging().send({
+        token: fcmToken,
+        data: { title, body, url: `/t/${token}` },
+        webpush: { headers: { Urgency: "normal", TTL: "43200" } },
+      });
+      sent++;
+    } catch (err) {
+      if (isDeadToken(err)) dead.push(row.id);
+    }
+  }
+  await Promise.all(
+    dead.map((id) => db.collection("clubs").doc(clubId).collection("boardSubs").doc(id).delete())
+  );
+  return sent;
+}
 
 // A team board moved, so the phones following it are told.
 //
@@ -169,41 +216,34 @@ export const onBoardChange = onDocumentWritten("clubs/{clubId}/boards/{token}", 
   const change = boardChanges(before, after);
   if (!change.changed) return;
 
-  // The same window the coaches' notifications observe. A parent at 22:40 can do nothing
-  // about Sunday's training, and the board will still say so in the morning.
-  if (inQuietWindow(new Date())) return;
-
   const clubId = event.params.clubId;
   const token = event.params.token;
-  const snap = await db
-    .collection("clubs").doc(clubId).collection("boardSubs")
-    .where("boardToken", "==", token)
-    .get();
-  if (snap.empty) return;
 
-  const title = after?.teamName || "לוח הקבוצה";
-  const body = change.summary || "הלוח עודכן";
-  let sent = 0;
-  const dead = [];
-
-  for (const row of snap.docs) {
-    const fcmToken = row.data()?.fcmToken;
-    if (!fcmToken) continue;
-    try {
-      await getMessaging().send({
-        token: fcmToken,
-        data: { title, body, url: `/t/${token}` },
-        webpush: { headers: { Urgency: "normal", TTL: "43200" } },
-      });
-      sent++;
-    } catch (err) {
-      if (isDeadToken(err)) dead.push(row.id);
-    }
+  // Held, not dropped. The coaches' notifications have had a morning job since day one;
+  // this path did not, so a change made at 22:04 was silenced and never mentioned again —
+  // which is worse than arriving late, because nobody ever learns it happened.
+  //
+  // Written to a separate document ON PURPOSE: marking the board itself would re-trigger
+  // this very function.
+  if (inQuietWindow(new Date())) {
+    const held = db.collection("clubs").doc(clubId).collection("boardPush").doc(token);
+    const prev = (await held.get()).data() || {};
+    await held.set(
+      {
+        pending: true,
+        schedule: Boolean(prev.schedule) || change.schedule,
+        message: Boolean(prev.message) || change.message,
+        added: (prev.added || 0) + change.added,
+        removed: (prev.removed || 0) + change.removed,
+        teamName: after?.teamName || prev.teamName || "",
+        at: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+    return;
   }
 
-  await Promise.all(
-    dead.map((id) => db.collection("clubs").doc(clubId).collection("boardSubs").doc(id).delete())
-  );
+  const sent = await deliverBoard(clubId, token, after?.teamName || "לוח הקבוצה", change.summary || "הלוח עודכן");
   // A count. The board carries no personal data and neither does this line.
   console.log(`board push: delivered ${sent}`);
 });

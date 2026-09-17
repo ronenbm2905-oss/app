@@ -18,6 +18,20 @@ const allRows = (board) =>
     .flatMap(([week, rows]) => (Array.isArray(rows) ? rows : []).map((r) => week + "|" + rowKey(r)))
     .sort();
 
+// The words, in one place. A change announced at 22:30 and held until 07:05 has to read the
+// same as one announced immediately — two builders would eventually disagree about what
+// happened overnight.
+export function changeSummary({ schedule, message, added, removed } = {}) {
+  const parts = [];
+  if (schedule) {
+    // Counted rather than listed. A lock screen holds one line, and four rows spelled out is
+    // unreadable — the board itself is one tap away.
+    parts.push(added && removed ? "השתנו אימונים" : added ? "נוסף אימון" : "בוטל אימון");
+  }
+  if (message) parts.push("הודעה חדשה מהמאמן");
+  return parts.join(" · ");
+}
+
 export function boardChanges(before, after) {
   if (!after) return { changed: false, schedule: false, message: false, added: 0, removed: 0, summary: "" };
 
@@ -39,13 +53,7 @@ export function boardChanges(before, after) {
   // deleted something" is not information a parent can use.
   const message = msgAfter !== "" && msgAfter !== msgBefore;
 
-  const parts = [];
-  if (schedule) {
-    // Counted rather than listed. A lock screen holds one line, and "יום רביעי 18:00 הפך
-    // ל-19:15" for four rows at once is unreadable — the board itself is one tap away.
-    parts.push(added && removed ? "השתנו אימונים" : added ? "נוסף אימון" : "בוטל אימון");
-  }
-  if (message) parts.push("הודעה חדשה מהמאמן");
+  const summary = changeSummary({ schedule, message, added, removed });
 
-  return { changed: schedule || message, schedule, message, added, removed, summary: parts.join(" · ") };
+  return { changed: schedule || message, schedule, message, added, removed, summary };
 }
