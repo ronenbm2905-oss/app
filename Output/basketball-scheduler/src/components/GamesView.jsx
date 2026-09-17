@@ -193,30 +193,46 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
   );
 }
 
-// Imported games are owned by the federation file, so only their address is hand-editable.
-// The value is stored as `addressOverride`, which survives re-import (see importGamesFile).
-function ImportedAddressForm({ game, onSave, onCancel }) {
+// For a HOME fixture the editable thing is the HALL, not an address. Free text was useless
+// here: the weekly board needs a hall id, and typing "ברק" into an address field left the
+// game exactly as homeless as before. The federation publishes our hall under its old name
+// ("אולם עלומים"), so the picker starts on whatever the rename table resolves — and stays a
+// picker, because being wrong about where a game is played sends a squad to the wrong place.
+// An imported fixture is owned by the federation file, so only what the club decides is
+// hand-editable here: the hall at home, the address and driver away. Both survive a
+// re-import (see importGamesFile and MANAGER_OWNED).
+function ImportedAddressForm({ game, halls, onSave, onCancel }) {
   const [address, setAddress] = useState(game.addressOverride || game.venue || "");
+  const [hallId, setHallId] = useState(game.hallId || matchHall(game.venue, halls));
   const [driverName, setDriverName] = useState(game.driverName || "");
   const [driverPhone, setDriverPhone] = useState(game.driverPhone || "");
   return (
     <div className="bg-white rounded-xl border border-stone-300 p-4 space-y-3" dir="rtl">
-      <h3 className="text-sm font-semibold text-stone-700">{game.isHome ? "עריכת כתובת" : "כתובת ונהג"} — נגד {game.opponent}</h3>
+      <h3 className="text-sm font-semibold text-stone-700">{game.isHome ? "עריכת אולם" : "כתובת ונהג"} — נגד {game.opponent}</h3>
       <p className="text-xs text-stone-500">
-        כתובת ידנית למשחק חוץ מיובא. תישמר גם אחרי ייבוא/סנכרון מחדש של קובץ האיגוד.
+        {game.isHome
+          ? "האולם שבו מתקיים המשחק. נשמר גם אחרי ייבוא/סנכרון מחדש של קובץ האיגוד."
+          : "כתובת ידנית למשחק חוץ מיובא. תישמר גם אחרי ייבוא/סנכרון מחדש של קובץ האיגוד."}
       </p>
-      <div>
-        <label className="text-xs text-stone-500 mb-1 block">כתובת המשחק</label>
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="כתובת האולם היריב (להסעות)"
-          className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          dir="rtl"
-          autoFocus
-        />
-      </div>
+      {game.isHome ? (
+        <div>
+          <label className="text-xs text-stone-500 mb-1 block">אולם</label>
+          <Select value={hallId} onChange={setHallId} options={halls || []} placeholder="בחר אולם" />
+        </div>
+      ) : (
+        <div>
+          <label className="text-xs text-stone-500 mb-1 block">כתובת המשחק</label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="כתובת האולם היריב (להסעות)"
+            className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            dir="rtl"
+            autoFocus
+          />
+        </div>
+      )}
 
       {/* Away games only: the transport sheet is built from away fixtures, and the club
           does not order a bus to its own hall. */}
@@ -262,7 +278,7 @@ function ImportedAddressForm({ game, onSave, onCancel }) {
           ביטול
         </button>
         <button
-          onClick={() => onSave({ address: address.trim(), driverName: driverName.trim(), driverPhone: driverPhone.trim() })}
+          onClick={() => onSave({ address: address.trim(), hallId, driverName: driverName.trim(), driverPhone: driverPhone.trim() })}
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 flex items-center gap-1.5"
         >
           <IconCheck size={15} /> שמור
@@ -567,9 +583,10 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                           />
                         ) : (
                           <ImportedAddressForm
+                            halls={data.halls}
                             game={g}
-                            onSave={({ address, driverName, driverPhone }) =>
-                              saveGame({ ...g, addressOverride: address, driverName, driverPhone })
+                            onSave={({ address, hallId, driverName, driverPhone }) =>
+                              saveGame({ ...g, addressOverride: address, hallId, driverName, driverPhone })
                             }
                             onCancel={() => setEditingCode(null)}
                           />
