@@ -3,7 +3,7 @@
 // extension. Vite resolves an explicit extension perfectly well, so both sides are happy.
 import * as XLSX from "xlsx";
 import { DAYS } from "../constants.js";
-import { matchHall } from "./halls.js";
+import { matchHall, withHallAliases } from "./halls.js";
 import { formatDateFromExcel, parseDateDMY, HEB_DAY_MAP, weekStartOfDMY } from "./dates.js";
 
 // Parse xlsx using SheetJS. In Vite we import the library directly (not window.XLSX).
@@ -473,12 +473,17 @@ export function syncGamesToSessions(nextGames, data) {
     }
     if (!day || !DAYS.includes(day)) return;
     const sessionType = g.isHome ? "משחק בית" : "משחק חוץ";
-    const venue = g.addressOverride || g.venue || ""; // manual address override wins over the file
-    // An explicit hall chosen by a person wins over matching the venue text by name. The
-    // federation does not use our names for our own halls — it calls the Barak hall
-    // "אולם עלומים" — so name matching alone drops a home fixture onto the board with no
-    // hall at all. Nothing in the weekly xlsx path sets this, so that path is unchanged.
-    const hallId = g.isHome ? g.hallId || hallByName(venue) : "";
+    const rawVenue = g.addressOverride || g.venue || ""; // manual address override wins over the file
+    const hallId = g.isHome ? g.hallId || hallByName(rawVenue) : "";
+    // What the row SAYS about where it is played.
+    //
+    // The federation publishes this club's hall under the name it had before it was renamed
+    // ("אולם עלומים"), so quoting their text verbatim put the old name on the board even
+    // after the hall itself resolved correctly — the row was in the right room and said the
+    // wrong one. A home fixture with a hall names the hall; anything else goes through the
+    // rename table, which leaves a real street address untouched.
+    const hallOf = (id) => data.halls.find((h) => h.id === id)?.name || "";
+    const venue = (g.isHome && hallOf(hallId)) || withHallAliases(rawVenue);
     const coachId = coachForTeam(g.teamId);
     // הקובץ מהאיגוד נותן רק את שעת המשחק. השורה בלוח נחסמת מ-30 דקות חימום
     // לפני שריקת הפתיחה ועד שעה וחצי אחריה. דוגמה: משחק 18:30 → 18:00–20:00.

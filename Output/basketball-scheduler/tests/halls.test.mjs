@@ -57,3 +57,42 @@ T("a malformed hall record cannot break the match", () => {
 });
 
 console.log("\n" + n + " tests passed");
+
+// ── what the board ROW says about where the game is played ────────────────────────────
+{
+  const { syncGamesToSessions } = await import("../src/utils/games.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+
+  const data = {
+    teams: [{ id: "t1", name: "נערים א", coachId: "c1" }],
+    halls: [{ id: "h-barak", name: "ברק" }],
+    coaches: [{ id: "c1", name: "מאמן" }],
+    sessions: [],
+  };
+  const homeGame = {
+    federationCode: "779711", teamId: "t1", date: "04-11-2026", time: "20:30", isHome: true,
+    opponent: "מכבי רמת גן ליאור", venue: "אולם עלומים, רח' הכפר 2, קריית אונו", hallId: "h-barak",
+  };
+
+  ok("THE BUG: the row was in the right hall and named the wrong one", () => {
+    const [row] = syncGamesToSessions([homeGame], { ...data, games: [homeGame] });
+    a.equal(row.hallId, "h-barak");
+    a.equal(row.notes.includes("עלומים"), false);
+    a.equal(row.notes.includes("ברק"), true);
+  });
+
+  ok("a home fixture with no hall still falls back to the aliased text", () => {
+    const g = { ...homeGame, hallId: "" };
+    const [row] = syncGamesToSessions([g], { ...data, games: [g] });
+    a.equal(row.notes.includes("עלומים"), false);
+  });
+
+  ok("an away address is left exactly as it is", () => {
+    const away = { ...homeGame, isHome: false, hallId: "", venue: "רח' אחד במאי 38, חולון" };
+    const [row] = syncGamesToSessions([away], { ...data, games: [away] });
+    a.equal(row.notes.includes("רח' אחד במאי 38, חולון"), true);
+  });
+
+  console.log("\n3 board-row tests passed");
+}
