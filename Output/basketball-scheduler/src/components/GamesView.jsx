@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { matchHall } from "../utils/halls";
+import { matchHall, withHallAliases } from "../utils/halls";
 import { DuplicateFixturesCard } from "./DuplicateFixturesCard";
 import { uid, formatDateHe } from "../utils/dates";
 import { colorFor } from "../utils/colors";
@@ -299,6 +299,10 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
   const fileInputRef = useRef(null);
 
   const games = data.games || [];
+  // What a HOME fixture's row should say about where it is played: our name for the hall,
+  // not the federation's name for it.
+  const hallNameOf = (g) =>
+    (data.halls || []).find((h) => h.id === (g.hallId || matchHall(g.venue, data.halls)))?.name || "";
   const mapping = data.gameMapping || [];
 
   const codesFor = (teamId) => mapping.find((m) => m.teamId === teamId)?.federationCodes || [];
@@ -588,7 +592,27 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                             halls={data.halls}
                             game={g}
                             onSave={({ address, hallId, driverName, driverPhone }) =>
-                              saveGame({ ...g, addressOverride: address, hallId, driverName, driverPhone })
+                              // A HOME fixture has no address field — the hall IS the answer — so
+                              // `address` still holds whatever was loaded in, which is the
+                              // federation's text for a hall it names by its old name. Writing it
+                              // back stamped "אולם עלומים" into the record as if a person had
+                              // typed it, and it then won over everything downstream.
+                              saveGame(
+                                (() => {
+                                  // A HOME fixture has no address field — the hall IS the answer —
+                                  // so `address` still holds what was loaded in, which is the
+                                  // federation's text for a hall it names by its OLD name. Writing
+                                  // that back stamped "אולם עלומים" in as though a person had typed
+                                  // it, where it then won over everything downstream.
+                                  //
+                                  // Removed rather than skipped, so saving a home fixture also
+                                  // clears one that was stamped in before this was fixed.
+                                  const { addressOverride: _drop, ...rest } = g;
+                                  return g.isHome
+                                    ? { ...rest, hallId, driverName, driverPhone }
+                                    : { ...g, addressOverride: address, hallId, driverName, driverPhone };
+                                })()
+                              )
                             }
                             onCancel={() => setEditingCode(null)}
                           />
@@ -610,8 +634,8 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-stone-700 truncate">נגד: {g.opponent}</div>
                           <div className="text-xs text-stone-600 truncate">
-                            {g.addressOverride || g.venue}
-                            {g.addressOverride && <span className="text-stone-500"> (כתובת ידנית)</span>}
+                            {(g.isHome && hallNameOf(g)) || withHallAliases(g.addressOverride || g.venue)}
+                            {!g.isHome && g.addressOverride && <span className="text-stone-500"> (כתובת ידנית)</span>}
                           </div>
                           {/* The number only for a manager or for the coach travelling with
                               that team. Everyone else sees the name, which is all they need
