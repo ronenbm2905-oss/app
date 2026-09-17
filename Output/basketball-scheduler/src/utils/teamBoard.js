@@ -1,6 +1,7 @@
 import { DAYS } from "../constants.js";
 import { shiftWeek, weekStartOf, timeToMinutes } from "./dates.js";
 import { assemblyTime, departBeforeOf } from "./transport.js";
+import { escapeText, foldLine, icsDateTime } from "./calendar.js";
 
 // The board one team's parents see — and the ONLY document they are allowed to read.
 //
@@ -168,4 +169,72 @@ export function withoutBoardToken(data, teamId) {
   const next = { ...boardsIndex(data) };
   delete next[teamId];
   return { ...data, boards: next };
+}
+
+// The board as calendar events, for a parent to put in their own phone.
+//
+// Built from the PUBLISHED board and not from the club's sessions, and that distinction is
+// the whole point: `sessionEvent` in calendar.js writes `notes` into the event description,
+// and the note is the field that carries "אלון לא מגיע השבוע". A parent's calendar is the
+// last place that should end up. Everything here has already passed the filter that keeps a
+// board minimal.
+//
+// One file rather than a Google Calendar link per event: a link adds one fixture at a time,
+// and six taps is how a good idea stops being used. A .ics opens Apple Calendar directly and
+// imports into Google Calendar just the same.
+export function buildBoardIcs(board, { now = new Date() } = {}) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const dtstamp =
+    `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}` +
+    `T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+
+  const team = String(board?.teamName || "").trim();
+  const events = [];
+
+  Object.entries(board?.weeks || {}).forEach(([week, rows]) => {
+    (Array.isArray(rows) ? rows : []).forEach((r) => {
+      // A cancelled fixture is left out rather than exported: a phone calendar cannot show
+      // it struck through, so it would read as a game that is still on.
+      if (!r || r.cancelled) return;
+      const start = icsDateTime(week, r.day, r.start);
+      const end = icsDateTime(week, r.day, r.end);
+      if (!start || !end) return;
+
+      const what =
+        r.kind === "game"
+          ? [r.home ? "משחק בית" : "משחק חוץ", r.opponent ? `נגד ${r.opponent}` : ""]
+              .filter(Boolean)
+              .join(" ")
+          : r.type || "אימון";
+
+      events.push(
+        [
+          "BEGIN:VEVENT",
+          // Stable, so importing the file twice updates the events instead of doubling them.
+          `UID:${board?.teamId || "team"}-${week}-${r.day}-${r.start}@kiryat-ono-basketball`,
+          `DTSTAMP:${dtstamp}`,
+          `DTSTART:${start}`,
+          `DTEND:${end}`,
+          `SUMMARY:${escapeText([team, what].filter(Boolean).join(" — "))}`,
+          r.where ? `LOCATION:${escapeText(r.where)}` : null,
+          // The one line a parent has to act on, and the only description there is.
+          r.assembly ? `DESCRIPTION:${escapeText(`התייצבות ${r.assembly}`)}` : null,
+          "END:VEVENT",
+        ].filter(Boolean)
+      );
+    });
+  });
+
+  const CRLF = "\r\n";
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//kiryat-ono-basketball//team-board//HE",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${escapeText(team)}`,
+    ...events.flat(),
+    "END:VCALENDAR",
+  ];
+  return lines.map(foldLine).join(CRLF) + CRLF;
 }

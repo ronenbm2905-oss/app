@@ -187,3 +187,68 @@ console.log("\n" + count + " tests passed");
 
   console.log("\n6 typed-fixture tests passed");
 }
+
+// ── the board as calendar events ──────────────────────────────────────────────────────
+{
+  const { buildBoardIcs } = await import("../src/utils/teamBoard.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+
+  const board = {
+    teamId: "t1",
+    teamName: "נוער מחוזית",
+    weeks: {
+      "2026-09-13": [
+        { kind: "training", day: "שני", start: "16:15", end: "17:30", where: "רימונים", type: "" },
+        { kind: "game", day: "שבת", start: "16:30", end: "18:00", where: "ז'בוטינסקי 45", opponent: "הפועל רמת גן", home: false, assembly: "15:00" },
+        { kind: "training", day: "רביעי", start: "18:00", end: "19:30", where: "שז\"ר", type: "", cancelled: true },
+      ],
+    },
+  };
+  const ics = buildBoardIcs(board, { now: new Date("2026-09-17T10:00:00Z") });
+  // ICS folds any line past 75 OCTETS onto the next one with a leading space, and Hebrew is
+  // two octets a character — so a summary in Hebrew is split in the middle of a word. That
+  // is the format behaving correctly; these assertions read the unfolded text.
+  const fold = String.fromCharCode(13, 10) + " ";
+  const flat = (s) => s.split(fold).join("");
+  const un = flat(ics);
+
+  ok("it is a calendar, named after the team", () => {
+    a.equal(ics.startsWith("BEGIN:VCALENDAR"), true);
+    a.equal(un.includes("X-WR-CALNAME:נוער מחוזית"), true);
+  });
+
+  ok("every line ends CRLF, as the format requires", () => {
+    a.equal(ics.includes("\r\n"), true);
+    a.equal(/[^\r]\n/.test(ics), false);
+  });
+
+  ok("a training becomes an event with its hall", () => {
+    a.equal(un.includes("SUMMARY:נוער מחוזית — אימון"), true);
+    a.equal(un.includes("LOCATION:רימונים"), true);
+  });
+
+  ok("an away game names the opponent and carries the gathering time", () => {
+    a.equal(un.includes("משחק חוץ נגד הפועל רמת גן"), true);
+    a.equal(un.includes("DESCRIPTION:התייצבות 15:00"), true);
+  });
+
+  ok("a CANCELLED fixture is not exported — a calendar cannot strike it through", () => {
+    a.equal(un.includes("שז"), false);
+    a.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 2);
+  });
+
+  ok("ids are stable, so importing twice updates instead of doubling", () => {
+    const again = buildBoardIcs(board, { now: new Date("2026-09-18T10:00:00Z") });
+    const uids = (s) => (s.match(/^UID:.*$/gm) || []).map((x) => x.trim());
+    a.deepEqual(uids(ics), uids(again));
+  });
+
+  ok("an empty board is still a valid, empty calendar", () => {
+    const out = buildBoardIcs({ teamName: "x", weeks: {} });
+    a.equal(out.includes("BEGIN:VEVENT"), false);
+    a.equal(out.trim().endsWith("END:VCALENDAR"), true);
+  });
+
+  console.log("\n7 calendar tests passed");
+}

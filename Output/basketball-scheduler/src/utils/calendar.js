@@ -1,4 +1,4 @@
-import { DAYS } from "../constants";
+import { DAYS } from "../constants.js";
 
 // Training sessions as a calendar file (RFC 5545), so a coach can put the week in their
 // own calendar instead of copying it by hand.

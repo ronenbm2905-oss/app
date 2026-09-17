@@ -3,6 +3,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { DAYS } from "../constants";
 import clubLogo from "../assets/club-logo.jpg";
+import { buildBoardIcs } from "../utils/teamBoard";
+import { shareOrDownloadBlob } from "../utils/imageExport";
 
 // The page a parent opens from the team's WhatsApp group.
 //
@@ -61,6 +63,22 @@ export function TeamBoardPage({ token }) {
   const [board, setBoard] = useState(null);
   const [state, setState] = useState("loading");
   const [weekIdx, setWeekIdx] = useState(0);
+  const [calMsg, setCalMsg] = useState("");
+
+  // Handed to the phone's own share sheet when there is one, which is what puts it in front
+  // of Apple Calendar or Google Calendar without asking the parent to find a file. Falling
+  // back to a plain download is what a desktop browser needs.
+  const addToCalendar = async () => {
+    try {
+      const ics = buildBoardIcs(board);
+      const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+      const file = (board.teamName || "team").replace(/[\/:*?"<>|]/g, "") + ".ics";
+      await shareOrDownloadBlob(blob, file, board.teamName || "");
+      setCalMsg("");
+    } catch {
+      setCalMsg("לא הצלחנו להכין את הקובץ. נסו שוב.");
+    }
+  };
 
   // The manifest is kept OFF this page by index.html, while the head is parsed — by the
   // time React runs, the phone has already read it. What is left to do here is the name
@@ -163,6 +181,19 @@ export function TeamBoardPage({ token }) {
               </div>
             ))
           )}
+        </div>
+
+        <div className="space-y-1">
+          <button
+            onClick={addToCalendar}
+            className="w-full px-4 py-2.5 text-sm rounded-xl border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+          >
+            הוסף ליומן הטלפון
+          </button>
+          <p className="text-[11px] text-stone-500 text-center">
+            עובד עם יומן Apple ועם Google. אימון שבוטל אינו נכנס ליומן.
+          </p>
+          <p role="status" aria-live="polite" className="text-[11px] text-red-600 text-center">{calMsg}</p>
         </div>
 
         {/* Reliance, and the same sentence the push notification carries. A parent who drove
