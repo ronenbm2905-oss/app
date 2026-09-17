@@ -117,3 +117,52 @@ T("the team is left EMPTY on purpose — a wrong squad is worse than no game", (
 });
 
 console.log("\n" + n + " tests passed");
+
+// ── replacing a hand-typed fixture with the federation's version ──────────────────────
+{
+  const { replaceGame, eventToDraft: toDraft } = await import("../src/utils/cupScan.js");
+  const assert2 = (await import("node:assert/strict")).default;
+  const draft = toDraft(
+    { id: 1502052, date: "2026-11-02T18:00:00", title: { rendered: "מכבי ראשל&quot;צ איציק — עירוני ק. אונו יורם" } },
+    { leagueName: "גביע המדינה לנוער", venueName: "רח' גולדה מאיר 21, ראשון לציון" }
+  );
+  const typed = {
+    federationCode: "manual-1", date: "02-11-2026", time: "18:00", isHome: false,
+    opponent: "מכבי ראשון לציון", teamId: "t-noar", timeOverride: { start: "17:15", end: "19:45" },
+    addressOverride: "הכתובת שבדקתי", driverName: "יוסי", driverPhone: "0521111111",
+    ourScore: null, theirScore: null, league: "גביע המדינה",
+  };
+  const merged = replaceGame(draft, typed);
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+
+  ok("replacing adopts the federation's code — future scans then stay silent", () => {
+    assert2.equal(merged.federationCode, "cup-1502052");
+  });
+  ok("the squad the manager filed it under is kept", () => {
+    assert2.equal(merged.teamId, "t-noar");
+  });
+  ok("a block nudged on the board is kept", () => {
+    assert2.deepEqual(merged.timeOverride, { start: "17:15", end: "19:45" });
+  });
+  ok("a hand-typed address wins over the federation's venue", () => {
+    assert2.equal(merged.addressOverride, "הכתובת שבדקתי");
+    assert2.equal(merged.venue, "רח' גולדה מאיר 21, ראשון לציון");
+  });
+  ok("the driver for the bus is kept", () => {
+    assert2.equal(merged.driverName, "יוסי");
+    assert2.equal(merged.driverPhone, "0521111111");
+  });
+  ok("the federation's own fields DO win — that is the point of replacing", () => {
+    assert2.equal(merged.opponent, 'מכבי ראשל"צ איציק');
+    assert2.equal(merged.league, "גביע המדינה לנוער");
+  });
+  ok("a score already recorded is not wiped", () => {
+    const played = replaceGame(draft, { ...typed, ourScore: 71, theirScore: 68 });
+    assert2.equal(played.ourScore, 71);
+    assert2.equal(played.theirScore, 68);
+  });
+  ok("replacing a bare record leaves no team, rather than inventing one", () => {
+    assert2.equal(replaceGame(draft, { federationCode: "m", date: "02-11-2026" }).teamId, "");
+  });
+  console.log("\n8 replace tests passed");
+}

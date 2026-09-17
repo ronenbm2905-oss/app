@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { draftToGame } from "../utils/cupScan";
+import { draftToGame, replaceGame } from "../utils/cupScan";
 import { syncGamesToSessions } from "../utils/games";
 import { IconAlert, IconCheck, IconX } from "./ui/icons";
 
@@ -33,6 +33,17 @@ export function CupScanBanner({ scan, data, save, resolveScan }) {
     const nextGames = [...(data.games || []), draftToGame(draft, teamId)];
     save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, { ...data, games: nextGames }) });
     setMsg(`נוסף: ${draft.opponent} · ${draft.date} · ${teamName(teamId)}`);
+  };
+
+  // Replacing, which is a different act from adding and had to be said out loud: adding
+  // leaves TWO games on one date. This swaps the record in place and keeps everything the
+  // manager owns — the squad, a nudged block, a typed address, the driver, a recorded score.
+  const replace = (draft, old) => {
+    const nextGames = (data.games || []).map((g) =>
+      String(g.federationCode) === String(old.federationCode) ? replaceGame(draft, old) : g
+    );
+    save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, { ...data, games: nextGames }) });
+    setMsg(`הוחלף: ${draft.date} · ${draft.opponent}${old.teamId ? ` · ${teamName(old.teamId)}` : ""}`);
   };
 
   const already = (code) => (data.games || []).some((g) => String(g.federationCode) === String(code));
@@ -121,9 +132,20 @@ export function CupScanBanner({ scan, data, save, resolveScan }) {
               <Fixture draft={draft} />
               <div className="text-xs text-amber-900 font-medium pt-1">אצלך כבר רשום:</div>
               {(existing || []).map((g, i) => (
-                <div key={i} className="text-sm text-stone-700">
-                  {g.date} · {g.time || "--:--"} · {g.isHome ? "בית" : "חוץ"} · {g.opponent}
-                  {g.teamId ? ` · ${teamName(g.teamId)}` : ""}
+                <div key={i} className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-stone-700">
+                    {g.date} · {g.time || "--:--"} · {g.isHome ? "בית" : "חוץ"} · {g.opponent}
+                    {g.teamId ? ` · ${teamName(g.teamId)}` : ""}
+                  </span>
+                  {!already(draft.federationCode) && (
+                    <button
+                      onClick={() => replace(draft, g)}
+                      title="הקבוצה, השעה שקבעת, הכתובת והנהג נשמרים"
+                      className="px-2.5 py-1 text-xs rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+                    >
+                      החלף בזה של האיגוד
+                    </button>
+                  )}
                 </div>
               ))}
               {already(draft.federationCode) ? (
@@ -137,9 +159,9 @@ export function CupScanBanner({ scan, data, save, resolveScan }) {
                     onClick={() => add(draft)}
                     className="px-3 py-1.5 text-xs rounded-lg border border-amber-500 text-amber-800 bg-white hover:bg-amber-100"
                   >
-                    זה משחק אחר — הוסף גם אותו
+                    זה משחק אחר — הוסף בנוסף
                   </button>
-                  <span className="text-xs text-amber-800">או השאר כמו שהוא.</span>
+                  <span className="text-xs text-amber-800">או השאר כמו שהוא — שתי הרשומות יישארו.</span>
                 </div>
               )}
             </div>

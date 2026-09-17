@@ -144,3 +144,29 @@ export function draftToGame(draft, teamId) {
     theirScore: null,
   };
 }
+
+// Everything on a game record that belongs to the MANAGER and not to the federation.
+//
+// The same bargain `importGamesFile` already makes with the weekly file: what the source
+// owns is refreshed, what a person set by hand is carried across. Losing any of these on a
+// replace would quietly undo a decision — the squad it was filed under, a block nudged on
+// the board, an address typed because the federation's was wrong, the driver for the bus.
+export const MANAGER_OWNED = [
+  "teamId", "timeOverride", "addressOverride", "driverName", "driverPhone",
+  "ourScore", "theirScore",
+];
+
+// Adopting a hand-typed fixture into the federation's version of it.
+//
+// This is NOT the same as adding. Adding leaves two games on one date; this replaces the
+// record in place, keeping everything above. The code changes from the manager's own to
+// `cup-<id>`, which is the quiet payoff: every future scan then recognises this fixture and
+// says nothing about it, instead of offering it again every night forever.
+export function replaceGame(draft, existing) {
+  const base = draftToGame(draft, existing?.teamId || "");
+  MANAGER_OWNED.forEach((k) => {
+    const v = existing?.[k];
+    if (v !== undefined && v !== null && v !== "") base[k] = v;
+  });
+  return base;
+}
