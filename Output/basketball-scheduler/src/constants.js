@@ -3,7 +3,13 @@ export const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמי
 export const STORAGE_KEY = "bball-schedule-v1";
 
 // Club home base — the pickup point for away-game transportation.
-export const CLUB_PICKUP_POINT = "אולם עלומים, הכפר 2, קריית אונו";
+//
+// The hall was called אולם עלומים until it was renamed אולם ברק. This text goes to coaches
+// and onto the transport sheet the squad actually receives, so it carries the name the
+// building has on the door today (Ronen, 17.9.2026). The federation still publishes the
+// old name, which is handled separately in utils/halls.js — a display name and a matching
+// rule are different problems and are fixed in different places.
+export const CLUB_PICKUP_POINT = "אולם ברק, הכפר 2, קריית אונו";
 // Vehicle-size options for transport (seats).
 export const VEHICLE_TYPES = ["16", "20"];
 
