@@ -1,4 +1,4 @@
-import { applyCancellations, syncGamesToSessions } from "./games.js";
+import { applyCancellations, syncGamesToSessions, sameFixtureIndex, adoptFixture } from "./games.js";
 
 // Turning an approved proposal into the club's next state.
 //
@@ -24,7 +24,20 @@ export function applyProposal(data, proposal, now) {
   // A game already present is not added twice: a proposal approved from two tabs, or a
   // manual import that ran in between, must not double the fixture.
   for (const a of proposal.added || []) {
-    if (!byCode.has(String(a.code)) && a.game) byCode.set(String(a.code), a.game);
+    if (byCode.has(String(a.code)) || !a.game) continue;
+    // The fixture may already be here under the id it arrived with from the cup scan. A
+    // proposal built by code would add it a second time; the same rule the import uses
+    // adopts the record instead. Without this, approving tonight's proposal would have
+    // put every cup game on the board twice.
+    const list = [...byCode.values()];
+    const idx = sameFixtureIndex(list, a.game);
+    if (idx >= 0) {
+      const kept = list[idx];
+      byCode.delete(String(kept.federationCode));
+      byCode.set(String(a.code), adoptFixture(kept, a.game));
+      continue;
+    }
+    byCode.set(String(a.code), a.game);
   }
 
   const games = applyCancellations([...byCode.values()], {

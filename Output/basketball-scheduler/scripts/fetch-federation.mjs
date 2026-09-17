@@ -62,7 +62,18 @@ function validate(buffer) {
   const head = (rows[0] || []).map((c) => String(c).trim());
   const missing = REQUIRED_COLUMNS.filter((c) => !head.includes(c));
   if (missing.length) return `columns missing from the sheet: ${missing.join(", ")}`;
-  if (rows.length < 10) return `only ${rows.length} rows — the file looks empty`;
+  // One data row, not ten.
+  //
+  // The columns above already prove this is a federation sheet and not an error page, so
+  // what is left to catch is a file with nothing in it. Ten was a guess, and on 17.9.2026
+  // it rejected a perfectly good download: the season had just rolled over and the new
+  // file held exactly three cup fixtures. The guard would have blocked every nightly sync
+  // until enough league games were published — silently, and at the start of a season.
+  //
+  // A truncated file is a real risk, but it is not this guard's job: the importer never
+  // deletes, and mass-cancellation is held back by CANCEL_SUSPICIOUS_RATIO, which measures
+  // the proportion that vanished instead of guessing at a row count.
+  if (rows.length < 2) return `no fixtures in the file — only the header row`;
   return null;
 }
 

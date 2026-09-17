@@ -78,6 +78,46 @@ export function isPastGame(game, now = new Date(), graceDays = 14) {
   return d < cutoff;
 }
 
+
+// The same fixture arriving under a different id.
+//
+// Cup games reach the club from the site's own feed first, filed as `cup-<event id>`, and
+// the weekly file later publishes the same fixture under the federation's OWN code. Matched
+// by code alone, that reads as one game vanishing and another appearing: on 17.9.2026 it
+// came out as "+3 new · 3 cancelled" — a duplicated board AND a false cancellation, from
+// one file that was simply more up to date than it had been the night before.
+//
+// Date AND time AND squad, all three. Two of the club's teams can play on the same day, and
+// one team can play twice in a day; the three together are what make it the same fixture.
+//
+// Stated once here because it is needed in two places that must not disagree: the import
+// itself, and applying an approved proposal hours later.
+export function sameFixtureIndex(games, incoming) {
+  if (!incoming) return -1;
+  return (Array.isArray(games) ? games : []).findIndex(
+    (g) =>
+      g &&
+      String(g.federationCode || "").startsWith("cup-") &&
+      String(g.date) === String(incoming.date) &&
+      String(g.time) === String(incoming.time) &&
+      String(g.teamId || "") === String(incoming.teamId || "")
+  );
+}
+
+// Adopted, not replaced: the squad, the hall, a hand-set departure and the driver survive
+// the handover to the official record. Everything the federation owns is taken from it.
+export function adoptFixture(kept, incoming) {
+  return {
+    ...incoming,
+    ...(kept?.addressOverride ? { addressOverride: kept.addressOverride } : {}),
+    ...(kept?.timeOverride ? { timeOverride: kept.timeOverride } : {}),
+    ...(kept?.departOverride ? { departOverride: kept.departOverride } : {}),
+    ...(kept?.hallId ? { hallId: kept.hallId } : {}),
+    ...(kept?.driverName ? { driverName: kept.driverName } : {}),
+    ...(kept?.driverPhone ? { driverPhone: kept.driverPhone } : {}),
+  };
+}
+
 export function importGamesFile(rawRows, data) {
   const games = data.games || [];
   const mapping = data.gameMapping || [];
@@ -240,6 +280,15 @@ export function importGamesFile(rawRows, data) {
           updated++;
         }
       } else {
+        const adoptIdx = sameFixtureIndex(nextGames, game);
+        if (adoptIdx >= 0) {
+          const kept = nextGames[adoptIdx];
+          nextGames[adoptIdx] = adoptFixture(kept, game);
+          delete existingByCode[String(kept.federationCode)];
+          existingByCode[key] = game;
+          updated++;
+          return;
+        }
         nextGames.push(game);
         existingByCode[key] = game;
         added++;
@@ -288,6 +337,12 @@ export function findCancelledGames(existingGames, rawRows, data) {
   if (fresh.error) return { error: fresh.error, cancelled: [], restored: [], suspicious: false };
 
   const codesInFile = new Set(fresh.nextGames.map((g) => String(g.federationCode)));
+  // The same fixture can arrive under a different id than the one the club holds — a cup
+  // game entered from the site's own feed, later published in this file under the
+  // federation's code. Compared by code alone it reads as "gone", and the club's record
+  // would be marked cancelled on the very night the federation confirmed it.
+  const fixtureKey = (g) => [g.teamId || "", g.date || "", g.time || ""].join("|");
+  const fixturesInFile = new Set(fresh.nextGames.map(fixtureKey));
   const teamsInFile = new Set(fresh.nextGames.map((g) => g.teamId).filter(Boolean));
   const dates = fresh.nextGames.map((g) => parseDateDMY(g.date)).filter(Boolean);
   const from = dates.length ? Math.min(...dates) : null;
@@ -300,7 +355,9 @@ export function findCancelledGames(existingGames, rawRows, data) {
   };
 
   const scoped = existing.filter(inScope);
-  const cancelled = scoped.filter((g) => !g.cancelled && !codesInFile.has(String(g.federationCode)));
+  const cancelled = scoped.filter(
+    (g) => !g.cancelled && !codesInFile.has(String(g.federationCode)) && !fixturesInFile.has(fixtureKey(g))
+  );
   const restored = existing.filter((g) => g.cancelled && codesInFile.has(String(g.federationCode)));
 
   return {
