@@ -204,6 +204,25 @@ service cloud.firestore {
                          .affectedKeys().hasOnly(['message', 'updatedAt']);
     }
 
+    // A DEVICE subscribed to a team board, so a parent is told when the schedule moves.
+    //
+    // Nobody signs in, and that is the whole design. The row holds a push token, the board
+    // it follows, and a timestamp — no name, no email, no identity of any kind. It is the
+    // difference between knowing WHO to tell and knowing WHERE to send, and only the second
+    // one is needed. It is also why this needed no accounts, no codes and no consent chain.
+    match /clubs/{clubId}/boardSubs/{fcmToken} {
+      // The push token is the capability: holding it is what lets a device read or remove
+      // its own subscription. Listing stays with the manager — one query over this
+      // collection is a census of how many families follow each squad.
+      allow get, delete: if true;
+      allow list: if isClubAdmin(clubId);
+      // Writable without a sign-in, but not writable freely: the row must be keyed by the
+      // token it carries, and must follow a board that actually exists. Without the second
+      // check this collection accepts anything anyone cares to put in it.
+      allow create, update: if request.resource.data.fcmToken == fcmToken
+                            && exists(/databases/$(database)/documents/clubs/$(clubId)/boards/$(request.resource.data.boardToken));
+    }
+
     // A player's own account — the first people here who are neither staff nor coaches.
     //
     // The FIRST login is the whole problem: a child signs in with Google and nothing about

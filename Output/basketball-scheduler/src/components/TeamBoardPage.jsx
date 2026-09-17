@@ -5,6 +5,7 @@ import { DAYS } from "../constants";
 import clubLogo from "../assets/club-logo.jpg";
 import { buildBoardIcs } from "../utils/teamBoard";
 import { shareOrDownloadBlob } from "../utils/imageExport";
+import { useBoardPush } from "../hooks/useBoardPush";
 
 // The page a parent opens from the team's WhatsApp group.
 //
@@ -60,6 +61,7 @@ function Row({ row }) {
 }
 
 export function TeamBoardPage({ token }) {
+  const push = useBoardPush(token);
   const [board, setBoard] = useState(null);
   const [state, setState] = useState("loading");
   const [weekIdx, setWeekIdx] = useState(0);
@@ -182,6 +184,43 @@ export function TeamBoardPage({ token }) {
             ))
           )}
         </div>
+
+        {push.available && push.support.ok && (
+          <div className="bg-white rounded-xl border border-stone-200 p-3 space-y-2">
+            <div>
+              <h3 className="text-sm font-semibold text-stone-800">התראה כשהלו״ז משתנה</h3>
+              <p className="text-xs text-stone-600 mt-0.5">
+                כדי לשלוח אותה נשמר <span className="font-medium">מזהה טכני של המכשיר הזה בלבד</span> —
+                בלי שם, בלי טלפון ובלי חשבון. אפשר לכבות כאן בכל רגע, והמזהה יימחק.
+              </p>
+            </div>
+            {push.enabled ? (
+              <button
+                onClick={push.disable}
+                disabled={push.busy}
+                className="w-full px-4 py-2 text-sm rounded-xl border border-red-300 bg-white text-red-700 disabled:opacity-40"
+              >
+                {push.busy ? "מכבה..." : "כבה התראות במכשיר הזה"}
+              </button>
+            ) : (
+              <button
+                onClick={push.enable}
+                disabled={push.busy}
+                className="w-full px-4 py-2.5 text-sm rounded-xl bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40"
+              >
+                {push.busy ? "מפעיל..." : "עדכנו אותי כשיש שינוי"}
+              </button>
+            )}
+            <p role="status" aria-live="polite" className="text-xs text-stone-700 min-h-[1rem]">{push.status}</p>
+          </div>
+        )}
+
+        {push.available && push.support.reason === "ios-needs-install" && (
+          <div className="text-xs rounded-xl border border-amber-300 bg-amber-50 text-amber-900 p-3">
+            <span className="font-semibold">רוצים התראה כשהלו״ז משתנה?</span> באייפון צריך קודם
+            להוסיף את הדף למסך הבית — כפתור השיתוף ↑ ← "הוסף למסך הבית" — ולפתוח משם.
+          </div>
+        )}
 
         <div className="space-y-1">
           <button

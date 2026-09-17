@@ -252,3 +252,61 @@ console.log("\n" + count + " tests passed");
 
   console.log("\n7 calendar tests passed");
 }
+
+// ── is a write worth waking a phone for? ─────────────────────────────────────────────
+{
+  const { boardChanges } = await import("../src/utils/boardChanges.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+  const row = (over = {}) => ({ kind: "training", day: "שני", start: "16:15", end: "17:30", where: "רימונים", ...over });
+  const b = (rows, message, updatedAt = "1") => ({ weeks: { "2026-09-13": rows }, message: message ? { text: message } : undefined, updatedAt });
+
+  ok("a republish with nothing moved is NOT a change", () => {
+    const r = boardChanges(b([row()], "", "1"), b([row()], "", "2"));
+    a.equal(r.changed, false);
+  });
+
+  ok("and updatedAt alone never counts — that is what made it safe to press refresh", () => {
+    a.equal(boardChanges(b([row()], "x", "1"), b([row()], "x", "999")).changed, false);
+  });
+
+  ok("a training that moved an hour is a change", () => {
+    const r = boardChanges(b([row()]), b([row({ start: "17:15" })]));
+    a.equal(r.schedule, true);
+    a.equal(r.summary, "השתנו אימונים");
+  });
+
+  ok("one added, and one cancelled, each say what they are", () => {
+    a.equal(boardChanges(b([row()]), b([row(), row({ day: "רביעי" })])).summary, "נוסף אימון");
+    a.equal(boardChanges(b([row(), row({ day: "רביעי" })]), b([row()])).summary, "בוטל אימון");
+  });
+
+  ok("a hall change counts, because a parent drives somewhere", () => {
+    a.equal(boardChanges(b([row()]), b([row({ where: "שז\"ר" })])).schedule, true);
+  });
+
+  ok("a new coach message is worth sending on its own", () => {
+    const r = boardChanges(b([row()], ""), b([row()], "מחר מביאים בקבוק"));
+    a.equal(r.message, true);
+    a.equal(r.summary, "הודעה חדשה מהמאמן");
+  });
+
+  ok("a DELETED message is not — nothing was said", () => {
+    a.equal(boardChanges(b([row()], "משהו"), b([row()], "")).changed, false);
+  });
+
+  ok("both at once are both named", () => {
+    const r = boardChanges(b([row()], ""), b([row({ start: "17:15" })], "שלום"));
+    a.equal(r.summary, "השתנו אימונים · הודעה חדשה מהמאמן");
+  });
+
+  ok("a board published for the FIRST time announces nothing", () => {
+    a.equal(boardChanges(null, b([row()])).changed, false);
+  });
+
+  ok("a board deleted announces nothing either", () => {
+    a.equal(boardChanges(b([row()]), null).changed, false);
+  });
+
+  console.log("\n10 change-detection tests passed");
+}

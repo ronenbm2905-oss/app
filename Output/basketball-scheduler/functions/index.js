@@ -13,6 +13,7 @@ import {
   inQuietWindow,
   isDeadToken,
 } from "./shared/utils/pushTargets.js";
+import { boardChanges } from "./shared/utils/boardChanges.js";
 
 // Phone notifications for schedule changes. This is the only thing that runs in the cloud.
 //
@@ -151,3 +152,58 @@ export const morningPush = onSchedule(
     }
   }
 );
+
+// A team board moved, so the phones following it are told.
+//
+// This is the quietest thing in the project and deliberately so: the subscription holds a
+// push token and a board id, and nothing else. No account, no email, no name — the function
+// knows WHERE to send and has no way to know WHO reads it. That is what let this be built
+// without accounts, codes or a consent chain, and it is worth keeping true.
+//
+// A write is not a change. "עדכן את כל הלוחות" rewrites every board after any edit, which is
+// what makes that button safe to press — and it means sending on every write would train a
+// parent to ignore the notification inside a week. `boardChanges` compares the rows.
+export const onBoardChange = onDocumentWritten("clubs/{clubId}/boards/{token}", async (event) => {
+  const before = event.data?.before?.exists ? event.data.before.data() : null;
+  const after = event.data?.after?.exists ? event.data.after.data() : null;
+  const change = boardChanges(before, after);
+  if (!change.changed) return;
+
+  // The same window the coaches' notifications observe. A parent at 22:40 can do nothing
+  // about Sunday's training, and the board will still say so in the morning.
+  if (inQuietWindow(new Date())) return;
+
+  const clubId = event.params.clubId;
+  const token = event.params.token;
+  const snap = await db
+    .collection("clubs").doc(clubId).collection("boardSubs")
+    .where("boardToken", "==", token)
+    .get();
+  if (snap.empty) return;
+
+  const title = after?.teamName || "לוח הקבוצה";
+  const body = change.summary || "הלוח עודכן";
+  let sent = 0;
+  const dead = [];
+
+  for (const row of snap.docs) {
+    const fcmToken = row.data()?.fcmToken;
+    if (!fcmToken) continue;
+    try {
+      await getMessaging().send({
+        token: fcmToken,
+        data: { title, body, url: `/t/${token}` },
+        webpush: { headers: { Urgency: "normal", TTL: "43200" } },
+      });
+      sent++;
+    } catch (err) {
+      if (isDeadToken(err)) dead.push(row.id);
+    }
+  }
+
+  await Promise.all(
+    dead.map((id) => db.collection("clubs").doc(clubId).collection("boardSubs").doc(id).delete())
+  );
+  // A count. The board carries no personal data and neither does this line.
+  console.log(`board push: delivered ${sent}`);
+});

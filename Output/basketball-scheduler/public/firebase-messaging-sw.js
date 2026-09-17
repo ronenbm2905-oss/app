@@ -51,7 +51,10 @@ if (cfg.projectId && cfg.messagingSenderId && cfg.appId) {
       // screen should update it, not queue behind it.
       tag: "schedule-change",
       renotify: true,
-      data: { url: "/" },
+      // Where THIS notification leads. A coach’s change opens the app; a parent’s opens
+      // their team board at /t/<token>. Sending everyone to "/" would land a parent on the
+      // club login page — the one screen they cannot use.
+      data: { url: d.url || "/" },
     });
   });
 }
@@ -59,12 +62,19 @@ if (cfg.projectId && cfg.messagingSenderId && cfg.appId) {
 // Tapping it focuses the app instead of opening a new tab every time.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const url = (event.notification && event.notification.data && event.notification.data.url) || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      // A window already showing this page is focused; one showing something else is sent
+      // here. Focusing whatever happened to be open was fine when every notification meant
+      // the same screen, and stopped being fine the moment parents had their own.
       for (const client of list) {
-        if ("focus" in client) return client.focus();
+        if (client.url && client.url.indexOf(url) !== -1 && "focus" in client) return client.focus();
       }
-      return self.clients.openWindow ? self.clients.openWindow("/") : undefined;
+      for (const client of list) {
+        if ("navigate" in client && "focus" in client) return client.navigate(url).then((c) => (c || client).focus());
+      }
+      return self.clients.openWindow ? self.clients.openWindow(url) : undefined;
     })
   );
 });

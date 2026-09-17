@@ -23,6 +23,7 @@ const FILES = [
   ["constants.js", "constants.js"],
   ["utils/scheduleChanges.js", "utils/scheduleChanges.js"],
   ["utils/pushTargets.js", "utils/pushTargets.js"],
+  ["utils/boardChanges.js", "utils/boardChanges.js"],
 ];
 
 mkdirSync(join(out, "utils"), { recursive: true });

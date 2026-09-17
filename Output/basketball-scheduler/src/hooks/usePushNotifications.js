@@ -32,7 +32,7 @@ const failure = (label, err) => {
 
 // iOS grants Push API only to a home-screen installed PWA (16.4+). In plain Safari the API
 // is absent entirely — which is why this asks about capability, not about the browser name.
-function deviceSupport() {
+export function deviceSupport() {
   if (typeof window === "undefined") return { ok: false, reason: "unsupported" };
   const hasApi = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   const isApple = /iP(hone|ad|od)/.test(navigator.userAgent) ||
