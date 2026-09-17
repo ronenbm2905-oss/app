@@ -20,6 +20,7 @@ const FILES = [
   "./archive.test.mjs",
   "./hallavailability.test.mjs",
   "./pushtargets.test.mjs",
+  "./daycopy.test.mjs",
 ];
 
 for (const f of FILES) {

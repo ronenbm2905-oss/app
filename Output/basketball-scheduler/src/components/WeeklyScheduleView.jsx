@@ -248,6 +248,11 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
     setEditingSession(null);
     setAddingCell(null);
   };
+  // A copy lands as an extra training and nothing else moves — so it appends, and the modal
+  // stays open. Copying one training onto three days is one visit to the form, not three.
+  const handleCopySessionToDay = (session) => {
+    save({ ...data, sessions: [...data.sessions, session] });
+  };
   const handleDeleteSession = (id) => {
     save({ ...data, sessions: data.sessions.filter((s) => s.id !== id) });
     setEditingSession(null);
@@ -1310,6 +1315,7 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
               initial={modalInitial}
               weekStart={weekStart}
               onSave={handleSaveSession}
+              onCopyToDay={handleCopySessionToDay}
               onCancel={closeModal}
             />
           </div>

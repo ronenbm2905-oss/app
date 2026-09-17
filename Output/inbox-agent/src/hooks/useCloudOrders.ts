@@ -33,6 +33,22 @@ import { isSupportModeActive, SUPPORT_MODE_OFF, type AccessLogEntry, type Suppor
 import type { Order } from '../../shared/types';
 import type { AppUser } from './useAuth';
 
+/**
+ * ★ מה ש-`syncOrdersNow` מחזיר. **אותם שדות בדיוק** כמו ב-
+ * `functions/src/index.ts`, וזו כל הסיבה שהטיפוס יושב כאן ולא בשלד: הוא
+ * החוזה של הקריאה, והקריאה היא של ה-hook הזה.
+ *
+ * ★★ עד עכשיו התשובה נזרקה לפח (`await call('syncOrdersNow')`), ולכן המסך
+ * לא יכול היה לומר לא כמה נמצא ולא מה נכשל — גם כשהשרת אמר את שניהם.
+ */
+export interface SyncNowSummary {
+  messagesRead: number;
+  readSources: string[];
+  /** כמה מסמכי הזמנה נכתבו בריצה. ★ **לא** מספר ההזמנות החדשות — ראה `useRefreshOrders`. */
+  written: number;
+  errorHe: string | null;
+}
+
 export interface CloudState {
   loading: boolean;
   orders: Order[];
@@ -66,7 +82,12 @@ export interface UseCloudOrders extends CloudState {
   connectGoogle: () => Promise<string | null>;
   /** ★ B3′ — רק הבעלים. */
   setSupportMode: (enabled: boolean) => Promise<void>;
-  refreshNow: () => Promise<void>;
+  /**
+   * ★★ בדיקה יזומה מול Gmail. מחזירה את סיכום הריצה, כדי שהמסך יוכל לומר
+   * מה קרה. **חייבת להיות מחוברת לפקד במסך** — ראה
+   * `scripts/check-hook-wiring.mjs`.
+   */
+  refreshNow: () => Promise<SyncNowSummary | null>;
 }
 
 export function useCloudOrders(user: AppUser | null): UseCloudOrders {
@@ -163,7 +184,7 @@ export function useCloudOrders(user: AppUser | null): UseCloudOrders {
   );
 
   const refreshNow = useCallback(async () => {
-    await call('syncOrdersNow');
+    return await call<SyncNowSummary>('syncOrdersNow');
   }, [call]);
 
   return useMemo(

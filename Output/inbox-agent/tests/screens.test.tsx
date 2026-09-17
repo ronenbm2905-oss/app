@@ -22,8 +22,30 @@
 // שלא יופיעו, לא מופיעות.
 // ============================================================================
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderToString } from 'react-dom/server';
+
+// ---------------------------------------------------------------------------
+// ★★ למה יש כאן mock, ומה הוא מתקן
+// ---------------------------------------------------------------------------
+// ה-smoke למטה טוען ש-`App` מרנדרת את **מסך ההדגמה** — הכותרת, הבאנר,
+// ו"שום מייל אמיתי לא נקרא". הטענה הזאת נכונה רק כש-`isFirebaseConfigured`
+// הוא `false`.
+//
+// ברגע ש-`.env` נוצר על המכונה (וזה קרה — האפליקציה עלתה לאוויר), Vitest
+// טוען אותו בדיוק כמו Vite, `isFirebaseConfigured` הופך ל-`true`, והמבחן
+// התחיל לרנדר את מסלול הענן. כלומר: **מבחן שתוצאתו תלויה בקובץ שאינו
+// ב-git** — עובר אצל מי שאין לו `.env`, נופל אצל מי שיש.
+//
+// המצב המקומי הוא החלטה מוצהרת ("בלי `.env` — הכול עובד"), ולכן המבחן עליו
+// צריך לקבע אותה במפורש ולא לרשת אותה מהסביבה.
+vi.mock('../src/firebase', () => ({
+  isFirebaseConfigured: false,
+  db: null,
+  auth: null,
+  functions: null,
+  googleProvider: null,
+}));
 import { InvoicesView } from '../frozen/components/InvoicesView';
 import { PlannedActionsView } from '../frozen/components/PlannedActionsView';
 import { runInvoicePipeline } from '../frozen/utils/invoicePipeline';

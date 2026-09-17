@@ -4,13 +4,14 @@ import { timeToMinutes, overlaps, toISODate } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { sessionViolatesConstraints } from "../utils/conflicts";
 import { absencesOn, absenceCoversSession, absenceLabel } from "../utils/availability";
+import { copyToDay, targetDays } from "../utils/dayCopy";
 import { HallFreeSlots } from "./HallFreeSlots";
 import { Select } from "./ui/Select";
 import { Pill } from "./ui/Pill";
 import { IconAlert, IconBan, IconPlus, IconCheck } from "./ui/icons";
 import { uid } from "../utils/dates";
 
-export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext, weekStart }) {
+export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext, onCopyToDay, weekStart }) {
   const weekOf = initial?.weekOf || weekStart;
   const [teamId, setTeamId] = useState(initial?.teamId || "");
   const [coachId, setCoachId] = useState(initial?.coachId || "");
@@ -21,6 +22,7 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
   const [type, setType] = useState(initial?.type || "אימון");
   const [notes, setNotes] = useState(initial?.notes || "");
   const sessionIdRef = useRef(initial?.id || uid());
+  const [copyMsg, setCopyMsg] = useState("");
 
   useEffect(() => {
     sessionIdRef.current = initial?.id || uid();
@@ -106,6 +108,43 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
     );
     return hits.length > 0 ? hits : null;
   }, [hallId, day, start, end, weekOf, data.absences]);
+
+  // Copying this training onto another day of the same week.
+  //
+  // Offered only for a training that is already ON the board: a draft has nothing to copy
+  // from yet, and an imported fixture is never copied at all.
+  const isSaved = Boolean(initial?.id) && data.sessions.some((x) => x.id === initial.id);
+  const dirty =
+    isSaved &&
+    (teamId !== (initial.teamId || "") ||
+      coachId !== (initial.coachId || "") ||
+      hallId !== (initial.hallId || "") ||
+      day !== (initial.day || DAYS[0]) ||
+      start !== (initial.start || "16:00") ||
+      end !== (initial.end || "17:00") ||
+      type !== (initial.type || "אימון") ||
+      notes.trim() !== (initial.notes || "").trim());
+  const canCopy = Boolean(onCopyToDay) && isSaved && !initial?.fromGame && valid;
+
+  const nTimes = (n) => (n === 1 ? "אימון אחד" : n + " אימונים");
+
+  const doCopy = (targetDay) => {
+    const result = copyToDay(data.sessions, { ...currentSession, fromGame: initial?.fromGame }, targetDay);
+    if (!result.ok) {
+      setCopyMsg(
+        result.reason === "duplicate"
+          ? "כבר קיים אימון זהה ביום " + targetDay + ". לא נוסף דבר."
+          : "לא ניתן להעתיק את האימון הזה."
+      );
+      return;
+    }
+    onCopyToDay(result.session);
+    setCopyMsg(
+      result.clashes.length === 0
+        ? "נוסף אימון ביום " + targetDay + "."
+        : "נוסף אימון ביום " + targetDay + " — שימו לב: התנגשות עם " + nTimes(result.clashes.length) + " באותה שעה."
+    );
+  };
 
   const currentSession = {
     id: sessionIdRef.current,
@@ -262,6 +301,44 @@ export function SessionForm({ data, initial, onSave, onCancel, onSaveAndAddNext,
               .join(", ")}
             . אפשר לשמור בכל זאת.
           </span>
+        </div>
+      )}
+
+      {canCopy && (
+        <div className="rounded-lg border border-stone-200 bg-stone-50 p-2.5 space-y-2">
+          <div className="text-xs font-medium text-stone-700">אותו אימון גם ביום אחר באותו שבוע</div>
+          {/* Saving first is required, and this is the reason rather than a technicality: the
+              buttons below copy what is ON SCREEN. With an unsaved edit in the form, the copy
+              would carry the new hours and the training on the board would keep the old ones —
+              two trainings that look like one move and are not. */}
+          {dirty ? (
+            <p className="text-xs text-stone-600">
+              יש שינוי שטרם נשמר. שמרו את האימון קודם, ואז אפשר להעתיק אותו ליום אחר.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {targetDays(day).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => doCopy(d)}
+                    aria-label={`העתק את האימון גם ליום ${d}`}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-brand-50 hover:border-brand-400"
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-stone-500">
+                נוסף מיד כאימון נוסף. האימון הזה נשאר במקומו.
+              </p>
+            </>
+          )}
+          {/* The outcome is text and it is announced — a copy that was skipped as a duplicate
+              looks exactly like one that was made, if nothing says otherwise. */}
+          <p role="status" aria-live="polite" className="text-xs text-stone-700 min-h-[1rem]">
+            {copyMsg}
+          </p>
         </div>
       )}
 
