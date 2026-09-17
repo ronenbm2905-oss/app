@@ -7,6 +7,7 @@ import { looksLikeSchoolTeam, isHoursExempt } from "../utils/hoursReport";
 import { exportCoachesXlsx } from "../utils/coachExport";
 import { AccessCard } from "./AccessCard";
 import { ArchiveCard } from "./ArchiveCard";
+import { TeamBoardsCard } from "./TeamBoardsCard";
 import { sortByName } from "../utils/names";
 import { Select } from "./ui/Select";
 import {
@@ -599,6 +600,7 @@ export function RostersView({ data, save, canEdit, currentEmail }) {
       {/* Directly under the storage meter: that is where a manager finds out there is a
           problem, and this is the only thing they can do about it. */}
       {canEdit && <ArchiveCard data={data} save={save} />}
+      <TeamBoardsCard data={data} save={save} canEdit={canEdit} />
     </div>
   );
 }

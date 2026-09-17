@@ -19,6 +19,7 @@ import { GamesView } from "./components/GamesView";
 import { WeeklyScheduleView } from "./components/WeeklyScheduleView";
 import { CoachView } from "./components/CoachView";
 import { PushToggle } from "./components/PushToggle";
+import { CoachTeamMessage } from "./components/CoachTeamMessage";
 import { PlayersView } from "./components/PlayersView";
 import { PlayerProgressView } from "./components/PlayerProgressView";
 import { ReportView } from "./components/ReportView";
@@ -28,6 +29,8 @@ import { PendingImportBanner } from "./components/PendingImportBanner";
 import { ScheduleChangesBanner } from "./components/ScheduleChangesBanner";
 import { BirthdayReminder } from "./components/BirthdayReminder";
 import { LegalFooter } from "./legal/LegalFooter";
+import { TeamBoardPage } from "./components/TeamBoardPage";
+import { tokenFromPath } from "./utils/teamBoard";
 import { TodayStrip } from "./components/TodayStrip";
 import { HomeView } from "./components/HomeView";
 import { Greeting } from "./components/Greeting";
@@ -82,7 +85,7 @@ function Loading() {
   );
 }
 
-export default function App() {
+function ClubApp() {
   const { user, authLoading, authError, signIn, signOut, isFirebaseConfigured } = useAuth();
   const { data, save, loaded, error, isAdmin, mode } = useClubData(user);
   // The listeners are scoped by role: a manager listens to every record, a coach only to
@@ -310,6 +313,15 @@ export default function App() {
             coachName={user?.displayName || ""}
             email={myEmail}
           />
+          {/* Scoped to the coach’s OWN squads, like the toggle above it — a manager looking
+              at someone else’s board is not the author of that team’s message. */}
+          {selfCoachId && (
+            <CoachTeamMessage
+              data={data}
+              coachId={selfCoachId}
+              authorName={user?.displayName || ""}
+            />
+          )}
           <CoachView
             data={data}
             fixedCoachId={myCoachId}
@@ -363,4 +375,17 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+// One decision before anything else runs.
+//
+// /t/<token> is not the app. It is a read-only page for one team, opened by a parent from a
+// WhatsApp message, and it must never sign anyone in or open a listener on the club
+// document — the document that carries every child's phone number and birth date. So the
+// branch sits ABOVE the component that holds those hooks rather than inside it: a hook
+// cannot be skipped conditionally, and "we don't render it" would not stop it from running.
+export default function App() {
+  const boardToken = tokenFromPath(typeof window === "undefined" ? "" : window.location.pathname);
+  if (boardToken) return <TeamBoardPage token={boardToken} />;
+  return <ClubApp />;
 }

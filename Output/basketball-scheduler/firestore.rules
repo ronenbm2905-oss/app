@@ -174,6 +174,29 @@ service cloud.firestore {
       allow delete: if isClubAdmin(clubId) || (isClubMember(clubId) && ownsExisting());
     }
 
+    // The ONLY document in this project that anyone on the internet may read — and the
+    // reason it exists is so that nobody outside the club ever needs read access to the
+    // club document, which carries the name, phone and birth date of every child in it.
+    // Firestore has no field-level permissions, so "just the sessions" is not a rule that
+    // can be written. A minimal copy is published instead.
+    //
+    // The token in the path IS the access control: twelve characters, per team, replaceable
+    // in one click. What it protects is a team's training times — the same thing the coach
+    // already posts in that team's WhatsApp group — and no person's data except the name of
+    // the coach who signed a message.
+    match /clubs/{clubId}/boards/{token} {
+      allow read: if true;
+      allow create, delete: if isClubAdmin(clubId);
+      allow update: if isClubAdmin(clubId);
+      // A coach writes the message on a board and NOTHING else. Without this clause the
+      // only way to let them post one would be write access to the board itself — a second
+      // version of the schedule, edited by hand, that nobody could trace back to the club's
+      // own data.
+      allow update: if isClubMember(clubId)
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['message', 'updatedAt']);
+    }
+
     // Finished months moved out of the club document, one per month.
     //
     // Read is the same audience as the club document itself — admins AND members — and
