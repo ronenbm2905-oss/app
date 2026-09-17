@@ -192,7 +192,12 @@ service cloud.firestore {
     // already posts in that team's WhatsApp group — and no person's data except the name of
     // the coach who signed a message.
     match /clubs/{clubId}/boards/{token} {
-      allow read: if true;
+      // GET, not READ. `read` covers get AND list, and a list would hand over every team's
+      // board in one query to anyone who knows the club id — which is in the published
+      // bundle. The token would then be protecting nothing at all. Listing belongs to the
+      // manager, whose browser refreshes the boards after each save.
+      allow get: if true;
+      allow list: if isClubAdmin(clubId);
       allow create, delete: if isClubAdmin(clubId);
       allow update: if isClubAdmin(clubId);
       // A coach writes the message on a board and NOTHING else. Without this clause the

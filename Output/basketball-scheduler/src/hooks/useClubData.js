@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, onSnapshot, setDoc } from "firebase/firestore";
+import { boardsToRefresh } from "../utils/boardSync";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY } from "../constants";
 import { DOC_FULL_MESSAGE, isTooLarge } from "../utils/access";
@@ -84,6 +85,21 @@ function useCloudClubData(user) {
       )
   );
 
+  // Only boards that actually changed are written — not to save writes, but because every
+  // write wakes the notification function, and an alert about nothing is how a family
+  // learns to ignore the next one.
+  const refreshBoards = useCallback(async (next) => {
+    if (!next?.boards || Object.keys(next.boards).length === 0) return;
+    const snap = await getDocs(collection(db, "clubs", CLUB_ID, "boards"));
+    const current = {};
+    snap.docs.forEach((d) => { current[d.id] = d.data(); });
+    for (const { token, board } of boardsToRefresh(next, current)) {
+      // `merge` so the coach's message, which lives on the same document and is written by
+      // a different person, survives every refresh.
+      await setDoc(doc(db, "clubs", CLUB_ID, "boards", token), board, { merge: true });
+    }
+  }, []);
+
   const save = useCallback(
     async (next) => {
       if (!isAdmin) {
@@ -93,6 +109,13 @@ function useCloudClubData(user) {
       try {
         await setDoc(doc(db, "clubs", CLUB_ID), next);
         setError(null);
+        // The boards the families read are a projection of what was just saved, so they are
+        // rebuilt here rather than left to a button someone has to remember. See
+        // utils/boardSync.js for why this is not done in the Cloud Function.
+        //
+        // Deliberately after the save and deliberately unable to fail it: a board that did
+        // not refresh is a stale page, and a save that did not happen is lost work.
+        refreshBoards(next).catch(() => {});
       } catch (err) {
         // The 1 MiB ceiling deserves its own sentence.
         //

@@ -8,7 +8,7 @@
 //   npx firebase emulators:exec --only firestore --project demo-basketball "node rules-tests/team-boards.test.mjs"
 
 import { initializeTestEnvironment, assertSucceeds, assertFails } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
 import { readFileSync } from "node:fs";
 
 const COACH = "coach@example.com";
@@ -110,5 +110,17 @@ await t("someone outside the club cannot publish anything", async () => {
   await assertFails(setDoc(doc(as(OUTSIDER), "clubs/main/boards/xxxxxxxxxxxx"), board));
 });
 
+console.log("— the token has to be the key, and a list would be a master key —");
+
+await t("THE HOLE THIS CLOSES: nobody can list every team's board at once", async () => {
+  await assertFails(getDocs(collection(anon(), "clubs/main/boards")));
+  await assertFails(getDocs(collection(as(COACH), "clubs/main/boards")));
+});
+await t("a manager still can — their browser refreshes the boards after each save", async () => {
+  await assertSucceeds(getDocs(collection(as(MANAGER), "clubs/main/boards")));
+});
+await t("and one board by its token is still open to the family holding it", async () => {
+  await assertSucceeds(getDoc(doc(anon(), "clubs/main/boards/abcdefghijkm")));
+});
 await env.cleanup();
 console.log("\n" + pass + " rules tests passed");
