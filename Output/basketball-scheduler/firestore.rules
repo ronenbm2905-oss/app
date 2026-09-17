@@ -204,6 +204,46 @@ service cloud.firestore {
                          .affectedKeys().hasOnly(['message', 'updatedAt']);
     }
 
+    // A player's own account — the first people here who are neither staff nor coaches.
+    //
+    // The FIRST login is the whole problem: a child signs in with Google and nothing about
+    // that identity says which of the club's players they are. The browser must not be the
+    // one to answer, so a one-time code does, and THESE RULES check it. A claim written by
+    // hand with someone else's playerId is refused here, not in the app.
+    match /clubs/{clubId}/claimCodes/{code} {
+      // Knowing the code IS the proof, exactly as with a board token — so a single document
+      // can be fetched by anyone who holds it, and the collection can never be listed. The
+      // difference between `get` and `list` is the entire protection: without it, one query
+      // would hand over every code in the club.
+      allow get: if true;
+      allow list: if isClubAdmin(clubId);
+      allow write: if isClubAdmin(clubId);
+    }
+
+    match /clubs/{clubId}/playerAccounts/{uid} {
+      allow get: if request.auth != null && (request.auth.uid == uid || isClubAdmin(clubId));
+      allow list: if isClubAdmin(clubId);
+
+      // Three things at once, and none of them is optional:
+      //   1. the row is keyed by the caller's own uid, so nobody writes an account for
+      //      anyone else;
+      //   2. the code they present exists;
+      //   3. that code names the player they claim to be.
+      // (3) is what makes the code a proof rather than a formality — without it a child
+      // could hold a real code and still file themselves as a different player.
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.uid == uid
+                    && exists(/databases/$(database)/documents/clubs/$(clubId)/claimCodes/$(request.resource.data.code))
+                    && get(/databases/$(database)/documents/clubs/$(clubId)/claimCodes/$(request.resource.data.code)).data.playerId
+                       == request.resource.data.playerId;
+
+      // Never edited. A link is made once and otherwise removed — an account that can be
+      // rewritten is an account that can be pointed at a different player later.
+      allow update: if false;
+      allow delete: if (request.auth != null && request.auth.uid == uid) || isClubAdmin(clubId);
+    }
+
     // Finished months moved out of the club document, one per month.
     //
     // Read is the same audience as the club document itself — admins AND members — and
