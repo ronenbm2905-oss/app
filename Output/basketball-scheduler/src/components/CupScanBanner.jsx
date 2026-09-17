@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { draftToGame, replaceGame } from "../utils/cupScan";
+import { matchHall } from "../utils/halls";
 import { syncGamesToSessions } from "../utils/games";
 import { IconAlert, IconCheck, IconX } from "./ui/icons";
 
@@ -15,6 +16,11 @@ import { IconAlert, IconCheck, IconX } from "./ui/icons";
 // is already in the club is ever touched.
 export function CupScanBanner({ scan, data, save, resolveScan }) {
   const [picked, setPicked] = useState({});
+  // The hall, for HOME fixtures only. Pre-filled from the venue the federation published —
+  // which is not spelled the way the club spells it, so the match runs through the rename
+  // table — and still a dropdown, because a guess about where a game is played is the kind
+  // that sends a squad to the wrong building.
+  const [pickedHall, setPickedHall] = useState({});
   const [msg, setMsg] = useState("");
 
   if (!scan) return null;
@@ -30,7 +36,8 @@ export function CupScanBanner({ scan, data, save, resolveScan }) {
     // The fixture is appended and the board rebuilt from the games — the same path a
     // federation import takes, so the hours report, transport and calendar see an ordinary
     // game and have no idea this scanner exists.
-    const nextGames = [...(data.games || []), draftToGame(draft, teamId)];
+    const hallId = draft.isHome ? pickedHall[draft.federationCode] ?? matchHall(draft.venue, data.halls) : "";
+    const nextGames = [...(data.games || []), draftToGame(draft, teamId, hallId)];
     save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, { ...data, games: nextGames }) });
     setMsg(`נוסף: ${draft.opponent} · ${draft.date} · ${teamName(teamId)}`);
   };
@@ -58,6 +65,20 @@ export function CupScanBanner({ scan, data, save, resolveScan }) {
       {(data.teams || []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
     </select>
   );
+
+  const HallPick = ({ draft }) => {
+    const value = pickedHall[draft.federationCode] ?? matchHall(draft.venue, data.halls);
+    return (
+      <select
+        value={value}
+        onChange={(e) => setPickedHall((h) => ({ ...h, [draft.federationCode]: e.target.value }))}
+        className="text-xs rounded-lg border border-stone-300 p-1.5 bg-white"
+      >
+        <option value="">בחר/י אולם…</option>
+        {(data.halls || []).map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+      </select>
+    );
+  };
 
   const Fixture = ({ draft }) => (
     <div className="flex items-center gap-2 flex-wrap text-sm">
@@ -105,6 +126,7 @@ export function CupScanBanner({ scan, data, save, resolveScan }) {
               ) : (
                 <div className="flex items-center gap-2 flex-wrap">
                   <TeamPick draft={d} />
+                  {d.isHome && <HallPick draft={d} />}
                   <button
                     onClick={() => add(d)}
                     className="px-3 py-1.5 text-xs rounded-lg bg-brand-600 text-white hover:bg-brand-700"
@@ -155,6 +177,7 @@ export function CupScanBanner({ scan, data, save, resolveScan }) {
               ) : (
                 <div className="flex items-center gap-2 flex-wrap pt-1">
                   <TeamPick draft={draft} />
+                  {draft.isHome && <HallPick draft={draft} />}
                   <button
                     onClick={() => add(draft)}
                     className="px-3 py-1.5 text-xs rounded-lg border border-amber-500 text-amber-800 bg-white hover:bg-amber-100"

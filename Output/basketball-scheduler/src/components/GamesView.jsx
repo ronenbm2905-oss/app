@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { matchHall } from "../utils/halls";
 import { uid, formatDateHe } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import { parseXlsxToRows, importGamesFile, syncGamesToSessions } from "../utils/games";
@@ -25,11 +26,13 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
     initial?.date ? initial.date.split("-").reverse().join("-") : ""
   );
   const [time, setTime] = useState(initial?.time || "18:00");
-  // home games store venue as a hall name → map back to its id; away games store a free-text address
+  // Home games store venue as a hall name → map back to its id; away games store a free-text
+  // address. Matched through the rename table rather than by exact name: a fixture that came
+  // from the federation carries THEIR venue string — "אולם עלומים, רח' הכפר 2, קריית אונו" —
+  // which equals no hall name we hold, so an exact comparison silently offered no hall and
+  // the game stayed homeless on the board.
   const [hallId, setHallId] = useState(
-    initial && initial.isHome
-      ? data.halls.find((h) => h.name === initial.venue)?.id || ""
-      : ""
+    initial && initial.isHome ? matchHall(initial.venue, data.halls) : ""
   );
   const [address, setAddress] = useState(
     initial && !initial.isHome ? initial.venue || "" : ""

@@ -3,6 +3,7 @@
 // extension. Vite resolves an explicit extension perfectly well, so both sides are happy.
 import * as XLSX from "xlsx";
 import { DAYS } from "../constants.js";
+import { matchHall } from "./halls.js";
 import { formatDateFromExcel, parseDateDMY, HEB_DAY_MAP, weekStartOfDMY } from "./dates.js";
 
 // Parse xlsx using SheetJS. In Vite we import the library directly (not window.XLSX).
@@ -344,13 +345,10 @@ export function syncGamesToSessions(nextGames, data) {
     return team?.coachId || "";
   };
 
-  const hallByName = (venueName) => {
-    if (!venueName) return "";
-    const match = data.halls.find(
-      (h) => venueName.includes(h.name) || h.name.includes(venueName)
-    );
-    return match?.id || "";
-  };
+  // One matcher for the whole app, renames included. This used to compare raw text, which
+  // meant every HOME fixture in the hall the federation still calls "עלומים" landed on the
+  // board with no hall — league games from the weekly file as much as cup games.
+  const hallByName = (venueName) => matchHall(venueName, data.halls);
 
   const nextSessions = (data.sessions || []).filter((s) => !s.fromGame); // drop old game-sessions
   nextGames.forEach((g) => {
@@ -366,7 +364,11 @@ export function syncGamesToSessions(nextGames, data) {
     if (!day || !DAYS.includes(day)) return;
     const sessionType = g.isHome ? "משחק בית" : "משחק חוץ";
     const venue = g.addressOverride || g.venue || ""; // manual address override wins over the file
-    const hallId = g.isHome ? hallByName(venue) : "";
+    // An explicit hall chosen by a person wins over matching the venue text by name. The
+    // federation does not use our names for our own halls — it calls the Barak hall
+    // "אולם עלומים" — so name matching alone drops a home fixture onto the board with no
+    // hall at all. Nothing in the weekly xlsx path sets this, so that path is unchanged.
+    const hallId = g.isHome ? g.hallId || hallByName(venue) : "";
     const coachId = coachForTeam(g.teamId);
     // הקובץ מהאיגוד נותן רק את שעת המשחק. השורה בלוח נחסמת מ-30 דקות חימום
     // לפני שריקת הפתיחה ועד שעה וחצי אחריה. דוגמה: משחק 18:30 → 18:00–20:00.

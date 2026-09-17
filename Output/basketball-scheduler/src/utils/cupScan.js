@@ -130,10 +130,11 @@ export function classify(drafts, existingGames) {
 // The game record as the club stores it. `teamId` is deliberately absent: the federation's
 // name for us carries a coach or a sponsor, not our team names, and a wrong guess files a
 // fixture under the wrong squad — which is worse than not knowing about it.
-export function draftToGame(draft, teamId) {
+export function draftToGame(draft, teamId, hallId) {
   return {
     federationCode: draft.federationCode,
     teamId: teamId || "",
+    ...(hallId ? { hallId } : {}),
     league: draft.league || "",
     date: draft.date,
     time: draft.time,
@@ -152,7 +153,7 @@ export function draftToGame(draft, teamId) {
 // replace would quietly undo a decision — the squad it was filed under, a block nudged on
 // the board, an address typed because the federation's was wrong, the driver for the bus.
 export const MANAGER_OWNED = [
-  "teamId", "timeOverride", "addressOverride", "driverName", "driverPhone",
+  "teamId", "hallId", "timeOverride", "addressOverride", "driverName", "driverPhone",
   "ourScore", "theirScore",
 ];
 

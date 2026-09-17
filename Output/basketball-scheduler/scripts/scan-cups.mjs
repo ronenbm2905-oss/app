@@ -62,7 +62,11 @@ async function scanLeague(league) {
     if (!draft) continue;
     // Only ours gets a second request. Resolving every venue in every competition would be
     // a hundred calls to learn nothing.
-    draft.venue = draft.isHome ? "" : await venueName(ev?.venues?.[0]);
+    //
+    // A HOME game needs this as much as an away one: the club plays in several halls, and
+    // the federation's venue is the only thing that says which. (It will not be spelled the
+    // way we spell it — see matchHall.)
+    draft.venue = await venueName(ev?.venues?.[0]);
     drafts.push(draft);
   }
   return { count: Array.isArray(events) ? events.length : 0, drafts };
