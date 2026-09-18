@@ -86,10 +86,39 @@ export async function withLogoHeader(baseCanvas, logoSrc, title = "", subtitle =
   }
 }
 
+// A part of the app that is fetched only when it is first needed — and what happens when
+// it is no longer there.
+//
+// html2canvas and jsPDF are loaded on demand, as separate files whose names carry a content
+// hash. A deploy replaces them. Anyone whose tab was open BEFORE that deploy asks for the
+// old name, and Firebase answers with index.html and a 200 — the SPA rewrite has no way to
+// know a missing .js is not a missing page. The browser then tries to parse HTML as a
+// module and throws, and the button reports "try again", which is the one thing that
+// cannot help: the file is gone and will stay gone.
+//
+// So a failure to LOAD is separated from a failure to RENDER, and only the first one is
+// answered with "reload the page".
+export class AppUpdatedError extends Error {
+  constructor() {
+    super("a lazily loaded part of the app is no longer on the server");
+    this.name = "AppUpdatedError";
+  }
+}
+
+export const APP_UPDATED_MESSAGE =
+  "המערכת עודכנה מאז שפתחת את הדף. רענן/י (Ctrl+Shift+R) ונסה/י שוב.";
+
+async function loadModule(loader) {
+  try {
+    return await loader();
+  } catch {
+    throw new AppUpdatedError();
+  }
+}
 // Render a DOM node to a canvas (via html2canvas) with the logo + optional title
 // composited on top. Shared by the PNG and PDF exporters below.
 export async function renderNodeCanvas(node, { logoSrc = "", title = "", scale = 2 } = {}) {
-  const { default: html2canvas } = await import("html2canvas");
+  const { default: html2canvas } = await loadModule(() => import("html2canvas"));
   const baseCanvas = await html2canvas(node, { scale, backgroundColor: "#ffffff" });
   return logoSrc || title ? await withLogoHeader(baseCanvas, logoSrc, title) : baseCanvas;
 }
@@ -102,7 +131,7 @@ export function canvasToPngBlob(canvas) {
 // the header on top, so there are no repeating-header or orientation problems (mobile
 // print engines can't repeat table headers reliably; this sidesteps that entirely).
 export async function canvasToPdfBlob(canvas) {
-  const { jsPDF } = await import("jspdf");
+  const { jsPDF } = await loadModule(() => import("jspdf"));
   const orientation = canvas.width >= canvas.height ? "landscape" : "portrait";
   const pdf = new jsPDF({ orientation, unit: "px", format: [canvas.width, canvas.height] });
   const pw = pdf.internal.pageSize.getWidth();

@@ -13,6 +13,7 @@ import {
 } from "../utils/transport";
 import { WeekNav } from "./ui/WeekNav";
 import { IconDownload, IconBus, IconMapPin } from "./ui/icons";
+import { AppUpdatedError, APP_UPDATED_MESSAGE } from "../utils/imageExport";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
 // Cells that read better centered (times / short codes) — by column index in TRANSPORT_HEADERS.
@@ -82,8 +83,12 @@ export function TransportExport({ data, save, weekStart, setWeekStart }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    } catch {
-      alert("לא הצלחנו להפיק את הקובץ. נסה שוב, או הפק אותו מהמחשב.");
+    } catch (err) {
+      alert(
+        err instanceof AppUpdatedError
+          ? APP_UPDATED_MESSAGE
+          : "לא הצלחנו להפיק את הקובץ. נסה שוב, או הפק אותו מהמחשב."
+      );
     } finally {
       setBusy(false);
     }

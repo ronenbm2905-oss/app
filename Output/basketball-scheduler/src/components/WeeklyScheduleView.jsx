@@ -12,7 +12,7 @@ import {
   findConstraintViolations,
   parallelCoachIdSet,
 } from "../utils/conflicts";
-import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl } from "../utils/imageExport";
+import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl, AppUpdatedError, APP_UPDATED_MESSAGE } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
 import { SessionForm } from "./SessionForm";
@@ -196,7 +196,8 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       const name = hall ? `אולם-${selectedHallName}-${weekStart}.${ext}` : `לוז-שבועי-${weekStart}.${ext}`;
       await shareOrDownloadBlob(blob, name, heading);
     } catch (e) {
-      alert("לא הצלחנו להפיק את הקובץ. נסה שוב.");
+      // A file that will never load again is not a "try again" — see AppUpdatedError.
+      alert(e instanceof AppUpdatedError ? APP_UPDATED_MESSAGE : "לא הצלחנו להפיק את הקובץ. נסה שוב.");
     } finally {
       setShareBusy("");
     }
