@@ -177,13 +177,17 @@ t("a change names ONLY what moved", () => {
   const e = { kind: "changed", before: { day: "רביעי", start: "16:00", end: "17:30", hallId: "h1" },
               after: { day: "רביעי", start: "17:30", end: "19:00", hallId: "h1" } };
   const line = changeLabel(e, names);
-  assert.ok(line.includes("16:00–17:30 → 17:30–19:00"));
+  // The new time first, and the old one named as such. An arrow between two left-to-right
+  // numeric runs inside right-to-left text is laid out either way by the bidi algorithm —
+  // and on a real phone it came out backwards, which made the sentence say the opposite.
+  assert.ok(line.includes("17:30–19:00 (במקום 16:00–17:30)"));
+  assert.equal(line.includes("→"), false);
   assert.ok(!line.includes("אולם הכפר"), "the unchanged hall is noise");
 });
 t("a hall move names both halls", () => {
   const e = { kind: "changed", before: { day: "רביעי", start: "16:00", end: "17:30", hallId: "h1" },
               after: { day: "רביעי", start: "16:00", end: "17:30", hallId: "h2" } };
-  assert.ok(changeLabel(e, names).includes("אולם הכפר → שרת"));
+  assert.ok(changeLabel(e, names).includes("שרת (במקום אולם הכפר)"));
 });
 t("the hall is looked up at read time, not frozen into the record", () => {
   // A hall renamed after the fact should read by its new name.

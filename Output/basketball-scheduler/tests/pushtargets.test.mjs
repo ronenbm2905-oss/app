@@ -71,7 +71,10 @@ t("one change speaks for itself, without a count", () => {
   // body satisfies every "does not contain" in this file.
   assert.ok(out[0].body.length > 0, "body must not be empty");
   assert.ok(out[0].body.includes("17:00"), "body must name the hour that moved");
-  assert.ok(out[0].body.includes("→"), "body must show before → after");
+  // No arrow: it has no direction the bidi algorithm is obliged to respect, and on a
+  // phone it pointed the wrong way. The new value leads, the old one is named.
+  assert.ok(out[0].body.includes("(במקום"), "body must name what it used to be");
+  assert.equal(out[0].body.includes("→"), false);
   assert.equal(out[0].body.includes("שינויים"), false);
 });
 t("a hall that moved is named — the lookup must survive the real data shape", () => {

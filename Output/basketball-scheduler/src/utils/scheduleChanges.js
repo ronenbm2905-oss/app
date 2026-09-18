@@ -179,14 +179,26 @@ export function changeLabel(entry, names = {}) {
     return `בוטל: ${day(b)} ${slot(b)}${hall(b?.hallId) ? ` · ${hall(b.hallId)}` : ""}`.replace(/\s+/g, " ").trim();
   }
 
-  // A change lists only the parts that actually moved. "יום רביעי 16:00–17:30 → 17:30–19:00"
-  // is what a coach needs; repeating the hall that did not change is noise.
+  // A change lists only the parts that actually moved — repeating the hall that did not is
+  // noise on a lock screen.
+  //
+  // AND IT SAYS IT IN WORDS, NOT WITH AN ARROW.
+  //
+  // "13:00–14:30 → 13:30–14:30" arrived on a phone reading backwards. The arrow is a
+  // direction-neutral character sitting between two left-to-right numeric runs inside
+  // right-to-left text, and the bidi algorithm is free to lay that out either way — which
+  // it did. The reader cannot tell which time is the old one, and the one thing this
+  // sentence exists to say is exactly that.
+  //
+  // "החדש (במקום הישן)" has no direction to get wrong, and it leads with the time someone
+  // has to act on rather than the one they already knew.
   const { before: b, after: a } = entry;
+  const moved = (now, was) => `${now} (במקום ${was})`;
   const parts = [];
-  if (str(b?.day) !== str(a?.day)) parts.push(`${day(b)} ← ${day(a)}`.replace("← ", "→ "));
-  if (slot(b) !== slot(a)) parts.push(`${slot(b)} → ${slot(a)}`);
-  if (str(b?.hallId) !== str(a?.hallId)) parts.push(`${hall(b?.hallId) || "—"} → ${hall(a?.hallId) || "—"}`);
-  if (str(b?.type) !== str(a?.type)) parts.push(`${b?.type || "אימון"} → ${a?.type || "אימון"}`);
+  if (str(b?.day) !== str(a?.day)) parts.push(moved(day(a), day(b)));
+  if (slot(b) !== slot(a)) parts.push(moved(slot(a), slot(b)));
+  if (str(b?.hallId) !== str(a?.hallId)) parts.push(moved(hall(a?.hallId) || "—", hall(b?.hallId) || "—"));
+  if (str(b?.type) !== str(a?.type)) parts.push(moved(a?.type || "אימון", b?.type || "אימון"));
   const where = str(b?.day) === str(a?.day) ? day(a) : "";
   return [where, parts.join(" · ")].filter(Boolean).join(": ");
 }
