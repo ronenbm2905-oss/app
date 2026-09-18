@@ -199,9 +199,9 @@ console.log("\n" + count + " tests passed");
     teamName: "נוער מחוזית",
     weeks: {
       "2026-09-13": [
-        { kind: "training", day: "שני", start: "16:15", end: "17:30", where: "רימונים", type: "" },
-        { kind: "game", day: "שבת", start: "16:30", end: "18:00", where: "ז'בוטינסקי 45", opponent: "הפועל רמת גן", home: false, assembly: "15:00" },
-        { kind: "training", day: "רביעי", start: "18:00", end: "19:30", where: "שז\"ר", type: "", cancelled: true },
+        { kind: "training", ref: "s1", day: "שני", start: "16:15", end: "17:30", where: "רימונים", type: "" },
+        { kind: "game", ref: "s2", day: "שבת", start: "16:30", end: "18:00", where: "ז'בוטינסקי 45", opponent: "הפועל רמת גן", home: false, assembly: "15:00" },
+        { kind: "training", ref: "s3", day: "רביעי", start: "18:00", end: "19:30", where: "שז\"ר", type: "", cancelled: true },
       ],
     },
   };
@@ -233,9 +233,17 @@ console.log("\n" + count + " tests passed");
     a.equal(un.includes("DESCRIPTION:התייצבות 15:00"), true);
   });
 
-  ok("a CANCELLED fixture is not exported — a calendar cannot strike it through", () => {
-    a.equal(un.includes("שז"), false);
-    a.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 2);
+  // It used to be dropped from the file. That removed it from the DOWNLOAD and left it in
+  // the calendar of everyone who had already downloaded — looking entirely normal.
+  ok("a CANCELLED training IS exported, as a cancellation", () => {
+    a.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 3);
+    a.equal(un.includes("STATUS:CANCELLED"), true);
+    a.equal(un.includes("SUMMARY:מבוטל — נוער מחוזית"), true);
+  });
+
+  ok("a cancelled row carries no gathering time — there is nothing to gather for", () => {
+    const block = un.split("BEGIN:VEVENT").find((b) => b.includes("STATUS:CANCELLED"));
+    a.equal(block.includes("DESCRIPTION"), false);
   });
 
   ok("ids are stable, so importing twice updates instead of doubling", () => {
@@ -244,13 +252,41 @@ console.log("\n" + count + " tests passed");
     a.deepEqual(uids(ics), uids(again));
   });
 
+  // THE BUG THIS EXISTS FOR. The old UID carried the start time, so a training moved from
+  // 16:15 to 16:00 came back with a different id — and a parent who downloaded again got
+  // two trainings that afternoon, the wrong one still sitting there.
+  ok("a training that MOVED keeps its id — the whole point", () => {
+    const moved = {
+      ...board,
+      updatedAt: "2026-09-18T09:00:00.000Z",
+      weeks: {
+        "2026-09-13": board.weeks["2026-09-13"].map((r) =>
+          r.ref === "s1" ? { ...r, start: "16:00", end: "17:15" } : r
+        ),
+      },
+    };
+    const after = buildBoardIcs(moved, { now: new Date("2026-09-18T10:00:00Z") });
+    const uid = (s) => (s.match(/^UID:.*s1@.*$/gm) || []).map((x) => x.trim());
+    a.deepEqual(uid(ics), uid(after));
+    a.equal(flat(after).includes("DTSTART:20260914T160000"), true);
+  });
+
+  ok("a later board wins — the copy carries a higher SEQUENCE", () => {
+    const later = buildBoardIcs(
+      { ...board, updatedAt: "2026-09-18T09:00:00.000Z" },
+      { now: new Date("2026-09-18T10:00:00Z") }
+    );
+    const seq = (s) => Number((s.match(/^SEQUENCE:(\d+)$/m) || [])[1]);
+    a.equal(seq(later) > seq(ics), true);
+  });
+
   ok("an empty board is still a valid, empty calendar", () => {
     const out = buildBoardIcs({ teamName: "x", weeks: {} });
     a.equal(out.includes("BEGIN:VEVENT"), false);
     a.equal(out.trim().endsWith("END:VCALENDAR"), true);
   });
 
-  console.log("\n7 calendar tests passed");
+  console.log("\n10 calendar tests passed");
 }
 
 // ── is a write worth waking a phone for? ─────────────────────────────────────────────

@@ -66,6 +66,11 @@ export function boardWeeks(today = new Date()) {
 
 // One row of the board. `timeOverride` is applied here rather than shown raw: a game moved
 // to 17:00 is at 17:00, and the original time is an internal detail.
+//
+// `ref` is the session's own id, and it is the ONLY field here that is not for reading. It
+// is what the calendar export uses to say "this is the same training, at a new hour" — see
+// `buildBoardIcs`. It is an opaque internal id: it names no person and says nothing about
+// anyone, which is why it is allowed onto a document the public can read.
 function rowFor(session, { hallName, gameOf, departBefore }) {
   const start = session.timeOverride?.start || session.start || "";
   const end = session.timeOverride?.end || session.end || "";
@@ -74,6 +79,7 @@ function rowFor(session, { hallName, gameOf, departBefore }) {
   if (game) {
     return {
       kind: "game",
+      ref: session.id || "",
       day: session.day,
       start,
       end,
@@ -96,6 +102,7 @@ function rowFor(session, { hallName, gameOf, departBefore }) {
   if (/^משחק/.test(session.type || "")) {
     return {
       kind: "game",
+      ref: session.id || "",
       day: session.day,
       start,
       end,
@@ -111,6 +118,7 @@ function rowFor(session, { hallName, gameOf, departBefore }) {
 
   return {
     kind: "training",
+    ref: session.id || "",
     day: session.day,
     start,
     end,
@@ -186,6 +194,23 @@ export function withoutBoardToken(data, teamId) {
 // One file rather than a Google Calendar link per event: a link adds one fixture at a time,
 // and six taps is how a good idea stops being used. A .ics opens Apple Calendar directly and
 // imports into Google Calendar just the same.
+//
+// WHAT MAKES A SECOND DOWNLOAD AN UPDATE AND NOT A COPY: the UID. A calendar matches events
+// by it and by nothing else, so the UID has to name the training — not where it currently
+// sits. It used to carry the start time, which meant the one case that matters, "the time
+// moved", produced a DIFFERENT id: the parent re-downloaded and got two trainings that
+// evening, the old one still wrong and still there. So it is built from `ref`, the session's
+// own id, which survives the move.
+
+// A number that only goes up, so a calendar accepts the newer copy as the newer copy.
+// Minutes since 2020 — small enough to stay a plain integer for the next few centuries, and
+// derived from the board itself rather than from the download, so two parents downloading
+// the same board at different moments do not disagree about which version is later.
+function icsSequence(board, now) {
+  const t = Date.parse(board?.updatedAt || "") || now.getTime();
+  return Math.max(0, Math.floor((t - Date.UTC(2020, 0, 1)) / 60000));
+}
+
 export function buildBoardIcs(board, { now = new Date() } = {}) {
   const pad = (n) => String(n).padStart(2, "0");
   const dtstamp =
@@ -193,13 +218,12 @@ export function buildBoardIcs(board, { now = new Date() } = {}) {
     `T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
 
   const team = String(board?.teamName || "").trim();
+  const seq = icsSequence(board, now);
   const events = [];
 
   Object.entries(board?.weeks || {}).forEach(([week, rows]) => {
-    (Array.isArray(rows) ? rows : []).forEach((r) => {
-      // A cancelled fixture is left out rather than exported: a phone calendar cannot show
-      // it struck through, so it would read as a game that is still on.
-      if (!r || r.cancelled) return;
+    (Array.isArray(rows) ? rows : []).forEach((r, i) => {
+      if (!r) return;
       const start = icsDateTime(week, r.day, r.start);
       const end = icsDateTime(week, r.day, r.end);
       if (!start || !end) return;
@@ -211,18 +235,34 @@ export function buildBoardIcs(board, { now = new Date() } = {}) {
               .join(" ")
           : r.type || "אימון";
 
+      // `ref` is the session id and is what makes a moved training the same event. A row
+      // without one falls back to its position, which is stable enough for a board that is
+      // rebuilt from the same sorted sessions every time — and no worse than the old scheme.
+      const key = r.ref || `${r.day}-${i}`;
+
       events.push(
         [
           "BEGIN:VEVENT",
-          // Stable, so importing the file twice updates the events instead of doubling them.
-          `UID:${board?.teamId || "team"}-${week}-${r.day}-${r.start}@kiryat-ono-basketball`,
+          `UID:${board?.teamId || "team"}-${week}-${key}@kiryat-ono-basketball`,
           `DTSTAMP:${dtstamp}`,
+          `SEQUENCE:${seq}`,
           `DTSTART:${start}`,
           `DTEND:${end}`,
-          `SUMMARY:${escapeText([team, what].filter(Boolean).join(" — "))}`,
+          // A cancelled training used to be left out of the file entirely — which removed it
+          // from the download and left it sitting in the calendar of everyone who had
+          // already downloaded, looking exactly like a training that is still on. That is
+          // the one failure here that puts a parent in a car. So it IS exported, as a
+          // cancellation: STATUS for the calendar, and the word in the title for the person,
+          // because not every app shows the status and every app shows the title.
+          r.cancelled ? "STATUS:CANCELLED" : "STATUS:CONFIRMED",
+          `SUMMARY:${escapeText(
+            [r.cancelled ? "מבוטל" : "", team, what].filter(Boolean).join(" — ")
+          )}`,
           r.where ? `LOCATION:${escapeText(r.where)}` : null,
           // The one line a parent has to act on, and the only description there is.
-          r.assembly ? `DESCRIPTION:${escapeText(`התייצבות ${r.assembly}`)}` : null,
+          !r.cancelled && r.assembly
+            ? `DESCRIPTION:${escapeText(`התייצבות ${r.assembly}`)}`
+            : null,
           "END:VEVENT",
         ].filter(Boolean)
       );
