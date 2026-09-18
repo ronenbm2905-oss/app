@@ -4,6 +4,8 @@ import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { DAYS } from "../constants";
 import clubLogo from "../assets/club-logo.jpg";
 import { buildBoardIcs } from "../utils/teamBoard";
+import { normalizePayUrl, payHost } from "../utils/payLink";
+import { LegalFooter } from "../legal/LegalFooter";
 import { shareOrDownloadBlob } from "../utils/imageExport";
 import { useBoardPush } from "../hooks/useBoardPush";
 
@@ -133,6 +135,11 @@ export function TeamBoardPage({ token }) {
     (g) => g.items.length > 0
   );
   const message = board.message?.text ? board.message : null;
+  // Checked again on the way out, not only on the way in. The board is a document in a
+  // database, and "it was validated when it was saved" is an assumption about every past
+  // version of the code — not a property of what is being rendered right now.
+  const payUrl = normalizePayUrl(board.pay?.url);
+  const pay = payUrl ? { url: payUrl, host: payHost(payUrl) } : null;
 
   return (
     <div className="min-h-screen bg-stone-100" dir="rtl">
@@ -140,7 +147,9 @@ export function TeamBoardPage({ token }) {
         <div className="bg-white rounded-xl border border-stone-200 p-3 flex items-center gap-3">
           <img src={clubLogo} alt="" className="w-11 h-11 rounded-lg object-cover" />
           <div>
-            <div className="font-semibold text-stone-800 leading-tight">{board.teamName}</div>
+            {/* An `h1`, because this is the one page in the app a screen reader reaches
+                without logging in — and it used to open with an `h3` and no heading above it. */}
+            <h1 className="font-semibold text-stone-800 leading-tight">{board.teamName}</h1>
             <div className="text-xs text-stone-500">עירוני קריית אונו — כדורסל</div>
           </div>
         </div>
@@ -235,11 +244,55 @@ export function TeamBoardPage({ token }) {
           <p role="status" aria-live="polite" className="text-[11px] text-red-600 text-center">{calMsg}</p>
         </div>
 
+        {/* The club's payment page, and NOT a payment form.
+            The destination is printed under the button, in words, because a link that
+            arrived in a WhatsApp group and opens a page asking for money is the shape of
+            every scam a parent has been warned about. The club's own message has to be
+            checkable, and a host name is the one thing a person can check. */}
+        {pay && (
+          <div className="bg-white rounded-xl border border-stone-200 p-3 space-y-1.5">
+            <a
+              href={pay.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-describedby="pay-note"
+              className="block w-full text-center px-4 py-2.5 text-sm rounded-xl border border-brand-500 text-brand-600 hover:bg-brand-50"
+            >
+              תשלום למועדון <span className="text-xs font-normal">(נפתח בחלון חדש)</span>
+            </a>
+            <p id="pay-note" className="text-[11px] text-stone-500 text-center">
+              נפתח באתר <span className="font-medium text-stone-700">{pay.host}</span> — אתר
+              התשלומים של <span className="font-medium text-stone-700">קרית אונו – דור העתיד</span>.
+              הדף הזה אינו מקבל פרטי אשראי ואינו יודע מי שילם.
+            </p>
+            {/* An invariant a parent can hold on to. Printing the host is only worth
+                something to someone who knows what the host is supposed to be — and this is
+                the sentence that makes the rest of the page checkable rather than merely
+                reassuring. */}
+            <p className="text-[11px] text-stone-500 text-center">
+              המועדון לא יבקש בהודעה פרטי אשראי, קוד אימות או העברה לחשבון פרטי. לא מזהים את
+              שם האתר? אל תשלמו — התקשרו 054-6696288.
+            </p>
+          </div>
+        )}
+
         {/* Reliance, and the same sentence the push notification carries. A parent who drove
             somewhere on the strength of this page has to know what it is and what it is not. */}
-        <div className="text-xs text-stone-500 text-center space-y-1 pb-4">
+        <div className="text-xs text-stone-500 text-center space-y-1">
           <div>עודכן: {fmtUpdated(board.updatedAt)}</div>
           <div>זו תצוגה בלבד ואינה מחליפה את ההודעה הרשמית של המועדון.</div>
+        </div>
+
+        {/* THE ONLY SCREEN IN THE APP THAT HAD NO LEGAL FOOTER — and the only one open to
+            the public. Every other screen sits behind a login, where the footer was never
+            the thing that mattered. Here it is: section 11 of the privacy law asks for who
+            holds the data and how to reach them, and this page asks a parent to switch on
+            notifications and, now, to pay. Who is asking has to be on the page. */}
+        <div className="pt-1 pb-4">
+          <LegalFooter />
+          <p className="text-center text-xs text-stone-500 mt-1">
+            קרית אונו – דור העתיד · הכפר 2, קרית אונו · ronenbm2905@gmail.com · 054-6696288
+          </p>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTeamBoards } from "../hooks/useTeamBoards";
 import { boardPath, boardsIndex, tokenForTeam } from "../utils/teamBoard";
+import { normalizePayUrl, payHost, payUrlForTeam } from "../utils/payLink";
 import { IconCopy, IconCheck, IconAlert } from "./ui/icons";
 
 // Publishing a team's board to the people outside the club.
@@ -9,9 +10,14 @@ import { IconCopy, IconCheck, IconAlert } from "./ui/icons";
 // reassurance — it is the thing a manager has to be able to check against what they believe
 // they are sharing, before they paste a link into a group of parents.
 export function TeamBoardsCard({ data, save, canEdit }) {
-  const { publish, refreshAll, unpublish, rotate, busy, msg } = useTeamBoards(data, save);
+  const { publish, refreshAll, unpublish, rotate, setPay, setPayEverywhere, busy, msg } =
+    useTeamBoards(data, save);
   const [copied, setCopied] = useState("");
   const [confirming, setConfirming] = useState("");
+  // Only the boxes actually being typed in are held here; everything else reads from the
+  // club document, so a save elsewhere is never overwritten by a stale draft.
+  const [payDraft, setPayDraft] = useState({});
+  const [payOpen, setPayOpen] = useState(false);
 
   if (!canEdit) return null;
 
@@ -19,6 +25,16 @@ export function TeamBoardsCard({ data, save, canEdit }) {
   const published = Object.keys(index).length;
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const linkFor = (token) => origin + boardPath(token);
+
+  // Deleting ONE board already asks. Publishing a payment address to every family in the
+  // club did not, and the realistic failure here is not an attacker but one tired paste.
+  const askAll = (raw) => {
+    const url = normalizePayUrl(raw);
+    if (!url) { setPayEverywhere(raw); return; }  // let the hook report the bad address
+    const n = Object.keys(index).length;
+    const where = n === 1 ? "בלוח אחד" : `ב-${n} לוחות`;
+    if (window.confirm(`להציג את ${payHost(url)} ${where}?\n\n${url}`)) setPayEverywhere(raw);
+  };
 
   const copy = async (token) => {
     try {
@@ -56,6 +72,22 @@ export function TeamBoardsCard({ data, save, canEdit }) {
           {/* The one failure mode that matters: a board nobody refreshed is last week's times
               wearing this week's dates. */}
           <span className="text-xs text-stone-500">אחרי שינוי בלו״ז — לחצו כאן.</span>
+          {/* Closed by default. It is set once a season and then never touched, and an open
+              text box per team turns a list of fourteen into a form. */}
+          <button
+            onClick={() => setPayOpen((v) => !v)}
+            className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50"
+          >
+            {payOpen ? "סגור קישור תשלום" : "קישור לתשלום"}
+          </button>
+        </div>
+      )}
+
+      {payOpen && (
+        <div className="text-xs rounded-lg border border-stone-200 bg-stone-50 text-stone-600 p-2.5">
+          כתובת עמוד התשלומים של המועדון. תופיע ככפתור בתחתית הלוח, עם שם האתר שאליו הוא
+          מוביל. <span className="font-medium">המערכת אינה מבצעת תשלום ואינה יודעת מי שילם</span> —
+          היא רק מקשרת. כתובת חייבת להיות מאובטחת (https).
         </div>
       )}
 
@@ -118,6 +150,44 @@ export function TeamBoardsCard({ data, save, canEdit }) {
                     </button>
                   )}
                   <div className="w-full text-[11px] text-stone-400 break-all">{linkFor(token)}</div>
+
+                  {payOpen && (
+                    <div className="w-full flex items-center gap-1.5 flex-wrap">
+                      <input
+                        type="url"
+                        inputMode="url"
+                        dir="ltr"
+                        value={payDraft[team.id] ?? payUrlForTeam(data, team.id)}
+                        onChange={(e) =>
+                          setPayDraft((d) => ({ ...d, [team.id]: e.target.value }))
+                        }
+                        placeholder="https://..."
+                        aria-label={`קישור לתשלום — ${team.name}`}
+                        className="flex-1 min-w-[10rem] px-2 py-1 text-xs rounded-lg border border-stone-300 text-stone-700"
+                      />
+                      <button
+                        onClick={() => setPay(team.id, payDraft[team.id] ?? payUrlForTeam(data, team.id))}
+                        disabled={Boolean(busy)}
+                        className="px-2.5 py-1 text-xs rounded-lg border border-brand-500 text-brand-600 hover:bg-brand-50 disabled:opacity-40"
+                      >
+                        שמור
+                      </button>
+                      {/* Typed once, in whichever row the manager happened to be in. The club
+                          charges per team but is paid through one page, and asking for the
+                          same URL fourteen times is asking for it to be wrong in one of them.
+                          But it reaches every family at once, so it asks first — and the
+                          question NAMES THE HOST, because "are you sure?" is a question nobody
+                          reads and "להציג את pay-example.co.il ב-9 לוחות?" is one they do. */}
+                      <button
+                        onClick={() => askAll(payDraft[team.id] ?? payUrlForTeam(data, team.id))}
+                        disabled={Boolean(busy)}
+                        title="אותו קישור בכל הלוחות שפורסמו"
+                        className="px-2.5 py-1 text-xs rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-50 disabled:opacity-40"
+                      >
+                        לכל הקבוצות
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>

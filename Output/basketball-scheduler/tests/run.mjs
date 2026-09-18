@@ -23,6 +23,16 @@ const FILES = [
   "./daycopy.test.mjs",
   "./teamboard.test.mjs",
   "./cupscan.test.mjs",
+  // Six suites below were written, passed when run by hand, and were never added here — so
+  // `npm test` reported green on 49 assertions it had not executed. Found on 18.9.2026 while
+  // adding the payment link. A test that is not in this list is not a test.
+  "./halls.test.mjs",
+  "./duplicates.test.mjs",
+  "./adoptfixture.test.mjs",
+  "./proposalgroups.test.mjs",
+  "./boardsync.test.mjs",
+  "./playeraccounts.test.mjs",
+  "./paylink.test.mjs",
 ];
 
 for (const f of FILES) {

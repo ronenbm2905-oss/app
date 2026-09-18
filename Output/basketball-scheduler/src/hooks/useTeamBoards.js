@@ -4,6 +4,7 @@ import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import {
   buildBoard, newToken, tokenForTeam, withBoardToken, withoutBoardToken,
 } from "../utils/teamBoard";
+import { normalizePayUrl, withPayUrl, withPayUrlEverywhere } from "../utils/payLink";
 
 // Publishing one team's board, and taking it back.
 //
@@ -24,9 +25,12 @@ export function useTeamBoards(data, save) {
 
   const boardRef = (token) => doc(db, "clubs", CLUB_ID, "boards", token);
 
+  // `from` exists for the one caller that has newer data than this closure does: setting a
+  // payment link changes the club document and the board in the same breath, and building
+  // from `data` would publish the link the manager typed a moment ago instead of this one.
   const writeBoard = useCallback(
-    async (teamId, token) => {
-      const built = buildBoard(data, teamId);
+    async (teamId, token, from) => {
+      const built = buildBoard(from || data, teamId);
       if (!built) return false;
       // The message is left alone: it belongs to the coach and is rewritten only by them.
       // `merge` is what keeps a publish from wiping what a coach wrote five minutes ago.
@@ -120,5 +124,64 @@ export function useTeamBoards(data, save) {
     [data, save, busy, writeBoard]
   );
 
-  return { publish, refreshAll, unpublish, rotate, busy, msg };
+  // The payment link, for one team or for all of them.
+  //
+  // The club document and the published board are written TOGETHER, and the board first.
+  // The board is the thing parents actually read; a club document that remembers a link no
+  // board is showing is a manager who pressed save and was told nothing happened, which is
+  // recoverable. The other order puts a live link in front of several hundred people that
+  // the manager's own screen does not know about.
+  //
+  // A board is NOT re-published for a team that has none — there is nowhere to show it —
+  // and `withPayUrl` refuses to record one for the same reason.
+  const writePay = useCallback(
+    async (nextData, teamIds, url) => {
+      setBusy(teamIds.length === 1 ? teamIds[0] : "all");
+      setMsg("");
+      try {
+        for (const teamId of teamIds) {
+          const token = tokenForTeam(nextData, teamId);
+          if (token) await writeBoard(teamId, token, nextData);
+        }
+        save(nextData);
+        setMsg(url ? "קישור התשלום מופיע עכשיו בלוח." : "קישור התשלום הוסר מהלוח.");
+      } catch {
+        setMsg("העדכון נכשל. נסה/י שוב.");
+      } finally {
+        setBusy("");
+      }
+    },
+    [save, writeBoard]
+  );
+
+  const setPay = useCallback(
+    async (teamId, raw) => {
+      if (!isFirebaseConfigured || busy) return;
+      const url = normalizePayUrl(raw);
+      // A link that was typed and refused must say so. Silently storing nothing is how a
+      // manager ends up telling parents to use a button that is not there.
+      if (String(raw || "").trim() && !url) {
+        setMsg("הקישור אינו תקין. צריך כתובת אינטרנט מלאה ומאובטחת (https).");
+        return;
+      }
+      await writePay(withPayUrl(data, teamId, url), [teamId], url);
+    },
+    [data, busy, writePay]
+  );
+
+  const setPayEverywhere = useCallback(
+    async (raw) => {
+      if (!isFirebaseConfigured || busy) return;
+      const url = normalizePayUrl(raw);
+      if (String(raw || "").trim() && !url) {
+        setMsg("הקישור אינו תקין. צריך כתובת אינטרנט מלאה ומאובטחת (https).");
+        return;
+      }
+      const next = withPayUrlEverywhere(data, url);
+      await writePay(next, Object.keys(next.boards || {}), url);
+    },
+    [data, busy, writePay]
+  );
+
+  return { publish, refreshAll, unpublish, rotate, setPay, setPayEverywhere, busy, msg };
 }

@@ -2,6 +2,7 @@ import { DAYS } from "../constants.js";
 import { shiftWeek, weekStartOf, timeToMinutes } from "./dates.js";
 import { assemblyTime, departBeforeOf } from "./transport.js";
 import { escapeText, foldLine, icsDateTime } from "./calendar.js";
+import { payFor } from "./payLink.js";
 
 // The board one team's parents see — and the ONLY document they are allowed to read.
 //
@@ -149,6 +150,9 @@ export function buildBoard(data, teamId, { now = new Date(), weeks } = {}) {
     teamId,
     teamName: team.name || "",
     weeks: out,
+    // A link and nothing more — see `payLink.js`. `null` is written on purpose when there
+    // is none, because the board is saved with `merge: true`.
+    pay: payFor(data, teamId),
     updatedAt: now.toISOString(),
   };
 }

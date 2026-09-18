@@ -94,6 +94,13 @@ export function CoachTeamMessage({ data, coachId, authorName }) {
             מופיע בראש הלוח של הקבוצה, עם שמך. <span className="font-medium">אינו פרטי</span> —
             כל מי שיש לו את הקישור רואה אותו, וגם המנהל. הודעה חדשה מחליפה את הקודמת.
           </p>
+          {/* The board deliberately never publishes `notes`, because that is where a child's
+              name ends up. This box writes to the SAME public document and had no such rule —
+              the gap the exclusion in teamBoard.js exists to close, left open one field over. */}
+          <p className="text-xs text-amber-800">
+            <span className="font-medium">אין לכתוב שם של שחקן/ית או פרט אישי.</span> הדף פומבי
+            וניתן להעברה הלאה. צריך לומר משהו לילד/ה מסוים/ת — זה נאמר ישירות להורה, לא כאן.
+          </p>
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => save(text)}
