@@ -166,3 +166,54 @@ console.log("\n" + n + " tests passed");
   });
   console.log("\n8 replace tests passed");
 }
+
+// ── the fixture the scanner itself supplied yesterday ─────────────────────────────────
+{
+  const { classify: cls, eventToDraft: toDraft } = await import("../src/utils/cupScan.js");
+  const { adoptFixture } = await import("../src/utils/games.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+
+  const draft = toDraft(
+    { id: 1501989, date: "2026-10-08T17:00:00", title: { rendered: "הפועל חולון נריה — עירוני קרית אונו" } },
+    { leagueName: "גביע המדינה לילדים א" }
+  );
+
+  ok("a record still wearing the scanned id is recognised", () => {
+    const r = cls([draft], [{ federationCode: "cup-1501989", date: draft.date }]);
+    a.equal(r.known.length, 1);
+  });
+
+  ok("THE BUG: adopted into the federation's code, it was offered again every night", () => {
+    const adopted = { federationCode: "779878", date: draft.date, time: draft.time, opponent: draft.opponent };
+    // Without either guard this lands in `possible` and the manager is asked about it daily.
+    const r = cls([draft], [adopted]);
+    a.equal(r.known.length, 1);
+    a.equal(r.possible.length, 0);
+  });
+
+  ok("adopting carries the origin forward, so the next scan is silent by id alone", () => {
+    const merged = adoptFixture({ federationCode: "cup-1501989", teamId: "t1" }, { federationCode: "779878", teamId: "t1" });
+    a.equal(merged.scannedCode, "cup-1501989");
+    a.equal(cls([draft], [merged]).known.length, 1);
+  });
+
+  ok("and an origin already recorded is not lost on the next adoption", () => {
+    const again = adoptFixture({ federationCode: "779878", scannedCode: "cup-1501989" }, { federationCode: "779878" });
+    a.equal(again.scannedCode, "cup-1501989");
+  });
+
+  ok("a DIFFERENT fixture on the same day is still brought for a decision", () => {
+    const other = { federationCode: "m1", date: draft.date, time: "19:00", opponent: "מישהו אחר" };
+    const r = cls([draft], [other]);
+    a.equal(r.known.length, 0);
+    a.equal(r.possible.length, 1);
+  });
+
+  ok("same day and hour but another opponent is not silently swallowed", () => {
+    const other = { federationCode: "m1", date: draft.date, time: draft.time, opponent: "מכבי אחרת" };
+    a.equal(cls([draft], [other]).possible.length, 1);
+  });
+
+  console.log("\n6 recognition tests passed");
+}

@@ -109,6 +109,10 @@ export function sameFixtureIndex(games, incoming) {
 export function adoptFixture(kept, incoming) {
   return {
     ...incoming,
+    // Where it came from, kept so the cup scanner still recognises it after the federation's
+    // own code replaces the scanned one. Without this it re-offers the same fixture nightly.
+    ...(String(kept?.federationCode || "").startsWith("cup-") ? { scannedCode: kept.federationCode } : {}),
+    ...(kept?.scannedCode ? { scannedCode: kept.scannedCode } : {}),
     ...(kept?.addressOverride ? { addressOverride: kept.addressOverride } : {}),
     ...(kept?.timeOverride ? { timeOverride: kept.timeOverride } : {}),
     ...(kept?.departOverride ? { departOverride: kept.departOverride } : {}),
@@ -311,7 +315,7 @@ export function importGamesFile(rawRows, data) {
           // phone number does — it is for one journey. Carried unconditionally, the nightly
           // sync would copy it onto a finished game every night for ever, on a record
           // nobody ever opens again.
-          const { addressOverride, timeOverride, driverName, driverPhone, departOverride, hallId } = nextGames[idx];
+          const { addressOverride, timeOverride, driverName, driverPhone, departOverride, hallId, scannedCode } = nextGames[idx];
           const keepDriver = !isPastGame(game);
           nextGames[idx] = {
             ...game,
@@ -322,6 +326,7 @@ export function importGamesFile(rawRows, data) {
             // nightly re-sync must not quietly undo them — the same bargain the address has.
             ...(departOverride ? { departOverride } : {}),
             ...(hallId ? { hallId } : {}),
+            ...(scannedCode ? { scannedCode } : {}),
             ...(keepDriver && driverName ? { driverName } : {}),
             ...(keepDriver && driverPhone ? { driverPhone } : {}),
           };

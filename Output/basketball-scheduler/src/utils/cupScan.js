@@ -111,14 +111,30 @@ export function eventToDraft(event, { leagueName = "", venueName = "", patterns 
 //              "מכבי ראשל״צ איציק" and "מכבי ראשון לציון" are the same fixture and share no
 //              word, so no rule can tell them apart. A person can, in one glance.
 //   fresh    — nothing on that date. Offered as new.
+// Two fixtures are the same when they are on the same day, at the same hour, against the
+// same opponent. Used only to RECOGNISE something already present — never to merge, never to
+// write. It is what lets a record adopted before `scannedCode` existed be recognised at all,
+// with no migration and no write to anybody's data.
+const sameFixture = (g, d) =>
+  String(g?.date) === String(d.date) &&
+  String(g?.time) === String(d.time) &&
+  decodeTitle(g?.opponent) === decodeTitle(d.opponent);
+
 export function classify(drafts, existingGames) {
   const games = arr(existingGames);
   const byCode = new Set(games.map((g) => String(g?.federationCode)));
+  // Both ids count: the one the record wears now, and the one it was first seen under.
+  const byScanned = new Set(games.map((g) => String(g?.scannedCode || "")).filter(Boolean));
   const out = { known: [], possible: [], fresh: [] };
 
   arr(drafts).forEach((d) => {
     if (!d) return;
-    if (byCode.has(String(d.federationCode))) { out.known.push(d); return; }
+    if (byCode.has(String(d.federationCode)) || byScanned.has(String(d.federationCode))) {
+      out.known.push(d);
+      return;
+    }
+    // Already here under a different id entirely — adopted before this was tracked.
+    if (games.some((g) => sameFixture(g, d))) { out.known.push(d); return; }
     const sameDay = games.filter((g) => String(g?.date) === d.date);
     if (sameDay.length > 0) out.possible.push({ draft: d, existing: sameDay });
     else out.fresh.push(d);
@@ -153,7 +169,7 @@ export function draftToGame(draft, teamId, hallId) {
 // replace would quietly undo a decision — the squad it was filed under, a block nudged on
 // the board, an address typed because the federation's was wrong, the driver for the bus.
 export const MANAGER_OWNED = [
-  "teamId", "hallId", "timeOverride", "addressOverride", "departOverride",
+  "teamId", "hallId", "timeOverride", "addressOverride", "departOverride", "scannedCode",
   "driverName", "driverPhone",
   "ourScore", "theirScore",
 ];
@@ -164,6 +180,20 @@ export const MANAGER_OWNED = [
 // record in place, keeping everything above. The code changes from the manager's own to
 // `cup-<id>`, which is the quiet payoff: every future scan then recognises this fixture and
 // says nothing about it, instead of offering it again every night forever.
+// The id the fixture was first seen under.
+//
+// A scanned game is later adopted into the federation's own code — by the weekly import, or
+// by the manager merging two records — and the cup id is overwritten when that happens. On
+// 18.9.2026 that meant the scanner stopped recognising three fixtures it had itself supplied
+// the day before, and offered them again. It would have done so every night, for ever.
+//
+// So the original id travels with the record.
+export function withScannedCode(game, code) {
+  const from = String(code || "");
+  if (!from.startsWith("cup-")) return game;
+  return { ...game, scannedCode: from };
+}
+
 export function replaceGame(draft, existing) {
   const base = draftToGame(draft, existing?.teamId || "");
   MANAGER_OWNED.forEach((k) => {
