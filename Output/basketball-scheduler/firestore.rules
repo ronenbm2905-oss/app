@@ -156,6 +156,17 @@ service cloud.firestore {
       allow read, write: if isClubAdmin(clubId);
     }
 
+    // "The nightly job ran, and this is what it found" — clubs/{id}/sync/nightly.
+    //
+    // READ-ONLY FROM THE APP, AND THAT IS THE POINT. The only writer is the sync itself,
+    // through the service account, which does not pass through these rules at all. A
+    // browser that could write here could report a dead job as healthy, which is the exact
+    // failure the document exists to make impossible.
+    match /clubs/{clubId}/sync/{docId} {
+      allow read: if isClubAdmin(clubId);
+      allow write: if false;
+    }
+
     // One row per device: clubs/{id}/pushTokens/{token}
     //
     // NOTE THE FIELD NAME. Ownership here is measured by `authorEmail`, exactly as in every

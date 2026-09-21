@@ -23,40 +23,40 @@ let n = 0;
 const T = (name, fn) => { fn(); n++; console.log("  ok  " + name); };
 
 T("nothing moved, nothing is written", () => {
-  assert.equal(boardsToRefresh(base, currentFor(base)).length, 0);
+  assert.equal(boardsToRefresh(base, currentFor(base), at).length, 0);
 });
 
 T("a training that moved refreshes ONLY its own team's board", () => {
   const current = currentFor(base);
   const moved = { ...base, sessions: [{ ...base.sessions[0], start: "18:00" }, base.sessions[1]] };
-  const out = boardsToRefresh(moved, current);
+  const out = boardsToRefresh(moved, current, at);
   assert.equal(out.length, 1);
   assert.equal(out[0].token, "tok1");
 });
 
 T("a board that does not exist yet is always written", () => {
-  assert.equal(boardsToRefresh(base, {}).length, 2);
+  assert.equal(boardsToRefresh(base, {}, at).length, 2);
 });
 
 T("a team with no published board is ignored", () => {
   const one = { ...base, boards: { t1: { token: "tok1" } } };
-  const out = boardsToRefresh(one, {});
+  const out = boardsToRefresh(one, {}, at);
   assert.deepEqual(out.map((x) => x.teamId), ["t1"]);
 });
 
 T("a published board whose team was deleted is left alone, not emptied", () => {
   const gone = { ...base, teams: [base.teams[0]] };
-  const out = boardsToRefresh(gone, currentFor(base));
+  const out = boardsToRefresh(gone, currentFor(base), at);
   assert.equal(out.some((x) => x.teamId === "t2"), false);
 });
 
 T("a club with nothing published does nothing at all", () => {
-  assert.equal(boardsToRefresh({ ...base, boards: {} }, {}).length, 0);
-  assert.equal(boardsToRefresh({}, {}).length, 0);
+  assert.equal(boardsToRefresh({ ...base, boards: {} }, {}, at).length, 0);
+  assert.equal(boardsToRefresh({}, {}, at).length, 0);
 });
 
 T("what comes out is a complete board, ready to write", () => {
-  const out = boardsToRefresh(base, {});
+  const out = boardsToRefresh(base, {}, at);
   assert.equal(out[0].board.teamName, "נוער");
   assert.equal(Object.keys(out[0].board.weeks).length >= 0, true);
 });

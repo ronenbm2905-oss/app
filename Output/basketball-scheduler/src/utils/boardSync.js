@@ -26,13 +26,18 @@ import { boardChanges } from "./boardChanges.js";
 // the notification function, and a write with nothing in it is how families learn to ignore
 // the alert.
 
-export function boardsToRefresh(data, current) {
+// `now` is injectable, and it is not a convenience. Without it this read the wall clock
+// while its test built the "current" boards at a fixed date — so the two agreed only during
+// the week the test was written, and the suite went green on a comparison that had quietly
+// stopped comparing anything. Found on 21.9.2026, when the fixture week fell out of range
+// and the test failed for a reason that had nothing to do with the change being made.
+export function boardsToRefresh(data, current, { now } = {}) {
   const index = boardsIndex(data);
   const out = [];
   Object.entries(index).forEach(([teamId, row]) => {
     const token = row?.token;
     if (!token) return;
-    const built = buildBoard(data, teamId);
+    const built = buildBoard(data, teamId, now ? { now } : undefined);
     if (!built) return; // the team was deleted; the board is left for the manager to unpublish
     if (!boardChanges(current?.[token] || null, built).changed && current?.[token]) return;
     out.push({ teamId, token, board: built });

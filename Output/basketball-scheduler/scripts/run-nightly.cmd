@@ -37,21 +37,23 @@ if errorlevel 1 (
 )
 
 rem ---- 1. cup fixtures -------------------------------------------------------------
-set "CUPS=10"
+set "CUPSTATE=failed"
 echo [%date% %time%] --- cup scan --- >> federation-inbox\log.txt
 node scripts\scan-cups.mjs >> federation-inbox\log.txt 2>&1
 rem `if errorlevel N` means "N or above", so the highest code is tested first.
 if errorlevel 10 goto :cups_none
 if errorlevel 1 goto :cups_failed
-set "CUPS=0"
+set "CUPSTATE=ok"
 goto :league
 
 :cups_failed
+set "CUPSTATE=failed"
 echo [%date% %time%] the cup scan failed - continuing with the league sync >> federation-inbox\log.txt
 goto :league
 
 :cups_none
 rem Nothing new in any competition. Normal, and not worth a line of its own every night.
+set "CUPSTATE=none"
 
 :league
 rem ---- 2. the weekly league file ---------------------------------------------------
@@ -62,19 +64,45 @@ if errorlevel 1 goto :failed
 node scripts\prepare-import.mjs
 if errorlevel 10 goto :nochange
 if errorlevel 1 goto :failed
-exit /b 0
+set "LEAGUESTATE=ok"
+set "CODE=0"
+goto :record
 
 :unchanged
 echo [%date% %time%] the federation file is unchanged - stopping here >> federation-inbox\log.txt
-if "%CUPS%"=="0" exit /b 0
-exit /b 10
+set "LEAGUESTATE=unchanged"
+goto :quiet
 
 :nochange
-if "%CUPS%"=="0" exit /b 0
-exit /b 10
+set "LEAGUESTATE=none"
+goto :quiet
+
+:quiet
+rem Nothing to look at from the league file. Still a success if the cup scan filed something.
+set "CODE=10"
+if "%CUPSTATE%"=="ok" set "CODE=0"
+goto :record
 
 :failed
 rem The league sync failed. A cup proposal filed a moment ago is still worth looking at, but
 rem the run as a whole did not succeed and says so - a task that reports success while half
 rem of it broke is how a broken sync goes unnoticed for a month.
-exit /b 1
+set "LEAGUESTATE=failed"
+set "CODE=1"
+goto :record
+
+:record
+rem ---- 3. say that the run happened -------------------------------------------------
+rem
+rem EVERY path above arrives here, and that is the entire point of the label.
+rem
+rem Until 21.9.2026 the only trace a run left in the database was a PROPOSAL - filed only
+rem when something actually changed, which is the minority of nights. So a job that had been
+rem dead for three days and three quiet nights produced the same screen, and the difference
+rem was noticed only because someone went to the federation's site and looked.
+rem
+rem This writes one heartbeat per run: the runs that found nothing, and the ones that broke.
+rem Its own failure is swallowed on purpose - the real work is already done by the time it
+rem runs, and a missing heartbeat must not turn a good night into a failed one.
+node scripts\record-sync.mjs --cups %CUPSTATE% --league %LEAGUESTATE% >> federation-inbox\log.txt 2>&1
+exit /b %CODE%

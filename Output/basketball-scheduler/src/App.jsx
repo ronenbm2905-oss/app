@@ -5,6 +5,7 @@ import { useGameNotes } from "./hooks/useGameNotes";
 import { useTrainingPlans } from "./hooks/useTrainingPlans";
 import { usePendingImport } from "./hooks/usePendingImport";
 import { useCupScan } from "./hooks/useCupScan";
+import { useSyncHealth } from "./hooks/useSyncHealth";
 import { useVideos } from "./hooks/useVideos";
 import { usePlayerProgress } from "./hooks/usePlayerProgress";
 import { todayWeekStart } from "./utils/dates";
@@ -28,6 +29,7 @@ import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
 import { PendingImportBanner } from "./components/PendingImportBanner";
 import { CupScanBanner } from "./components/CupScanBanner";
+import { SyncStatusLine } from "./components/SyncStatusLine";
 import { ScheduleChangesBanner } from "./components/ScheduleChangesBanner";
 import { BirthdayReminder } from "./components/BirthdayReminder";
 import { LegalFooter } from "./legal/LegalFooter";
@@ -101,6 +103,7 @@ function ClubApp() {
   // Cup fixtures are published separately from the weekly file, one page per age group.
   // Same arrangement: the scanner proposes, a manager decides. See scripts/scan-cups.mjs.
   const { scan: cupScan, resolveScan: resolveCupScan } = useCupScan(user, isAdmin);
+  const syncHealth = useSyncHealth(user, isAdmin);
   // The drill-video library is shared: every coach reads it and every coach adds to it, so
   // unlike the notes and plans hooks this one takes no role and scopes no query.
   const { videos, saveVideo, removeVideo, videosReady } = useVideos(user);
@@ -251,6 +254,16 @@ function ClubApp() {
         {isAdmin && cupScan && (
           <div className="mb-4">
             <CupScanBanner scan={cupScan} data={data} save={save} resolveScan={resolveCupScan} />
+          </div>
+        )}
+
+        {/* NO CONDITION ON `pending` EITHER, and this one is the whole point: it is what the
+            screen says on the days the banners have nothing to show. Between 18 and 21.9.2026
+            the sync was dead for three nights and this area was simply empty — identical to a
+            quiet week. Now the quiet weeks say they are quiet. */}
+        {isAdmin && (
+          <div className="mb-4 empty:hidden">
+            <SyncStatusLine health={syncHealth} />
           </div>
         )}
 
