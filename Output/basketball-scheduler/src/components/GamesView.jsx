@@ -8,6 +8,7 @@ import { TransportExport } from "./TransportExport";
 import { driverLine } from "../utils/transport";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
+import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames } from "../utils/gameFilters";
 import { GameNote } from "./GameNote";
 import { noteFor, scoreFor } from "../utils/gameNotes";
 import { Pill } from "./ui/Pill";
@@ -292,7 +293,11 @@ function ImportedAddressForm({ game, halls, onSave, onCancel }) {
 export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes, saveNote, authorName, authorEmail, myCoachId }) {
   const [subTab, setSubTab] = useState("games"); // "games" | "mapping"
   const [importMsg, setImportMsg] = useState(null);
-  const [filterTeam, setFilterTeam] = useState("");
+  // A coach's squads, and the screen opens on them. `data` and `myCoachId` are both settled
+  // before this component renders — App holds the loading gate — so computing the initial
+  // filter here is safe and there is no frame showing the whole club first.
+  const myTeamIds = teamIdsForCoach(data, myCoachId);
+  const [filterTeam, setFilterTeam] = useState(() => defaultTeamFilter(myTeamIds));
   const [filterType, setFilterType] = useState(""); // "home"|"away"|""
   const [addingGame, setAddingGame] = useState(false);
   const [editingCode, setEditingCode] = useState(null); // federationCode of the manual game being edited
@@ -362,11 +367,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
     });
   };
 
-  const filtered = games.filter(
-    (g) =>
-      (!filterTeam || g.teamId === filterTeam) &&
-      (!filterType || (filterType === "home" ? g.isHome : !g.isHome))
-  );
+  const filtered = filterGames(games, { team: filterTeam, type: filterType, myTeamIds });
 
   // The score shown is the federation's when it has published one, and the coach's until
   // then — this club's file lags the final whistle by most of a week, and a board saying
@@ -517,7 +518,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Select value={filterTeam} onChange={setFilterTeam} options={data.teams} placeholder="כל הקבוצות" className="w-40" />
+              <Select value={filterTeam} onChange={setFilterTeam} options={teamFilterOptions(data.teams, myTeamIds)} placeholder="כל הקבוצות" className="w-40" />
               <Select value={filterType} onChange={setFilterType} options={[{ id: "home", name: "משחק בית" }, { id: "away", name: "משחק חוץ" }]} placeholder="בית / חוץ" className="w-36" />
               {canEdit && (
                 <button onClick={() => setAddingGame((g) => !g)} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700">

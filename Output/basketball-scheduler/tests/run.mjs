@@ -34,6 +34,7 @@ const FILES = [
   "./playeraccounts.test.mjs",
   "./paylink.test.mjs",
   "./synchealth.test.mjs",
+  "./gamefilters.test.mjs",
 ];
 
 for (const f of FILES) {
