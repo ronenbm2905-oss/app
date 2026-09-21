@@ -1,7 +1,12 @@
-import { useState } from "react";
-import { seasonHallClashes, clashesByDate, formatDayMonth } from "../utils/hallClashes";
+import { useState, useRef } from "react";
+import { seasonHallClashes, clashesByDate, formatDayMonth, clashKindLabel } from "../utils/hallClashes";
 import { duplicateSessionGroups, duplicateRowCount, withoutSessions } from "../utils/duplicateSessions";
-import { IconAlert, IconCheck } from "./ui/icons";
+import { IconAlert, IconCheck, IconDownload } from "./ui/icons";
+import {
+  renderNodeCanvas, canvasToPdfBlob, shareOrDownloadBlob,
+  AppUpdatedError, APP_UPDATED_MESSAGE,
+} from "../utils/imageExport";
+import clubLogo from "../assets/club-logo.jpg";
 
 // Every double-booked hall in the season, on one screen.
 //
@@ -22,13 +27,9 @@ function Row({ clash }) {
     <div className={`rounded-lg border p-2 text-xs ${tone}`}>
       <div className="flex items-center gap-2 flex-wrap mb-1">
         <span className="font-semibold text-stone-800">{clash.hall}</span>
-        {clash.duplicate ? (
-          <span className="text-amber-800 font-medium">אותה שורה פעמיים — כפילות</span>
-        ) : clash.sameTeam ? (
-          <span className="text-red-800 font-medium">אותה קבוצה, שעות חופפות</span>
-        ) : (
-          <span className="text-red-800 font-medium">שתי קבוצות באותו אולם</span>
-        )}
+        <span className={`font-medium ${clash.duplicate ? "text-amber-800" : "text-red-800"}`}>
+          {clashKindLabel(clash)}
+        </span>
       </div>
       {clash.rows.map((r, i) => (
         <div key={i} className="text-stone-700">
@@ -124,6 +125,9 @@ function DuplicateRows({ data, save, canEdit }) {
 
 export function HallClashesCard({ data, save, canEdit }) {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const sheetRef = useRef(null);
   if (!canEdit) return null;
 
   const clashes = seasonHallClashes(data);
@@ -132,6 +136,29 @@ export function HallClashesCard({ data, save, canEdit }) {
   // the other is a row to delete.
   const dupes = clashes.filter((c) => c.duplicate).length;
   const real = clashes.length - dupes;
+
+  const handlePdf = async () => {
+    if (!sheetRef.current || busy) return;
+    setBusy(true);
+    setMsg("");
+    try {
+      const canvas = await renderNodeCanvas(sheetRef.current, {
+        logoSrc: clubLogo,
+        title: "התנגשויות אולם — לבדיקה",
+      });
+      const blob = await canvasToPdfBlob(canvas);
+      const d = new Date();
+      await shareOrDownloadBlob(
+        blob,
+        `התנגשויות-אולם-${d.getDate()}.${d.getMonth() + 1}.pdf`,
+        "התנגשויות אולם"
+      );
+    } catch (err) {
+      setMsg(err instanceof AppUpdatedError ? APP_UPDATED_MESSAGE : "לא הצלחנו להפיק את הקובץ. נסו שוב.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (clashes.length === 0) {
     return (
@@ -165,7 +192,19 @@ export function HallClashesCard({ data, save, canEdit }) {
         >
           {open ? "סגור" : "הצג"}
         </button>
+        {/* Because this list is worked through away from the screen — against the hall's
+            own diary, or on the phone to the federation — and forty-one lines is not
+            something anyone holds in their head. */}
+        <button
+          onClick={handlePdf}
+          disabled={busy}
+          className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-40 flex items-center gap-1.5"
+        >
+          <IconDownload size={13} />
+          {busy ? "מכין..." : "PDF"}
+        </button>
       </div>
+      <p role="status" aria-live="polite" className="text-[11px] text-red-700 min-h-[0.75rem]">{msg}</p>
 
       {open && (
         <div className="space-y-2.5 pt-1">
@@ -186,6 +225,53 @@ export function HallClashesCard({ data, save, canEdit }) {
         </div>
       )}
       <DuplicateRows data={data} save={save} canEdit={canEdit} />
+
+      {/* The printable version, off-screen. Rendered whether or not the list above is
+          expanded: the button must not depend on someone having pressed "הצג" first. */}
+      <div className="fixed -left-[9999px] top-0 pointer-events-none" aria-hidden="true">
+        <div ref={sheetRef} className="bg-white p-6 w-[1000px]" dir="rtl">
+          <table className="w-full text-[14px] text-stone-800 border-collapse">
+            <thead>
+              <tr className="border-b-2 border-stone-300 text-stone-500 text-[12px]">
+                <th className="py-2 px-2 text-right font-medium">תאריך</th>
+                <th className="py-2 px-2 text-right font-medium">יום</th>
+                <th className="py-2 px-2 text-right font-medium">אולם</th>
+                <th className="py-2 px-2 text-right font-medium">שעות</th>
+                <th className="py-2 px-2 text-right font-medium">קבוצה · מאמן</th>
+                <th className="py-2 px-2 text-right font-medium">סוג</th>
+                <th className="py-2 px-2 text-right font-medium">הממצא</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clashes.map((c, i) =>
+                c.rows.map((r, j) => (
+                  <tr
+                    key={`${i}-${j}`}
+                    className={j === 1 ? "border-b border-stone-300" : "border-b border-stone-100"}
+                  >
+                    {/* The date, day, hall and finding are written once per pair and left
+                        blank on its second line — a sheet that repeats them four times a
+                        night is a sheet nobody can scan down. */}
+                    <td className="py-1.5 px-2 whitespace-nowrap font-semibold">
+                      {j === 0 ? formatDayMonth(c.date) : ""}
+                    </td>
+                    <td className="py-1.5 px-2 whitespace-nowrap text-stone-600">{j === 0 ? c.day : ""}</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap">{j === 0 ? c.hall : ""}</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap font-semibold">{r.start}–{r.end}</td>
+                    <td className="py-1.5 px-2">{r.team || "(ללא קבוצה)"}</td>
+                    <td className="py-1.5 px-2 text-stone-600 whitespace-nowrap">{r.label}</td>
+                    <td className="py-1.5 px-2 text-stone-600">{j === 0 ? clashKindLabel(c) : ""}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <p className="text-[12px] text-stone-500 mt-4">
+            {clashes.length} ממצאים ב-{days.length} ימים, מהיום ועד סוף העונה. כולל אימונים ומשחקים.
+            שתי שורות רצופות הן ממצא אחד.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

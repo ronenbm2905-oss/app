@@ -161,3 +161,27 @@ T("nothing to report, and rubbish, both come back empty", () => {
 });
 
 console.log(`\n${count} hall-clash tests passed`);
+
+// ── the wording, which is now said twice: on screen and on the printed sheet ──────────
+{
+  const { clashKindLabel } = await import("../src/utils/hallClashes.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+
+  ok("each finding names itself, and the three are distinct", () => {
+    a.equal(clashKindLabel({ duplicate: true, sameTeam: true }), "אותה שורה פעמיים — כפילות");
+    a.equal(clashKindLabel({ duplicate: false, sameTeam: true }), "אותה קבוצה, שעות חופפות");
+    a.equal(clashKindLabel({ duplicate: false, sameTeam: false }), "שתי קבוצות באותו אולם");
+  });
+
+  ok("a duplicate is never described merely as a clash", () => {
+    // It is dealt with differently — one is a booking to move, the other a row to delete.
+    a.notEqual(clashKindLabel({ duplicate: true }), clashKindLabel({}));
+  });
+
+  ok("nothing in, still a sentence out", () => {
+    a.equal(clashKindLabel(null), "שתי קבוצות באותו אולם");
+  });
+
+  console.log("\n3 label tests passed");
+}

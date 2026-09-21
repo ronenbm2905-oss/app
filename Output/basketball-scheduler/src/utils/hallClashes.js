@@ -94,6 +94,15 @@ export function seasonHallClashes(data, { from = new Date() } = {}) {
   return out;
 }
 
+// What KIND of finding this is, in words — in one place, because it is now said on the
+// screen and again on a printed sheet. Two copies of this sentence would eventually
+// disagree, and the paper is the one people take to a meeting.
+export function clashKindLabel(clash) {
+  if (clash?.duplicate) return "אותה שורה פעמיים — כפילות";
+  if (clash?.sameTeam) return "אותה קבוצה, שעות חופפות";
+  return "שתי קבוצות באותו אולם";
+}
+
 // The same list grouped by day, because that is how it gets dealt with: a manager opens the
 // hall's diary for one evening, not for one pair.
 export function clashesByDate(clashes) {
