@@ -1,4 +1,6 @@
-import { overlaps } from "./dates";
+// Extension included: this module is now imported by a Node test as well as by Vite, and
+// Node will not resolve an extensionless relative path.
+import { overlaps } from "./dates.js";
 
 // ---------- Coaches who run groups side by side ----------
 // Some coaches take two squads at the same hour, every single week. Left alone, every one
@@ -41,22 +43,40 @@ export function findConflicts(sessions) {
   return conflicts;
 }
 
-// Session ids that share a hall with another session at an overlapping time (same day + week).
-// A hard double-booking — two teams in one gym at once — highlighted boldly on the board.
-export function findHallClashes(sessions) {
-  const clash = new Set();
-  for (let i = 0; i < sessions.length; i++) {
-    for (let j = i + 1; j < sessions.length; j++) {
-      const a = sessions[i];
-      const b = sessions[j];
+// Every PAIR of sessions that shares a hall at an overlapping time (same day + week).
+//
+// One definition of "two teams in one gym", used by both callers: the board, which only
+// needs to know WHICH rows to paint red this week, and the season report, which needs to
+// know what clashes with what and when. A second implementation of the same sentence is
+// how the board and the report start disagreeing about a date.
+export function hallClashPairs(sessions) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const pairs = [];
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length; j++) {
+      const a = list[i];
+      const b = list[j];
+      if (!a || !b) continue;
+      // No hall is not a shared hall. An away fixture carries none, and two of them on the
+      // same evening are not a double booking — they are two buses.
       if (!a.hallId || a.hallId !== b.hallId) continue;
       if (a.day !== b.day) continue;
       if ((a.weekOf || "") !== (b.weekOf || "")) continue;
       if (!overlaps(a.start, a.end, b.start, b.end)) continue;
-      clash.add(a.id);
-      clash.add(b.id);
+      pairs.push([a, b]);
     }
   }
+  return pairs;
+}
+
+// Session ids that share a hall with another session at an overlapping time (same day + week).
+// A hard double-booking — two teams in one gym at once — highlighted boldly on the board.
+export function findHallClashes(sessions) {
+  const clash = new Set();
+  hallClashPairs(sessions).forEach(([a, b]) => {
+    clash.add(a.id);
+    clash.add(b.id);
+  });
   return clash;
 }
 

@@ -36,6 +36,7 @@ const FILES = [
   "./synchealth.test.mjs",
   "./gamefilters.test.mjs",
   "./gamesheet.test.mjs",
+  "./hallclashes.test.mjs",
 ];
 
 for (const f of FILES) {

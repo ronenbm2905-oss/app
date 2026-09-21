@@ -10,6 +10,7 @@ import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
 import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames, MY_TEAMS } from "../utils/gameFilters";
 import { TeamGamesSheet } from "./TeamGamesSheet";
+import { HallClashesCard } from "./HallClashesCard";
 import { GameNote } from "./GameNote";
 import { noteFor, scoreFor } from "../utils/gameNotes";
 import { Pill } from "./ui/Pill";
@@ -535,6 +536,12 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
               screen cannot disagree. `MY_TEAMS` is not a squad, so it is not accepted. */}
           <div className="mb-3">
             <TeamGamesSheet data={data} teamId={filterTeam === MY_TEAMS ? "" : filterTeam} />
+          </div>
+
+          {/* Managers only, and NOT filtered by the team picker above: a hall is shared, so
+              the question "is anything double booked" is never about one squad. */}
+          <div className="mb-3">
+            <HallClashesCard data={data} canEdit={canEdit} />
           </div>
 
           {canEdit && addingGame && (
