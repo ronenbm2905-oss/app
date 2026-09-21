@@ -8,7 +8,8 @@ import { TransportExport } from "./TransportExport";
 import { driverLine } from "../utils/transport";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
-import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames } from "../utils/gameFilters";
+import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames, MY_TEAMS } from "../utils/gameFilters";
+import { TeamGamesSheet } from "./TeamGamesSheet";
 import { GameNote } from "./GameNote";
 import { noteFor, scoreFor } from "../utils/gameNotes";
 import { Pill } from "./ui/Pill";
@@ -526,6 +527,14 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                 </button>
               )}
             </div>
+          </div>
+
+          {/* The sheet a coach sends to their team's parents. It takes the team from the
+              filter above rather than offering a second picker — one place decides which
+              squad the screen is about, so the heading on the file and the list on the
+              screen cannot disagree. `MY_TEAMS` is not a squad, so it is not accepted. */}
+          <div className="mb-3">
+            <TeamGamesSheet data={data} teamId={filterTeam === MY_TEAMS ? "" : filterTeam} />
           </div>
 
           {canEdit && addingGame && (

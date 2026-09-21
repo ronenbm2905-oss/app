@@ -13,7 +13,7 @@ import {
 } from "../utils/transport";
 import { WeekNav } from "./ui/WeekNav";
 import { IconDownload, IconBus, IconMapPin } from "./ui/icons";
-import { AppUpdatedError, APP_UPDATED_MESSAGE } from "../utils/imageExport";
+import { AppUpdatedError, APP_UPDATED_MESSAGE, captureNode, shareOrDownloadBlob } from "../utils/imageExport";
 
 const CLUB_NAME = "קרית אונו – דור העתיד";
 // Cells that read better centered (times / short codes) — by column index in TRANSPORT_HEADERS.
@@ -60,29 +60,12 @@ export function TransportExport({ data, save, weekStart, setWeekStart }) {
     if (!captureRef.current || !hasRows || busy) return;
     setBusy(true);
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(captureRef.current, { scale: 2, backgroundColor: "#ffffff" });
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!blob) throw new Error("no blob");
-      const fileName = `הסעות-משחקי-חוץ-${weekStart}.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: `הסעות משחקי חוץ — ${weekLabel}` });
-          return;
-        } catch (err) {
-          if (err && err.name === "AbortError") return; // user cancelled the share sheet
-        }
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // Through the shared helpers, and that is the point of the change: this used to call
+      // `import("html2canvas")` itself, so the AppUpdatedError branch below could never fire
+      // — a stale chunk here still answered "try again" about a file that is gone for good.
+      // The same bug, in the button next door to the one it was fixed in.
+      const blob = await captureNode(captureRef.current);
+      await shareOrDownloadBlob(blob, `הסעות-משחקי-חוץ-${weekStart}.png`, `הסעות משחקי חוץ — ${weekLabel}`);
     } catch (err) {
       alert(
         err instanceof AppUpdatedError
