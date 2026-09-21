@@ -44,6 +44,51 @@ export function teamFilterOptions(teams, myTeamIds) {
   return mine.length > 0 ? [{ id: MY_TEAMS, name: "הקבוצות שלי" }, ...rest] : rest;
 }
 
+// ---------- order ----------
+//
+// The list had no order at all: it came out in the order the federation's file happened to
+// list it, which for a season of several hundred fixtures is no order a person can use.
+// Date is the default because "when are we playing" is the question the screen is open for;
+// the other two exist because they answer questions that are actually asked — "what does
+// this squad's season look like" (the sheet that goes to parents is built per squad), and
+// "what exactly did that import bring", for which the file's own order is the answer.
+export const GAME_SORTS = [
+  { id: "date", name: "לפי תאריך" },
+  { id: "team", name: "לפי קבוצה" },
+  { id: "source", name: "לפי סדר הייבוא" },
+];
+
+// "DD-MM-YYYY" → sortable. A row whose date cannot be read sorts LAST rather than first:
+// an unreadable date is usually a broken record, and broken records at the top of a list
+// are how a manager concludes the whole screen is broken.
+function dateKey(game) {
+  const m = /^(\d{1,2})[-./](\d{1,2})[-./](\d{4})$/.exec(String(game?.date || "").trim());
+  if (!m) return "9999-99-99";
+  return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+}
+
+const timeKey = (game) => String(game?.time || "99:99");
+
+export function sortGames(games, sort, { teams = [] } = {}) {
+  const list = arr(games).filter(Boolean);
+  if (sort === "source") return list;
+
+  const nameOf = (id) => arr(teams).find((t) => t && t.id === id)?.name || "￿";
+  const byDate = (a, b) => dateKey(a).localeCompare(dateKey(b)) || timeKey(a).localeCompare(timeKey(b));
+
+  // `slice` first: this list belongs to the club document, and sorting it in place would
+  // reorder the stored data as a side effect of looking at a screen.
+  if (sort === "team") {
+    return list.slice().sort((a, b) => {
+      const n = nameOf(a.teamId).localeCompare(nameOf(b.teamId), "he");
+      // Within a squad, still by date — a squad's fixtures in file order is the same
+      // problem one level down.
+      return n || byDate(a, b);
+    });
+  }
+  return list.slice().sort(byDate);
+}
+
 export function filterGames(games, { team = "", type = "", myTeamIds = [] } = {}) {
   const mine = new Set(arr(myTeamIds));
   return arr(games).filter((g) => {

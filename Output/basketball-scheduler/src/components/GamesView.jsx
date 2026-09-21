@@ -8,7 +8,7 @@ import { TransportExport } from "./TransportExport";
 import { driverLine } from "../utils/transport";
 import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
-import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames, MY_TEAMS } from "../utils/gameFilters";
+import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames, sortGames, GAME_SORTS, MY_TEAMS } from "../utils/gameFilters";
 import { TeamGamesSheet } from "./TeamGamesSheet";
 import { HallClashesCard } from "./HallClashesCard";
 import { GameNote } from "./GameNote";
@@ -301,6 +301,9 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
   const myTeamIds = teamIdsForCoach(data, myCoachId);
   const [filterTeam, setFilterTeam] = useState(() => defaultTeamFilter(myTeamIds));
   const [filterType, setFilterType] = useState(""); // "home"|"away"|""
+  // Date, because the list had no order at all: it came out in the order the federation's
+  // file happened to list it, which for a season of several hundred fixtures is unusable.
+  const [sortBy, setSortBy] = useState("date");
   const [addingGame, setAddingGame] = useState(false);
   const [editingCode, setEditingCode] = useState(null); // federationCode of the manual game being edited
   const fileInputRef = useRef(null);
@@ -369,7 +372,11 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
     });
   };
 
-  const filtered = filterGames(games, { team: filterTeam, type: filterType, myTeamIds });
+  const filtered = sortGames(
+    filterGames(games, { team: filterTeam, type: filterType, myTeamIds }),
+    sortBy,
+    { teams: data.teams }
+  );
 
   // The score shown is the federation's when it has published one, and the coach's until
   // then — this club's file lags the final whistle by most of a week, and a board saying
@@ -522,6 +529,9 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
             <div className="flex gap-2 flex-wrap">
               <Select value={filterTeam} onChange={setFilterTeam} options={teamFilterOptions(data.teams, myTeamIds)} placeholder="כל הקבוצות" className="w-40" />
               <Select value={filterType} onChange={setFilterType} options={[{ id: "home", name: "משחק בית" }, { id: "away", name: "משחק חוץ" }]} placeholder="בית / חוץ" className="w-36" />
+              {/* No placeholder: there is no "unsorted" any more, so an empty option would
+                  offer a state the screen no longer has. */}
+              <Select value={sortBy} onChange={setSortBy} options={GAME_SORTS} placeholder="מיון" className="w-36" />
               {canEdit && (
                 <button onClick={() => setAddingGame((g) => !g)} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700">
                   <IconPlus size={15} /> משחק ידני

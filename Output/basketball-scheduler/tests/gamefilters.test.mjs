@@ -101,3 +101,66 @@ T("rubbish in the list never throws", () => {
 });
 
 console.log(`\n${count} game-filter tests passed`);
+
+// ── order ────────────────────────────────────────────────────────────────────────────
+{
+  const { sortGames, GAME_SORTS } = await import("../src/utils/gameFilters.js");
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+
+  const teams = [
+    { id: "t1", name: "בוגרים" },
+    { id: "t2", name: "אלופים" },
+  ];
+  // As the federation's file lists them: no order a person can use.
+  const list = [
+    { federationCode: "1", teamId: "t1", date: "19-10-2026", time: "20:30" },
+    { federationCode: "2", teamId: "t2", date: "12-10-2026", time: "20:30" },
+    { federationCode: "3", teamId: "t1", date: "12-10-2026", time: "18:00" },
+    { federationCode: "4", teamId: "t2", date: "05-11-2026", time: "19:00" },
+    { federationCode: "5", teamId: "t1", date: "", time: "" },
+  ];
+  const codes = (out) => out.map((g) => g.federationCode);
+
+  ok("by date, across months and years, not by the text of the date", () => {
+    // "05-11" must come after "19-10": a plain string sort puts it first.
+    assert.deepEqual(codes(sortGames(list, "date", { teams })), ["3", "2", "1", "4", "5"]);
+  });
+
+  ok("same day is settled by the hour", () => {
+    const out = sortGames(list, "date", { teams });
+    assert.deepEqual(codes(out).slice(0, 2), ["3", "2"]); // 18:00 before 20:30
+  });
+
+  ok("an unreadable date sorts LAST, never first", () => {
+    // At the top it reads as the whole screen being broken.
+    assert.equal(codes(sortGames(list, "date", { teams })).at(-1), "5");
+  });
+
+  ok("by team groups the squad together, and by date inside it", () => {
+    const out = codes(sortGames(list, "team", { teams }));
+    assert.deepEqual(out, ["2", "4", "3", "1", "5"]); // אלופים before בוגרים
+  });
+
+  ok("the file's own order is available, untouched", () => {
+    assert.deepEqual(codes(sortGames(list, "source", { teams })), ["1", "2", "3", "4", "5"]);
+  });
+
+  ok("SORTING NEVER MUTATES THE CLUB'S OWN ARRAY", () => {
+    // This list is `data.games`. Sorting it in place would reorder stored data as a side
+    // effect of looking at a screen.
+    const before = codes(list);
+    sortGames(list, "date", { teams });
+    sortGames(list, "team", { teams });
+    assert.deepEqual(codes(list), before);
+  });
+
+  ok("rubbish never throws, and every offered sort is handled", () => {
+    assert.deepEqual(sortGames(null, "date"), []);
+    assert.deepEqual(sortGames([null, undefined], "date"), []);
+    for (const s of GAME_SORTS) assert.equal(Array.isArray(sortGames(list, s.id, { teams })), true);
+    assert.equal(sortGames(list, "nonsense", { teams }).length, list.length);
+  });
+
+  console.log("\n7 order tests passed");
+}
