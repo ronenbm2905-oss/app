@@ -541,7 +541,7 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
           {/* Managers only, and NOT filtered by the team picker above: a hall is shared, so
               the question "is anything double booked" is never about one squad. */}
           <div className="mb-3">
-            <HallClashesCard data={data} canEdit={canEdit} />
+            <HallClashesCard data={data} save={save} canEdit={canEdit} />
           </div>
 
           {canEdit && addingGame && (

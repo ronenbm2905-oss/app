@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { seasonHallClashes, clashesByDate, formatDayMonth } from "../utils/hallClashes";
+import { duplicateSessionGroups, duplicateRowCount, withoutSessions } from "../utils/duplicateSessions";
 import { IconAlert, IconCheck } from "./ui/icons";
 
 // Every double-booked hall in the season, on one screen.
@@ -41,7 +42,87 @@ function Row({ clash }) {
   );
 }
 
-export function HallClashesCard({ data, canEdit }) {
+// The other question a manager asks after an import, and a DIFFERENT one: not "are two
+// squads booked into one gym" but "is this row here twice".
+//
+// It reports zero out loud. A check that is silent when it finds nothing is
+// indistinguishable from a check that never ran — the lesson the sync indicator was built
+// on, one screen over.
+function DuplicateRows({ data, save, canEdit }) {
+  const [confirming, setConfirming] = useState(false);
+  const groups = duplicateSessionGroups(data, { from: new Date() });
+  const extra = duplicateRowCount(groups);
+
+  if (extra === 0) {
+    return (
+      <div className="text-xs text-stone-500 flex items-center gap-1.5">
+        <IconCheck size={13} className="opacity-60" />
+        אין שורות כפולות בלוח בהמשך העונה.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2">
+      <div>
+        <h3 className="text-sm font-semibold text-stone-800">
+          {extra === 1 ? "שורה אחת כפולה בלוח" : `${extra} שורות כפולות בלוח`}
+        </h3>
+        <p className="text-xs text-stone-600 mt-0.5">
+          אותה קבוצה, אותו מאמן, אותו אולם, אותן שעות, באותו שבוע — כלומר אותה שורה נכנסה פעמיים.
+        </p>
+      </div>
+      <div className="space-y-1">
+        {groups.map((g, i) => (
+          <div key={i} className="text-xs text-stone-700">
+            <span className="font-semibold tabular-nums">{formatDayMonth(g.date)}</span>
+            <span className="text-stone-500"> · {g.day} · </span>
+            <span className="font-semibold tabular-nums">{g.start}–{g.end}</span>
+            {"  "}
+            {g.team}
+            <span className="text-stone-500"> · {g.label}</span>
+            {g.count > 2 && <span className="text-amber-800 font-medium"> ×{g.count}</span>}
+          </div>
+        ))}
+      </div>
+      {canEdit && (
+        // Deleting rows, so it asks — and the question says how many and what survives,
+        // because "האם אתה בטוח" is a question nobody reads.
+        confirming ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-stone-700">
+              למחוק {extra === 1 ? "שורה אחת" : `${extra} שורות`}? מכל כפילות נשארת שורה אחת.
+            </span>
+            <button
+              onClick={() => {
+                setConfirming(false);
+                save(withoutSessions(data, groups.flatMap((g) => g.dropIds)));
+              }}
+              className="px-2.5 py-1 text-xs rounded-lg bg-red-600 text-white hover:bg-red-700"
+            >
+              אישור — מחק
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              className="px-2.5 py-1 text-xs rounded-lg border border-stone-300 text-stone-600"
+            >
+              ביטול
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirming(true)}
+            className="px-3 py-1.5 text-xs rounded-lg border border-amber-400 bg-white text-amber-900 hover:bg-amber-100"
+          >
+            נקה כפילויות
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+export function HallClashesCard({ data, save, canEdit }) {
   const [open, setOpen] = useState(false);
   if (!canEdit) return null;
 
@@ -54,9 +135,12 @@ export function HallClashesCard({ data, canEdit }) {
 
   if (clashes.length === 0) {
     return (
-      <div className="text-xs text-stone-500 flex items-center gap-1.5" dir="rtl">
-        <IconCheck size={13} className="opacity-60" />
-        אין התנגשויות אולם בהמשך העונה.
+      <div className="space-y-2" dir="rtl">
+        <div className="text-xs text-stone-500 flex items-center gap-1.5">
+          <IconCheck size={13} className="opacity-60" />
+          אין התנגשויות אולם בהמשך העונה.
+        </div>
+        <DuplicateRows data={data} save={save} canEdit={canEdit} />
       </div>
     );
   }
@@ -101,6 +185,7 @@ export function HallClashesCard({ data, canEdit }) {
           </p>
         </div>
       )}
+      <DuplicateRows data={data} save={save} canEdit={canEdit} />
     </div>
   );
 }

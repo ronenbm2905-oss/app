@@ -1,6 +1,7 @@
 import { DAYS } from "../constants.js";
 import { hallClashPairs } from "./conflicts.js";
 import { getWeekDates, toISODate } from "./dates.js";
+import { teamLabel } from "./teams.js";
 
 // Every double-booked hall in the season, on one screen.
 //
@@ -43,7 +44,9 @@ export function seasonHallClashes(data, { from = new Date() } = {}) {
   const halls = arr(data?.halls);
   const teams = arr(data?.teams);
   const hallName = (id) => halls.find((h) => h && h.id === id)?.name || "";
-  const teamName = (id) => teams.find((t) => t && t.id === id)?.name || "";
+  // Name AND coach: sixteen of this club's teams share a name with another, so a report
+  // that prints the name alone shows one line twice and reads as a duplicate.
+  const teamName = (id) => teamLabel(data, id);
 
   const today = toISODate(new Date(from.getFullYear(), from.getMonth(), from.getDate()));
 

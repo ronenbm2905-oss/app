@@ -25,6 +25,20 @@ export function teamsOfCoach(data, coachId) {
   return teams.filter((t) => t && ids.has(t.id));
 }
 
+// One squad's name for a place that shows squads side by side, rather than in a dropdown.
+//
+// THIS CLUB HAS SIXTEEN TEAMS SHARING FIVE NAMES: four squads called "ילדים ב", four
+// called "קטסל ב", three "קטסל א", three "ילדים א מחוזית", two "נערים ב מחוזית". A report
+// that prints the name alone shows the same line twice and reads as a duplicate — which is
+// exactly what happened the first time the hall report was run against real data.
+export function teamLabel(data, teamId) {
+  const team = (data?.teams || []).find((t) => t && t.id === teamId);
+  if (!team) return "";
+  const coach = (data?.coaches || []).find((c) => c && c.id === team.coachId);
+  const name = String(coach?.name || "").trim();
+  return name ? `${team.name} · ${name}` : team.name;
+}
+
 export function teamsWithCoach(teams, coaches) {
   return (teams || [])
     .filter(Boolean)
