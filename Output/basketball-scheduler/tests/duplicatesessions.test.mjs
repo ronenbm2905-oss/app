@@ -109,3 +109,48 @@ T("rubbish never throws", () => {
 });
 
 console.log(`\n${count} duplicate-row tests passed`);
+
+// ── the label, after the club renamed its ambiguous squads ───────────────────────────
+{
+  const a = (await import("node:assert/strict")).default;
+  const ok = (n, f) => { f(); console.log("  ok  " + n); };
+  const club = {
+    coaches: [
+      { id: "c1", name: "נדב שוורץ" },
+      { id: "c2", name: "עמנואל ורדי" },
+      { id: "c3", name: "רועי ליבשיץ + עידו זיידמן" },
+    ],
+    teams: [
+      { id: "t1", name: "ילדים א מחוזית נדב", coachId: "c1" },
+      { id: "t2", name: "ילדים א מחוזית", coachId: "c2" },
+      { id: "t3", name: "נערים ב מחוזית", coachId: "c3" },
+      { id: "t4", name: "נוער מחוזית", coachId: "" },
+    ],
+  };
+
+  ok("a squad that already carries its coach is not made to say it twice", () => {
+    // Renaming the ambiguous squads was the fix; appending on top of it produced
+    // "ילדים א מחוזית נדב · נדב שוורץ".
+    a.equal(teamLabel(club, "t1"), "ילדים א מחוזית נדב");
+  });
+
+  ok("a squad that does not still gets the coach, which is the whole point", () => {
+    a.equal(teamLabel(club, "t2"), "ילדים א מחוזית · עמנואל ורדי");
+    a.equal(teamLabel(club, "t3"), "נערים ב מחוזית · רועי ליבשיץ + עידו זיידמן");
+  });
+
+  ok("no coach, no suffix — and no trailing separator into nothing", () => {
+    a.equal(teamLabel(club, "t4"), "נוער מחוזית");
+    a.equal(teamLabel(club, "nope"), "");
+  });
+
+  ok("the match is on a whole word, not on letters inside one", () => {
+    const odd = {
+      coaches: [{ id: "c9", name: "דן לוי" }],
+      teams: [{ id: "x", name: "ילדים מודן", coachId: "c9" }],
+    };
+    a.equal(teamLabel(odd, "x"), "ילדים מודן · דן לוי");
+  });
+
+  console.log("\n4 label tests passed");
+}

@@ -36,7 +36,16 @@ export function teamLabel(data, teamId) {
   if (!team) return "";
   const coach = (data?.coaches || []).find((c) => c && c.id === team.coachId);
   const name = String(coach?.name || "").trim();
-  return name ? `${team.name} · ${name}` : team.name;
+  if (!name) return team.name;
+  // Not if the name already says it. On 21.9.2026 the club renamed the ambiguous squads to
+  // carry their coach — "ילדים א מחוזית נדב" — and appending the coach on top of that
+  // produced "ילדים א מחוזית נדב · נדב שוורץ", which is worse than the problem it was
+  // added to solve. Matched on the whole token, so "נדב" in the name is recognised while a
+  // squad that merely contains the letters is not.
+  const first = name.split(/\s+/)[0];
+  const words = String(team.name || "").split(/\s+/);
+  if (first && words.includes(first)) return team.name;
+  return `${team.name} · ${name}`;
 }
 
 export function teamsWithCoach(teams, coaches) {
