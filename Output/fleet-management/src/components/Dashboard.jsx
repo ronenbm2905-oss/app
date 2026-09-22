@@ -54,17 +54,6 @@ export function Dashboard({ data, onOpenVehicle, onOpenFines, onOpenReview, onOp
         )}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label={t("lobby.sum.vehicles")} value={formatNumber(activeVehicles.length, lang)} />
-        <Stat label={t("lobby.sum.monthly")} value={formatCurrency(monthly, lang)} />
-        <Stat
-          label={t("lobby.sum.openFines")}
-          value={`${formatNumber(openFines.length, lang)} · ${formatCurrency(totalAmount(openFines), lang)}`}
-          tone={openFines.length ? "amber" : "slate"}
-        />
-        <Stat label={t("driver.title")} value={formatNumber(activeDrivers, lang)} />
-      </div>
-
       {alerts.total === 0 ? (
         <Card>
           <div className="flex flex-col items-center gap-2 py-8 text-center">
@@ -130,6 +119,17 @@ export function Dashboard({ data, onOpenVehicle, onOpenFines, onOpenReview, onOp
           })}
         </div>
       )}
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label={t("lobby.sum.vehicles")} value={formatNumber(activeVehicles.length, lang)} />
+        <Stat label={t("lobby.sum.monthly")} value={formatCurrency(monthly, lang)} />
+        <Stat
+          label={t("lobby.sum.openFines")}
+          value={`${formatNumber(openFines.length, lang)} · ${formatCurrency(totalAmount(openFines), lang)}`}
+          tone={openFines.length ? "amber" : "slate"}
+        />
+        <Stat label={t("driver.title")} value={formatNumber(activeDrivers, lang)} />
+      </div>
     </div>
   );
 }

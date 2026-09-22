@@ -441,6 +441,23 @@ for (const lang of ["he", "en"]) {
   ok(`${lang}: והאסמכתה החיצונית`, has(shown, "מייל 10.8.2026"));
 }
 
+
+// ============================================================================
+section("סדר הדשבורד — החריגים למעלה, המדדים מתחת");
+// ============================================================================
+// בקשת המשתמש 22.9.2026: הדשבורד נפתח בחריגים. שורת המדדים (רכבים/עלות/
+// קנסות/נהגים) ירדה מתחתיה. נעול כאן כי זו העדפת תצוגה שקל מאוד להחזיר בטעות
+// ברפקטור — ואז המסך שוב נפתח במספרים שלא דורשים פעולה.
+for (const lang of ["he", "en"]) {
+  const t = (k, v) => translate(lang, k, v);
+  const html = R.renderDashboard(data, lang);
+  const firstAlert = html.indexOf(t("dash.driversWithoutNotice"));
+  const statsRow = html.indexOf(t("lobby.sum.vehicles"));
+  ok(`${lang}: קבוצת חריגים מרונדרת`, firstAlert > -1);
+  ok(`${lang}: שורת המדדים מרונדרת`, statsRow > -1);
+  ok(`${lang}: החריגים מופיעים לפני המדדים`, firstAlert < statsRow);
+}
+
 rmSync(tmp, { recursive: true, force: true });
 
 console.log("\n" + "=".repeat(50));
