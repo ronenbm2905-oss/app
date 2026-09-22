@@ -608,6 +608,15 @@ const dashData = {
 };
 const al = computeAlerts(dashData, "2026-06-01", EMPTY.settings);
 ok("קיימות תשע קבוצות התראה", ALERT_GROUPS.length === 9);
+// סדר הקבוצות הוא מה שקובע מה המשתמש רואה ראשון בדשבורד — בקשה מפורשת
+// שלו (22.9.2026), ולכן נעולה ולא נשענת על הסדר המקרי של המערך.
+ok("קנסות שטרם הוסבו הם החריג הראשון", ALERT_GROUPS[0] === "finesAwaitingTransfer");
+ok("מועד תשלום מתקרב שני", ALERT_GROUPS[1] === "finesDueSoon");
+ok("חריגת ק\"מ שלישית", ALERT_GROUPS[2] === "kmOverage");
+ok(
+  "וחוסמי זרימת הקנסות מיד אחריהם",
+  ALERT_GROUPS[3] === "assignmentsNeedingReview" && ALERT_GROUPS[4] === "driversWithoutNotice"
+);
 // M4 — הקבוצה החדשה: העובד בדאטה הזה לא קיבל יידוע, ויש עליו קנס → danger.
 eq("נהג ללא יידוע מופיע בהתראות", al.groups.driversWithoutNotice.length, 1);
 eq("ועם קנס משויך הוא חוסם בפועל", al.groups.driversWithoutNotice[0].severity, "danger");

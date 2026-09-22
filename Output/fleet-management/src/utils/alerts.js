@@ -12,14 +12,19 @@ import { currentAssignment } from "./assignments.js";
 import { kmStatus, serviceDue } from "./odometer.js";
 import { isFineOpen, isAwaitingTransfer, driversWithoutNotice } from "./fines.js";
 
+// סדר התצוגה בדשבורד נגזר ישירות מהמערך הזה.
+// בקשת המשתמש 22.9.2026: **קנסות וחריגת ק"מ ראשונים** — אלה שתי המטרות שבגללן
+// נבנתה המערכת. אחריהן, בכוונה, שתי הקבוצות ש**חוסמות** את זרימת הקנסות:
+// החזקה שלא אומתה מונעת שיוך אוטומטי, ונהג בלי יידוע מונע מסירה והסבה.
+// מי שמטפל בשתיהן פותח את הראשונות. השאר — לפי אופק הזמן.
 export const ALERT_GROUPS = [
+  "finesAwaitingTransfer",
+  "finesDueSoon",
+  "kmOverage",
   "assignmentsNeedingReview",
   "driversWithoutNotice",
   "contractEnding",
-  "finesAwaitingTransfer",
-  "finesDueSoon",
   "vehiclesWithoutDriver",
-  "kmOverage",
   "documentsExpiring",
   "serviceDue",
 ];
