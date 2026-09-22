@@ -45,6 +45,7 @@ const FILES = [
   // calendar.js shipped in August with no tests of its own — the trainings file was
   // verified by opening it. The fixtures builder arrives with the helpers covered too.
   "./calendar.test.mjs",
+  "./clashexport.test.mjs",
 ];
 
 for (const f of FILES) {

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { seasonHallClashes, clashesByDate, formatDayMonth, clashKindLabel } from "../utils/hallClashes";
 import { duplicateSessionGroups, duplicateRowCount, withoutSessions } from "../utils/duplicateSessions";
+import { exportClashesXlsx } from "../utils/clashExport";
 import { IconAlert, IconCheck, IconDownload } from "./ui/icons";
 import {
   renderNodeCanvas, canvasToPdfBlob, shareOrDownloadBlob,
@@ -137,6 +138,24 @@ export function HallClashesCard({ data, save, canEdit }) {
   const dupes = clashes.filter((c) => c.duplicate).length;
   const real = clashes.length - dupes;
 
+  // No off-screen render and no canvas, so nothing here can fail the way the PDF can: the
+  // sheet is built from the same `clashes` array the screen is showing. It still reports a
+  // failure rather than going quiet — a download that produces no file and no message is
+  // the one the manager tries four times.
+  //
+  // It does NOT set `busy`. The work is synchronous and over before a repaint, so a spinner
+  // would be a flicker — but the button still reads `busy`, so it greys out while the PDF
+  // is rendering. Two downloads at once is not a state worth having.
+  const handleXlsx = () => {
+    if (busy) return;
+    setMsg("");
+    try {
+      exportClashesXlsx(clashes, days.length);
+    } catch {
+      setMsg("לא הצלחנו להפיק את קובץ האקסל. נסו שוב.");
+    }
+  };
+
   const handlePdf = async () => {
     if (!sheetRef.current || busy) return;
     setBusy(true);
@@ -194,7 +213,13 @@ export function HallClashesCard({ data, save, canEdit }) {
         </button>
         {/* Because this list is worked through away from the screen — against the hall's
             own diary, or on the phone to the federation — and forty-one lines is not
-            something anyone holds in their head. */}
+            something anyone holds in their head.
+
+            TWO FORMATS, TWO USES. The PDF is the page taken to the meeting: read once, top
+            to bottom. The spreadsheet is the one sorted by hall to phone one caretaker
+            about everything at once, or filtered down to a single week. Neither replaces
+            the other, and what goes IN them is identical — see `clashExport.js` for the one
+            place they differ and why. */}
         <button
           onClick={handlePdf}
           disabled={busy}
@@ -202,6 +227,15 @@ export function HallClashesCard({ data, save, canEdit }) {
         >
           <IconDownload size={13} />
           {busy ? "מכין..." : "PDF"}
+        </button>
+        <button
+          onClick={handleXlsx}
+          disabled={busy}
+          title={`${clashes.length} ממצאים · ${clashes.length * 2} שורות`}
+          className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-40 flex items-center gap-1.5"
+        >
+          <IconDownload size={13} />
+          אקסל
         </button>
       </div>
       <p role="status" aria-live="polite" className="text-[11px] text-red-700 min-h-[0.75rem]">{msg}</p>

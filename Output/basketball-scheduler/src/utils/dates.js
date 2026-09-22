@@ -61,6 +61,14 @@ export function parseDateDMY(str) {
   return new Date(+m[3], +m[2] - 1, +m[1]);
 }
 
+// "2026-10-15" -> "15/10/2026", which is what a Hebrew sheet expects. Left as TEXT
+// wherever it is used: Excel reading it as a date reformats it per the reader's locale,
+// and these columns are read by a person rather than summed.
+export function isoToDmy(iso) {
+  const p = String(iso || "").split("-");
+  return p.length === 3 && p[0] && p[1] && p[2] ? `${p[2]}/${p[1]}/${p[0]}` : "";
+}
+
 export function formatDateHe(str) {
   const d = parseDateDMY(str);
   if (!d) return str;

@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { sortByName } from "./names.js";
+import { isoToDmy } from "./dates.js";
 
 // The club's coach list as a file — name, sign-in address, phone, date of birth.
 //
@@ -16,12 +17,9 @@ import { sortByName } from "./names.js";
 export const COACH_HEADERS = ["שם", 'דוא"ל', "טלפון", "תאריך לידה"];
 
 // Stored as YYYY-MM-DD; written as DD/MM/YYYY, which is what a Hebrew sheet expects.
-// Left as text on purpose — Excel reading it as a date would reformat it per locale, and
-// this column is read by a person, not summed.
-export function birthDateText(iso) {
-  const p = String(iso || "").split("-");
-  return p.length === 3 && p[0] && p[1] && p[2] ? `${p[2]}/${p[1]}/${p[0]}` : "";
-}
+// The formatting itself lives in `dates.js` — the clash report needs the same conversion,
+// and a second copy of a date format is a second copy that eventually disagrees.
+export const birthDateText = isoToDmy;
 
 export function coachRows(coaches) {
   return sortByName(coaches || []).map((c) => ({
