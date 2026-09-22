@@ -156,6 +156,20 @@ service cloud.firestore {
       allow read, write: if isClubAdmin(clubId);
     }
 
+    // The manager's own spreadsheets — the fixed hall-slot sheet and anything of that shape.
+    //
+    // MANAGERS ONLY, BOTH WAYS. This is the first collection in the club with exactly one
+    // audience: not shared like the video library, not owner-scoped like a coach's notes.
+    // The screen is hidden from a coach as well, but THIS is the boundary — App.jsx:62 has
+    // said since the beginning that a hidden tab is not a security one.
+    //
+    // The club holds no files anywhere: a sheet arrives as a workbook read in the browser and
+    // is stored as its rows. Note the shape in utils/sheetGrid.js — each row is a map holding
+    // a "cells" array, because Firestore cannot nest an array directly inside an array.
+    match /clubs/{clubId}/sheets/{sheetId} {
+      allow read, write: if isClubAdmin(clubId);
+    }
+
     // "The nightly job ran, and this is what it found" — clubs/{id}/sync/nightly.
     //
     // READ-ONLY FROM THE APP, AND THAT IS THE POINT. The only writer is the sync itself,

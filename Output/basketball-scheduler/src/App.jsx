@@ -8,6 +8,7 @@ import { useCupScan } from "./hooks/useCupScan";
 import { useSyncHealth } from "./hooks/useSyncHealth";
 import { useVideos } from "./hooks/useVideos";
 import { usePlayerProgress } from "./hooks/usePlayerProgress";
+import { useSheets } from "./hooks/useSheets";
 import { todayWeekStart } from "./utils/dates";
 import { coachForUser } from "./utils/coachIdentity";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
@@ -24,6 +25,7 @@ import { PushToggle } from "./components/PushToggle";
 import { CoachTeamMessage } from "./components/CoachTeamMessage";
 import { PlayersView } from "./components/PlayersView";
 import { PlayerProgressView } from "./components/PlayerProgressView";
+import { SheetsView } from "./components/SheetsView";
 import { ReportView } from "./components/ReportView";
 import { AnnouncementsView } from "./components/AnnouncementsView";
 import { AnnouncementBanner } from "./components/AnnouncementBanner";
@@ -42,6 +44,7 @@ import {
   IconLogOut, IconEye, IconHome, IconArrowRight,
   IconMegaphone, IconBuilding, IconClipboard, IconBan, IconTrophy,
   IconCalendarDays, IconUser, IconUsers, IconClock, IconCalendarX, IconVideo, IconPencil,
+  IconFileSpreadsheet,
 } from "./components/ui/icons";
 import clubLogo from "./assets/club-logo.jpg";
 
@@ -61,6 +64,7 @@ const TABS = [
   { id: "videos", label: "סרטוני אימון", Icon: IconVideo },
   { id: "progress", label: "התקדמות שחקנים", Icon: IconPencil },
   { id: "players", label: "שחקנים", Icon: IconUsers },
+  { id: "sheets", label: "גיליונות", Icon: IconFileSpreadsheet },
   { id: "report", label: "דו\"ח שעות", Icon: IconClock },
 ];
 
@@ -74,7 +78,7 @@ const TABS = [
 // This hides screens; it is NOT a security boundary. Access to the club's data is decided
 // by the Firestore rules and the admins/members lists, and every write still goes through
 // the same check. Hiding a tab keeps the app uncluttered — it does not protect anything.
-const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "availability", "report", "players"]);
+const ADMIN_ONLY_TABS = new Set(["manager", "constraints", "availability", "report", "players", "sheets"]);
 
 // The roster screen shows a coach two of its three cards — halls are a manager's concern
 // and are hidden from them — so the tab that opens it should not promise a third. Same
@@ -113,6 +117,10 @@ function ClubApp() {
   // progressReady is not a spinner: it is what tells PlayersView whether the deletion
   // guard sitting on this map can be trusted. See the hook's error handler.
   const { progress, saveProgress, removeProgress, progressReady } = usePlayerProgress(user, isAdmin, myEmail);
+  // The manager's own spreadsheets. The only collection in the club with a single audience,
+  // so this is the only hook that refuses to open its listener for anyone else — the rules
+  // would refuse the read anyway, and an error in the console is not a nicer empty list.
+  const { sheets, saveSheet, removeSheet, sheetsReady, sheetsFailed } = useSheets(user, isAdmin);
   // Everyone lands on the tiles. It is the screen that says where you are and what there
   // is, and it costs the manager one click to leave — the tab bar is still right there.
   const [tab, setTab] = useState("home");
@@ -301,6 +309,7 @@ function ClubApp() {
             notes={notes}
             videoCount={videosReady ? videos.length : undefined}
             progress={progress}
+            sheetCount={sheetsReady ? sheets.length : undefined}
             onOpen={setTab}
           />
         ) : activeTab === "announcements" ? (
@@ -381,6 +390,16 @@ function ClubApp() {
             saveProgress={saveProgress}
             authorName={user?.displayName || user?.email || ""}
             authorEmail={myEmail}
+          />
+        ) : activeTab === "sheets" ? (
+          <SheetsView
+            sheets={sheets}
+            saveSheet={saveSheet}
+            removeSheet={removeSheet}
+            sheetsReady={sheetsReady}
+            sheetsFailed={sheetsFailed}
+            canEdit={canEdit}
+            author={user?.displayName || user?.email || ""}
           />
         ) : activeTab === "players" ? (
           <PlayersView

@@ -22,6 +22,7 @@ const TONES = {
   videos: "bg-red-50 text-red-700 ring-red-100",
   players: "bg-violet-50 text-violet-700 ring-violet-100",
   progress: "bg-teal-50 text-teal-700 ring-teal-100",
+  sheets: "bg-lime-50 text-lime-700 ring-lime-100",
   report: "bg-stone-100 text-stone-600 ring-stone-200",
 };
 

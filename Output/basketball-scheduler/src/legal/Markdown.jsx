@@ -84,12 +84,27 @@ export function Markdown({ source }) {
       continue;
     }
 
-    // unordered list: gather consecutive "- " lines.
+    // unordered list: gather consecutive "- " lines, AND the wrapped continuation of each.
+    //
+    // A list item used to end at the end of its line, and every legal document here wraps
+    // its bullets at about 100 characters — so the collection inventory in the privacy
+    // policy rendered as one short bullet followed by a loose paragraph of its own tail,
+    // then the next bullet, and so on. The list a reader is entitled to read as a list came
+    // out shattered. Found on 22.9.2026 while adding a bullet to that very inventory.
+    //
+    // A continuation is any line that is not blank and does not open a block of its own.
     if (line.startsWith("- ")) {
       const items = [];
+      const opensBlock = (l) =>
+        l.startsWith("- ") || l.startsWith("#") || l.startsWith(">") || l.startsWith("|") || l.trim() === "---";
       while (i < lines.length && lines[i].startsWith("- ")) {
-        items.push(lines[i].slice(2));
+        const parts = [lines[i].slice(2)];
         i++;
+        while (i < lines.length && lines[i].trim() !== "" && !opensBlock(lines[i])) {
+          parts.push(lines[i].trim());
+          i++;
+        }
+        items.push(parts.join(" "));
       }
       blocks.push(
         <ul key={nextKey()} className="list-disc pr-5 space-y-1 my-2 text-sm text-stone-700 leading-relaxed">

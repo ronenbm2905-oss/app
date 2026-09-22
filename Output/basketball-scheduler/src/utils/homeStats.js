@@ -26,7 +26,7 @@ function plural(n, one, many) {
 // `canEdit` shapes two lines: a coach's roster screen has no halls on it, so counting
 // them would describe a screen they are not going to get, and unread game notes are the
 // professional manager's inbox — the coach who wrote one is not waiting to read it.
-export function homeStats(data, weekStart, canEdit = true, notes, videoCount, progress) {
+export function homeStats(data, weekStart, canEdit = true, notes, videoCount, progress, sheetCount) {
   const d = data || {};
   const sessions = arr(d.sessions).filter((s) => s && (s.weekOf || "") === weekStart);
   const games = arr(d.games).filter((g) => g && g.date && weekStartOfDMY(g.date) === weekStart);
@@ -85,6 +85,11 @@ export function homeStats(data, weekStart, canEdit = true, notes, videoCount, pr
         : waiting === 1 ? "הערכה אחת חדשה" : `${waiting} הערכות חדשות`;
     })(),
     players: plural(count(d.players), "שחקן אחד", "שחקנים"),
+    // Same arrangement as videos and progress: its own subcollection, so the count comes
+    // in rather than being counted here, and the line stays honest while it is loading.
+    sheets: typeof sheetCount === "number"
+      ? plural(sheetCount, "גיליון אחד", "גיליונות")
+      : "טבלאות אקסל, זמינות מהטלפון",
     report: "שעות לפי מאמן, לפי חודש",
   };
 }
