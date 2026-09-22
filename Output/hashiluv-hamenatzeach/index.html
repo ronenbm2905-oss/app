@@ -103,12 +103,39 @@
     font-size:clamp(19px,4.8vw,22px);
     margin:0 0 6px;
   }
-  .price{
-    font-family:var(--font-head);
-    font-size:clamp(23px,6vw,29px);
-    margin:0 0 22px;
+  /* ===== באנר ההטבה — בולט, פועם, עם מתנה מקפצת ===== */
+  .promo{
+    background:linear-gradient(135deg,#FFF3E2 0%,#FFE4C6 100%);
+    border:2px dashed var(--orange-deep);
+    border-radius:16px;
+    padding:16px 14px 14px;
+    margin:14px 0 20px;
+    animation:promoPulse 2.4s ease-in-out infinite;
   }
-  .price b{white-space:nowrap;display:block}
+  .promo p{margin:0;font-family:var(--font-head);color:var(--navy);line-height:1.4}
+  .promo-top{
+    font-size:clamp(18px,4.7vw,21px);
+    letter-spacing:.02em;
+  }
+  .promo-deadline{
+    font-size:clamp(23px,6.2vw,28px);
+    color:var(--orange-deep);
+    margin-top:4px !important;
+  }
+  .promo-body{
+    font-size:clamp(15px,3.9vw,17px);
+    margin-top:8px !important;
+    line-height:1.5;
+  }
+  .promo .gift{display:inline-block;animation:giftBounce 1.3s ease-in-out infinite}
+  @keyframes promoPulse{
+    0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(242,140,56,0)}
+    50%    {transform:scale(1.025);box-shadow:0 8px 22px rgba(242,140,56,.38)}
+  }
+  @keyframes giftBounce{
+    0%,100%{transform:translateY(0) rotate(0)}
+    50%    {transform:translateY(-6px) rotate(-8deg)}
+  }
 
   /* ===== כפתור רכישה כתום ===== */
   .cta{
@@ -377,6 +404,8 @@
     .cta{transition:none}
     .cta:active{transform:none}
     .carousel-track{scroll-behavior:auto}
+    .promo,.promo .gift{animation:none}
+    .promo{box-shadow:0 4px 14px rgba(242,140,56,.25)}
     .shine{animation:none;background:none;color:var(--navy);-webkit-text-fill-color:var(--navy)}
   }
 </style>
@@ -408,8 +437,13 @@
     </figure>
 
     <div class="offer">
-      <p class="kicker">ערכת הדרך למילים ומארז 54 מדבקות מחזקות</p>
-      <p class="price"><b>179 ₪ בלבד</b></p>
+      <p class="kicker">ערכת הדרך למילים ומארז 54 מדבקות מחזקות — מתנה <span aria-hidden="true">🎁</span></p>
+
+      <div class="promo">
+        <p class="promo-top">ימים אחרונים בהחלט</p>
+        <p class="promo-deadline">רק עד 25.9! <span class="gift" aria-hidden="true">🎁</span></p>
+        <p class="promo-body">מארז המדבקות שלנו מתנה בכל רכישה – זה הזמן ליהנות מההטבה.</p>
+      </div>
       <a class="cta js-checkout" data-cta="top"
          href="https://pay.tranzila.com/doritplus/MmJvVUdzUXFrMXB2N1dhYm4yM0VDUT09">
         להזמנת השילוב המנצח
@@ -563,8 +597,12 @@
   <div class="wrap">
     <h2 class="shine">השילוב המנצח לחג <span class="star" aria-hidden="true">✨</span></h2>
     <div class="offer">
-      <p class="kicker">ערכת הדרך למילים + מארז 54 מדבקות מחזקות</p>
-      <p class="price"><b>שני מוצרים במחיר 179 ₪ בלבד</b></p>
+      <p class="kicker">שני מוצרים במחיר אחד</p>
+
+      <div class="promo">
+        <p class="promo-top">ימים אחרונים בהחלט</p>
+        <p class="promo-body">מארז המדבקות שלנו מתנה בכל רכישה – זה הזמן ליהנות מההטבה.</p>
+      </div>
       <a class="cta js-checkout" data-cta="bottom"
          href="https://pay.tranzila.com/doritplus/MmJvVUdzUXFrMXB2N1dhYm4yM0VDUT09">
         להזמנת השילוב המנצח
