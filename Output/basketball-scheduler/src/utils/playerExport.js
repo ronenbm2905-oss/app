@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { sortByName } from "./names.js";
+import { birthDateDmy } from "./dates.js";
 
 // The player list as a file — and deliberately as TWO files, because they go to two places.
 //
@@ -16,12 +17,12 @@ export const SIZES_HEADERS = ["קבוצה", "מספר", "שם", "חולצה", "�
 
 const str = (v) => String(v ?? "").trim();
 
-// Stored as DD-MM-YYYY (the Excel import's format); written as DD/MM/YYYY. Text, not a
-// date: this column is read, never summed, and Excel would reformat it per locale.
-export function birthText(stored) {
-  const p = str(stored).split("-");
-  return p.length === 3 && p[0] && p[1] && p[2] ? `${p[0]}/${p[1]}/${p[2]}` : "";
-}
+// DD/MM/YYYY, whatever is on file. Text, not a date: this column is read, never summed,
+// and Excel would reformat a real date cell per the reader's locale. This used to split on "-" and print the parts in the
+// order it found them, which is right for an imported record ("23-09-2014" -> 23/09/2014)
+// and BACKWARDS for one typed into the form ("2014-09-23" -> 2014/09/23). One sheet could
+// carry both, a row apart.
+export const birthText = birthDateDmy;
 
 // The three garments, in the order the club orders them.
 export function sizesOf(player) {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { VEHICLE_TYPES } from "../constants";
 import { colorFor } from "../utils/colors";
-import { uid } from "../utils/dates";
+import { uid, birthDateDmy } from "../utils/dates";
 import { looksIndoor } from "../utils/indoorBalance";
 import { looksLikeSchoolTeam, isHoursExempt } from "../utils/hoursReport";
 import { exportCoachesXlsx } from "../utils/coachExport";
@@ -16,10 +16,11 @@ import {
 } from "./ui/icons";
 
 // Short DD/MM label for a stored ISO birth date (YYYY-MM-DD). Year is intentionally dropped in the list.
-function birthLabel(iso) {
-  if (!iso) return "";
-  const p = String(iso).split("-");
-  return p.length === 3 ? `${p[2]}/${p[1]}` : "";
+// Coaches are typed into the form and so are always ISO — but this is the fourth reader of
+// `birthDate` in the app, and the other three each assumed a different format. It goes
+// through the one parser so a record that ever arrives another way reads correctly here too.
+function birthLabel(stored) {
+  return birthDateDmy(stored).slice(0, 5); // DD/MM — the year is not wanted in the list
 }
 
 // `withPhone` adds a phone field (used for coaches — feeds the transport export's contact column).

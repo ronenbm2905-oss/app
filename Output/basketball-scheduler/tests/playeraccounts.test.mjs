@@ -47,6 +47,11 @@ T("age is counted on the actual day, not by year", () => {
   assert.equal(ageOn("2011-09-17", NOW), 15); // birthday is today
   assert.equal(ageOn("", NOW), null);
   assert.equal(ageOn("not-a-date", NOW), null);
+  // The gate used to read ISO only, so every player imported from Excel — sixteen of the
+  // club's eighteen on 22.9.2026 — looked like "no birth date on file" and was refused.
+  // It failed SAFE, which is why it went unnoticed, but it was not doing its job.
+  assert.equal(ageOn("04-03-2010", NOW), 16);
+  assert.equal(ageOn("18-09-2011", NOW), 14);
 });
 
 T("a player in an OPEN squad who is 15+ is eligible", () => {

@@ -61,6 +61,62 @@ export function parseDateDMY(str) {
   return new Date(+m[3], +m[2] - 1, +m[1]);
 }
 
+// A birth date as it is ACTUALLY stored, which is two formats and not one.
+//
+// `birthDate` has never had a canonical format, and nobody noticed because the two write
+// paths were built months apart:
+//
+//   * The COACH form writes `YYYY-MM-DD` — `<input type="date">` produces that and
+//     `RostersView` saves it unchanged.
+//   * The Excel import wrote `DD-MM-YYYY` — `formatDateFromExcel` produces that, correctly,
+//     because it is shared with fixtures, where DD-MM-YYYY is the club's stored format.
+//   * The PLAYER form also wrote `DD-MM-YYYY` — it read the same `<input type="date">` and
+//     then reversed it on the way out, to match what the import was writing.
+//
+// So the same field means two things depending on how the record was created, and every
+// reader guessed. On 22.9.2026 the club held 18 players: SIXTEEN in DD-MM-YYYY, none in
+// ISO — which is why the birthday list, shipped that morning, showed not one child. The
+// age gate for player accounts read the same records as "no date on file", and the player
+// export printed hand-typed dates as "2014/09/23".
+//
+// This is the one parser. The two patterns cannot be confused — a four-digit year is either
+// first or last — so it needs no guessing and has no locale.
+//
+// It does NOT replace `parseIsoDate` where a week key or an internal id is being read: those
+// are written by the app in one format and loosening them would hide a real error.
+export function parseBirthDate(value) {
+  const s = String(value ?? "").trim();
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+  const dmy = /^(\d{1,2})[-./](\d{1,2})[-./](\d{4})$/.exec(s);
+  let y, mo, d;
+  if (iso) [y, mo, d] = [+iso[1], +iso[2], +iso[3]];
+  else if (dmy) [d, mo, y] = [+dmy[1], +dmy[2], +dmy[3]];
+  else return null;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const date = new Date(y, mo - 1, d);
+  // Rejects impossible dates that Date would roll over (31/02 -> 03/03).
+  if (date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
+  return { y, mo, d, date };
+}
+
+// The canonical form, for WRITING. Both player paths — the form and the Excel import — go
+// through this, so everything saved from 22.9.2026 is ISO and only records already on file
+// need the parser above. The coach form has always written ISO on its own.
+export function toIsoBirthDate(value) {
+  const b = parseBirthDate(value);
+  return b ? `${b.y}-${String(b.mo).padStart(2, "0")}-${String(b.d).padStart(2, "0")}` : "";
+}
+
+// The one way a birth date is SHOWN to a person: DD/MM/YYYY, whatever is on file. Four
+// places used to format it and three of them did it by splitting on "-" and printing the
+// parts in the order they came out, which is right for one stored format and backwards for
+// the other. Display is where that is visible to a parent asking to see their child's
+// record, so it has one implementation.
+export function birthDateDmy(value) {
+  const b = parseBirthDate(value);
+  return b ? `${String(b.d).padStart(2, "0")}/${String(b.mo).padStart(2, "0")}/${b.y}` : "";
+}
+
 // "2026-10-15" -> "15/10/2026", which is what a Hebrew sheet expects. Left as TEXT
 // wherever it is used: Excel reading it as a date reformats it per the reader's locale,
 // and these columns are read by a person rather than summed.

@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { progressKeysFor } from "../utils/playerProgress";
 import { exportPlayersXlsx, exportSizesXlsx } from "../utils/playerExport";
-import { uid } from "../utils/dates";
+import { uid, toIsoBirthDate, birthDateDmy } from "../utils/dates";
 import { colorFor } from "../utils/colors";
 import {
   parsePlayersRows,
@@ -24,8 +24,11 @@ const toInputDate = (dmy) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dmy)) return dmy;
   return "";
 };
-// "YYYY-MM-DD" -> "DD-MM-YYYY" (storage format, shared with Excel import).
-const fromInputDate = (iso) => (iso ? iso.split("-").reverse().join("-") : "");
+// Saved ISO, which is what the input already gives — it used to be reversed here to match
+// what the Excel import was writing. Both now write ISO, so a player edited on this screen
+// and a player imported from a file end up in the same shape. Records saved before
+// 22.9.2026 keep DD-MM-YYYY until they are next edited, and every reader takes both.
+const fromInputDate = (iso) => toIsoBirthDate(iso);
 
 const EMPTY_PLAYER = {
   name: "", phone: "", birthDate: "", shirtSize: "", pantsSize: "", sweaterSize: "", jerseyNumber: "",
@@ -427,7 +430,7 @@ export function PlayersView({ data, save, canEdit, progress, removeProgress, pro
                       <td className="border-b border-stone-100 px-3 py-2.5 text-center tabular-nums font-semibold text-stone-800">{p.jerseyNumber || "—"}</td>
                       <td className="border-b border-stone-100 px-3 py-2.5 font-medium text-stone-800">{p.name}</td>
                       <td className="border-b border-stone-100 px-3 py-2.5 text-stone-700" dir="ltr" style={{ textAlign: "right" }}>{p.phone || "—"}</td>
-                      <td className="border-b border-stone-100 px-3 py-2.5 text-center tabular-nums text-stone-700">{p.birthDate || "—"}</td>
+                      <td className="border-b border-stone-100 px-3 py-2.5 text-center tabular-nums text-stone-700">{birthDateDmy(p.birthDate) || "—"}</td>
                       <td className="border-b border-stone-100 px-3 py-2.5 text-center text-stone-700">{p.shirtSize || "—"}</td>
                       <td className="border-b border-stone-100 px-3 py-2.5 text-center text-stone-700">{p.pantsSize || "—"}</td>
                       <td className="border-b border-stone-100 px-3 py-2.5 text-center text-stone-700">{p.sweaterSize || "—"}</td>

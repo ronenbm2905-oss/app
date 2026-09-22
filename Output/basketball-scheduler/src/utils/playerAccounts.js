@@ -24,6 +24,8 @@
 // an age does not: a younger child moved into an open squad must not silently become
 // eligible for an account.
 
+import { parseBirthDate } from "./dates.js";
+
 const arr = (list) => (Array.isArray(list) ? list : []);
 
 // No look-alikes (l/1/0/o), and read aloud without ambiguity — a coach will be reading these
@@ -67,16 +69,13 @@ export function withAccountTeam(data, teamId, on) {
   return { ...data, playerAccountTeams: on ? [...now, teamId] : now };
 }
 
-function parseIsoDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || "").trim());
-  if (!m) return null;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  if (d.getMonth() !== Number(m[2]) - 1 || d.getDate() !== Number(m[3])) return null;
-  return d;
-}
-
+// Read through the shared parser, because `birthDate` is stored in two formats and this
+// one used to accept only ISO. Every player imported from Excel therefore had "no date on
+// file" as far as the age gate was concerned, and `eligibleForAccount` returned false for
+// all of them — which FAILED SAFE, so nothing was ever wrongly opened, and that is also
+// why it was never noticed. The gate only starts doing its actual job here.
 export function ageOn(birthDate, now = new Date()) {
-  const born = parseIsoDate(birthDate);
+  const born = parseBirthDate(birthDate)?.date;
   if (!born) return null;
   let age = now.getFullYear() - born.getFullYear();
   const beforeBirthday =

@@ -56,6 +56,13 @@ t("a player whose team was deleted sorts last and is still in the file", () => {
 console.log("- the date -");
 t("stored DD-MM-YYYY comes out as DD/MM/YYYY", () =>
   assert.equal(birthText("07-04-2011"), "07/04/2011"));
+// This is the half that was wrong and that nobody could see: the old version split on "-"
+// and printed the parts in the order it found them, so a record typed into the FORM — which
+// writes ISO — came out as "2011/04/07", a row below one that came out right.
+t("a date typed into the form comes out the same way, not reversed", () => {
+  assert.equal(birthText("2011-04-07"), "07/04/2011");
+  assert.equal(birthText("7/4/2011"), "07/04/2011");
+});
 t("a missing or malformed date is empty, never 'undefined'", () => {
   assert.equal(birthText(""), "");
   assert.equal(birthText(undefined), "");

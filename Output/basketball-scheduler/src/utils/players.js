@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { uid, formatDateFromExcel } from "./dates";
+import { uid, formatDateFromExcel, toIsoBirthDate } from "./dates.js";
 
 // Fixed column schema for the players roster. Order = order in the Excel template.
 export const PLAYER_FIELDS = [
@@ -54,7 +54,12 @@ export function parsePlayersRows(rawRows) {
     out.push({
       name,
       phone: normPhone(cell("phone")),
-      birthDate: cell("birthDate") ? formatDateFromExcel(cell("birthDate")) : "",
+      // Stored ISO, which is what the form writes, so both paths agree from here on.
+      // `formatDateFromExcel` still does the reading — it is what understands a SheetJS
+      // date cell and a timezone — but its output is DD-MM-YYYY, the format fixtures use,
+      // and letting that land in a person's record is what made every imported child
+      // invisible to the birthday list.
+      birthDate: cell("birthDate") ? toIsoBirthDate(formatDateFromExcel(cell("birthDate"))) : "",
       shirtSize: str(cell("shirtSize")),
       pantsSize: str(cell("pantsSize")),
       sweaterSize: str(cell("sweaterSize")),

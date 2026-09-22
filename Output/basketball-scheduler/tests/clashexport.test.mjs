@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { CLASH_HEADERS, clashRows, clashRowToCells, clashSheetAoa, clashFileName } from "../src/utils/clashExport.js";
-import { isoToDmy } from "../src/utils/dates.js";
+import { isoToDmy, parseBirthDate, toIsoBirthDate, birthDateDmy } from "../src/utils/dates.js";
 import { birthDateText } from "../src/utils/coachExport.js";
+import { birthText } from "../src/utils/playerExport.js";
 
 let count = 0;
 const T = (name, fn) => { fn(); console.log("  ok  " + name); count++; };
@@ -96,11 +97,49 @@ T("the filename carries the day, so two exports cannot look identical", () => {
 
 // ---------- the date formatter that now has one home ----------
 
-T("isoToDmy is the one conversion, and the coach list uses it too", () => {
+T("isoToDmy converts the dates the APP writes — clash dates, week keys, today", () => {
   assert.equal(isoToDmy("2010-03-04"), "04/03/2010");
   assert.equal(isoToDmy(""), "");
   assert.equal(isoToDmy("not a date"), "");
-  assert.equal(birthDateText, isoToDmy, "a second copy of a date format eventually disagrees");
+});
+
+T("every birth date on screen or in a file goes through ONE formatter", () => {
+  // Three of the four used to do this by splitting on "-" and printing the parts in the
+  // order they came out — right for one stored format, backwards for the other.
+  assert.equal(birthDateText, birthDateDmy, "the coach list has its own copy again");
+  assert.equal(birthText, birthDateDmy, "the player list has its own copy again");
+  assert.equal(birthDateDmy("2014-09-23"), "23/09/2014");
+  assert.equal(birthDateDmy("23-09-2014"), "23/09/2014");
+  assert.equal(birthDateDmy("זבל"), "");
+});
+
+// ---------- the birth date, which has never had one format ----------
+
+T("both stored forms parse to the same day", () => {
+  assert.deepEqual(parseBirthDate("2014-09-23"), parseBirthDate("23-09-2014"));
+  assert.deepEqual(parseBirthDate("23/09/2014"), parseBirthDate("23-09-2014"));
+  assert.equal(parseBirthDate("2014-09-23").mo, 9);
+});
+
+T("a four-digit year says which end is the year — nothing is guessed", () => {
+  // 01-02-1988 is the 1st of February. There is no locale here and no ambiguity: the only
+  // four-digit group is the year, and it is either first or last.
+  assert.equal(parseBirthDate("01-02-1988").mo, 2);
+  assert.equal(parseBirthDate("01-02-1988").d, 1);
+  assert.equal(parseBirthDate("1988-02-01").mo, 2);
+});
+
+T("nonsense stays nonsense — the parser was widened, not loosened", () => {
+  for (const bad of ["", null, undefined, "2014", "31-02-2014", "2014-13-01", "23 בספטמבר", "14-10-88"]) {
+    assert.equal(parseBirthDate(bad), null, JSON.stringify(bad) + " was accepted");
+  }
+});
+
+T("toIsoBirthDate is the one canonical form, and it is what the import writes now", () => {
+  assert.equal(toIsoBirthDate("23-09-2014"), "2014-09-23");
+  assert.equal(toIsoBirthDate("7/4/2011"), "2011-04-07");
+  assert.equal(toIsoBirthDate("2014-09-23"), "2014-09-23");
+  assert.equal(toIsoBirthDate("זבל"), "");
 });
 
 console.log(`\n${count} tests passed`);

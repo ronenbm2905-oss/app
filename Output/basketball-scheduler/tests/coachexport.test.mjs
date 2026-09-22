@@ -33,7 +33,15 @@ t("a missing or malformed date is empty, never 'undefined' or NaN", () => {
   assert.equal(birthDateText(""), "");
   assert.equal(birthDateText(undefined), "");
   assert.equal(birthDateText("1990"), "");
-  assert.equal(birthDateText("25/12/1990"), "");
+  assert.equal(birthDateText("25 בדצמבר"), "");
+});
+// This line used to assert that "25/12/1990" is malformed and comes out empty. It is not
+// malformed — it is one of the three shapes `birthDate` is actually stored in, and treating
+// it as garbage is what left every imported player off the birthday list. A coach record is
+// written only by the roster form today, so this is protection rather than a fix.
+t("a date that is not ISO still prints, and prints the same day", () => {
+  assert.equal(birthDateText("25/12/1990"), "25/12/1990");
+  assert.equal(birthDateText("25-12-1990"), "25/12/1990");
 });
 
 console.log("- the rows -");

@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { sortByName } from "./names.js";
-import { isoToDmy } from "./dates.js";
+import { birthDateDmy } from "./dates.js";
 
 // The club's coach list as a file — name, sign-in address, phone, date of birth.
 //
@@ -16,10 +16,13 @@ import { isoToDmy } from "./dates.js";
 //     folder for a year.
 export const COACH_HEADERS = ["שם", 'דוא"ל', "טלפון", "תאריך לידה"];
 
-// Stored as YYYY-MM-DD; written as DD/MM/YYYY, which is what a Hebrew sheet expects.
-// The formatting itself lives in `dates.js` — the clash report needs the same conversion,
-// and a second copy of a date format is a second copy that eventually disagrees.
-export const birthDateText = isoToDmy;
+// Written as DD/MM/YYYY, which is what a Hebrew sheet expects.
+//
+// Through `birthDateDmy` and NOT `isoToDmy`, which was the fifth reader of `birthDate` to
+// assume one stored format. It is right today only because `RostersView` is the sole writer
+// of a coach record and writes ISO — a record fixed by hand, or merged from another branch,
+// would have printed "2014/09/23" into a file that leaves the building.
+export const birthDateText = birthDateDmy;
 
 export function coachRows(coaches) {
   return sortByName(coaches || []).map((c) => ({

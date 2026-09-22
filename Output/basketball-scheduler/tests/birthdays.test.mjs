@@ -83,10 +83,34 @@ T("a missing or unreadable birth date is skipped, not guessed", () => {
   const people = [
     { id: "a", name: "יש", birthDate: "1988-10-14" },
     { id: "b", name: "אין", birthDate: "" },
-    { id: "c", name: "זבל", birthDate: "14/10/1988" },
+    { id: "c", name: "זבל", birthDate: "14 באוקטובר" },
     { id: "d", name: "חסר" },
+    { id: "e", name: "לא תאריך", birthDate: "1988" },
   ];
   assert.deepEqual(names(birthdaysInWeek(people, WEEK)), ["יש"]);
+});
+
+// This test used to assert the OPPOSITE — that "14/10/1988" is garbage and skipped. It was
+// written when ISO was the only format anyone believed was stored, and it is exactly the
+// assumption that made the list show no child at all on the day it shipped: sixteen of the
+// club's eighteen players carry "23-09-2014", written by the Excel import. And the club's
+// own template (`players.js`, the example row) demonstrates "12/07/2012" — so a manager
+// filling it in by hand produces the third form.
+T("the two formats a birth date is actually stored in both read", () => {
+  const people = [
+    { id: "a", name: "מהטופס", birthDate: "1988-10-14" },   // <input type="date">
+    { id: "b", name: "מהאקסל", birthDate: "14-10-1988" },   // formatDateFromExcel
+    { id: "c", name: "מהתבנית", birthDate: "14/10/1988" },  // typed into the template
+  ];
+  const out = birthdaysInWeek(people, WEEK);
+  assert.equal(out.length, 3);
+  assert.deepEqual([...new Set(out.map((e) => e.dateLabel))], ["14/10"]);
+});
+
+T("a four-digit year is either first or last, so the two forms cannot be confused", () => {
+  // 01-02-1988 is the 1st of February, not the 2nd of January — the year says which end.
+  const [entry] = birthdaysInWeek([{ id: "a", name: "א", birthDate: "01-02-1988" }], "2026-02-01");
+  assert.equal(entry.dateLabel, "01/02");
 });
 
 T("a person with no name is skipped — a blank line on a notice helps nobody", () => {

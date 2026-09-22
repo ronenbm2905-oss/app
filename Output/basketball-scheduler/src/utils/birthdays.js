@@ -2,6 +2,7 @@
 // and that single missing ".js" is the reason this module had no tests for two months while
 // every module beside it did. Same fix as utils/conflicts.js on 20.9.
 import { DAYS } from "../constants.js";
+import { parseBirthDate } from "./dates.js";
 
 // Birthdays, matched to the week being viewed rather than to a rolling window from today.
 //
@@ -59,7 +60,10 @@ export function birthdaysInWeek(people, weekStartIso) {
   for (const person of people || []) {
     const name = String(person?.name || "").trim();
     if (!name) continue;
-    const born = parseIsoDate(person?.birthDate);
+    // `parseBirthDate`, not `parseIsoDate`: a player imported from Excel carries
+    // "23-09-2014", and reading only ISO is why this list showed no child at all on the
+    // day it shipped. The week key above stays strict — the app writes that one itself.
+    const born = parseBirthDate(person?.birthDate);
     if (!born) continue;
     for (let offset = 0; offset < 7; offset++) {
       const day = new Date(start.date.getTime() + offset * MS_PER_DAY);
