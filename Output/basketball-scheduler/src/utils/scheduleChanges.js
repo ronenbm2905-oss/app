@@ -16,6 +16,7 @@
 // rather than a history.
 
 import { DAYS } from "../constants.js";
+import { getWeekDates } from "./dates.js";
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => String(v ?? "").trim();
@@ -80,6 +81,48 @@ export function diffSessions(before, after, now) {
   return out;
 }
 
+// ---------- a training that has already happened cannot be "changed" ----------
+//
+// THE BUG THIS EXISTS TO STOP. Archiving July on 22.9.2026 removed that month's sessions
+// from the club document, the diff below saw eleven deletions, and six coaches were told —
+// on their phones — that a training had been cancelled. A training in July. Archiving is a
+// storage move, not a schedule change, and nobody can act on a Sunday two months gone.
+//
+// Filtered here rather than inside `diffSessions`, which is deliberately a raw diff that
+// knows nothing about who is looking. And filtered at the point of RECORDING, not of
+// sending: an entry about the past is not a notification worth holding back, it is not
+// worth keeping — and the log is capped at 150, so writing it evicts something real.
+//
+// The date is the session's own day, not the week. Suppressing the whole of the current
+// week would hide a change to Friday's training made on Wednesday, which is exactly the
+// notice the log exists for.
+function dateOfDay(weekOf, day) {
+  const d = getWeekDates(str(weekOf))[str(day)];
+  return d instanceof Date && !isNaN(d.getTime()) ? d : null;
+}
+
+const startOfDay = (iso) => {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+};
+
+// An entry survives if ANY date it refers to is today or later. A training moved from
+// Monday to Friday is still news on Wednesday — the old date has gone, the new one has not.
+//
+// When the date cannot be worked out at all, the entry is KEPT. The cost of a stale notice
+// is a confused coach; the cost of a swallowed one is a coach who turns up to a training
+// that moved. Same reasoning as the archive refusing to file a session whose month it
+// cannot derive.
+export function stillAhead(entry, now = new Date().toISOString()) {
+  const today = startOfDay(now);
+  if (!today || !entry) return true;
+  const days = [entry.before?.day, entry.after?.day].filter(Boolean);
+  if (days.length === 0) return true;
+  const dates = days.map((day) => dateOfDay(entry.weekOf, day)).filter(Boolean);
+  if (dates.length === 0) return true;
+  return dates.some((d) => d.getTime() >= today.getTime());
+}
+
 // Collapse a coach's flood of additions from one save into a single entry.
 export function collapseBulk(entries, now) {
   const byCoach = new Map();
@@ -128,9 +171,14 @@ export function withScheduleChanges(prev, next, now = new Date().toISOString()) 
   // during the summer break, so nothing would be trimmed until August, while the log still
   // held dated records about people who no longer work here. Costs nothing: `save` writes
   // the whole document either way.
-  const kept = trimChanges(next.changes, now);
-  const found =
-    prev?.sessions === next.sessions ? [] : diffSessions(prev?.sessions, next.sessions, now);
+  // Existing entries are put through the same test, not only new ones. Two reasons: a
+  // notice about Friday is not worth a line on Sunday, and — the immediate one — the eleven
+  // July cancellations already written on 22.9 clear themselves out on the next save
+  // instead of sitting in six coaches' banners until they are evicted by volume.
+  const kept = trimChanges(next.changes, now).filter((e) => stillAhead(e, now));
+  const found = (
+    prev?.sessions === next.sessions ? [] : diffSessions(prev?.sessions, next.sessions, now)
+  ).filter((e) => stillAhead(e, now));
 
   if (found.length === 0) {
     // Still return the object untouched when there was nothing to expire, so a save that

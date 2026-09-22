@@ -108,8 +108,10 @@ t("the very same array reference short-circuits", () => {
   assert.equal(withScheduleChanges({ sessions: shared }, next, NOW), next);
 });
 t("a real move appends to the existing log", () => {
-  const prev = { sessions: [S()], changes: [{ id: "old", at: NOW, coachId: "c1", kind: "added" }] };
-  const next = { sessions: [S({ start: "17:30" })], changes: prev.changes };
+  // Friday, so the training is still ahead of LATER — a move to a day already gone is not
+  // logged at all any more, which is what the next section is about.
+  const prev = { sessions: [S({ day: "שישי" })], changes: [{ id: "old", at: NOW, coachId: "c1", kind: "added" }] };
+  const next = { sessions: [S({ day: "שישי", start: "17:30" })], changes: prev.changes };
   const out = withScheduleChanges(prev, next, LATER);
   assert.equal(out.changes.length, 2);
   assert.equal(out.changes[1].kind, "changed");
@@ -221,3 +223,104 @@ t("changesByCoach drops groups whose lines all came out empty", () =>
   assert.deepEqual(changesByCoach([{ coachId: "c1" }], names), []));
 
 console.log("\n" + pass + " tests passed");
+
+// ── a training that has already happened is not news ─────────────────────────────────
+//
+// On 22.9.2026 Ronen archived July. The diff saw eleven deletions and six coaches were
+// told on their phones that a training had been cancelled — a training in July. Archiving
+// is a storage move; nobody can act on a Sunday two months gone.
+{
+  const a = (await import("node:assert/strict")).default;
+  const { stillAhead } = await import("../src/utils/scheduleChanges.js");
+  const ok = (n, f) => { f(); pass++; console.log("  ok  " + n); };
+
+  // Sunday 20.9.2026 → Saturday 26.9. "Today" is Wednesday the 23rd.
+  const WEEK = "2026-09-20";
+  const TODAY = "2026-09-23T09:00:00.000Z";
+  const E = (kind, day, over = {}) => ({
+    id: "e", at: TODAY, coachId: "c1", teamId: "t1", weekOf: WEEK, kind,
+    ...(kind === "removed" ? { before: { day } } : { after: { day } }),
+    ...over,
+  });
+
+  console.log("- a past training is not news -");
+
+  ok("a cancellation of a day already gone is not logged", () => {
+    a.equal(stillAhead(E("removed", "ראשון"), TODAY), false);   // Sunday, three days ago
+    a.equal(stillAhead(E("removed", "שלישי"), TODAY), false);   // Tuesday, yesterday
+  });
+
+  ok("TODAY still counts as ahead — a training this evening is very much news", () => {
+    a.equal(stillAhead(E("changed", "רביעי"), TODAY), true);
+  });
+
+  ok("and the rest of the week is untouched", () => {
+    // Suppressing the whole current week would hide a change to Friday made on Wednesday,
+    // which is the exact notice the log exists for.
+    a.equal(stillAhead(E("added", "חמישי"), TODAY), true);
+    a.equal(stillAhead(E("added", "שבת"), TODAY), true);
+  });
+
+  ok("a training moved OUT of a past day is still news, because the new day is not", () => {
+    // Monday → Friday, decided on Wednesday. The old date has gone; the new one has not.
+    a.equal(stillAhead({ ...E("changed", "x"), before: { day: "שני" }, after: { day: "שישי" } }, TODAY), true);
+    // ...and the reverse is not: nothing to turn up to.
+    a.equal(stillAhead({ ...E("changed", "x"), before: { day: "שישי" }, after: { day: "שני" } }, TODAY), true);
+  });
+
+  ok("when the date cannot be worked out the entry is KEPT", () => {
+    // A stale notice confuses a coach; a swallowed one sends them to a training that moved.
+    a.equal(stillAhead({ kind: "removed", weekOf: "", before: { day: "שני" } }, TODAY), true);
+    a.equal(stillAhead({ kind: "removed", weekOf: WEEK, before: { day: "יום כזה אין" } }, TODAY), true);
+    a.equal(stillAhead({ kind: "bulk", weekOf: WEEK, count: 12 }, TODAY), true);
+    a.equal(stillAhead(null, TODAY), true);
+    a.equal(stillAhead(E("removed", "ראשון"), "nonsense"), true);
+  });
+
+  console.log("- THE ARCHIVE -");
+
+  ok("ARCHIVING A FINISHED MONTH WRITES NOTHING TO THE LOG", () => {
+    // Exactly the shape of 22.9: a month's sessions leave the club document at once.
+    const july = ["ראשון", "שני", "שלישי", "רביעי"].map((day, i) => ({
+      id: "j" + i, coachId: "c1", teamId: "t1", hallId: "h1",
+      weekOf: "2026-07-26", day, start: "17:00", end: "18:30", type: "אימון",
+    }));
+    const prev = { sessions: [...july, S({ day: "שישי" })] };
+    const next = { sessions: [S({ day: "שישי" })] };
+    const out = withScheduleChanges(prev, next, TODAY);
+    a.deepEqual(out.changes || [], [], "an archive is a storage move, not eleven cancellations");
+  });
+
+  ok("but deleting a training that has NOT happened yet still tells the coach", () => {
+    const prev = { sessions: [S({ day: "שישי", weekOf: WEEK })] };
+    const next = { sessions: [] };
+    const out = withScheduleChanges(prev, next, TODAY);
+    a.equal(out.changes.length, 1);
+    a.equal(out.changes[0].kind, "removed");
+  });
+
+  ok("and the log is not flooded, which is the second half of the damage", () => {
+    // The log is capped at MAX_CHANGES. Ronen's stood at exactly 150/150 when this was
+    // found: every entry an archive writes evicts a real one from the other end.
+    const many = Array.from({ length: 200 }, (_, i) => ({
+      id: "p" + i, coachId: "c1", teamId: "t1", hallId: "h1",
+      weekOf: "2026-07-26", day: "שני", start: "17:00", end: "18:30", type: "אימון",
+    }));
+    const real = { id: "keep", at: TODAY, coachId: "c1", kind: "added", weekOf: WEEK };
+    const out = withScheduleChanges({ sessions: many, changes: [real] }, { sessions: [], changes: [real] }, TODAY);
+    a.deepEqual(out.changes.map((c) => c.id), ["keep"], "the real entry survives the archive");
+  });
+
+  ok("AND THE ELEVEN ALREADY WRITTEN CLEAN THEMSELVES OUT ON THE NEXT SAVE", () => {
+    // The archive of 22.9 is already in the live log. Putting existing entries through the
+    // same test means the next ordinary save removes them, rather than six coaches staring
+    // at a July cancellation until volume evicts it.
+    const july = { id: "j", at: TODAY, coachId: "c1", kind: "removed", weekOf: "2026-07-26", before: { day: "ראשון" } };
+    const real = { id: "keep", at: TODAY, coachId: "c1", kind: "removed", weekOf: WEEK, before: { day: "שישי" } };
+    const shared = [S({ day: "שישי" })];
+    const out = withScheduleChanges({ sessions: shared, changes: [july, real] }, { sessions: shared, changes: [july, real] }, TODAY);
+    a.deepEqual(out.changes.map((c) => c.id), ["keep"]);
+  });
+}
+
+console.log(`\n${pass} tests passed`);
