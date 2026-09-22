@@ -10,6 +10,7 @@ import { Select } from "./ui/Select";
 import { teamsWithCoach } from "../utils/teams";
 import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames, sortGames, GAME_SORTS, MY_TEAMS } from "../utils/gameFilters";
 import { TeamGamesSheet } from "./TeamGamesSheet";
+import { CoachGamesCalendar } from "./CoachGamesCalendar";
 import { HallClashesCard } from "./HallClashesCard";
 import { GameNote } from "./GameNote";
 import { noteFor, scoreFor } from "../utils/gameNotes";
@@ -546,6 +547,14 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
               screen cannot disagree. `MY_TEAMS` is not a squad, so it is not accepted. */}
           <div className="mb-3">
             <TeamGamesSheet data={data} teamId={filterTeam === MY_TEAMS ? "" : filterTeam} />
+          </div>
+
+          {/* Sits beside the parents' sheet because the two answer the same question for two
+              different audiences: what is this squad's season, for the families — and when
+              am I where, for the person driving there. A coach opening this screen gets the
+              button for themselves without a picker; the manager gets the picker. */}
+          <div className="mb-3">
+            <CoachGamesCalendar data={data} canEdit={canEdit} myCoachId={myCoachId} />
           </div>
 
           {/* Managers only, and NOT filtered by the team picker above: a hall is shared, so

@@ -42,6 +42,9 @@ const FILES = [
   // birthdays.js ran on the notice board from August with no tests — it imported
   // "../constants" with no ".js" and could not be loaded under Node at all.
   "./birthdays.test.mjs",
+  // calendar.js shipped in August with no tests of its own — the trainings file was
+  // verified by opening it. The fixtures builder arrives with the helpers covered too.
+  "./calendar.test.mjs",
 ];
 
 for (const f of FILES) {
