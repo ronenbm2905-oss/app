@@ -185,3 +185,72 @@ console.log(`\n${count} hall-clash tests passed`);
 
   console.log("\n3 label tests passed");
 }
+
+// ---------- who the other club is ----------
+//
+// The finding is "two things want one gym"; the ACTION is a phone call. A manager cannot
+// make it knowing only which of his own squads is involved — moving a fixture means talking
+// to the club that is playing it.
+{
+  const a = assert;
+  let n = 0;
+  const ok = (name, fn) => { fn(); console.log("  ok  " + name); n++; };
+
+  const withGames = {
+    ...data,
+    sessions: [
+      { id: "g1", teamId: "t2", hallId: "h1", day: "חמישי", start: "16:30", end: "18:30", weekOf: W,
+        fromGame: true, type: "משחק בית", federationCode: "800509" },
+      { id: "g2", teamId: "t1", hallId: "h1", day: "חמישי", start: "17:30", end: "19:30", weekOf: W,
+        fromGame: true, type: "משחק בית", federationCode: "800510" },
+      // A training, in the same gym, overlapping the first — no opponent and no number.
+      { id: "tr", teamId: "t3", hallId: "h2", day: "שני", start: "17:00", end: "18:30", weekOf: W, type: "אימון" },
+      { id: "tr2", teamId: "t1", hallId: "h2", day: "שני", start: "18:00", end: "19:00", weekOf: W, type: "אימון" },
+      // Typed straight onto the board: no federation code, carries its own opponent.
+      { id: "m1", teamId: "t1", hallId: "h1", day: "שלישי", start: "17:00", end: "18:30", weekOf: W,
+        type: "משחק בית", opponent: "הפועל חולון" },
+      { id: "m2", teamId: "t2", hallId: "h1", day: "שלישי", start: "18:00", end: "19:30", weekOf: W, type: "אימון" },
+    ],
+    games: [
+      { federationCode: "800509", teamId: "t2", opponent: "מכבי רעננה", date: "15-10-2026", isHome: true },
+      { federationCode: "800510", teamId: "t1", opponent: "אליצור גבעת שמואל", date: "15-10-2026", isHome: true },
+    ],
+  };
+
+  const out = seasonHallClashes(withGames, { from: BEFORE });
+  const on = (iso) => out.find((c) => c.date === iso);
+
+  ok("a fixture names the club to phone, resolved through the federation code", () => {
+    const c = on("2026-10-15");
+    a.deepEqual(c.rows.map((r) => r.opponent), ["מכבי רעננה", "אליצור גבעת שמואל"]);
+  });
+
+  ok("and carries the number the league identifies it by", () => {
+    a.deepEqual(on("2026-10-15").rows.map((r) => r.code), ["800509", "800510"]);
+  });
+
+  ok("a training has neither — empty, never invented", () => {
+    const c = on("2026-10-12"); // Monday
+    a.deepEqual(c.rows.map((r) => r.opponent), ["", ""]);
+    a.deepEqual(c.rows.map((r) => r.code), ["", ""]);
+  });
+
+  ok("a fixture typed onto the board carries its own opponent, with no code", () => {
+    const c = on("2026-10-13"); // Tuesday
+    const row = c.rows.find((r) => r.opponent);
+    a.equal(row.opponent, "הפועל חולון");
+    a.equal(row.code, "");
+  });
+
+  ok("a code with no matching fixture gives an empty opponent, not a crash", () => {
+    const orphan = {
+      ...withGames,
+      games: [],
+      sessions: withGames.sessions.slice(0, 2),
+    };
+    const c = seasonHallClashes(orphan, { from: BEFORE })[0];
+    a.deepEqual(c.rows.map((r) => r.opponent), ["", ""]);
+  });
+
+  console.log(`\n${n} opponent tests passed`);
+}

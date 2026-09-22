@@ -12,8 +12,10 @@ const clashes = [
   {
     date: "2026-10-15", day: "חמישי", hall: "רימונים", sameTeam: false, duplicate: false,
     rows: [
-      { id: "s1", team: "נערים א · דני כהן", start: "17:00", end: "18:30", kind: "game", label: "משחק בית" },
-      { id: "s2", team: "ילדים ב · רון לוי", start: "18:00", end: "19:30", kind: "training", label: "אימון" },
+      { id: "s1", team: "נערים א · דני כהן", start: "17:00", end: "18:30", kind: "game", label: "משחק בית",
+        opponent: "מכבי רעננה", code: "800509" },
+      { id: "s2", team: "ילדים ב · רון לוי", start: "18:00", end: "19:30", kind: "training", label: "אימון",
+        opponent: "", code: "" },
     ],
   },
   {
@@ -34,11 +36,25 @@ T("two rows per finding — one per side", () => {
 T("every row stands on its own — nothing is left blank for the row above", () => {
   // This is the whole difference from the PDF. A blank cell belongs to whatever lands
   // above it once the sheet is sorted, and a filter on one hall drops half of every pair.
+  // `opponent` and `code` are deliberately NOT in this list: a training has neither, and
+  // blank there is the true answer rather than a repeat of the row above.
   for (const r of rows) {
     for (const field of ["date", "day", "hall", "finding", "start", "end", "team", "label"]) {
       assert.notEqual(r[field], "", `"${field}" was left blank`);
     }
   }
+});
+
+T("the opposing club and the fixture number travel with the row", () => {
+  // The report exists to be acted on, and the action is a phone call to the other club.
+  assert.equal(rows[0].opponent, "מכבי רעננה");
+  assert.equal(rows[0].code, "800509");
+});
+
+T("a training has no opponent and no fixture number — blank, not a dash", () => {
+  // Blank so that filtering the column separates fixtures from trainings in one click.
+  assert.equal(rows[1].opponent, "");
+  assert.equal(rows[1].code, "");
 });
 
 T("the finding number is what keeps a pair together after a sort", () => {
@@ -78,7 +94,7 @@ T("a cell row matches the header, column for column", () => {
   const cells = clashRowToCells(rows[0]);
   assert.equal(cells.length, CLASH_HEADERS.length);
   assert.deepEqual(cells, [1, "15/10/2026", "חמישי", "רימונים", "שתי קבוצות באותו אולם",
-    "17:00", "18:30", "נערים א · דני כהן", "משחק בית"]);
+    "17:00", "18:30", "נערים א · דני כהן", "משחק בית", "מכבי רעננה", "800509"]);
 });
 
 T("the sheet says what it is, how to read it, and what it cannot do", () => {
@@ -86,8 +102,9 @@ T("the sheet says what it is, how to read it, and what it cannot do", () => {
   assert.match(aoa[0][0], /התנגשויות אולם/);
   assert.match(aoa[1][0], /אותו מספר/);           // how a pair is recognised
   assert.match(aoa[2][0], /הקובץ מאתר, ואינו משנה דבר/); // the same sentence the screen carries
-  assert.deepEqual(aoa[4], CLASH_HEADERS);
-  assert.equal(aoa.length, 5 + rows.length + 2);
+  assert.match(aoa[3][0], /להזזת משחק/);          // which columns to use, and that a training has neither
+  assert.deepEqual(aoa[5], CLASH_HEADERS);
+  assert.equal(aoa.length, 6 + rows.length + 2);
   assert.match(aoa[aoa.length - 1][0], /2 ממצאים ב-2 ימים/);
 });
 

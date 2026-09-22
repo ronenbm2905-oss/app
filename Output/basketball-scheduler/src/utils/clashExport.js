@@ -24,6 +24,10 @@ import { clashKindLabel } from "./hallClashes.js";
 // It is also the way back: the rows leave here in date order, and sorting by the finding
 // number restores exactly that. Sorting on the date column would not, because the date is
 // written as TEXT for the reason given in `isoToDmy`.
+// "יריבה" and "מס' משחק" are here because the report is read in order to ACT on it, and the
+// action is a phone call to the other club. A row naming only our own squad says what is
+// wrong and nothing about who can put it right. Both are blank on a training, which has no
+// opposing club and no number.
 export const CLASH_HEADERS = [
   "ממצא",
   "תאריך",
@@ -34,6 +38,8 @@ export const CLASH_HEADERS = [
   "עד",
   "קבוצה · מאמן",
   "סוג",
+  "יריבה",
+  "מס' משחק",
 ];
 
 // One row per SIDE of a clash — two rows per finding, each complete in itself.
@@ -55,6 +61,10 @@ export function clashRows(clashes) {
         // rather than as a booking nobody attached a squad to.
         team: r?.team || "(ללא קבוצה)",
         label: r?.label || "",
+        // Blank on a training — and blank rather than a dash, so a filter on the column
+        // separates fixtures from trainings in one click.
+        opponent: r?.opponent || "",
+        code: r?.code || "",
       });
     });
   });
@@ -62,7 +72,7 @@ export function clashRows(clashes) {
 }
 
 export function clashRowToCells(r) {
-  return [r.n, r.date, r.day, r.hall, r.finding, r.start, r.end, r.team, r.label];
+  return [r.n, r.date, r.day, r.hall, r.finding, r.start, r.end, r.team, r.label, r.opponent, r.code];
 }
 
 export function clashSheetAoa(rows, { dateText, findings, days }) {
@@ -70,6 +80,7 @@ export function clashSheetAoa(rows, { dateText, findings, days }) {
     [`התנגשויות אולם — קרית אונו – דור העתיד · ${dateText}`],
     ["כל ממצא הוא שתי שורות עם אותו מספר בעמודה הראשונה. הרשימה ממוינת לפי תאריך — מיון לפי עמודת \"ממצא\" מחזיר אותה לסדר הזה."],
     ["השינוי עצמו נעשה בלוח השבועי או מול האיגוד. הקובץ מאתר, ואינו משנה דבר."],
+    ["להזזת משחק — עמודות \"יריבה\" ו\"מס' משחק\". ריקות בשורה של אימון, שאין לו יריבה."],
     [],
     CLASH_HEADERS,
     ...rows.map(clashRowToCells),
@@ -103,6 +114,8 @@ export function exportClashesXlsx(clashes, days, today = new Date()) {
     { wch: 7 }, // עד
     { wch: 30 }, // קבוצה · מאמן
     { wch: 14 }, // סוג
+    { wch: 26 }, // יריבה
+    { wch: 11 }, // מס' משחק
   ];
   // Excel opens the sheet right-to-left, like every other sheet this app writes.
   const wb = XLSX.utils.book_new();

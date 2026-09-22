@@ -38,6 +38,9 @@ function Row({ clash }) {
           {"  "}
           {r.team || "(ללא קבוצה)"}
           <span className="text-stone-500"> · {r.label}</span>
+          {/* The club to phone. Without it the row says what is wrong and nothing about who
+              can put it right, which for a fixture is the only question being asked. */}
+          {r.opponent && <span className="text-stone-700"> · נגד {r.opponent}</span>}
         </div>
       ))}
     </div>
@@ -273,6 +276,10 @@ export function HallClashesCard({ data, save, canEdit }) {
                 <th className="py-2 px-2 text-right font-medium">שעות</th>
                 <th className="py-2 px-2 text-right font-medium">קבוצה · מאמן</th>
                 <th className="py-2 px-2 text-right font-medium">סוג</th>
+                {/* The two columns a manager needs in order to ACT: who the other club is,
+                    and the number the league identifies the fixture by. */}
+                <th className="py-2 px-2 text-right font-medium">יריבה</th>
+                <th className="py-2 px-2 text-right font-medium">מס' משחק</th>
                 <th className="py-2 px-2 text-right font-medium">הממצא</th>
               </tr>
             </thead>
@@ -294,6 +301,8 @@ export function HallClashesCard({ data, save, canEdit }) {
                     <td className="py-1.5 px-2 whitespace-nowrap font-semibold">{r.start}–{r.end}</td>
                     <td className="py-1.5 px-2">{r.team || "(ללא קבוצה)"}</td>
                     <td className="py-1.5 px-2 text-stone-600 whitespace-nowrap">{r.label}</td>
+                    <td className="py-1.5 px-2">{r.opponent || ""}</td>
+                    <td className="py-1.5 px-2 text-stone-600 tabular-nums whitespace-nowrap">{r.code || ""}</td>
                     <td className="py-1.5 px-2 text-stone-600">{j === 0 ? clashKindLabel(c) : ""}</td>
                   </tr>
                 ))

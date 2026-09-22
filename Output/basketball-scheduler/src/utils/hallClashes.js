@@ -50,6 +50,21 @@ export function seasonHallClashes(data, { from = new Date() } = {}) {
 
   const today = toISODate(new Date(from.getFullYear(), from.getMonth(), from.getDate()));
 
+  // WHO THE OTHER CLUB IS, and it is the reason this report exists rather than a detail on
+  // it. The finding is "two things want one gym"; the ACTION is a phone call, and a manager
+  // cannot make it knowing only which of his own squads is involved. Moving a fixture means
+  // talking to the club that is playing it, and for that the opposing team has to be named.
+  //
+  // A clash is built from SESSIONS, and a session carries no opponent — the fixture does.
+  // `federationCode` is the link, the same one `teamBoard.js` follows, and it survives a
+  // re-import. A fixture typed straight onto the board has no code and carries its own
+  // `opponent` field instead; ten of those existed on 17.9.2026.
+  const games = arr(data?.games);
+  const gameOf = (s) =>
+    s?.federationCode
+      ? games.find((g) => g && String(g.federationCode) === String(s.federationCode)) || null
+      : null;
+
   const kindOf = (s) => (s.fromGame || /^משחק/.test(s.type || "") ? "game" : "training");
   const labelOf = (s) => {
     if (kindOf(s) === "game") return s.type && /^משחק/.test(s.type) ? s.type : "משחק";
@@ -77,14 +92,24 @@ export function seasonHallClashes(data, { from = new Date() } = {}) {
         sameTeam: Boolean(a.teamId) && a.teamId === b.teamId,
         duplicate:
           Boolean(a.teamId) && a.teamId === b.teamId && a.start === b.start && a.end === b.end,
-        rows: [first, second].map((s) => ({
-          id: s.id,
-          team: teamName(s.teamId),
-          start: s.start,
-          end: s.end,
-          kind: kindOf(s),
-          label: labelOf(s),
-        })),
+        rows: [first, second].map((s) => {
+          const game = gameOf(s);
+          return {
+            id: s.id,
+            team: teamName(s.teamId),
+            start: s.start,
+            end: s.end,
+            kind: kindOf(s),
+            label: labelOf(s),
+            // "" for a training, and for a fixture whose record has gone. An empty string
+            // renders as nothing; an invented opponent would send somebody to the wrong club.
+            opponent: String(game?.opponent || s.opponent || "").trim(),
+            // What the league calls this fixture. It is the number a manager quotes on the
+            // phone to have it moved, and it is the one field here that cannot be guessed
+            // from the row — so it travels with the report rather than being looked up again.
+            code: String(game?.federationCode || s.federationCode || "").trim(),
+          };
+        }),
       };
     })
     // Past weeks are history; a manager can only move what has not happened yet.
