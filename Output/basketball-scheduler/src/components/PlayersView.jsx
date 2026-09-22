@@ -29,10 +29,18 @@ const fromInputDate = (iso) => (iso ? iso.split("-").reverse().join("-") : "");
 
 const EMPTY_PLAYER = {
   name: "", phone: "", birthDate: "", shirtSize: "", pantsSize: "", sweaterSize: "", jerseyNumber: "",
+  // A parent asked that their child not be named on the internal birthday list. The default
+  // is the permissive one — absent means listed — which is exactly why the privacy policy
+  // has to say the list exists and how to step out of it.
+  noBirthday: false,
 };
 
 function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
-  const [p, setP] = useState(initial || EMPTY_PLAYER);
+  // Merged over the empty shape rather than used as-is. A record saved before a field
+  // existed does not carry it, and `onSave` calls `.trim()` on four of them — so editing
+  // such a player threw inside the click handler and the save button did nothing at all,
+  // silently, with no message. Found on 22.9.2026 while adding the birthday opt-out.
+  const [p, setP] = useState({ ...EMPTY_PLAYER, ...(initial || {}) });
   const set = (k) => (e) => setP({ ...p, [k]: e.target.value });
 
   const name = p.name.trim();
@@ -69,6 +77,21 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
         {field("מידת פוטר", "sweaterSize", "text", { placeholder: "10 / M" })}
         {field("מספר גופייה", "jerseyNumber", "text", { inputMode: "numeric", placeholder: "7" })}
       </div>
+      <label className="flex items-start gap-2 text-sm text-stone-700 pt-1">
+        <input
+          type="checkbox"
+          checked={Boolean(p.noBirthday)}
+          onChange={(e) => setP({ ...p, noBirthday: e.target.checked })}
+          className="rounded mt-0.5"
+        />
+        <span>
+          לא לכלול ברשימת ימי ההולדת
+          <span className="block text-xs text-stone-600">
+            לסימון לפי בקשת הורה. <span className="font-medium">תאריך הלידה נשאר</span> — הוא נדרש
+            לקטגוריית הגיל ולרישום לאיגוד; יורד רק השם מהרשימה הפנימית.
+          </span>
+        </span>
+      </label>
       {dup && (
         <p className="text-xs text-red-600 flex items-center gap-1">
           <IconAlert size={13} /> מספר גופייה {jersey} כבר תפוס בקבוצה הזו.
@@ -90,6 +113,7 @@ function PlayerForm({ initial, jerseyTaken, onSave, onCancel }) {
               pantsSize: p.pantsSize.trim(),
               sweaterSize: p.sweaterSize.trim(),
               jerseyNumber: jersey,
+              noBirthday: Boolean(p.noBirthday),
             })
           }
           className="px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 flex items-center gap-1.5"

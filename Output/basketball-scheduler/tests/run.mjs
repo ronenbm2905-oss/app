@@ -39,6 +39,9 @@ const FILES = [
   "./hallclashes.test.mjs",
   "./duplicatesessions.test.mjs",
   "./sheetgrid.test.mjs",
+  // birthdays.js ran on the notice board from August with no tests — it imported
+  // "../constants" with no ".js" and could not be loaded under Node at all.
+  "./birthdays.test.mjs",
 ];
 
 for (const f of FILES) {

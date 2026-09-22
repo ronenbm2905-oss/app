@@ -11,6 +11,7 @@ import { usePlayerProgress } from "./hooks/usePlayerProgress";
 import { useSheets } from "./hooks/useSheets";
 import { todayWeekStart } from "./utils/dates";
 import { coachForUser } from "./utils/coachIdentity";
+import { teamsOfCoach } from "./utils/teams";
 import { visibleTabsFor, resolveActiveTab } from "./utils/tabs";
 import { LoginPage } from "./components/LoginPage";
 import { RostersView } from "./components/RostersView";
@@ -150,6 +151,17 @@ function ClubApp() {
   // never theirs to read, and guessing that an unplaceable viewer is "everyone" is exactly
   // how a non-coach ended up looking at five other people's trainings.
   const showSessions = canEdit || Boolean(myCoachId);
+
+  // Whose children's birthdays this person may see. `null` is "the club" and is given to a
+  // manager only; everyone else gets an explicit list of their own squads, which for a
+  // viewer the club cannot place as a coach is an empty list — and an empty list means
+  // NOTHING here, never everything. That distinction is the whole safety of the feature and
+  // it has its own test.
+  //
+  // `teamsOfCoach` rather than the narrower `teamIdsForCoach` used by the games screen: a
+  // stand-in who runs a squad's trainings all season is never written into `team.coachId`,
+  // and they are the person standing in front of the child on the day.
+  const birthdayTeamIds = canEdit ? null : teamsOfCoach(data, myCoachId).map((t) => t.id);
 
   const visibleTabs = visibleTabsFor(TABS, ADMIN_ONLY_TABS, canEdit).map((t) =>
     !canEdit && COACH_TAB_LABELS[t.id] ? { ...t, label: COACH_TAB_LABELS[t.id] } : t
@@ -291,7 +303,7 @@ function ClubApp() {
             line that had just said it. */}
         {activeTab !== "announcements" && (
           <div className="mb-4 empty:hidden">
-            <BirthdayReminder coaches={data.coaches} weekStart={weekStart} compact />
+            <BirthdayReminder data={data} myTeamIds={birthdayTeamIds} weekStart={weekStart} compact />
           </div>
         )}
 
@@ -313,7 +325,7 @@ function ClubApp() {
             onOpen={setTab}
           />
         ) : activeTab === "announcements" ? (
-          <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} />
+          <AnnouncementsView data={data} save={save} canEdit={canEdit} weekStart={weekStart} myTeamIds={birthdayTeamIds} />
         ) : activeTab === "rosters" ? (
           <RostersView data={data} save={save} canEdit={canEdit} currentEmail={user?.email || ""} />
         ) : activeTab === "manager" ? (

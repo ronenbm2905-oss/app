@@ -11,7 +11,7 @@ function formatUpdated(iso) {
   });
 }
 
-export function AnnouncementsView({ data, save, canEdit, weekStart }) {
+export function AnnouncementsView({ data, save, canEdit, weekStart, myTeamIds = [] }) {
   const current = data.announcement?.text || "";
   const updatedAt = data.announcement?.updatedAt || null;
   const [text, setText] = useState(current);
@@ -29,7 +29,7 @@ export function AnnouncementsView({ data, save, canEdit, weekStart }) {
   if (!canEdit) {
     return (
       <div className="space-y-3" dir="rtl">
-        <BirthdayReminder coaches={data.coaches} weekStart={weekStart} />
+        <BirthdayReminder data={data} myTeamIds={myTeamIds} weekStart={weekStart} />
         <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-stone-200 bg-stone-50 flex items-center gap-2">
             <span aria-hidden="true">📢</span>
@@ -52,7 +52,7 @@ export function AnnouncementsView({ data, save, canEdit, weekStart }) {
 
   return (
     <div className="space-y-3" dir="rtl">
-      <BirthdayReminder coaches={data.coaches} weekStart={weekStart} />
+      <BirthdayReminder data={data} myTeamIds={myTeamIds} weekStart={weekStart} />
       <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-stone-200 bg-stone-50 flex items-center gap-2 flex-wrap">
           <span aria-hidden="true">📢</span>
