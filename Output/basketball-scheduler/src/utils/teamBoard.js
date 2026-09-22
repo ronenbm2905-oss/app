@@ -1,7 +1,7 @@
 import { DAYS } from "../constants.js";
 import { shiftWeek, weekStartOf, timeToMinutes } from "./dates.js";
 import { assemblyTime, departBeforeOf } from "./transport.js";
-import { escapeText, foldLine, icsDateTime } from "./calendar.js";
+import { escapeText, foldLine, icsDateTime, icsSequence } from "./calendar.js";
 import { payFor } from "./payLink.js";
 
 // The board one team's parents see — and the ONLY document they are allowed to read.
@@ -202,14 +202,14 @@ export function withoutBoardToken(data, teamId) {
 // evening, the old one still wrong and still there. So it is built from `ref`, the session's
 // own id, which survives the move.
 
-// A number that only goes up, so a calendar accepts the newer copy as the newer copy.
-// Minutes since 2020 — small enough to stay a plain integer for the next few centuries, and
-// derived from the board itself rather than from the download, so two parents downloading
-// the same board at different moments do not disagree about which version is later.
-function icsSequence(board, now) {
-  const t = Date.parse(board?.updatedAt || "") || now.getTime();
-  return Math.max(0, Math.floor((t - Date.UTC(2020, 0, 1)) / 60000));
-}
+// A number that only goes up, so a calendar accepts the newer copy as the newer copy —
+// `icsSequence`, shared with the trainings and fixtures files. What is board-specific is the
+// INSTANT it counts from: the board's own `updatedAt` rather than the moment of download, so
+// two parents downloading the same board at different moments do not disagree about which
+// version is later. A file a single person exports has no such shared identity, and there
+// the download time is the only honest answer.
+const boardSequence = (board, now) =>
+  icsSequence(new Date(Date.parse(board?.updatedAt || "") || now.getTime()));
 
 export function buildBoardIcs(board, { now = new Date() } = {}) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -218,7 +218,7 @@ export function buildBoardIcs(board, { now = new Date() } = {}) {
     `T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
 
   const team = String(board?.teamName || "").trim();
-  const seq = icsSequence(board, now);
+  const seq = boardSequence(board, now);
   const events = [];
 
   Object.entries(board?.weeks || {}).forEach(([week, rows]) => {
