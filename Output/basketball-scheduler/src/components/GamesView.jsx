@@ -724,14 +724,53 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                           </div>
                         )}
                         {canEdit && !g.manual && (
-                          <button
-                            onClick={() => setEditingCode(g.federationCode)}
-                            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0"
-                            aria-label={g.isHome ? "ערוך אולם" : "ערוך כתובת"}
-                            title={g.isHome ? "ערוך אולם" : "ערוך כתובת ונהג (להסעות)"}
-                          >
-                            <IconPencil size={14} />
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => setEditingCode(g.federationCode)}
+                              className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500"
+                              aria-label={g.isHome ? "ערוך אולם" : "ערוך כתובת"}
+                              title={g.isHome ? "ערוך אולם" : "ערוך כתובת ונהג (להסעות)"}
+                            >
+                              <IconPencil size={14} />
+                            </button>
+                            {/* ONLY ON A CANCELLED FIXTURE, and that is not caution — it is the
+                                only case where deleting does anything.
+                                `importGamesFile` adds back every code the federation's file
+                                still lists, so deleting a LIVE fixture lasts until 03:00 and
+                                then undoes itself, in the night, with no message. A fixture the
+                                federation dropped is gone from the file, so deleting it is the
+                                one deletion that holds. */}
+                            {g.cancelled && (
+                              <button
+                                onClick={() => {
+                                  const what = `${teamName(g.teamId)} · ${formatDateHe(g.date)}${g.opponent ? ` · נגד ${g.opponent}` : ""}`;
+                                  // Named, and the two consequences said out loud. "האם אתה
+                                  // בטוח" is a question nobody reads.
+                                  if (
+                                    !window.confirm(
+                                      `למחוק מהלוח את המשחק המבוטל?\n\n${what}\n\n` +
+                                        "הוא ייעלם מלוח המשחקים ומהלוח השבועי. הוא יחזור רק אם האיגוד יפרסם אותו מחדש.\n\n" +
+                                        "שים לב: מאמן שכבר הכניס אותו ליומן הטלפון — המשחק יישאר אצלו ביומן, " +
+                                        "כי אחרי המחיקה אין יותר מה לשלוח לו כביטול. אם עוד לא שלחת לו קובץ יומן מעודכן, עשה זאת קודם."
+                                    )
+                                  )
+                                    return;
+                                  // By code, not by object identity: the row came through a
+                                  // filter and a sort, and identity holding through those is
+                                  // true today and not a thing to rely on.
+                                  const nextGames = games.filter(
+                                    (x) => String(x.federationCode) !== String(g.federationCode)
+                                  );
+                                  save({ ...data, games: nextGames, sessions: syncGamesToSessions(nextGames, data) });
+                                }}
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-stone-500 hover:text-red-600"
+                                aria-label="מחק משחק מבוטל"
+                                title="מחק מהלוח — משחק מבוטל בלבד"
+                              >
+                                <IconTrash size={14} />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                       {/* Written by the coach after the game, read by the professional manager.
