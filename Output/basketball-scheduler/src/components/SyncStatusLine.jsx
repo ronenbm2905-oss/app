@@ -18,12 +18,15 @@ const TONE = {
   unknown: "text-stone-500",
 };
 
-export function SyncStatusLine({ health }) {
+// `pending` is the proposal still awaiting a decision, and it is passed in so the two halves
+// cannot contradict each other. The line used to report what the last RUN found, which on a
+// morning after an approved proposal read as "updates found" with nothing anywhere to see.
+export function SyncStatusLine({ health, pending = null }) {
   // Not rendered at all when the read failed or the listener never started. A line that
   // cannot say anything true should say nothing.
   if (health === null || health === undefined) return null;
 
-  const state = syncState(health.missing ? null : health);
+  const state = syncState(health.missing ? null : health, new Date(), { pending: Boolean(pending) });
   const loud = state.level === "bad" || state.level === "warn";
 
   return (

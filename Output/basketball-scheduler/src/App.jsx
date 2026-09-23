@@ -283,7 +283,7 @@ function ClubApp() {
             quiet week. Now the quiet weeks say they are quiet. */}
         {isAdmin && (
           <div className="mb-4 empty:hidden">
-            <SyncStatusLine health={syncHealth} />
+            <SyncStatusLine health={syncHealth} pending={pending} />
           </div>
         )}
 

@@ -56,3 +56,7 @@ maya/Outputs/gmail-filters-*
 # .saas-review הוא clone מלא עם .git משלו (~693MB). ריפו בתוך ריפו = צרות.
 .saas-review/
 Output/project-budget/
+
+# Task Scheduler exports carry the machine name and the local account SID.
+# This repo is public; a backup of a task definition has no business in it.
+Output/basketball-scheduler/scripts/*-before-fix.xml
