@@ -103,7 +103,7 @@
     font-size:clamp(19px,4.8vw,22px);
     margin:0 0 6px;
   }
-  /* ===== באנר ההטבה — בולט, פועם, עם מתנה מקפצת ===== */
+  /* ===== שורת המחיר הבולטת — באנר כתום פועם ===== */
   .promo{
     background:linear-gradient(135deg,#FFF3E2 0%,#FFE4C6 100%);
     border:2px dashed var(--orange-deep);
@@ -112,29 +112,15 @@
     margin:14px 0 20px;
     animation:promoPulse 2.4s ease-in-out infinite;
   }
-  .promo p{margin:0;font-family:var(--font-head);color:var(--navy);line-height:1.4}
-  .promo-top{
-    font-size:clamp(18px,4.7vw,21px);
-    letter-spacing:.02em;
-  }
-  .promo-deadline{
-    font-size:clamp(23px,6.2vw,28px);
+  .promo p{margin:0;font-family:var(--font-head);color:var(--navy);line-height:1.3}
+  .promo-headline{
+    font-size:clamp(24px,6.6vw,32px);
     color:var(--orange-deep);
-    margin-top:4px !important;
+    letter-spacing:.01em;
   }
-  .promo-body{
-    font-size:clamp(15px,3.9vw,17px);
-    margin-top:8px !important;
-    line-height:1.5;
-  }
-  .promo .gift{display:inline-block;animation:giftBounce 1.3s ease-in-out infinite}
   @keyframes promoPulse{
     0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(242,140,56,0)}
     50%    {transform:scale(1.025);box-shadow:0 8px 22px rgba(242,140,56,.38)}
-  }
-  @keyframes giftBounce{
-    0%,100%{transform:translateY(0) rotate(0)}
-    50%    {transform:translateY(-6px) rotate(-8deg)}
   }
 
   /* ===== כפתור רכישה כתום ===== */
@@ -404,7 +390,7 @@
     .cta{transition:none}
     .cta:active{transform:none}
     .carousel-track{scroll-behavior:auto}
-    .promo,.promo .gift{animation:none}
+    .promo{animation:none}
     .promo{box-shadow:0 4px 14px rgba(242,140,56,.25)}
     .shine{animation:none;background:none;color:var(--navy);-webkit-text-fill-color:var(--navy)}
   }
@@ -432,17 +418,15 @@
 
     <figure class="bundle-figure">
       <!-- התמונה הסופית של השילוב המנצח — מוצגת במלואה, בלי חיתוך ובלי שינוי יחס -->
-      <img src="assets/bundle-final.jpg" width="959" height="1600"
-           alt="השילוב המנצח לחג — ערכת הקלפים ״הדרך למילים״ יחד עם מארז 54 המדבקות המחזקות, שני מוצרים ב-179 ₪ בלבד">
+      <img src="assets/bundle-final.jpg" width="1122" height="1402"
+           alt="השילוב המנצח — ערכת הקלפים ״הדרך למילים״ יחד עם מארז 54 המדבקות המחזקות: שני מוצרים במחיר של מוצר אחד">
     </figure>
 
     <div class="offer">
-      <p class="kicker">ערכת הדרך למילים ומארז 54 מדבקות מחזקות — מתנה <span aria-hidden="true">🎁</span></p>
+      <p class="kicker">ערכת הדרך למילים ומארז 54 מדבקות מחזקות</p>
 
       <div class="promo">
-        <p class="promo-top">ימים אחרונים בהחלט</p>
-        <p class="promo-deadline">רק עד 25.9! <span class="gift" aria-hidden="true">🎁</span></p>
-        <p class="promo-body">מארז המדבקות שלנו מתנה בכל רכישה – זה הזמן ליהנות מההטבה.</p>
+        <p class="promo-headline">רק 179 ₪ לשני מוצרים!</p>
       </div>
       <a class="cta js-checkout" data-cta="top"
          href="https://pay.tranzila.com/doritplus/MmJvVUdzUXFrMXB2N1dhYm4yM0VDUT09">
@@ -595,13 +579,12 @@
 <!-- ============ 6. אזור ההזמנה התחתון ============ -->
 <section class="final band-cream">
   <div class="wrap">
-    <h2 class="shine">השילוב המנצח לחג <span class="star" aria-hidden="true">✨</span></h2>
+    <h2 class="shine">השילוב המנצח <span class="star" aria-hidden="true">✨</span></h2>
     <div class="offer">
       <p class="kicker">שני מוצרים במחיר אחד</p>
 
       <div class="promo">
-        <p class="promo-top">ימים אחרונים בהחלט</p>
-        <p class="promo-body">מארז המדבקות שלנו מתנה בכל רכישה – זה הזמן ליהנות מההטבה.</p>
+        <p class="promo-headline">רק 179 ₪ לשני המוצרים לזמן מוגבל!</p>
       </div>
       <a class="cta js-checkout" data-cta="bottom"
          href="https://pay.tranzila.com/doritplus/MmJvVUdzUXFrMXB2N1dhYm4yM0VDUT09">
