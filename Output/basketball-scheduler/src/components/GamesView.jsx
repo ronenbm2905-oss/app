@@ -37,7 +37,7 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
   // which equals no hall name we hold, so an exact comparison silently offered no hall and
   // the game stayed homeless on the board.
   const [hallId, setHallId] = useState(
-    initial && initial.isHome ? matchHall(initial.venue, data.halls) : ""
+    initial && initial.isHome ? initial.hallId || matchHall(initial.venue, data.halls) : ""
   );
   const [address, setAddress] = useState(
     initial && !initial.isHome ? initial.venue || "" : ""
@@ -177,6 +177,12 @@ function ManualGameForm({ data, initial, onSave, onCancel }) {
                   ? data.halls.find((h) => h.id === hallId)?.name || ""
                   : ""
                 : address.trim(),
+              // The id as well as the name. `syncGamesToSessions` already prefers `g.hallId`
+              // over resolving the text, so this ends the round-trip that caused the bug
+              // above: the form KNEW which hall was picked and threw it away, leaving a
+              // name to be matched back by string. Belt and braces — `matchHall` is fixed
+              // too, and it has to be, because a fixture from the federation has no id.
+              ...(isHome && hallId ? { hallId } : {}),
               league: league.trim(),
               round: initial?.round || "",
               weekDay: "",

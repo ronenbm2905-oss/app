@@ -96,3 +96,59 @@ console.log("\n" + n + " tests passed");
 
   console.log("\n3 board-row tests passed");
 }
+
+// ---------- the families of halls, and the bug they caused ----------
+//
+// This club names its halls in families: ברק · ברק מקורה 1 · ברק מקורה 2 · ברק חד"כ, and
+// רימונים · רימונים מקורה. Before 23.9.2026 `matchHall` sorted by name LENGTH and accepted
+// a match in either direction, so the venue "ברק" found the longest hall whose name
+// contains it — "ברק מקורה 1" — and the hall actually called ברק never won.
+//
+// It surfaced one screen away from its cause: a manual fixture stores its hall as TEXT, and
+// the board resolves that text back to an id. Pick ברק, save, look at the board: ברק מקורה 1.
+{
+  const a = assert;
+  let n = 0;
+  const ok = (name, fn) => { fn(); console.log("  ok  " + name); n++; };
+
+  const halls = [
+    { id: "h-barak", name: "ברק" },
+    { id: "h-barak-1", name: "ברק מקורה 1" },
+    { id: "h-barak-2", name: "ברק מקורה 2" },
+    { id: "h-barak-hd", name: 'ברק חד"כ' },
+    { id: "h-rimonim", name: "רימונים" },
+    { id: "h-rimonim-m", name: "רימונים מקורה" },
+  ];
+
+  ok("the exact name wins over a longer hall that contains it", () => {
+    a.equal(matchHall("ברק", halls), "h-barak");
+    a.equal(matchHall("רימונים", halls), "h-rimonim");
+  });
+
+  ok("and the specific courts still resolve to themselves", () => {
+    a.equal(matchHall("ברק מקורה 1", halls), "h-barak-1");
+    a.equal(matchHall("ברק מקורה 2", halls), "h-barak-2");
+    a.equal(matchHall('ברק חד"כ', halls), "h-barak-hd");
+    a.equal(matchHall("רימונים מקורה", halls), "h-rimonim-m");
+  });
+
+  ok("a venue text naming both still gives the court, not the building", () => {
+    // The reason "longest first" exists, and it has to keep working.
+    a.equal(matchHall("אולם ברק מקורה 1, רח' הכפר 2, קריית אונו", halls), "h-barak-1");
+  });
+
+  ok("'אולם ברק' is the building — there is no hall by that exact name", () => {
+    a.equal(matchHall("אולם ברק", halls), "h-barak");
+  });
+
+  ok("the rename still applies before any of it", () => {
+    a.equal(matchHall("עלומים", halls), "h-barak");
+    a.equal(matchHall("אולם עלומים, רח' הכפר 2, קריית אונו", halls), "h-barak");
+  });
+
+  ok("surrounding spaces do not change the answer", () => {
+    a.equal(matchHall("  ברק  ", halls), "h-barak");
+  });
+
+  console.log(`\n${n} hall-family tests passed`);
+}
