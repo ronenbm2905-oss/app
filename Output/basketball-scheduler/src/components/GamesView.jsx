@@ -657,19 +657,29 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
                     );
                   }
                   return (
-                    <div key={g.federationCode || i} className="px-4 py-3">
+                    <div key={g.federationCode || i} className={`px-4 py-3 ${g.cancelled ? "bg-stone-50" : ""}`}>
                       <div className="flex items-center gap-3 flex-wrap">
                         <div className="w-28 shrink-0">
-                          <div className="text-xs font-medium text-stone-700">{formatDateHe(g.date)}</div>
-                          <div className="text-xs text-stone-600">{g.time}</div>
+                          <div className={`text-xs font-medium ${g.cancelled ? "text-stone-500 line-through" : "text-stone-700"}`}>{formatDateHe(g.date)}</div>
+                          <div className={`text-xs ${g.cancelled ? "text-stone-500 line-through" : "text-stone-600"}`}>{g.time}</div>
                         </div>
+                        {/* Until now the ONLY sign that a fixture had been called off was that
+                            its row carried a delete button — the consequence standing in for
+                            the fact. The board, the coach's card and the parents' sheet all
+                            say the word; the manager's own fixture list, which is where a
+                            cancellation is acted on, did not. */}
+                        {g.cancelled && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-stone-200 text-stone-700">
+                            מבוטל
+                          </span>
+                        )}
                         <Pill color={colorFor(g.teamId, data.teams.map((t) => t.id))}>{teamName(g.teamId)}</Pill>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${g.isHome ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${g.cancelled ? "bg-stone-100 text-stone-500" : g.isHome ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
                           {g.isHome ? (<><IconHome size={11} /> בית</>) : (<><IconArrowRight size={11} /> חוץ</>)}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-stone-700 truncate">נגד: {g.opponent}</div>
-                          <div className="text-xs text-stone-600 truncate">
+                          <div className={`text-sm truncate ${g.cancelled ? "text-stone-500 line-through" : "text-stone-700"}`}>נגד: {g.opponent}</div>
+                          <div className={`text-xs truncate ${g.cancelled ? "text-stone-500 line-through" : "text-stone-600"}`}>
                             {(g.isHome && hallNameOf(g)) || withHallAliases(g.addressOverride || g.venue)}
                             {!g.isHome && g.addressOverride && <span className="text-stone-500"> (כתובת ידנית)</span>}
                           </div>
