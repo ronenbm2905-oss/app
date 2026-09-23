@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { applyProposal, groupProposalByTeam, withoutCodes } from "../utils/pendingImport";
+import { importLogEntry, isEmptyEntry } from "../utils/importLog";
 import { IconX, IconCheck, IconAlert } from "./ui/icons";
 
 // The list of everything a federation file would change, and the decision.
@@ -21,9 +22,12 @@ function Section({ title, tone = "stone", items, children }) {
   );
 }
 
-export function ImportReview({ pending, data, save, resolvePending, narrowPending, onClose }) {
+export function ImportReview({ pending, data, save, resolvePending, narrowPending, appendLog, authorEmail = "", onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Separate from `error`: the fixtures ARE on the board, and a red line that reads like a
+  // failed save would send a manager to approve the same file twice.
+  const [logWarning, setLogWarning] = useState("");
   // A file the checks flagged has to be acknowledged on its own before the approve button
   // will do anything. It is the one case where a habitual click is the actual danger.
   const [acknowledged, setAcknowledged] = useState(false);
@@ -48,7 +52,19 @@ export function ImportReview({ pending, data, save, resolvePending, narrowPendin
     setError("");
     try {
       const codes = group ? group.codes : null;
-      await save(applyProposal(data, pending, new Date().toISOString(), codes));
+      const at = new Date().toISOString();
+      await save(applyProposal(data, pending, at, codes));
+      // The log is written from the SAME `codes` the board was written from, so the record
+      // cannot describe something other than what was applied. After the board and before
+      // the narrowing, and deliberately not awaited into the same failure: a log that could
+      // not be written must not leave a manager thinking the fixtures did not go in. It is
+      // a record of what happened, and what happened is the line above.
+      if (appendLog) {
+        const entry = importLogEntry(pending, codes, { at, by: authorEmail });
+        if (!isEmptyEntry(entry)) {
+          appendLog(entry).catch(() => setLogWarning("השינויים נשמרו, אבל לא הצלחנו לרשום אותם ביומן הייבוא."));
+        }
+      }
       const rest = codes ? withoutCodes(pending, codes) : null;
       // The board is written FIRST. If narrowing then fails, the squad is on the board and
       // still listed as pending — an offer to redo something already done, which the apply
@@ -171,6 +187,8 @@ export function ImportReview({ pending, data, save, resolvePending, narrowPendin
           </p>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
+          {/* Amber, not red, and it says the fixtures went in first. */}
+          {logWarning && <p className="text-xs text-amber-700">{logWarning}</p>}
 
           <div className="flex items-center gap-2 pt-2 border-t border-stone-200">
             <button type="button" onClick={reject} disabled={busy} className="text-xs font-medium text-stone-600 px-3 py-1.5 rounded-md border border-stone-200 hover:bg-stone-50 disabled:opacity-40">

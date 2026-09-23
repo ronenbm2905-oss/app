@@ -11,6 +11,7 @@ import { teamsWithCoach } from "../utils/teams";
 import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames, sortGames, GAME_SORTS, MY_TEAMS } from "../utils/gameFilters";
 import { TeamGamesSheet } from "./TeamGamesSheet";
 import { CoachGamesCalendar } from "./CoachGamesCalendar";
+import { ImportLogView } from "./ImportLogView";
 import { HallClashesCard } from "./HallClashesCard";
 import { GameNote } from "./GameNote";
 import { noteFor, scoreFor } from "../utils/gameNotes";
@@ -299,7 +300,10 @@ function ImportedAddressForm({ game, halls, onSave, onCancel }) {
   );
 }
 
-export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes, saveNote, authorName, authorEmail, myCoachId }) {
+export function GamesView({
+  data, save, canEdit, weekStart, setWeekStart, notes, saveNote, authorName, authorEmail, myCoachId,
+  importLog = [], importLogFailed = false,
+}) {
   const [subTab, setSubTab] = useState("games"); // "games" | "mapping"
   const [importMsg, setImportMsg] = useState(null);
   // A coach's squads, and the screen opens on them. `data` and `myCoachId` are both settled
@@ -420,7 +424,22 @@ export function GamesView({ data, save, canEdit, weekStart, setWeekStart, notes,
             מיפוי קבוצות
           </button>
         )}
+        {/* Beside the fixture list rather than on a screen of its own: the question it
+            answers — "what came in, and what did I say yes to" — is asked while looking at
+            the fixtures, not from a settings menu. */}
+        {canEdit && (
+          <button
+            onClick={() => setSubTab("log")}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              subTab === "log" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+            }`}
+          >
+            יומן ייבוא
+          </button>
+        )}
       </div>
+
+      {canEdit && subTab === "log" && <ImportLogView entries={importLog} logFailed={importLogFailed} />}
 
       {canEdit && subTab === "mapping" && (
         <div className="space-y-3">

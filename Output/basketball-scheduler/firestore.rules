@@ -149,6 +149,22 @@ service cloud.firestore {
       allow read, write: if isClubAdmin(clubId);
     }
 
+    // What was approved from a federation file, written at the moment of approval.
+    //
+    // APPEND ONLY, AND THE RULES ARE WHERE THAT IS TRUE. The proposal next door is a working
+    // document: it is overwritten by the next run on the same date and it shrinks as squads
+    // are approved out of it, which is right for a queue and useless as a record. This is the
+    // record — the thing `resolvedBy` on a proposal is a claim about — so an entry cannot be
+    // edited or removed once it is written, by anyone the app can sign in.
+    //
+    // Only a manager writes, because only a manager can approve an import, and only a manager
+    // reads: a coach has no part in the decision and nothing to do with its history.
+    match /clubs/{clubId}/importLog/{entryId} {
+      allow read:   if isClubAdmin(clubId);
+      allow create: if isClubAdmin(clubId);
+      allow update, delete: if false;
+    }
+
     // Cup fixtures found on the federation site, filed by scripts/scan-cups.mjs for a
     // manager to accept. Same shape as pendingImports and for the same reason: nothing
     // automated writes to the club document, so the proposal needs somewhere of its own.

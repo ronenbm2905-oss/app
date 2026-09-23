@@ -46,6 +46,7 @@ const FILES = [
   // verified by opening it. The fixtures builder arrives with the helpers covered too.
   "./calendar.test.mjs",
   "./clashexport.test.mjs",
+  "./importlog.test.mjs",
 ];
 
 for (const f of FILES) {
