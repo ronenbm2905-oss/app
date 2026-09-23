@@ -52,7 +52,13 @@ export function importLogEntry(proposal, codes, { at, by }) {
 
   const entry = {
     at: String(at || ""),
-    by: String(by || ""),
+    // LOWER-CASED HERE, and it is not tidiness. `firestore.rules` binds this field to the
+    // signed-in address through `myEmail()`, which lower-cases — so a manager whose Google
+    // address carries a capital letter would be refused on every approval, and the only
+    // sign of it would be the amber "could not write to the log" line with no reason in it.
+    // The same trap is written at the top of `firestore.rules`, where it was added after it
+    // had already happened once.
+    by: String(by || "").trim().toLowerCase(),
     // The date the file was fetched under. Not unique — the same day can be approved twice —
     // which is exactly why this is a field and not the document id.
     proposalId: String(proposal?.id || ""),
@@ -99,13 +105,41 @@ export function sortEntries(entries) {
     .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
 }
 
+// THE TIMESTAMP IS UTC, AND EVERY PLACE THAT SHOWS IT HAS TO SAY SO IN ISRAEL TIME.
+//
+// `at` is `new Date().toISOString()`. Slicing that string — `at.slice(11,16)` for the hour,
+// `at.slice(0,10)` for the day — prints UTC while looking exactly like a local clock. An
+// approval given at 09:10 would have read 06:10, and one given at 23:30 would have been
+// filed under the previous day. The whole value of this record is that it says WHEN.
+//
+// Pinned to Asia/Jerusalem rather than left to the device: the club is in one place, and a
+// manager reading the log from abroad should see the hour the decision was actually made.
+// Same call `pushTargets.js` makes for the quiet window, and for the same reason.
+//
+// The SORT still compares the raw ISO strings, which is correct — they are all UTC, so
+// lexicographic order is chronological order. Only display and grouping were wrong.
+const TZ = { timeZone: "Asia/Jerusalem" };
+
+export function localTime(iso) {
+  const d = new Date(iso || "");
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleTimeString("he-IL", { ...TZ, hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+// "23/09/2026" — the day the decision was made, where it was made.
+export function localDay(iso) {
+  const d = new Date(iso || "");
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("he-IL", { ...TZ, day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 // Grouped by calendar day for the screen, because "what came in on Tuesday" is the question
 // asked, and one file can produce several entries.
 export function entriesByDay(entries) {
   const out = [];
   const index = new Map();
   for (const e of sortEntries(entries)) {
-    const day = String(e.at || "").slice(0, 10) || "—";
+    const day = localDay(e.at) || "—";
     if (!index.has(day)) {
       index.set(day, { day, entries: [], total: 0 });
       out.push(index.get(day));

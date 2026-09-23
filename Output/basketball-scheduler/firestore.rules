@@ -159,9 +159,17 @@ service cloud.firestore {
     //
     // Only a manager writes, because only a manager can approve an import, and only a manager
     // reads: a coach has no part in the decision and nothing to do with its history.
+    // `by` IS BOUND TO THE SIGNER, and without that the record is still only a claim.
+    // `isClubAdmin` proves the writer is a manager; it does not prove that `by` is the
+    // writer. A club with two managers — which is the SaaS case — could otherwise carry an
+    // entry attributing a decision to the other one. The rules already refuse to let `by` be
+    // EDITED afterwards; this is what stops it being written untrue in the first place.
+    //
+    // `myEmail()` lower-cases, so the client has to send a lower-cased address or every
+    // approval is refused with no way to see why. See the warning at the top of this file.
     match /clubs/{clubId}/importLog/{entryId} {
       allow read:   if isClubAdmin(clubId);
-      allow create: if isClubAdmin(clubId);
+      allow create: if isClubAdmin(clubId) && request.resource.data.by == myEmail();
       allow update, delete: if false;
     }
 

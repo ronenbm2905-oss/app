@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { entriesByDay, entrySummary, LOG_KINDS, KIND_LABELS } from "../utils/importLog";
+import { entriesByDay, entrySummary, localTime, LOG_KINDS, KIND_LABELS } from "../utils/importLog";
 import { IconCheck, IconAlert, IconChevronDown, IconChevronUp } from "./ui/icons";
 
 // What came in from the federation, and who said yes to it.
@@ -22,7 +22,9 @@ const TONE = {
 
 function Entry({ entry }) {
   const [open, setOpen] = useState(false);
-  const time = String(entry.at || "").slice(11, 16);
+  // Israel time, not the raw UTC string. `at` is an ISO stamp and slicing it printed UTC
+  // while looking exactly like a local clock — see `localTime` in utils/importLog.js.
+  const time = localTime(entry.at);
 
   return (
     <div className="border border-stone-200 rounded-lg overflow-hidden">
@@ -61,7 +63,11 @@ function Entry({ entry }) {
                       {it.label || it.code || "—"}
                       {/* The number the league identifies the fixture by — the one field
                           here that cannot be recovered from the sentence beside it. */}
-                      {it.code && it.label ? <span className="text-stone-400 tabular-nums"> · {it.code}</span> : null}
+                      {/* stone-500, not stone-400. This is the fifth time that shade has
+                          failed the 4.5:1 the accessibility statement claims — and here it
+                          was on the fixture NUMBER, the one field the comment above calls
+                          irrecoverable from the sentence beside it. */}
+                      {it.code && it.label ? <span className="text-stone-500 tabular-nums"> · {it.code}</span> : null}
                     </li>
                   ))}
                 </ul>
@@ -110,8 +116,8 @@ export function ImportLogView({ entries, logFailed }) {
       {days.map((d) => (
         <div key={d.day} className="space-y-1.5">
           <div className="text-xs font-semibold text-stone-600">
-            {d.day.split("-").reverse().join("/")}
-            <span className="text-stone-400 font-normal"> · {d.total} משחקים</span>
+            {d.day}
+            <span className="text-stone-500 font-normal"> · {d.total} משחקים</span>
           </div>
           {d.entries.map((e, i) => (
             <Entry key={e.id || `${e.at}-${i}`} entry={e} />

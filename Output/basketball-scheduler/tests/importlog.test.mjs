@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   importLogEntry, isEmptyEntry, entrySummary, sortEntries, entriesByDay, LOG_KINDS,
+  localTime, localDay,
 } from "../src/utils/importLog.js";
 
 let count = 0;
@@ -96,10 +97,40 @@ T("grouped by day, because one file can be approved in several sittings", () => 
     { at: "2026-09-23T17:43:00.000Z", total: 7 },
     { at: "2026-09-22T05:32:00.000Z", total: 98 },
   ]);
-  assert.deepEqual(days.map((d) => d.day), ["2026-09-23", "2026-09-22"]);
+  assert.deepEqual(days.map((d) => d.day), ["23.09.2026", "22.09.2026"]);
   assert.equal(days[0].entries.length, 2);
   assert.equal(days[0].total, 8, "the day's total is the sum of its approvals");
   assert.equal(days[1].total, 98);
 });
 
-console.log(`\n${count} import-log tests passed`);
+// ---------- added after gate #21 ----------
+
+T("the time and the day are Israel's, not UTC — the record's whole value is WHEN", () => {
+  // 23:30 Israel on 23.9 is 20:30Z the same day; 00:30 Israel on 24.9 is 21:30Z on the 23rd.
+  // Slicing the ISO string printed the second one as "23/09 · 21:30", an hour and a day out.
+  const late = "2026-09-23T21:30:00.000Z"; // 00:30 on 24.9 in Israel
+  assert.equal(localTime(late), "00:30");
+  assert.equal(localDay(late), "24.09.2026");
+  const morning = "2026-09-23T06:10:00.000Z"; // 09:10 in Israel — the approval he quoted
+  assert.equal(localTime(morning), "09:10");
+  assert.equal(localDay(morning), "23.09.2026");
+  assert.equal(localTime("not a date"), "");
+  assert.equal(localDay(""), "");
+});
+
+T("grouping follows the Israeli day, so a late-evening approval is not filed yesterday", () => {
+  const days = entriesByDay([
+    { at: "2026-09-23T21:30:00.000Z", total: 1 }, // 00:30 on the 24th, locally
+    { at: "2026-09-23T06:10:00.000Z", total: 2 }, // 09:10 on the 23rd
+  ]);
+  assert.deepEqual(days.map((d) => d.day), ["24.09.2026", "23.09.2026"]);
+});
+
+T("`by` is lower-cased, or the rules refuse every approval", () => {
+  // `myEmail()` in firestore.rules lower-cases, and `allow create` compares against it.
+  const e = importLogEntry(proposal, null, { at: AT, by: "  Ronen.BM@Gmail.COM " });
+  assert.equal(e.by, "ronen.bm@gmail.com");
+});
+
+console.log(`
+${count} import-log tests passed`);

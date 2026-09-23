@@ -69,6 +69,24 @@ await t("a manager can append a new entry", async () => {
   await assertSucceeds(addDoc(collection(as(MANAGER), "clubs/main/importLog"), entry()));
 });
 
+console.log("— THE OTHER PROPERTY: `by` is the signer, not a field the client chooses —");
+
+await t("a manager may NOT attribute an approval to the other manager", async () => {
+  // Refusing an EDIT of `by` is not the same as refusing a false one written at the start,
+  // and in a club with two managers that is the difference between a record and a claim.
+  await assertFails(addDoc(collection(as(MANAGER), "clubs/main/importLog"), entry(OTHER_MANAGER)));
+});
+await t("nor to a name that belongs to nobody", async () => {
+  await assertFails(addDoc(collection(as(MANAGER), "clubs/main/importLog"), entry("someone@invented.test")));
+  await assertFails(addDoc(collection(as(MANAGER), "clubs/main/importLog"), entry("")));
+});
+await t("a capitalised address is refused — which is why the client lower-cases", async () => {
+  // `myEmail()` lower-cases. A client that sends the address as Google returns it would be
+  // refused on every approval, with only an amber line and no reason. `importLogEntry`
+  // lower-cases for exactly this.
+  await assertFails(addDoc(collection(as(MANAGER), "clubs/main/importLog"), entry(MANAGER.toUpperCase())));
+});
+
 console.log("— THE PROPERTY: written once, never touched again —");
 
 await t("a manager may NOT edit an entry they wrote", async () => {
