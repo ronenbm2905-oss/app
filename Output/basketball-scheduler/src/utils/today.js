@@ -55,6 +55,12 @@ export function todaySummary(data, todayIso, nowMinutes, coachId) {
   const sessions = (data?.sessions || [])
     .filter((s) => s && s.day === dayName && (s.weekOf || "") === weekOf)
     .filter((s) => !scoped || s.coachId === coachId)
+    // A called-off fixture is not happening today, so it is not counted and it is never
+    // "the next one". This strip is two numbers and one time — there is no room to mark
+    // something as cancelled, and a strip that answered "הקרוב — 18:30" for a game the
+    // federation dropped would be worse than one that stayed quiet. The BOARD shows it,
+    // struck through and named, which is where a manager goes to act on it.
+    .filter((s) => !s.cancelled)
     .slice()
     .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
     .map((s) => ({

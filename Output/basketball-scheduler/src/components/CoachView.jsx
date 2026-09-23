@@ -133,7 +133,15 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
       date: formatDate(weekDates[s.day]),
       time: `${s.start}–${s.end}`,
       where: nameOf(data.halls, s.hallId),
-      what: [s.type && s.type !== "אימון" ? s.type : "", s.notes || ""].filter(Boolean).join(" · ") || "אימון",
+      // A called-off fixture is KEPT on the sheet and named, not dropped. Omitting it is
+      // what the parents' fixture PDF was explicitly built not to do: a family that has
+      // the previous sheet sees the row vanish and reads it as a mistake in the new one,
+      // while a family seeing it for the first time learns nothing. The word goes FIRST,
+      // because this cell already carries opponent, venue and two clock times.
+      what:
+        (s.cancelled ? "מבוטל · " : "") +
+        ([s.type && s.type !== "אימון" ? s.type : "", s.notes || ""].filter(Boolean).join(" · ") || "אימון"),
+      cancelled: Boolean(s.cancelled),
       // The gathering time on the sheet the squad actually receives. It is deliberately
       // NOT folded into `what` — that cell already carries opponent, venue and two clock
       // times, and the one line a parent has to act on would be the easiest to miss. The
@@ -317,11 +325,21 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                             <div
                               key={s.id}
                               className={`flex flex-col gap-1 border rounded-lg px-3 py-2 ${
-                                away || violated.length > 0 ? "bg-red-50 border-red-200" : "bg-brand-50 border-brand-200"
+                                s.cancelled
+                                  ? "bg-stone-100 border-stone-300"
+                                  : away || violated.length > 0
+                                  ? "bg-red-50 border-red-200"
+                                  : "bg-brand-50 border-brand-200"
                               }`}
                             >
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium text-brand-800 tabular-nums w-24 shrink-0">
+                              <div className={`flex items-center gap-2 flex-wrap ${s.cancelled ? "opacity-70" : ""}`}>
+                                {/* The same marking the parents' board has carried since the day
+                                    it was built. A coach reading their own week is the person who
+                                    would otherwise drive to a game that was called off. */}
+                                {s.cancelled && (
+                                  <span className="text-xs font-bold text-stone-700 bg-stone-200 rounded px-1.5 py-0.5">מבוטל</span>
+                                )}
+                                <span className={`text-sm font-medium tabular-nums w-24 shrink-0 ${s.cancelled ? "text-stone-500 line-through" : "text-brand-800"}`}>
                                   <span dir="ltr">{s.start}–{s.end}</span>
                                 </span>
                                 <Pill color={colorFor(s.teamId, data.teams.map((t) => t.id))}>{nameOf(data.teams, s.teamId)}</Pill>
@@ -455,8 +473,11 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                 const cell = {
                   border: "1px solid #D6D3D1",
                   padding: "6px 8px",
-                  background: r.duty ? "#FEF3C7" : "transparent",
-                  color: r.duty ? "#92400E" : "inherit",
+                  background: r.cancelled ? "#F5F5F4" : r.duty ? "#FEF3C7" : "transparent",
+                  color: r.cancelled ? "#57534E" : r.duty ? "#92400E" : "inherit",
+                  // Struck through, but only the day/date/time/where — the "what" cell
+                  // carries the word "מבוטל" and has to stay readable.
+                  textDecoration: r.cancelled ? "line-through" : "none",
                 };
                 return (
                   <tr key={r.key}>
@@ -466,7 +487,7 @@ export function CoachView({ data, fixedCoachId, canEdit, weekStart, setWeekStart
                       {r.time ? <span dir="ltr">{r.time}</span> : "—"}
                     </td>
                     <td style={{ ...cell, textAlign: "right" }}>{r.where || "—"}</td>
-                    <td style={{ ...cell, textAlign: "right", fontWeight: r.duty ? 700 : 400 }}>
+                    <td style={{ ...cell, textDecoration: "none", textAlign: "right", fontWeight: r.duty || r.cancelled ? 700 : 400 }}>
                       {r.duty ? `🪑 ${r.what}` : r.what}
                       {r.assembly && (
                         <div style={{ fontWeight: 700, color: "#4338CA", marginTop: "3px" }}>

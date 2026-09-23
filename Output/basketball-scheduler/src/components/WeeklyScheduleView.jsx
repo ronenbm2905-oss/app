@@ -1024,11 +1024,41 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                                     const hallShut = hits.some(isHallClosure);
                                     const absent = hits.length > 0;
                                     const alarm = clash || absent; // red treatment
-                                    const cellStyle = {
-                                      backgroundColor: alarm ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
-                                      borderRight: `3px solid ${alarm ? "#DC2626" : violates ? "#D97706" : color}`,
-                                    };
-                                    const inner = (
+                                    // A fixture the federation called off. It stays ON the board on
+                                    // purpose — the hall is still booked and a manager who cannot
+                                    // see what was dropped cannot free it — but it had no marking
+                                    // of any kind until 23.9.2026, so it read exactly like a game
+                                    // that is on. The parents' board and the parents' PDF have
+                                    // struck it through since the day they were built; the
+                                    // manager's own board, the screen this app opens on, did not.
+                                    const cancelled = Boolean(s.cancelled);
+                                    const cellStyle = cancelled
+                                      ? // Grey, not red. Red on this board means "deal with this":
+                                        // a clash to move, a coach who cannot come. A cancelled
+                                        // fixture is the opposite — nothing is required of anyone,
+                                        // and colouring it as an alarm would send a manager to fix
+                                        // something that has already resolved itself.
+                                        { backgroundColor: "#F5F5F4", borderRight: "3px solid #A8A29E" }
+                                      : {
+                                          backgroundColor: alarm ? "#FEE2E2" : violates ? "#FEF3C7" : `${color}15`,
+                                          borderRight: `3px solid ${alarm ? "#DC2626" : violates ? "#D97706" : color}`,
+                                        };
+                                    const inner = cancelled ? (
+                                      <>
+                                        {/* The word first, because the strike-through alone is a
+                                            thin line on a phone and this is the one fact about the
+                                            cell that matters. No warnings below it: a clash or an
+                                            absent coach on a game that is not happening is noise
+                                            about a problem that no longer exists. */}
+                                        <div className="font-bold text-stone-600">מבוטל</div>
+                                        <div className="line-through opacity-60">
+                                          <div className="font-semibold tabular-nums text-stone-600"><span dir="ltr">{s.start}–{s.end}</span></div>
+                                          <div className="mt-0.5 text-stone-500">{nameOf(data.halls, s.hallId)}</div>
+                                          {s.type && s.type !== "אימון" && <div className="font-medium mt-0.5 text-stone-600">{s.type}</div>}
+                                          {s.notes && <div className="text-stone-500 mt-0.5">{s.notes}</div>}
+                                        </div>
+                                      </>
+                                    ) : (
                                       <>
                                         {hallClash && <div className="font-bold text-red-700 flex items-center gap-0.5">⚠ חפיפת אולם</div>}
                                         {/* Name the coach: without the filter on, the row's own coach
@@ -1270,17 +1300,22 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
                           {absent && <span title={absenceText(s.id)}>⛔ </span>}
                           {nameOf(data.coaches, s.coachId)}
                         </td>
-                        <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${alarm ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
-                          {clash && <span title="חפיפת אולם — שתי קבוצות באותו זמן">⚠ </span>}
-                          {!alarm && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
+                        <td className={`border border-stone-200 px-3 py-2 text-sm font-semibold tabular-nums ${s.cancelled ? "text-stone-500 line-through" : alarm ? "text-red-700" : violates ? "text-amber-800" : "text-stone-700"}`}>
+                          {!s.cancelled && clash && <span title="חפיפת אולם — שתי קבוצות באותו זמן">⚠ </span>}
+                          {!s.cancelled && !alarm && violates && <span title={`אילוץ פעיל (${violationLabel(s.id)})`}>⚠ </span>}
                           <span dir="ltr">{s.start}–{s.end}</span>
                         </td>
                         <td
                           className="border border-stone-200 px-3 py-2 text-xs text-stone-500"
                           style={stripe ? { borderInlineEndWidth: "4px", borderInlineEndColor: stripe } : undefined}
                         >
-                          {s.type && s.type !== "אימון" && <span className="font-medium" style={{ color: typeColor(s.type) }}>{s.type} </span>}
-                          {s.notes || ""}
+                          {/* Not struck through — it is the one part of the row that has to stay
+                              readable, because "מבוטל" is what the manager is looking for. */}
+                          {s.cancelled && <span className="font-bold text-stone-600">מבוטל · </span>}
+                          <span className={s.cancelled ? "line-through" : ""}>
+                            {s.type && s.type !== "אימון" && <span className="font-medium" style={{ color: s.cancelled ? undefined : typeColor(s.type) }}>{s.type} </span>}
+                            {s.notes || ""}
+                          </span>
                         </td>
                       </tr>
                     );
