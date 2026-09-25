@@ -21,8 +21,12 @@ rem Exit: 0 there is a proposal to look at  -  10 nothing to do  -  1 something 
 
 cd /d "%~dp0.."
 
-rem Task Scheduler running "whether the user is logged on or not" does not load the user's
-rem environment, so the credential path is named here rather than assumed to be inherited.
+rem A Task Scheduler process does not inherit the interactive shell's environment, so the
+rem credential path is named here rather than assumed. (This line used to claim the task runs
+rem "whether the user is logged on or not". It does NOT - the principal is InteractiveToken,
+rem verified 25.9.2026, so every trigger below only fires while Ronen is signed in. A comment
+rem that describes a different task than the one running is how a missed night gets
+rem misdiagnosed.)
 rem The dedicated sync account rather than the project-wide Admin SDK key: it carries
 rem roles/datastore.user only, so it cannot reach Authentication or Storage at all.
 if "%GOOGLE_APPLICATION_CREDENTIALS%"=="" set "GOOGLE_APPLICATION_CREDENTIALS=%USERPROFILE%\.basketball\nightly-sync.json"
