@@ -12,20 +12,14 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import * as XLSX from "xlsx";
+import { downloadSheet, FEDERATION_XLSX_URL } from "../src/utils/federationFile.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const INBOX = process.env.FEDERATION_INBOX || path.join(ROOT, "federation-inbox");
-const URL_ = process.env.FEDERATION_XLSX_URL || "https://ibasketball.co.il/club/1071-2/?feed=xlsx&club_id=715510";
+const URL_ = process.env.FEDERATION_XLSX_URL || FEDERATION_XLSX_URL;
 const KEEP_DAYS = 14;
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
-// The columns the club's file has always had. Checked before a download is accepted:
-// a site that starts serving an error page, a login redirect, or a changed layout must
-// fail loudly tonight rather than quietly feed nonsense into the schedule in the morning.
-const REQUIRED_COLUMNS = ["Code", "תאריך", "Time", "Home Team Code", "Away Team Code", "Venue"];
-
-const stamp = () => new Date().toISOString().slice(0, 19).replace("T", " ");
+const stamp =() => new Date().toISOString().slice(0, 19).replace("T", " ");
 const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -49,34 +43,6 @@ function writeAtomic(target, buffer) {
   fs.renameSync(tmp, target);
 }
 
-function validate(buffer) {
-  if (buffer.length < 1000) return `the response is only ${buffer.length} bytes`;
-  if (buffer.subarray(0, 2).toString() !== "PK") return "the response is not a zip, so it is not an xlsx";
-  let rows;
-  try {
-    const wb = XLSX.read(buffer, { type: "buffer" });
-    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", header: 1 });
-  } catch (e) {
-    return `the file does not parse as a spreadsheet (${e.message})`;
-  }
-  const head = (rows[0] || []).map((c) => String(c).trim());
-  const missing = REQUIRED_COLUMNS.filter((c) => !head.includes(c));
-  if (missing.length) return `columns missing from the sheet: ${missing.join(", ")}`;
-  // One data row, not ten.
-  //
-  // The columns above already prove this is a federation sheet and not an error page, so
-  // what is left to catch is a file with nothing in it. Ten was a guess, and on 17.9.2026
-  // it rejected a perfectly good download: the season had just rolled over and the new
-  // file held exactly three cup fixtures. The guard would have blocked every nightly sync
-  // until enough league games were published — silently, and at the start of a season.
-  //
-  // A truncated file is a real risk, but it is not this guard's job: the importer never
-  // deletes, and mass-cancellation is held back by CANCEL_SUSPICIOUS_RATIO, which measures
-  // the proportion that vanished instead of guessing at a row count.
-  if (rows.length < 2) return `no fixtures in the file — only the header row`;
-  return null;
-}
-
 function prune() {
   const files = fs
     .readdirSync(INBOX)
@@ -91,12 +57,11 @@ function prune() {
 async function main() {
   fs.mkdirSync(INBOX, { recursive: true });
 
-  const res = await fetch(URL_, { headers: { "User-Agent": UA, Accept: "*/*" }, redirect: "follow" });
-  if (!res.ok) throw new Error(`the federation answered ${res.status} ${res.statusText}`);
-  const buffer = Buffer.from(await res.arrayBuffer());
-
-  const bad = validate(buffer);
-  if (bad) throw new Error(`the download was rejected: ${bad}`);
+  // Downloading and deciding "is this really the federation's sheet" now live in
+  // src/utils/federationFile.js, shared with the Cloud Function. Two copies of that check
+  // would agree until the day they did not — and the day they did not would be a night when
+  // a login page got imported as a fixture list.
+  const buffer = await downloadSheet({ url: URL_ });
 
   const hash = crypto.createHash("sha256").update(buffer).digest("hex");
   const target = path.join(INBOX, `${today()}.xlsx`);

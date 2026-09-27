@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, FieldPath } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
@@ -18,6 +19,8 @@ import {
   CUP_LEAGUES, eventToDraft, classify, scanOutcome, scanSummary, mayOverwriteScan,
 } from "./shared/utils/cupScan.js";
 import { createFederationApi, scanCompetitions } from "./shared/utils/federationApi.js";
+import { downloadSheet, sheetRows } from "./shared/utils/federationFile.js";
+import { prepareProposal, trim, NEEDED, mayOverwriteProposal } from "./shared/utils/federationImport.js";
 
 // Phone notifications for schedule changes. This is the only thing that runs in the cloud.
 //
@@ -53,7 +56,39 @@ setGlobalOptions({
 initializeApp();
 const db = getFirestore();
 
+// The identity the two SYNC functions run as — not the project default.
+//
+// A Gen2 function runs as the compute default service account unless told otherwise, and in
+// many projects that account carries roles/editor. The claim this migration was argued on —
+// that moving the job off a laptop NARROWS what it can reach — is only true if the identity
+// narrows with it. This account was scoped to roles/datastore.user in gate #6 and measured
+// there table by table; it is the same one the laptop has been using.
+//
+// Deliberately NOT applied to the push functions: those need FCM, which this account cannot
+// reach. Two jobs, two needs, and no shared account that satisfies both by being broad.
+const SYNC_IDENTITY = "basketball-nightly-sync@basketball-schedule-f0f57.iam.gserviceaccount.com";
+
 const stateRef = (clubId) => db.collection("clubs").doc(clubId).collection("push").doc("state");
+
+// Club ids and nothing else. `.select()` with no fields returns documents carrying none, so
+// this cannot pull `players[]` out of the database even by accident — which matters because
+// the nightly jobs below loop over every club before they know which fields they need.
+async function clubIds() {
+  const snap = await db.collection("clubs").select().get();
+  return snap.docs.map((d) => d.id);
+}
+
+// The club, through the same projection the script has always used. `NEEDED` is checked
+// against what games.js actually reads, and it does not include `players`.
+async function readClubForImport(clubId) {
+  const snap = await db.collection("clubs").where(FieldPath.documentId(), "==", clubId).select(...NEEDED).get();
+  if (snap.empty) throw new Error(`there is no club document at clubs/${clubId}`);
+  const data = snap.docs[0].data();
+  // A projection returns only what was asked for, so anything missing is genuinely absent
+  // rather than withheld — and the importer expects arrays, not undefined.
+  for (const f of NEEDED) if (!Array.isArray(data[f])) data[f] = [];
+  return data;
+}
 
 // Send one notification per coach, and clean up the devices that no longer exist.
 //
@@ -288,6 +323,7 @@ export const nightlyCupScan = onSchedule(
   {
     schedule: "0 3 * * *",
     timeZone: "Asia/Jerusalem",
+    serviceAccount: SYNC_IDENTITY,
     // Seventeen competitions, each with its own 20s ceiling, plus a venue call per fixture
     // of ours. The whole scan takes ~15s in practice; this is room for a slow night, not a
     // budget to be spent.
@@ -347,6 +383,133 @@ export const nightlyCupScan = onSchedule(
         reached,
         competitions: CUP_LEAGUES.length,
         fixturesSeen: seen,
+        where: "cloud",
+      });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// The weekly league file, moved off the laptop on 27.9.2026 — the other half of the sync.
+//
+// It came later than the cup scan for one reason: it needs `xlsx` to read the federation's
+// spreadsheet, and that package carries two documented advisories whose fix ships only from
+// the vendor's own CDN, not from npm. The decision to move it anyway is deliberate and worth
+// stating, because it looks at first glance like adding risk: THE SAME FILE IS PARSED BY THE
+// SAME LIBRARY TODAY, on Ronen's personal laptop. Moving it into a single-purpose sandbox
+// with a scoped identity narrows the blast radius rather than widening it.
+//
+// WHERE "HAS THE FILE CHANGED?" NOW LIVES. The script compared today's download against
+// `federation-inbox/latest.xlsx` on disk. A function has no disk that survives, so the hash
+// moves to Firestore. That is not a workaround — it is better: the hash is now readable, and
+// the answer to "when did the federation last publish something" stops being a file on one
+// machine.
+//
+// AND IT IS ONLY A SHORT-CIRCUIT, NEVER A SOURCE OF TRUTH. If the stored hash is missing,
+// stale or wrong, the worst case is that the file is parsed and compared against the club —
+// which is exactly what the comparison would conclude anyway. `prepareProposal` reads the
+// club document, not yesterday's file. So a lost hash costs a few seconds, never a fixture.
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+export const nightlyLeagueSync = onSchedule(
+  {
+    schedule: "10 3 * * *",
+    timeZone: "Asia/Jerusalem",
+    serviceAccount: SYNC_IDENTITY,
+    // Ten past three, not three: the cup scan runs at 03:00, and both end by writing the
+    // same heartbeat document. Ten minutes is far more than either needs and keeps the two
+    // writes in a known order, so `sync/nightly` describes one night rather than a race.
+    timeoutSeconds: 300,
+    memory: "512MiB",
+    retryCount: 0,
+  },
+  async () => {
+    for (const clubId of await clubIds()) {
+      const syncRef = db.collection("clubs").doc(clubId).collection("sync");
+      let league = "failed";
+      let note = "";
+
+      try {
+        const buffer = await downloadSheet();
+        const sourceHash = createHash("sha256").update(buffer).digest("hex");
+
+        const seen = await syncRef.doc("league").get();
+        const previous = seen.exists ? seen.data()?.sourceHash || "" : "";
+
+        if (previous && previous === sourceHash) {
+          league = "unchanged";
+          note = `sha ${sourceHash.slice(0, 12)}`;
+        } else {
+          const data = await readClubForImport(clubId);
+          const { state, span, proposal } = prepareProposal(sheetRows(buffer), data, {
+            sourceFile: `${new Date().toISOString().slice(0, 10)}.xlsx`,
+            sourceHash,
+          });
+
+          if (state === "stale") {
+            // The export carries no season parameter, so a file covering a season that has
+            // already finished is the federation not having published the new one yet —
+            // not news, and not a failure either.
+            league = "none";
+            note = `the file still covers a finished season (${span?.label || ""})`;
+          } else if (state === "none") {
+            league = "none";
+          } else {
+            const { proposal: doc, trimmed, size } = trim(proposal);
+            // The date as the document id, not an auto-id: a second run in one day replaces
+            // the day's proposal rather than stacking one the manager has to reconcile —
+            // UNLESS the manager already dealt with it, in which case replacing it would
+            // bring the banner back and erase who dealt with it. See mayOverwriteProposal().
+            const pRef = db.collection("clubs").doc(clubId).collection("pendingImports").doc(proposal.id);
+            const already = await pRef.get();
+            if (!mayOverwriteProposal(already.exists ? already.data() : null)) {
+              league = "none";
+              note = "ההצעה של היום כבר טופלה";
+            } else {
+              await pRef.set(doc);
+              league = "ok";
+              const s = doc.summary;
+              note = `+${s.added} · ${s.updated}~ · ${s.cancelled}✗${trimmed ? ` (trimmed, ${Math.round(size / 1024)}KB)` : ""}`;
+            }
+          }
+
+          // Written only after the file has been fully dealt with. Storing it earlier would
+          // mean a crash mid-import leaves the hash recorded and the proposal never filed —
+          // and the next night would short-circuit on it and skip the whole thing.
+          await syncRef.doc("league").set({
+            sourceHash,
+            at: new Date().toISOString(),
+            bytes: buffer.length,
+            where: "cloud",
+          });
+        }
+      } catch (err) {
+        // THE FULL MESSAGE GOES TO THE LOG, AND A FIXED STRING GOES TO THE DOCUMENT.
+        //
+        // The first version kept 180 characters of the error in `note` — and `note` is
+        // written to `sync/nightly`, a durable Firestore document that the deletion
+        // procedure describes as holding "counters, state and a timestamp" with no personal
+        // data in it. A parse failure from a 40KB spreadsheet can quote a cell, and the
+        // federation's file is republished every week, so an audit of its columns from
+        // 25.8.2025 is not a guarantee about next Tuesday's. Rather than weaken the promise
+        // in the document, the text stays out of the document.
+        league = "failed";
+        console.error(`league sync ${clubId} failed:`, String(err.message || err).split("\n")[0]);
+        note = "שגיאה — הפרטים ביומן הריצה";
+      }
+
+      console.log(`league sync ${clubId}: ${league}${note ? ` — ${note}` : ""}`);
+
+      // NOW `sync/nightly` may be written, and only now. Until both halves ran in the cloud
+      // this document was left alone on purpose: its `at` is what `nightsMissed` counts, and
+      // refreshing it from a half that ran would have reported a healthy sync over a file
+      // nobody had checked for days. Both halves run here, so it can describe the night again.
+      const cups = await syncRef.doc("cups").get();
+      await syncRef.doc("nightly").set({
+        at: new Date().toISOString(),
+        cups: cups.exists ? cups.data()?.state || "skipped" : "skipped",
+        league,
+        note,
         where: "cloud",
       });
     }

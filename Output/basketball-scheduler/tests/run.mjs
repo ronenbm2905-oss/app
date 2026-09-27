@@ -24,6 +24,8 @@ const FILES = [
   "./teamboard.test.mjs",
   "./cupscan.test.mjs",
   "./federationapi.test.mjs",
+  "./federationfile.test.mjs",
+  "./federationimport.test.mjs",
   // Six suites below were written, passed when run by hand, and were never added here — so
   // `npm test` reported green on 49 assertions it had not executed. Found on 18.9.2026 while
   // adding the payment link. A test that is not in this list is not a test.

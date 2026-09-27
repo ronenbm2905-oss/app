@@ -34,6 +34,11 @@ const FILES = [
   // The cup scan, from 27.9.2026: the decision logic and the HTTP layer, both unchanged.
   ["utils/cupScan.js", "utils/cupScan.js"],
   ["utils/federationApi.js", "utils/federationApi.js"],
+  // The league half, from 27.9.2026. `games.js` pulls in `halls.js` and `xlsx`.
+  ["utils/halls.js", "utils/halls.js"],
+  ["utils/games.js", "utils/games.js"],
+  ["utils/federationFile.js", "utils/federationFile.js"],
+  ["utils/federationImport.js", "utils/federationImport.js"],
 ];
 
 mkdirSync(join(out, "utils"), { recursive: true });
