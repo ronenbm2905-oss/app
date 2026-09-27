@@ -82,6 +82,15 @@ export function whenLabel(at, now = new Date()) {
 
 const FAILED = "failed";
 
+// "The half ran, but it did not see everything it claims to see."
+//
+// Added 27.9.2026. A cup scan that could not reach a single one of the seventeen competitions
+// used to record `none` — the same value as a night when the federation genuinely published
+// nothing — so this line read "אין שינויים" over a scan that had seen nothing at all. It is
+// its own state because the manager's next move differs: `none` means carry on, `partial`
+// means the fixture list behind the screen is not the whole list.
+const PARTIAL = "partial";
+
 // What the two halves of the run found, in words. They are reported separately because they
 // fail separately: the cup scan can break on a night the league file imports perfectly.
 // `pending` is whether a proposal is STILL WAITING for a decision — not whether the run
@@ -96,10 +105,15 @@ const FAILED = "failed";
 //
 // So the two cases are said apart. What was found is past tense; what is waiting says where
 // it is.
+// An incomplete half is reported BEFORE a pending proposal and before "אין שינויים", because
+// it changes how both of those should be read: a proposal from a partial scan is not the whole
+// picture, and "no changes" drawn from a partial scan is not a finding.
 function foundLabel({ cups, league }, pending) {
   if (cups === FAILED && league === FAILED) return "שני החלקים נכשלו";
   if (cups === FAILED) return "סריקת הגביע נכשלה";
   if (league === FAILED) return "משיכת קובץ הליגה נכשלה";
+  if (cups === PARTIAL) return "סריקת הגביע לא הגיעה לכל המפעלים — התמונה חלקית";
+  if (league === PARTIAL) return "קובץ הליגה נקרא חלקית — התמונה חלקית";
   if (pending) return "יש הצעה שממתינה לאישור — בכרטיס שלמעלה";
   if (cups === "ok" || league === "ok") return "נמצאו עדכונים, וההצעה כבר טופלה";
   return "אין שינויים";
@@ -141,7 +155,10 @@ export function syncState(doc, now = new Date(), { pending = false } = {}) {
     };
   }
 
-  const broke = doc.cups === FAILED || doc.league === FAILED;
+  // `partial` colours the line amber for the same reason `failed` does: in both cases what the
+  // screen shows is not what the federation holds. Only the sentence differs.
+  const broke =
+    doc.cups === FAILED || doc.league === FAILED || doc.cups === PARTIAL || doc.league === PARTIAL;
   return {
     level: broke ? "warn" : "ok",
     title: `סונכרן מהאיגוד: ${when}`,

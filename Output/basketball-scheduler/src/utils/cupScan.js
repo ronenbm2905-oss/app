@@ -202,3 +202,61 @@ export function replaceGame(draft, existing) {
   });
   return base;
 }
+
+// ---------------------------------------------------------------------------------------
+// Did the scan cover what it claims to cover?
+//
+// A SCAN THAT REACHED NOTHING IS NOT A QUIET NIGHT — and until 27.9.2026 it said it was.
+//
+// Every competition is fetched inside its own try/catch, so one failure does not lose the
+// other sixteen. That is deliberate and still right. But the catch only wrote a `!!` line to
+// a log file and let the run carry on, so when the network was still coming up after a resume
+// and ALL SEVENTEEN failed, the scan finished with "nothing to propose" and exit code 10 —
+// the exact words and the exact exit code of a night when the federation published nothing.
+//
+// Measured on 26.9.2026, two runs forty minutes apart:
+//
+//     11:11      0 fixtures across 17 competitions   ->  "nothing to propose"   exit 10
+//     12:19    133 fixtures across 17 competitions   ->  "nothing to propose"   exit 10
+//
+// The log line, the exit code, the heartbeat in Firestore and the line on the manager's
+// screen were identical. The comment in the script promised the failure was "said out loud" —
+// but out loud meant a line in a file nobody opens, and every channel a person actually reads
+// said the night was fine.
+//
+// `reached` is how many competitions answered, not how many fixtures came back: a competition
+// that legitimately has no fixtures yet answers with an empty list, and that is coverage.
+// The question is not "did anything fail" but "did we see what we say we saw".
+//
+// The exit codes are consumed by run-nightly.cmd through `if errorlevel N`, which means
+// "N or above" — so they are tested there from the highest down.
+export const SCAN_EXIT = { ok: 0, failed: 1, none: 10, partial: 11 };
+
+export function scanOutcome({ total = 0, reached = 0, filed = false } = {}) {
+  const all = Math.max(0, Math.trunc(total));
+  const got = Math.min(Math.max(0, Math.trunc(reached)), all);
+
+  // No competitions at all means CUP_LEAGUES is empty or unreadable. That is a broken scan
+  // dressed as a complete one, and it is the shape a bad edit to the list would take.
+  if (all === 0) return { state: "failed", exitCode: SCAN_EXIT.failed };
+  if (got === 0) return { state: "failed", exitCode: SCAN_EXIT.failed };
+
+  // Partial outranks `filed`, and it outranks it ON PURPOSE. A proposal from an incomplete
+  // scan is worth having, but the manager has to know that the fixture list behind it is not
+  // the whole list — otherwise "nothing else came up" is a conclusion drawn from a gap.
+  // Exit 11 is treated by the runner as "there is something to look at", so a partial night
+  // is never reported to Task Scheduler as nothing-to-do.
+  if (got < all) return { state: "partial", exitCode: SCAN_EXIT.partial };
+
+  return filed
+    ? { state: "ok", exitCode: SCAN_EXIT.ok }
+    : { state: "none", exitCode: SCAN_EXIT.none };
+}
+
+// The sentence the log ends with. It exists so that the two runs above can never again print
+// the same thing: what was unreachable is named before what was found.
+export function scanSummary({ total = 0, reached = 0, fixtures = 0, ours = 0 } = {}) {
+  const missing = Math.max(0, total - reached);
+  const covered = `${fixtures} fixtures across ${reached}/${total} competitions · ${ours} involve this club`;
+  return missing > 0 ? `${covered} · ${missing} COULD NOT BE REACHED` : covered;
+}

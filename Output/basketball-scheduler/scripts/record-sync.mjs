@@ -18,7 +18,9 @@
 // push notifications at 3am for no reason. Its own tiny document has neither problem.
 //
 // Run: node scripts/record-sync.mjs --cups <status> --league <status> [--note "..."]
-//   status: ok | none | failed | unchanged | skipped
+//   status: ok | none | partial | failed | unchanged | skipped
+//     partial - the half ran but did not cover everything it claims to cover. Added 27.9.2026,
+//     after a cup scan that reached none of the seventeen competitions reported a quiet night.
 // Exit: 0 written · 1 could not write (never fails the run that called it)
 
 import fs from "node:fs";
@@ -35,7 +37,7 @@ const value = (name, fallback) => {
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
 
-const STATUSES = ["ok", "none", "failed", "unchanged", "skipped"];
+const STATUSES = ["ok", "none", "partial", "failed", "unchanged", "skipped"];
 const status = (raw) => (STATUSES.includes(String(raw)) ? String(raw) : "failed");
 
 const stamp = () => new Date().toISOString().slice(0, 19).replace("T", " ");

@@ -45,6 +45,8 @@ set "CUPSTATE=failed"
 echo [%date% %time%] --- cup scan --- >> federation-inbox\log.txt
 node scripts\scan-cups.mjs >> federation-inbox\log.txt 2>&1
 rem `if errorlevel N` means "N or above", so the highest code is tested first.
+rem   11 some competitions unreachable  -  10 nothing new  -  1 nothing reached  -  0 filed
+if errorlevel 11 goto :cups_partial
 if errorlevel 10 goto :cups_none
 if errorlevel 1 goto :cups_failed
 set "CUPSTATE=ok"
@@ -53,6 +55,14 @@ goto :league
 :cups_failed
 set "CUPSTATE=failed"
 echo [%date% %time%] the cup scan failed - continuing with the league sync >> federation-inbox\log.txt
+goto :league
+
+:cups_partial
+rem The scan ran but did not cover every competition - on 26.9.2026 a resume with the network
+rem still coming up failed all seventeen and reported a quiet night. This state exists so that
+rem "nothing new" can never again mean "we did not look".
+set "CUPSTATE=partial"
+echo [%date% %time%] the cup scan was incomplete - see the lines above >> federation-inbox\log.txt
 goto :league
 
 :cups_none
@@ -82,9 +92,12 @@ set "LEAGUESTATE=none"
 goto :quiet
 
 :quiet
-rem Nothing to look at from the league file. Still a success if the cup scan filed something.
+rem Nothing to look at from the league file. Still a success if the cup scan filed something -
+rem and an INCOMPLETE cup scan also counts as something to look at, so that a partial night is
+rem never reported to Task Scheduler as nothing-to-do.
 set "CODE=10"
 if "%CUPSTATE%"=="ok" set "CODE=0"
+if "%CUPSTATE%"=="partial" set "CODE=0"
 goto :record
 
 :failed

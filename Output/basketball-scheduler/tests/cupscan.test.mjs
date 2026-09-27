@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {
   splitTitle, decodeTitle, matchesClub, splitDateTime, eventToDraft,
-  classify, draftToGame, cupCode, CUP_LEAGUES,
+  classify, draftToGame, cupCode, CUP_LEAGUES, scanOutcome, scanSummary, SCAN_EXIT,
 } from "../src/utils/cupScan.js";
 
 const ev = (id, title, date) => ({ id, date, title: { rendered: title } });
@@ -217,3 +217,64 @@ console.log("\n" + n + " tests passed");
 
   console.log("\n6 recognition tests passed");
 }
+
+// ---------- added 27.9.2026: did the scan cover what it claims to cover? ----------
+
+T("REGRESSION: reaching none of the competitions is a failure, not a quiet night", () => {
+  // 26.9.2026, two runs forty minutes apart, both ending "nothing to propose" with exit 10:
+  //     11:11      0 fixtures across 17 competitions
+  //     12:19    133 fixtures across 17 competitions
+  // The first had reached nothing. Every channel a person reads said the night was fine.
+  const dead = scanOutcome({ total: 17, reached: 0 });
+  const quiet = scanOutcome({ total: 17, reached: 17 });
+  assert.equal(dead.state, "failed");
+  assert.equal(quiet.state, "none");
+  assert.notEqual(dead.exitCode, quiet.exitCode, "the two runs must not exit the same way");
+});
+
+T("one competition short is partial — coverage is the question, not fixture count", () => {
+  // A competition with no fixtures yet answers with an empty list, and that IS coverage.
+  assert.equal(scanOutcome({ total: 17, reached: 17, filed: false }).state, "none");
+  assert.equal(scanOutcome({ total: 17, reached: 16 }).state, "partial");
+  assert.equal(scanOutcome({ total: 17, reached: 1 }).state, "partial");
+});
+
+T("a proposal from an incomplete scan is still reported as incomplete", () => {
+  // The fixture is worth having; "nothing else came up" is not a conclusion a gap supports.
+  const out = scanOutcome({ total: 17, reached: 12, filed: true });
+  assert.equal(out.state, "partial");
+  assert.equal(out.exitCode, SCAN_EXIT.partial);
+  assert.equal(scanOutcome({ total: 17, reached: 17, filed: true }).state, "ok");
+});
+
+T("an empty competition list is a broken scan, not a complete one", () => {
+  // The shape a bad edit to CUP_LEAGUES would take: 0 of 0 reached is vacuously "all".
+  assert.equal(scanOutcome({ total: 0, reached: 0 }).state, "failed");
+  assert.equal(scanOutcome().state, "failed");
+});
+
+T("`reached` above `total` cannot manufacture full coverage", () => {
+  assert.equal(scanOutcome({ total: 17, reached: 99 }).state, "none");
+  assert.equal(scanOutcome({ total: 17, reached: -4 }).state, "failed");
+});
+
+T("the exit codes survive `if errorlevel N`, which means N or above", () => {
+  // run-nightly.cmd tests 11, then 10, then 1. Two codes that collide there would silently
+  // merge two states, which is the bug all over again in a different file.
+  const codes = Object.values(SCAN_EXIT);
+  assert.equal(new Set(codes).size, codes.length, "duplicate exit code");
+  assert.equal(SCAN_EXIT.partial > SCAN_EXIT.none, true, "partial must be tested before none");
+  assert.equal(SCAN_EXIT.none > SCAN_EXIT.failed, true);
+  assert.equal(SCAN_EXIT.ok, 0);
+});
+
+T("the summary names what was missed, and cannot read like a full scan", () => {
+  assert.equal(
+    scanSummary({ total: 17, reached: 17, fixtures: 133, ours: 3 }),
+    "133 fixtures across 17/17 competitions · 3 involve this club"
+  );
+  const bad = scanSummary({ total: 17, reached: 0, fixtures: 0, ours: 0 });
+  assert.equal(bad.includes("0/17"), true);
+  assert.equal(bad.includes("COULD NOT BE REACHED"), true);
+  assert.notEqual(bad, scanSummary({ total: 17, reached: 17, fixtures: 0, ours: 0 }));
+});

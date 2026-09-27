@@ -20,7 +20,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  CUP_LEAGUES, eventToDraft, classify,
+  CUP_LEAGUES, eventToDraft, classify, scanOutcome, scanSummary,
 } from "../src/utils/cupScan.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,21 +85,33 @@ async function firestore() {
 
 async function main() {
   let seen = 0;
+  let reached = 0;
   const drafts = [];
   for (const league of CUP_LEAGUES) {
     try {
       const r = await scanLeague(league);
       seen += r.count;
+      reached += 1;
       drafts.push(...r.drafts);
       log(`${String(r.count).padStart(3)} fixtures · ${league.name}${r.drafts.length ? `  << ${r.drafts.length} ours` : ""}`);
     } catch (err) {
-      // One competition failing must not lose the other sixteen — but it is said out loud,
-      // because a scan that silently covered less than it claims is the failure this whole
-      // job exists to prevent.
+      // One competition failing must not lose the other sixteen — that part was always
+      // right. What was missing is that `reached` is now counted, so the run can say how
+      // much of the federation it actually saw instead of implying all of it. See
+      // scanOutcome() for what happened when all seventeen failed.
       log(`!! ${league.name}: ${err.message}`);
     }
   }
-  log(`${seen} fixtures across ${CUP_LEAGUES.length} competitions · ${drafts.length} involve this club`);
+  log(scanSummary({ total: CUP_LEAGUES.length, reached, fixtures: seen, ours: drafts.length }));
+
+  // Decided before the Firestore read, because a scan that reached nothing has nothing to
+  // classify and must not spend a query to conclude "nothing new".
+  if (reached === 0) {
+    const out = scanOutcome({ total: CUP_LEAGUES.length, reached });
+    log("the federation could not be reached at all — this is a FAILED scan, not a quiet night");
+    process.exitCode = out.exitCode;
+    return;
+  }
 
   const db = await firestore();
   const { FieldPath } = await import("firebase-admin/firestore");
@@ -111,8 +123,11 @@ async function main() {
   log(`already accepted: ${result.known.length} · new: ${result.fresh.length} · same date as an existing game: ${result.possible.length}`);
 
   if (result.fresh.length === 0 && result.possible.length === 0) {
-    log("nothing to propose");
-    process.exitCode = 10;
+    const out = scanOutcome({ total: CUP_LEAGUES.length, reached });
+    // "nothing to propose" is only allowed to be the last word when every competition
+    // answered. Otherwise it is a conclusion about a list we did not finish reading.
+    log(out.state === "partial" ? "nothing to propose — but the scan was incomplete" : "nothing to propose");
+    process.exitCode = out.exitCode;
     return;
   }
 
@@ -127,6 +142,13 @@ async function main() {
     resolved: false,
   });
   log(`filed at clubs/${CLUB_ID}/cupScans/${id}`);
+
+  // A proposal from an incomplete scan still exits 11, not 0. The manager gets the fixture
+  // AND the fact that it came out of a partial reading — "nothing else came up" must not be
+  // inferred from a gap.
+  const out = scanOutcome({ total: CUP_LEAGUES.length, reached, filed: true });
+  if (out.state === "partial") log("the proposal above came from an INCOMPLETE scan");
+  process.exitCode = out.exitCode;
 }
 
 main().catch((err) => {

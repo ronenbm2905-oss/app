@@ -156,3 +156,45 @@ T("older than a couple of days carries the date, so it can be checked", () => {
 });
 
 console.log(`\n${count} sync-health tests passed`);
+
+// ---------- added 27.9.2026: `partial` must reach the screen ----------
+
+T("an incomplete cup scan is amber and says so — not 'אין שינויים'", () => {
+  // The whole point of the new state. `none` and `partial` differ only in the heartbeat, so if
+  // this line did not change, the fix would stop at the database and never reach the manager.
+  const at = new Date(2026, 8, 27, 3, 5).toISOString();
+  const now = new Date(2026, 8, 27, 8, 30);
+  const quiet = syncState({ at, cups: "none", league: "unchanged" }, now);
+  const partial = syncState({ at, cups: "partial", league: "unchanged" }, now);
+  assert.equal(quiet.level, "ok");
+  assert.equal(quiet.detail, "אין שינויים");
+  assert.equal(partial.level, "warn", "a partial picture must not be a clean grey line");
+  assert.notEqual(partial.detail, quiet.detail);
+  assert.equal(partial.detail.includes("חלקית"), true);
+});
+
+T("an incomplete scan outranks a waiting proposal in the sentence", () => {
+  // A proposal from a partial scan is worth acting on, but "nothing else came up" is not a
+  // conclusion a gap supports — so the gap is what the line says.
+  const at = new Date(2026, 8, 27, 3, 5).toISOString();
+  const now = new Date(2026, 8, 27, 8, 30);
+  const s = syncState({ at, cups: "partial", league: "unchanged" }, now, { pending: true });
+  assert.equal(s.detail.includes("חלקית"), true);
+  assert.equal(s.level, "warn");
+});
+
+T("a failure still outranks an incomplete scan", () => {
+  const at = new Date(2026, 8, 27, 3, 5).toISOString();
+  const now = new Date(2026, 8, 27, 8, 30);
+  const s = syncState({ at, cups: "failed", league: "partial" }, now);
+  assert.equal(s.detail, "סריקת הגביע נכשלה");
+  assert.equal(s.level, "warn");
+});
+
+T("a partial half on a night that never ran is still reported as not-run", () => {
+  // `bad` is about the clock and must not be softened by what the last run found.
+  const at = new Date(2026, 8, 24, 3, 5).toISOString();
+  const now = new Date(2026, 8, 27, 8, 30);
+  const s = syncState({ at, cups: "partial", league: "unchanged" }, now);
+  assert.equal(s.level, "bad");
+});
