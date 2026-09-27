@@ -2,20 +2,17 @@
 setlocal
 rem Nightly federation sync - the single entry point for Windows Task Scheduler.
 rem
-rem Two independent jobs against the same federation, and they are deliberately not chained:
+rem ONE job now, not two. As of 27.9.2026 this script runs only:
 rem
-rem   1. scan-cups      - cup and friendly fixtures, published page-per-age-group on the site
-rem   2. fetch+prepare  - the weekly league xlsx, downloaded and diffed
+rem   fetch+prepare  - the weekly league xlsx, downloaded and diffed
 rem
-rem THE CUP SCAN RUNS FIRST, AND ALWAYS. The league flow stops at :unchanged whenever the
-rem weekly file is identical to yesterday's, which is most nights - so anything placed after
-rem it would almost never run. A cup fixture can appear on a night the league file has not
-rem moved at all; that is the ordinary case, not the exception.
+rem The cup scan that used to run first has moved to a Cloud Function - see the block below,
+rem which explains why running it in both places would destroy a manager's decision rather
+rem than merely duplicate work. The league half stays here because it needs `xlsx`.
 rem
-rem A failure in one must not take the other down. The cup scan failing is logged and the
-rem league sync carries on, and the reverse.
-rem
-rem Both append to federation-inbox\log.txt, so one file tells the whole story of every night.
+rem It appends to federation-inbox\log.txt, so one file still tells the story of every night
+rem THIS MACHINE runs. The cup scan's own story is in Cloud Logging and in
+rem clubs/<id>/sync/cups.
 rem
 rem Exit: 0 there is a proposal to look at  -  10 nothing to do  -  1 something failed
 
@@ -41,33 +38,25 @@ if errorlevel 1 (
 )
 
 rem ---- 1. cup fixtures -------------------------------------------------------------
-set "CUPSTATE=failed"
-echo [%date% %time%] --- cup scan --- >> federation-inbox\log.txt
-node scripts\scan-cups.mjs >> federation-inbox\log.txt 2>&1
-rem `if errorlevel N` means "N or above", so the highest code is tested first.
-rem   11 some competitions unreachable  -  10 nothing new  -  1 nothing reached  -  0 filed
-if errorlevel 11 goto :cups_partial
-if errorlevel 10 goto :cups_none
-if errorlevel 1 goto :cups_failed
-set "CUPSTATE=ok"
-goto :league
-
-:cups_failed
-set "CUPSTATE=failed"
-echo [%date% %time%] the cup scan failed - continuing with the league sync >> federation-inbox\log.txt
-goto :league
-
-:cups_partial
-rem The scan ran but did not cover every competition - on 26.9.2026 a resume with the network
-rem still coming up failed all seventeen and reported a quiet night. This state exists so that
-rem "nothing new" can never again mean "we did not look".
-set "CUPSTATE=partial"
-echo [%date% %time%] the cup scan was incomplete - see the lines above >> federation-inbox\log.txt
-goto :league
-
-:cups_none
-rem Nothing new in any competition. Normal, and not worth a line of its own every night.
-set "CUPSTATE=none"
+rem
+rem MOVED TO THE CLOUD ON 27.9.2026, and this line is deliberately not here any more.
+rem
+rem `nightlyCupScan` in functions/index.js now runs the scan at 03:00 on Google's machines,
+rem because this one missed four nights out of four while asleep - including one on mains
+rem power with wake timers enabled, where the System log held zero events across 03:00.
+rem
+rem RUNNING BOTH WOULD DESTROY A DECISION, which is why the line was removed rather than left
+rem as a harmless second opinion. Both writers file `cupScans/<date>` with a full .set() and
+rem `resolved: false`. A manager who dismisses a fixture at 09:00 writes resolved/resolvedBy/
+rem resolvedAt onto that document; a scan at 10:00 would write the document whole again, erase
+rem all three, and put the dismissed fixture back on the banner. (The league half is NOT like
+rem this - a pendingImport carries no human decision - which is why it still runs below.)
+rem
+rem To scan by hand: node scripts\scan-cups.mjs
+rem `skipped` is one of the statuses record-sync.mjs accepts, and it is the honest one: this
+rem run did not scan the cups and is not claiming to. The cloud function writes its own
+rem heartbeat at clubs/<id>/sync/cups.
+set "CUPSTATE=skipped"
 
 :league
 rem ---- 2. the weekly league file ---------------------------------------------------
@@ -92,12 +81,9 @@ set "LEAGUESTATE=none"
 goto :quiet
 
 :quiet
-rem Nothing to look at from the league file. Still a success if the cup scan filed something -
-rem and an INCOMPLETE cup scan also counts as something to look at, so that a partial night is
-rem never reported to Task Scheduler as nothing-to-do.
+rem Nothing to look at from the league file, and the cup scan is no longer this script's to
+rem report - so there is nothing that could make this run anything but quiet.
 set "CODE=10"
-if "%CUPSTATE%"=="ok" set "CODE=0"
-if "%CUPSTATE%"=="partial" set "CODE=0"
 goto :record
 
 :failed

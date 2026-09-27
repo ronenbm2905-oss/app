@@ -14,63 +14,19 @@
 //     birth dates — never leaves the database, which is stronger than deleting it after.
 //   • It never rewrites an existing game. It can only propose additions.
 //
-// Exit codes match run-nightly.cmd: 0 there is something to look at · 10 nothing · 1 failed.
+// Exit codes match run-nightly.cmd — see SCAN_EXIT in cupScan.js:
+//   0 filed  ·  10 nothing new  ·  11 some competitions unreachable  ·  1 none reached.
 
 import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import {
-  CUP_LEAGUES, eventToDraft, classify, scanOutcome, scanSummary,
+  CUP_LEAGUES, eventToDraft, classify, scanOutcome, scanSummary, mayOverwriteScan,
 } from "../src/utils/cupScan.js";
+import { createFederationApi, scanCompetitions, FEDERATION_API } from "../src/utils/federationApi.js";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CLUB_ID = process.env.VITE_CLUB_ID || "main";
-const API = process.env.FEDERATION_API || "https://ibasketball.co.il/wp-json/sportspress/v2";
-const UA = "Mozilla/5.0 (compatible; kiryat-ono-scheduler/1.0)";
+const API = process.env.FEDERATION_API || FEDERATION_API;
 
 const log = (...a) => console.log("[cups]", ...a);
-
-async function getJson(url) {
-  const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
-  return res.json();
-}
-
-// Venue names are fetched once each and reused. A cup round puts twenty fixtures in three
-// halls; asking the site twenty times would be rude and slower than the whole scan.
-const venueCache = new Map();
-async function venueName(id) {
-  if (!id) return "";
-  if (venueCache.has(id)) return venueCache.get(id);
-  try {
-    const v = await getJson(`${API}/venues/${id}?_fields=name`);
-    const name = String(v?.name || "").trim();
-    venueCache.set(id, name);
-    return name;
-  } catch {
-    venueCache.set(id, "");
-    return "";
-  }
-}
-
-async function scanLeague(league) {
-  const url = `${API}/events?leagues=${league.id}&per_page=100&_fields=id,date,title,venues`;
-  const events = await getJson(url);
-  const drafts = [];
-  for (const ev of Array.isArray(events) ? events : []) {
-    const draft = eventToDraft(ev, { leagueName: league.name });
-    if (!draft) continue;
-    // Only ours gets a second request. Resolving every venue in every competition would be
-    // a hundred calls to learn nothing.
-    //
-    // A HOME game needs this as much as an away one: the club plays in several halls, and
-    // the federation's venue is the only thing that says which. (It will not be spelled the
-    // way we spell it — see matchHall.)
-    draft.venue = await venueName(ev?.venues?.[0]);
-    drafts.push(draft);
-  }
-  return { count: Array.isArray(events) ? events.length : 0, drafts };
-}
 
 async function firestore() {
   const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -84,24 +40,18 @@ async function firestore() {
 }
 
 async function main() {
-  let seen = 0;
-  let reached = 0;
-  const drafts = [];
-  for (const league of CUP_LEAGUES) {
-    try {
-      const r = await scanLeague(league);
-      seen += r.count;
-      reached += 1;
-      drafts.push(...r.drafts);
-      log(`${String(r.count).padStart(3)} fixtures · ${league.name}${r.drafts.length ? `  << ${r.drafts.length} ours` : ""}`);
-    } catch (err) {
-      // One competition failing must not lose the other sixteen — that part was always
-      // right. What was missing is that `reached` is now counted, so the run can say how
-      // much of the federation it actually saw instead of implying all of it. See
-      // scanOutcome() for what happened when all seventeen failed.
-      log(`!! ${league.name}: ${err.message}`);
-    }
-  }
+  // The scan itself lives in src/utils/, so this script and the Cloud Function run the same
+  // code rather than two copies of it. What stays here is only how a terminal reports it.
+  const { seen, reached, drafts } = await scanCompetitions(CUP_LEAGUES, {
+    api: createFederationApi({ base: API }),
+    toDraft: (ev, league) => eventToDraft(ev, { leagueName: league.name }),
+    onLeague: (league, count, ours) =>
+      log(`${String(count).padStart(3)} fixtures · ${league.name}${ours ? `  << ${ours} ours` : ""}`),
+    // One competition failing must not lose the other sixteen — that part was always right.
+    // What was missing is that `reached` is now counted, so the run can say how much of the
+    // federation it actually saw instead of implying all of it. See scanOutcome().
+    onFailure: (league, err) => log(`!! ${league.name}: ${err.message}`),
+  });
   log(scanSummary({ total: CUP_LEAGUES.length, reached, fixtures: seen, ours: drafts.length }));
 
   // Decided before the Firestore read, because a scan that reached nothing has nothing to
@@ -132,7 +82,16 @@ async function main() {
   }
 
   const id = new Date().toISOString().slice(0, 10);
-  await db.collection("clubs").doc(CLUB_ID).collection("cupScans").doc(id).set({
+  const ref = db.collection("clubs").doc(CLUB_ID).collection("cupScans").doc(id);
+  const existing = await ref.get();
+  if (!mayOverwriteScan(existing.exists ? existing.data() : null)) {
+    // Someone already dealt with today's proposal. Writing over it would put the fixture
+    // they dismissed back on the banner and delete the record of who dismissed it.
+    log(`today's proposal has already been dealt with — leaving it alone`);
+    process.exitCode = scanOutcome({ total: CUP_LEAGUES.length, reached }).exitCode;
+    return;
+  }
+  await ref.set({
     id,
     scannedAt: new Date().toISOString(),
     competitions: CUP_LEAGUES.length,

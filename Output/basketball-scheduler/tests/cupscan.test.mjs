@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   splitTitle, decodeTitle, matchesClub, splitDateTime, eventToDraft,
   classify, draftToGame, cupCode, CUP_LEAGUES, scanOutcome, scanSummary, SCAN_EXIT,
+  mayOverwriteScan,
 } from "../src/utils/cupScan.js";
 
 const ev = (id, title, date) => ({ id, date, title: { rendered: title } });
@@ -277,4 +278,24 @@ T("the summary names what was missed, and cannot read like a full scan", () => {
   assert.equal(bad.includes("0/17"), true);
   assert.equal(bad.includes("COULD NOT BE REACHED"), true);
   assert.notEqual(bad, scanSummary({ total: 17, reached: 17, fixtures: 0, ours: 0 }));
+});
+
+T("a proposal a manager has already dealt with is never written over", () => {
+  // `cupScans/{date}` is keyed by the day, and useCupScan.js records the decision ON that
+  // document — resolved, resolvedAt, resolvedBy, resolvedNote. A second scan the same day
+  // used to .set() the whole thing again with `resolved: false`: the dismissed fixture came
+  // back to the banner and the record of who dismissed it was gone. Found in the legal gate
+  // on 27.9.2026, while the scan was moving to a Cloud Function — two runners made it likely,
+  // but running the script twice in one day was always enough.
+  assert.equal(mayOverwriteScan(null), true, "nothing there yet");
+  assert.equal(mayOverwriteScan({ resolved: false }), true, "still open");
+  assert.equal(mayOverwriteScan({ resolved: true, resolvedBy: "a@b.c" }), false);
+});
+
+T("anything truthy in `resolved` stops the overwrite — failing the safe way", () => {
+  // Refusing wrongly delays a fixture by one day; allowing wrongly erases a decision.
+  assert.equal(mayOverwriteScan({ resolved: "true" }), false);
+  assert.equal(mayOverwriteScan({ resolved: 1 }), false);
+  assert.equal(mayOverwriteScan({ resolved: undefined }), true);
+  assert.equal(mayOverwriteScan({}), true);
 });

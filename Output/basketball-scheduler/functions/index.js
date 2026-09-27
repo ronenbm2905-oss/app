@@ -14,6 +14,10 @@ import {
   isDeadToken,
 } from "./shared/utils/pushTargets.js";
 import { boardChanges, changeSummary } from "./shared/utils/boardChanges.js";
+import {
+  CUP_LEAGUES, eventToDraft, classify, scanOutcome, scanSummary, mayOverwriteScan,
+} from "./shared/utils/cupScan.js";
+import { createFederationApi, scanCompetitions } from "./shared/utils/federationApi.js";
 
 // Phone notifications for schedule changes. This is the only thing that runs in the cloud.
 //
@@ -247,3 +251,104 @@ export const onBoardChange = onDocumentWritten("clubs/{clubId}/boards/{token}", 
   // A count. The board carries no personal data and neither does this line.
   console.log(`board push: delivered ${sent}`);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// The cup scan, moved off Ronen's laptop on 27.9.2026.
+//
+// WHY IT MOVED. The scan is scheduled for 03:00 on a machine that is a Modern Standby
+// laptop, and over 24-27.9 it missed four nights out of four. Measured, not guessed:
+//
+//     24.9 15:23 -> 25.9 17:49 asleep      03:00 inside
+//     26.9 01:48 -> 26.9 10:54 asleep      03:00 AND the new 10:00 trigger inside
+//     26.9 19:16 -> 27.9 08:26 asleep      03:00 inside, ON MAINS POWER
+//
+// The third one is the one that settled it. Wake timers are enabled on AC, `WakeToRun` is
+// set, and the System log holds ZERO events between 02:40 and 03:30 — the machine was not
+// merely failing to start a task, it was quiesced. `powercfg /a` says S3 does not exist on
+// this hardware at all. A scheduled wake there is a request, not a promise.
+//
+// WHAT THIS DOES NOT DO YET. The weekly league xlsx still runs on the laptop: it needs
+// `games.js`, which needs `xlsx`, which is a larger move and a dependency decision of its
+// own. So for now the two halves run in two places, and that is SAFE rather than merely
+// tolerable — both file their proposal under a document id derived from the date, so a
+// second run replaces the day's proposal instead of stacking one the manager must reconcile.
+//
+// AND IT DELIBERATELY DOES NOT WRITE `sync/nightly`. That document drives the line on the
+// manager's screen, and its `at` is what `nightsMissed` reads. If this function refreshed
+// `at` every night while the league half sat unrun on a sleeping laptop, the screen would
+// report a healthy sync over a file nobody had checked for days — which is precisely the
+// failure fixed hours earlier in this same commit series. It keeps its own heartbeat until
+// the league half joins it here.
+//
+// Privacy: `.select("games")` is kept. A scheduled function, unlike the document trigger
+// above, CAN project — so `players[]` never leaves the database.
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+export const nightlyCupScan = onSchedule(
+  {
+    schedule: "0 3 * * *",
+    timeZone: "Asia/Jerusalem",
+    // Seventeen competitions, each with its own 20s ceiling, plus a venue call per fixture
+    // of ours. The whole scan takes ~15s in practice; this is room for a slow night, not a
+    // budget to be spent.
+    timeoutSeconds: 300,
+    retryCount: 0,
+  },
+  async () => {
+    const clubs = await db.collection("clubs").select("games").get();
+
+    for (const club of clubs.docs) {
+      const games = club.data().games || [];
+      const { seen, reached, drafts } = await scanCompetitions(CUP_LEAGUES, {
+        api: createFederationApi(),
+        toDraft: (ev, league) => eventToDraft(ev, { leagueName: league.name }),
+        // Competition names only — never a fixture, never anything out of the club document.
+        onFailure: (league, err) => console.warn(`cup scan: ${league.name}: ${err.message}`),
+      });
+
+      const result = reached === 0 ? { fresh: [], possible: [], known: [] } : classify(drafts, games);
+      const outcome = scanOutcome({
+        total: CUP_LEAGUES.length,
+        reached,
+        filed: result.fresh.length > 0 || result.possible.length > 0,
+      });
+
+      console.log(
+        `cup scan ${club.id}: ${scanSummary({ total: CUP_LEAGUES.length, reached, fixtures: seen, ours: drafts.length })} -> ${outcome.state}`
+      );
+
+      const id = new Date().toISOString().slice(0, 10);
+      const ref = db.collection("clubs").doc(club.id).collection("cupScans").doc(id);
+      const existing = (result.fresh.length > 0 || result.possible.length > 0) ? await ref.get() : null;
+
+      // A manager who dealt with today's proposal wrote their decision ONTO this document.
+      // Rewriting it whole would put the dismissed fixture back on the banner and delete the
+      // record of who dismissed it and when — see mayOverwriteScan().
+      if (existing && !mayOverwriteScan(existing.exists ? existing.data() : null)) {
+        console.log(`cup scan ${club.id}: today's proposal is already dealt with — not touching it`);
+      } else if (existing) {
+        await ref.set({
+          id,
+          scannedAt: new Date().toISOString(),
+          competitions: CUP_LEAGUES.length,
+          // How much of the federation this proposal actually saw. A manager deciding
+          // "nothing else came up" is entitled to know whether the list was complete.
+          reached,
+          fixturesSeen: seen,
+          fresh: result.fresh,
+          possible: result.possible,
+          resolved: false,
+        });
+      }
+
+      await db.collection("clubs").doc(club.id).collection("sync").doc("cups").set({
+        at: new Date().toISOString(),
+        state: outcome.state,
+        reached,
+        competitions: CUP_LEAGUES.length,
+        fixturesSeen: seen,
+        where: "cloud",
+      });
+    }
+  }
+);

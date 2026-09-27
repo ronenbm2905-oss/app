@@ -260,3 +260,25 @@ export function scanSummary({ total = 0, reached = 0, fixtures = 0, ours = 0 } =
   const covered = `${fixtures} fixtures across ${reached}/${total} competitions · ${ours} involve this club`;
   return missing > 0 ? `${covered} · ${missing} COULD NOT BE REACHED` : covered;
 }
+
+// May today's proposal be written over the one already there?
+//
+// `cupScans/{date}` is keyed by the day, so a second scan on the same day rewrites the same
+// document — and `useCupScan.js` records a manager's decision ON that document: `resolved`,
+// `resolvedAt`, `resolvedBy`, `resolvedNote`. A full `.set()` from a later scan puts
+// `resolved: false` back and takes the other three with it. The dismissed fixture returns to
+// the banner and the record of who dismissed it, and when, is gone.
+//
+// Found 27.9.2026 in the legal gate, while the cup scan was moving to a Cloud Function. The
+// move is what made it likely — two independent runners instead of one — but the hazard was
+// already there for anyone who ran the script twice in a day.
+//
+// Skipping costs at most one day: the next scan writes tomorrow's document, and `classify`
+// re-offers anything still genuinely missing. Overwriting costs a person's decision.
+// Truthiness rather than `=== true`, and that is the deliberate direction of failure: a
+// `resolved` field in some shape nobody expected should stop the overwrite, not wave it
+// through. Refusing wrongly delays a fixture by a day; allowing wrongly erases a decision.
+export function mayOverwriteScan(existing) {
+  if (!existing) return true;
+  return !existing.resolved;
+}
