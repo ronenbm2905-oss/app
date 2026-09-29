@@ -29,7 +29,31 @@ export function NotifyPauseCard({ data, save, canEdit }) {
     return () => clearInterval(t);
   }, [paused]);
 
-  if (!canEdit) return null;
+  // THE PERSON WHOSE PHONE IS BEING SILENCED IS THE ONE WHO OTHERWISE WOULD NOT KNOW.
+  //
+  // Gate #24 asked whether the club should record WHO silenced the notifications, and the
+  // answer was no — a record of one identified person's action buys a clause in the privacy
+  // policy, a retention period and a deletion route, for nothing anybody would read. What it
+  // asked for instead is this: show the state, live, to the people it affects. A coach who
+  // can see "notifications are off until 21:15" is not relying on a silent phone, which is
+  // exactly what the terms of use now say out loud.
+  //
+  // Read-only: a coach sees it and cannot change it. And only while it is ON — the offer to
+  // silence belongs to whoever is about to do the scheduling.
+  if (!canEdit) {
+    if (!paused) return null;
+    return (
+      <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2" dir="rtl" role="status">
+        <div className="text-xs text-amber-900 flex items-center gap-1.5">
+          <IconBan size={13} />
+          <span>
+            <strong>ההתראות במועדון מושתקות כרגע</strong> — {pauseLabel(data)}. השינויים
+            מופיעים כרגיל במסך.
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   const start = (minutes) => save({ ...data, notifyPausedUntil: pauseUntil(minutes) });
   const stop = () => save({ ...data, notifyPausedUntil: null });
@@ -57,7 +81,7 @@ export function NotifyPauseCard({ data, save, canEdit }) {
   return (
     // Amber and loud. While this is on, a genuinely urgent cancellation will not reach a
     // phone either — so the card has to be impossible to scroll past without noticing.
-    <div className="rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-2.5" dir="rtl">
+    <div className="rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-2.5" dir="rtl" role="status">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-semibold text-amber-900 flex items-center gap-1.5">
           <IconBan size={14} />
