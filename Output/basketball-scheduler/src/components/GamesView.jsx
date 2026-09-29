@@ -12,6 +12,7 @@ import { teamIdsForCoach, defaultTeamFilter, teamFilterOptions, filterGames, sor
 import { TeamGamesSheet } from "./TeamGamesSheet";
 import { CoachGamesCalendar } from "./CoachGamesCalendar";
 import { ImportLogView } from "./ImportLogView";
+import { HallGamesView } from "./HallGamesView";
 import { HallClashesCard } from "./HallClashesCard";
 import { GameNote } from "./GameNote";
 import { noteFor, scoreFor } from "../utils/gameNotes";
@@ -414,6 +415,16 @@ export function GamesView({
         >
           לוח משחקים
         </button>
+        {/* Not behind `canEdit`: answering "is the hall free on the 2nd" is a lookup, and a
+            coach fielding the same call should not have to ring the manager to answer it. */}
+        <button
+          onClick={() => setSubTab("halls")}
+          className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+            subTab === "halls" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          אולם לפי תאריך
+        </button>
         {canEdit && (
           <button
             onClick={() => setSubTab("mapping")}
@@ -438,6 +449,8 @@ export function GamesView({
           </button>
         )}
       </div>
+
+      {subTab === "halls" && <HallGamesView data={data} />}
 
       {canEdit && subTab === "log" && <ImportLogView entries={importLog} logFailed={importLogFailed} />}
 

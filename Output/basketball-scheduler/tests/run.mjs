@@ -40,6 +40,7 @@ const FILES = [
   "./gamefilters.test.mjs",
   "./gamesheet.test.mjs",
   "./hallclashes.test.mjs",
+  "./hallcalendar.test.mjs",
   "./duplicatesessions.test.mjs",
   "./sheetgrid.test.mjs",
   // birthdays.js ran on the notice board from August with no tests — it imported
