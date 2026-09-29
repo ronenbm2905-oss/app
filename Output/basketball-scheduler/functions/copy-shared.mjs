@@ -23,6 +23,7 @@ const FILES = [
   ["constants.js", "constants.js"],
   ["utils/scheduleChanges.js", "utils/scheduleChanges.js"],
   ["utils/pushTargets.js", "utils/pushTargets.js"],
+  ["utils/notifyPause.js", "utils/notifyPause.js"],
   ["utils/boardChanges.js", "utils/boardChanges.js"],
   // `scheduleChanges.js` grew an import of `getWeekDates` in 0f89b12 and this list was not
   // updated with it. Nothing broke, because the deployed bundle still held the old file —

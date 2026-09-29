@@ -73,8 +73,18 @@ export function isFresh(entry, now = new Date(), maxAgeHours = MAX_AGE_HOURS) {
   return age >= 0 && age <= maxAgeHours * 3600 * 1000;
 }
 
+// The single gate both notification paths go through — the live trigger and the morning
+// catch-up. Which is why the pause is enforced here and not at either call site: a filter
+// applied in one of the two would mean a change silenced at 21:00 rang at 07:05 anyway.
+//
+// `silent` was decided at the moment the entry was written (see utils/notifyPause.js) and
+// travels with it. Nothing here re-reads the club document, so an entry written during a
+// pause stays silent even if the pause has since expired.
+//
+// NOTE: this drops entries only from NOTIFICATION. The app reads `changes` directly and is
+// unaffected — the banner, the weekly message and the board all still show them.
 export function freshEntries(entries, now = new Date(), maxAgeHours = MAX_AGE_HOURS) {
-  return arr(entries).filter((e) => isFresh(e, now, maxAgeHours));
+  return arr(entries).filter((e) => e?.silent !== true && isFresh(e, now, maxAgeHours));
 }
 
 // One notification per coach, however many of their sessions moved.

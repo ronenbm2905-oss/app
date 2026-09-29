@@ -15,6 +15,7 @@ import {
 import { renderNodeCanvas, canvasToPngBlob, canvasToPdfBlob, shareOrDownloadBlob, loadImageDataUrl, AppUpdatedError, APP_UPDATED_MESSAGE } from "../utils/imageExport";
 import { Select } from "./ui/Select";
 import { WeekNav } from "./ui/WeekNav";
+import { NotifyPauseCard } from "./NotifyPauseCard";
 import { SessionForm } from "./SessionForm";
 import { GameTimeAdjuster } from "./GameTimeAdjuster";
 import { syncGamesToSessions, defaultGameTimes } from "../utils/games";
@@ -573,6 +574,9 @@ export function WeeklyScheduleView({ data, save, canEdit, weekStart, setWeekStar
       {/* Controls */}
       <div className="no-print space-y-3">
         <WeekNav value={weekStart} onChange={setWeekStart} />
+        {/* Above the week and not buried in a menu: the only moment anyone wants this is the
+            moment before they start moving things. */}
+        <NotifyPauseCard data={data} save={save} canEdit={canEdit} />
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <input

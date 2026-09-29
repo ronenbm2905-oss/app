@@ -87,6 +87,10 @@ export const EMPTY = {
   departBeforeMin: 90,
   announcement: { text: "", updatedAt: null }, // single notice board shown to all coaches
   schedulePublished: null, // { weekOf, at } — set when a manager marks a week's schedule as published
+  // ISO deadline. While it is in the future, change entries are written with `silent: true`
+  // and no phone rings — see utils/notifyPause.js. A deadline rather than a flag, so it
+  // cannot be left on.
+  notifyPausedUntil: null,
   weeklyAssignments: {},
   admins: [],   // emails with edit rights (read + write)
   members: [],  // emails with view-only rights (read); admins also read via the rules

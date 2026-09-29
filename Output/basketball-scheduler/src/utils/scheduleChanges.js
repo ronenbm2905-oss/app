@@ -17,6 +17,7 @@
 
 import { DAYS } from "../constants.js";
 import { getWeekDates } from "./dates.js";
+import { isNotifyPaused, markSilent } from "./notifyPause.js";
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const str = (v) => String(v ?? "").trim();
@@ -185,7 +186,13 @@ export function withScheduleChanges(prev, next, now = new Date().toISOString()) 
     // touches neither sessions nor stale entries stays a no-op.
     return arr(next.changes).length === kept.length ? next : { ...next, changes: kept };
   }
-  return { ...next, changes: trimChanges([...kept, ...collapseBulk(found, now)], now) };
+
+  // The entry is WRITTEN either way — what the pause withholds is the phone call, not the
+  // record. Marked here, at the moment of the save, rather than read by the cloud function
+  // later: by the time that function runs the pause may have expired, and entries written
+  // while it was on would go out after all.
+  const fresh = markSilent(collapseBulk(found, now), isNotifyPaused(next, now));
+  return { ...next, changes: trimChanges([...kept, ...fresh], now) };
 }
 
 // ---------- reading ----------

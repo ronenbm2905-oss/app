@@ -5,6 +5,7 @@ import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY } from "../constants";
 import { DOC_FULL_MESSAGE, isTooLarge } from "../utils/access";
 import { withScheduleChanges } from "../utils/scheduleChanges";
+import { isNotifyPaused } from "../utils/notifyPause";
 
 // Merge stored data over defaults so older/partial documents don't crash the UI.
 function withDefaults(partial) {
@@ -93,10 +94,18 @@ function useCloudClubData(user) {
     const snap = await getDocs(collection(db, "clubs", CLUB_ID, "boards"));
     const current = {};
     snap.docs.forEach((d) => { current[d.id] = d.data(); });
+    // The same pause that silences the coaches silences the parents. A manager building a
+    // fortnight moves the boards as much as he moves the coaches' weeks, and a family being
+    // told six times in ten minutes that "the schedule changed" learns to ignore the seventh.
+    //
+    // Written as a boolean on EVERY refresh, never only when true: with `merge: true` a flag
+    // set once and then omitted would stay set for ever, and every future board change would
+    // be silent with nothing on any screen to explain it.
+    const silent = isNotifyPaused(next);
     for (const { token, board } of boardsToRefresh(next, current)) {
       // `merge` so the coach's message, which lives on the same document and is written by
       // a different person, survives every refresh.
-      await setDoc(doc(db, "clubs", CLUB_ID, "boards", token), board, { merge: true });
+      await setDoc(doc(db, "clubs", CLUB_ID, "boards", token), { ...board, notifySilent: silent }, { merge: true });
     }
   }, []);
 

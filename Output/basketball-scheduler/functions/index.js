@@ -255,6 +255,21 @@ export const onBoardChange = onDocumentWritten("clubs/{clubId}/boards/{token}", 
   const change = boardChanges(before, after);
   if (!change.changed) return;
 
+  // The manager is mid-session, building a fortnight, and asked for quiet. The board is
+  // still refreshed — the families' page is current — but nobody's phone rings for it.
+  //
+  // Read off the board document rather than the club's, on purpose: this function is handed
+  // the board and nothing else, and fetching the club here would be a second read per board
+  // per save, racing a pause that may have expired in between. The flag is written on every
+  // refresh, true or false, so it cannot stick.
+  if (after?.notifySilent === true) {
+    // `event.params.token` and not `token`: that binding is declared below, and reading it
+    // here would throw before it is initialised — on the one path that is supposed to be
+    // the quiet one.
+    console.log(`board push ${event.params.token}: silenced by the manager's pause`);
+    return;
+  }
+
   const clubId = event.params.clubId;
   const token = event.params.token;
 

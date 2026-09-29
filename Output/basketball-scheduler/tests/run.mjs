@@ -20,6 +20,7 @@ const FILES = [
   "./archive.test.mjs",
   "./hallavailability.test.mjs",
   "./pushtargets.test.mjs",
+  "./notifypause.test.mjs",
   "./daycopy.test.mjs",
   "./teamboard.test.mjs",
   "./cupscan.test.mjs",
