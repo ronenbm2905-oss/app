@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   isNotifyPaused, pauseUntil, pauseMinutesLeft, pauseLabel, markSilent, isSilent,
   PAUSE_OPTIONS, MAX_PAUSE_MINUTES, humanLeft,
+  isPauseEndingSoon, extendPause, ENDING_SOON_MINUTES,
 } from "../src/utils/notifyPause.js";
 import { withScheduleChanges } from "../src/utils/scheduleChanges.js";
 import { freshEntries } from "../src/utils/pushTargets.js";
@@ -143,6 +144,50 @@ T("every option produces a sentence a person would write", () => {
     assert.equal(/עוד \d+ שעות/.test(label) && !/עוד [3-9] שעות/.test(label), false, `clumsy: ${label}`);
     assert.match(label, /^ההתראות מושתקות עוד .+ — עד \d{2}:\d{2}$/);
   }
+});
+
+
+
+// ---------- the last five minutes, and the moment it lapses ----------
+
+T("the warning starts at five minutes and not before", () => {
+  const at = (min) => ({ notifyPausedUntil: pauseUntil(min, NOW) });
+  assert.equal(isPauseEndingSoon(at(120), NOW), false);
+  assert.equal(isPauseEndingSoon(at(6), NOW), false);
+  assert.equal(isPauseEndingSoon(at(ENDING_SOON_MINUTES), NOW), true);
+  assert.equal(isPauseEndingSoon(at(1), NOW), true);
+});
+
+T("a pause that has already lapsed is not 'ending soon' — it has ended", () => {
+  // Otherwise the red warning would sit there for ever after expiry, which is the opposite
+  // of the truth: the notifications are back on.
+  const past = { notifyPausedUntil: new Date(NOW.getTime() - 60000).toISOString() };
+  assert.equal(isPauseEndingSoon(past, NOW), false);
+  assert.equal(isNotifyPaused(past, NOW), false);
+  assert.equal(isPauseEndingSoon({}, NOW), false);
+});
+
+T("EXTENDING RESTARTS FROM NOW — it does not add to what is left", () => {
+  // Adding would make "another hour" mean something different at two minutes remaining than
+  // at fifty-nine, and repeated taps would walk straight past the two-hour cap that gate #24
+  // set as the entire control.
+  const nearlyDone = pauseUntil(2, NOW);
+  const extended = extendPause(60, NOW);
+  assert.equal(pauseMinutesLeft({ notifyPausedUntil: extended }, NOW), 60);
+  assert.equal(extended > nearlyDone, true, "the new deadline is later than the old one");
+});
+
+T("extending can never exceed the cap, however many times it is tapped", () => {
+  let stamp = extendPause(MAX_PAUSE_MINUTES, NOW);
+  for (let i = 0; i < 5; i++) stamp = extendPause(MAX_PAUSE_MINUTES, NOW);
+  assert.equal(pauseMinutesLeft({ notifyPausedUntil: stamp }, NOW), MAX_PAUSE_MINUTES);
+  assert.equal(extendPause(60 * 24, NOW), extendPause(MAX_PAUSE_MINUTES, NOW));
+});
+
+T("the warning window is a sane slice of the shortest pause offered", () => {
+  // Five minutes of warning on a thirty-minute pause is a sixth of it. More would be nagging.
+  const shortest = Math.min(...PAUSE_OPTIONS.map((o) => o.minutes));
+  assert.equal(ENDING_SOON_MINUTES < shortest / 2, true);
 });
 
 console.log(`

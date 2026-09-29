@@ -101,3 +101,30 @@ export function markSilent(entries, paused) {
 }
 
 export const isSilent = (entry) => entry?.silent === true;
+
+// The last few minutes, when the pause is about to lapse under a manager who is still working.
+//
+// WHY THIS IS NOT COSMETIC. Ronen asked the right question on 29.9.2026: "does it cancel
+// itself after two hours, and what do I do if I haven't finished?" The first half was fine —
+// nothing to cancel, the deadline simply passes. The second half exposed a real hole: the
+// card flipped back to its offer state within thirty seconds and said nothing, so a manager
+// mid-fortnight would carry on saving and the notifications would start going out again with
+// no sign of it. That is precisely the evening the pause exists to prevent.
+//
+// Five minutes, because it has to be long enough to finish the row being edited and short
+// enough that it is not warning for a tenth of the pause.
+export const ENDING_SOON_MINUTES = 5;
+
+export function isPauseEndingSoon(data, now = new Date()) {
+  if (!isNotifyPaused(data, now)) return false;
+  return pauseMinutesLeft(data, now) <= ENDING_SOON_MINUTES;
+}
+
+// Extending is a NEW deadline from now, not an addition to the old one.
+//
+// Adding would let "another hour" at 00:02 remaining mean something different from "another
+// hour" at 59:00 remaining, and repeated taps would drift past the cap that gate #24 set as
+// the whole control. `pauseUntil` clamps, so this cannot exceed it however often it is used.
+export function extendPause(minutes, now = new Date()) {
+  return pauseUntil(minutes, now);
+}
