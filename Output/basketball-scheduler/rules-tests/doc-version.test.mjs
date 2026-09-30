@@ -103,16 +103,46 @@ await t("after reloading, the same device saves normally", async () => {
 
 console.log("— the app must not fight itself —");
 
-await t("two saves in a row from ONE device both succeed", async () => {
-  // The snapshot listener lags behind a write. A guard that only trusted the snapshot would
-  // make every rapid second edit fail, which is worse than the bug it replaces.
+await t("two saves in a row from ONE device both succeed, and neither is lost", async () => {
+  // The app adopts what it just wrote as its local document, so the second payload is built
+  // ON TOP of the first. Both land, and both survive.
   await seed(club([session("a")], 0));
   const db = as(MANAGER);
   const first = await save(db, club([session("a"), session("b")], undefined), 0);
   const second = await save(db, club([session("a"), session("b"), session("c")], undefined), first);
   assert(second === first + 1, `expected ${first + 1}, got ${second}`);
   const after = await getDoc(refFor(db));
-  assert(after.data().sessions.length === 3);
+  assert(after.data().sessions.length === 3, "both saves must be present");
+});
+
+await t("THE HOLE IN THE FIRST VERSION: a second payload built on the PRE-SAVE document", async () => {
+  // This is what the app actually did before gate #25 found it. `data` is only updated when
+  // the snapshot returns, so a quick second edit was still `{ ...D0, otherField }` — without
+  // the first save's change. The first version raised the expected rev to "what I last
+  // wrote", which did not make that payload safe: it made it LAND, and the first save's work
+  // vanished with no error and nothing in the change log. One device, overwriting itself,
+  // through the mechanism added to prevent overwrites.
+  //
+  // The invariant now: the expected rev is the rev OF THE DOCUMENT THE PAYLOAD WAS BUILT
+  // FROM. Send a payload built on rev 0 and say so, and it is refused — which is the whole
+  // point, and what the app no longer needs because it adopts its own writes.
+  await seed(club([session("a")], 0));
+  const db = as(MANAGER);
+  const first = await save(db, club([session("a"), session("b")], undefined), 0);
+
+  let refused = false;
+  try {
+    // Built on the ORIGINAL document — note `session("b")` is absent — and honest about it.
+    await save(db, club([session("a"), session("c")], undefined), 0);
+  } catch (err) {
+    refused = isConflict(err);
+    if (!refused) throw err;
+  }
+  assert(refused, "a payload built on the pre-save document must be refused");
+
+  const after = await getDoc(refFor(db));
+  assert(after.data().sessions.some((s) => s.id === "b"), "the first save must still be there");
+  assert(revOf(after.data()) === first, "and the refused write must not have moved the rev");
 });
 
 await t("TWO DEVICES RACING: one wins, the other is told — neither is silently lost", async () => {

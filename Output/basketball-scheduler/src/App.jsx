@@ -252,7 +252,21 @@ function ClubApp() {
           </p>
         )}
 
-        {error && <div className="mb-4 text-xs bg-red-50 border border-red-200 text-red-700 rounded-lg p-2.5">{error}</div>}
+        {/* STICKY, and announced.
+            A refused save is the one message on this screen that must not be missed: the
+            board reverts to the server's state, and a manager who dragged a session at the
+            bottom of a long week sees it snap back with an explanation eight screens above.
+            That is indistinguishable from "the drag did not take" — so a refusal nobody
+            sees is a silent failure to save, which is the bug this was built to end.
+            `role="alert"` so a screen reader says it rather than leaving it to be found. */}
+        {error && (
+          <div
+            role="alert"
+            className="sticky top-2 z-30 mb-4 text-xs bg-red-50 border-2 border-red-300 text-red-800 rounded-lg p-2.5 shadow-sm"
+          >
+            {error}
+          </div>
+        )}
 
         {/* The club's standing notice comes first, above the day. It is the one thing on
             this screen written by a person to be read by everyone, and it used to sit

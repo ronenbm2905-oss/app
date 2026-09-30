@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { collection, doc, getDocs, onSnapshot, setDoc, runTransaction } from "firebase/firestore";
 import { boardsToRefresh } from "../utils/boardSync";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
@@ -7,7 +7,7 @@ import { DOC_FULL_MESSAGE, isTooLarge } from "../utils/access";
 import { withScheduleChanges } from "../utils/scheduleChanges";
 import { isNotifyPaused } from "../utils/notifyPause";
 import {
-  currentRev, commitWithVersion, isConflict, CONFLICT_MESSAGE,
+  revOf, commitWithVersion, isConflict, CONFLICT_MESSAGE,
 } from "../utils/docVersion";
 
 // Merge stored data over defaults so older/partial documents don't crash the UI.
@@ -51,11 +51,6 @@ function useCloudClubData(user) {
   const [data, setData] = useState(EMPTY);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
-  // What THIS device last wrote. The snapshot takes a moment to come back, and without this
-  // a second save in that window would find the server ahead of the last snapshot and
-  // conflict with its own previous write.
-  const lastWrittenRev = useRef(0);
-
   useEffect(() => {
     if (!isFirebaseConfigured) return; // local mode: this hook's effect is inert
     // Wait until the user is authenticated before subscribing — the security rules
@@ -127,16 +122,27 @@ function useCloudClubData(user) {
         // cost twelve records. The document is read and written as one step, and a save
         // built on a copy older than the server's is refused instead of applied.
         //
-        // `expectedRev` is what THIS client believes it is editing: the newest of what the
-        // listener last delivered and what this client last wrote. Without the second half,
-        // two quick saves in a row would make the app conflict with itself while the
-        // snapshot was still in flight.
+        // `expectedRev` IS `data.rev`, and that is the whole invariant: the rev must come
+        // from the very document the payload was built from. All 53 call sites build
+        // `save({ ...data, <field>: ... })`, so `data` is that document by construction.
+        //
+        // The first version of this tracked the last rev THIS device wrote and took the
+        // higher of the two, to stop two quick saves conflicting with each other. That was
+        // wrong in a way the tests did not see: `data` is not updated when a save succeeds —
+        // only when the snapshot comes back — so the second payload is still built on the
+        // PRE-save document, missing the first save's field. Raising the expected rev did
+        // not make that safe, it made it ACCEPTED. One device, silently overwriting itself,
+        // through the very mechanism added to stop overwrites. Found in gate #25.
         const ref = doc(db, "clubs", CLUB_ID);
-        const expectedRev = currentRev(data?.rev, lastWrittenRev.current);
+        const written = await commitWithVersion({
+          runTransaction, db, ref, next, expectedRev: revOf(data),
+        });
 
-        const written = await commitWithVersion({ runTransaction, db, ref, next, expectedRev });
-
-        lastWrittenRev.current = written;
+        // Adopt what was just written as the local truth, immediately. This is what closes
+        // the window above: the next payload is built on a document that already contains
+        // this save. It is not optimism — the transaction has returned, the server holds
+        // exactly this.
+        setData(withDefaults({ ...next, rev: written }));
         setError(null);
         // The boards the families read are a projection of what was just saved, so they are
         // rebuilt here rather than left to a button someone has to remember. See
@@ -166,7 +172,9 @@ function useCloudClubData(user) {
     // `data.rev` belongs here: without it this closure keeps the rev from the render it was
     // created in, every save after the first looks stale to itself, and the guard that is
     // supposed to protect the document locks it instead.
-    [isAdmin, data?.rev]
+    // `data` in full, not only its rev: the transaction now compares against `revOf(data)`
+    // and the payloads are built from this same object.
+    [isAdmin, data]
   );
 
   return { data, save, loaded, error, isAdmin, mode: "cloud" };

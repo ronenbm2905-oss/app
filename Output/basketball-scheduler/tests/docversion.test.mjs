@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import {
-  revOf, nextRev, isStale, currentRev, conflictError, isConflict,
+  revOf, nextRev, isStale, conflictError, isConflict,
   CONFLICT_CODE, CONFLICT_MESSAGE,
 } from "../src/utils/docVersion.js";
 
@@ -50,25 +50,22 @@ T("a client somehow AHEAD of the server is allowed, not locked out", () => {
   assert.equal(isStale(9, 4), false);
 });
 
-T("TWO QUICK SAVES FROM ONE DEVICE DO NOT CONFLICT WITH EACH OTHER", () => {
-  // The snapshot listener takes a moment. Between a successful save and the new document
-  // arriving, `data.rev` is still the old one — and a guard that only trusted the snapshot
-  // would make the app fight itself on every rapid edit, which is worse than the bug.
-  const snapshotRev = 4;     // what the listener last delivered
-  const lastWritten = 5;     // what this device just wrote, snapshot not back yet
-  const expected = currentRev(snapshotRev, lastWritten);
-  assert.equal(expected, 5);
-  assert.equal(isStale(expected, 5), false, "its own write must not look stale");
-});
-
-T("and once the snapshot catches up, the two agree", () => {
-  assert.equal(currentRev(5, 5), 5);
-  assert.equal(currentRev(6, 5), 6, "another device moved it on — the snapshot wins");
-});
-
-T("a device that never wrote anything trusts the snapshot alone", () => {
-  assert.equal(currentRev(9, 0), 9);
-  assert.equal(currentRev(undefined, undefined), 0);
+T("TWO QUICK SAVES FROM ONE DEVICE: the second must be built on the first's result", () => {
+  // The first version of this guard kept the highest of "what I last saw" and "what I last
+  // wrote", so two quick saves would not conflict. It was wrong in the worst direction.
+  // `data` is not updated when a save succeeds — only when the snapshot returns — so the
+  // second payload was still built on the PRE-save document and simply did not contain the
+  // first save's field. Raising the expected rev did not make that safe; it made it land.
+  //
+  // The rule that replaced it: the expected rev is the rev OF THE DOCUMENT THE PAYLOAD WAS
+  // BUILT FROM. Nothing else is ever a correct answer.
+  const afterFirstSave = { rev: 5 };           // what the client adopted locally
+  const staleSnapshot = { rev: 4 };            // what the listener still holds
+  assert.equal(revOf(afterFirstSave), 5, "the second payload is built on rev 5");
+  assert.equal(isStale(revOf(afterFirstSave), 5), false, "so saving it is allowed");
+  // And had the client used the stale snapshot as its base, the guard would refuse — which
+  // is the SAFE outcome, and what the app used to paper over.
+  assert.equal(isStale(revOf(staleSnapshot), 5), true);
 });
 
 T("the rev always moves forward by exactly one", () => {
@@ -91,10 +88,14 @@ T("THE MESSAGE SAYS WHAT TO DO, AND DOES NOT SAY 'TRY AGAIN'", () => {
   // "Save failed, try again" would be a lie here: trying again from the same screen is
   // exactly the action that overwrites the other device.
   assert.equal(CONFLICT_MESSAGE.includes("נסה שוב"), false);
-  assert.equal(CONFLICT_MESSAGE.includes("רענן"), true);
+  assert.equal(CONFLICT_MESSAGE.includes("טען מחדש"), true);
   assert.equal(CONFLICT_MESSAGE.includes("ממכשיר אחר"), true);
+  // No F5 on a phone — and the phone is the device that usually gets this.
+  assert.equal(CONFLICT_MESSAGE.includes("F5"), false);
+  // The other writer may be a colleague, not another of your own devices.
+  assert.equal(CONFLICT_MESSAGE.includes("מנהל/ת אחר/ת"), true);
   // And it reassures: the work already saved is not what was lost.
-  assert.equal(CONFLICT_MESSAGE.includes("נשמר"), true);
+  assert.equal(CONFLICT_MESSAGE.includes("לא אבד"), true);
 });
 
 T("the sequence that actually happened, step by step", () => {

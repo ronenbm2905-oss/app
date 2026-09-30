@@ -49,24 +49,24 @@ export function isStale(expected, server) {
   return revOf({ rev: server }) > revOf({ rev: expected });
 }
 
-// The rev a client should consider itself on.
-//
-// Not simply the snapshot's: after a save succeeds, the listener takes a moment to deliver
-// the new document, and a second save in that window would look stale to itself. The highest
-// of "what I last saw" and "what I last wrote" is the honest answer, and it cannot exceed
-// the server — a write only ever sets the rev it just computed.
-export function currentRev(snapshotRev, lastWrittenRev) {
-  return Math.max(revOf({ rev: snapshotRev }), revOf({ rev: lastWrittenRev }));
-}
-
 export const CONFLICT_CODE = "stale-document";
 
 // Said in full, because the next thing this person does depends on understanding it. "Save
 // failed, try again" would be a lie — trying again with the same screen would overwrite the
 // other device, which is the bug.
+// Two corrections from gate #25, and both matter more than they look:
+//
+//   "(F5)" — THERE IS NO F5 ON A PHONE. And the device that gets this message is by
+//   definition the one left behind, which on 30.9 was the phone. Telling the person holding
+//   a phone to press a key it does not have is telling them the app is broken.
+//
+//   "ממכשיר אחר" — the club has more than one manager. Assuming the other writer was
+//   another DEVICE of yours invites "redo what you did" over a colleague's deliberate
+//   change, which is the same overwrite wearing different clothes.
 export const CONFLICT_MESSAGE =
-  "הלוח עודכן ממכשיר אחר מאז שפתחת את הדף, והשמירה בוטלה כדי לא למחוק את השינוי ההוא. " +
-  "רענן את הדף (F5) ובצע שוב את מה שעשית — מה שכבר שמרת קודם נשמר.";
+  "הלוח עודכן מאז שפתחת את הדף — ממכשיר אחר או ממנהל/ת אחר/ת — והשמירה בוטלה כדי לא " +
+  "למחוק את השינוי ההוא. טען מחדש את הדף, בדוק מה השתנה, ובצע שוב את מה שחסר. " +
+  "מה שכבר נשמר קודם לא אבד.";
 
 export function conflictError() {
   const err = new Error(CONFLICT_MESSAGE);
