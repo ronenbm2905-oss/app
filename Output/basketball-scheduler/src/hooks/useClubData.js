@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
-import { collection, doc, getDocs, onSnapshot, setDoc } from "firebase/firestore";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { collection, doc, getDocs, onSnapshot, setDoc, runTransaction } from "firebase/firestore";
 import { boardsToRefresh } from "../utils/boardSync";
 import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY } from "../constants";
 import { DOC_FULL_MESSAGE, isTooLarge } from "../utils/access";
 import { withScheduleChanges } from "../utils/scheduleChanges";
 import { isNotifyPaused } from "../utils/notifyPause";
+import {
+  currentRev, commitWithVersion, isConflict, CONFLICT_MESSAGE,
+} from "../utils/docVersion";
 
 // Merge stored data over defaults so older/partial documents don't crash the UI.
 function withDefaults(partial) {
@@ -48,6 +51,10 @@ function useCloudClubData(user) {
   const [data, setData] = useState(EMPTY);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(null);
+  // What THIS device last wrote. The snapshot takes a moment to come back, and without this
+  // a second save in that window would find the server ahead of the last snapshot and
+  // conflict with its own previous write.
+  const lastWrittenRev = useRef(0);
 
   useEffect(() => {
     if (!isFirebaseConfigured) return; // local mode: this hook's effect is inert
@@ -116,7 +123,20 @@ function useCloudClubData(user) {
         return;
       }
       try {
-        await setDoc(doc(db, "clubs", CLUB_ID), next);
+        // A TRANSACTION, not a plain write — see utils/docVersion.js for the morning this
+        // cost twelve records. The document is read and written as one step, and a save
+        // built on a copy older than the server's is refused instead of applied.
+        //
+        // `expectedRev` is what THIS client believes it is editing: the newest of what the
+        // listener last delivered and what this client last wrote. Without the second half,
+        // two quick saves in a row would make the app conflict with itself while the
+        // snapshot was still in flight.
+        const ref = doc(db, "clubs", CLUB_ID);
+        const expectedRev = currentRev(data?.rev, lastWrittenRev.current);
+
+        const written = await commitWithVersion({ runTransaction, db, ref, next, expectedRev });
+
+        lastWrittenRev.current = written;
         setError(null);
         // The boards the families read are a projection of what was just saved, so they are
         // rebuilt here rather than left to a button someone has to remember. See
@@ -126,6 +146,13 @@ function useCloudClubData(user) {
         // not refresh is a stale page, and a save that did not happen is lost work.
         refreshBoards(next).catch(() => {});
       } catch (err) {
+        // A conflict is not a failure to retry — retrying with the same screen would
+        // overwrite the other device, which is the whole bug. It gets its own sentence and
+        // its own instruction.
+        if (isConflict(err)) {
+          setError(CONFLICT_MESSAGE);
+          return;
+        }
         // The 1 MiB ceiling deserves its own sentence.
         //
         // Firestore refuses an oversized document rather than truncating it, and because
@@ -136,7 +163,10 @@ function useCloudClubData(user) {
         setError(isTooLarge(err) ? DOC_FULL_MESSAGE : "השמירה נכשלה, נסה שוב.");
       }
     },
-    [isAdmin]
+    // `data.rev` belongs here: without it this closure keeps the rev from the render it was
+    // created in, every save after the first looks stale to itself, and the guard that is
+    // supposed to protect the document locks it instead.
+    [isAdmin, data?.rev]
   );
 
   return { data, save, loaded, error, isAdmin, mode: "cloud" };
