@@ -25,6 +25,63 @@ export function sheetRows(buffer) {
   return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", header: 1 });
 }
 
+// Every request has to look like one nobody has made before — or we are reading a photograph.
+//
+// MEASURED 1.10.2026, and this is the whole reason the function exists. From 24.9 the feed
+// came back from a cache filled on 23.9 at 17:32:25 UTC: byte for byte, to four downloads
+// kept on the laptop and three the Cloud Function logged. The nightly sync hashed it, found
+// it identical, and correctly reported "unchanged" — over a file 175 hours old, a week, that
+// was missing twenty-six changes, three of them fixtures moved to a different date.
+//
+// A query parameter is part of Cloudflare's cache key, so a unique one asks for a file that
+// has never been asked for before. PROVEN AGAINST THE LIVE SITE BEFORE IT WAS WRITTEN HERE:
+// the same URL with `&_=…` appended returned a file whose own `dcterms:created` was the
+// second of the request. `_` is the conventional name and the feed ignores parameters it
+// does not know — measured on that download, not assumed.
+//
+// This does NOT weaken the host check below: the parameter changes the query string and
+// never the host, and the check runs on where the response actually landed.
+export function withCacheBuster(url, stamp = Date.now()) {
+  try {
+    const u = new URL(String(url));
+    u.searchParams.set("_", String(stamp));
+    return u.toString();
+  } catch {
+    // An unparseable URL is not this function's problem. Hand it back and let `fetch` fail
+    // with its own message rather than invent a string that looks like a URL.
+    return String(url);
+  }
+}
+
+// WHEN THE FEDERATION GENERATED THIS FILE, read out of the file itself.
+//
+// The export is produced on demand and it records the moment it was produced:
+// `docProps/core.xml` carries `dcterms:created`, which SheetJS parses into
+// `Props.CreatedDate`. Across the fourteen downloads kept in `federation-inbox/`, every one
+// up to 23.9 carries a timestamp equal to the moment of the request, to the second.
+//
+// That single field is what separates the two things "the bytes are identical" can mean, and
+// which the sync could not tell apart until now:
+//
+//     the federation published nothing       ← normal, most weeks
+//     we are being handed a cached copy      ← a week of changes, invisible
+//
+// Returns an ISO string, or "" when the file carries no readable timestamp. Empty rather
+// than a guess, deliberately: an unknown age must read as unknown, never as fresh (which
+// would hide the fault) and never as ancient (which would cry wolf over a file that is fine).
+export function sheetGeneratedAt(buffer) {
+  try {
+    // Properties only — the fixtures are parsed elsewhere and there is no reason to build
+    // forty thousand cells to read one date.
+    const wb = XLSX.read(buffer, { type: "buffer", bookProps: true, bookSheets: true });
+    const made = wb?.Props?.CreatedDate;
+    const t = made instanceof Date ? made.getTime() : Date.parse(String(made || ""));
+    return Number.isFinite(t) && t > 0 ? new Date(t).toISOString() : "";
+  } catch {
+    return "";
+  }
+}
+
 // Returns a reason to reject, or null. The reasons are sentences because they end up in a
 // log that someone reads months later wondering why a night did nothing.
 export function validateSheet(buffer) {
@@ -70,12 +127,16 @@ export async function downloadSheet({
   timeoutMs = 60000,
   allowedHost = FEDERATION_HOST,
   maxBytes = 15 * 1024 * 1024,
+  // Injectable so a test can assert the exact URL that goes out. In production it is simply
+  // the clock, which is all "a value nobody has asked for before" needs to be.
+  stamp = Date.now(),
 } = {}) {
+  const target = withCacheBuster(url, stamp);
   const ctl = typeof AbortController === "function" ? new AbortController() : null;
   const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
   let res;
   try {
-    res = await fetchImpl(url, {
+    res = await fetchImpl(target, {
       headers: { "User-Agent": userAgent, Accept: "*/*" },
       redirect: "follow",
       ...(ctl ? { signal: ctl.signal } : {}),
@@ -90,7 +151,7 @@ export async function downloadSheet({
   // redirecting elsewhere — a CDN error page, a parked domain, a hijacked link — would be
   // downloaded and parsed exactly like the real file. Checked AFTER the redirects, because
   // checking the URL we sent proves nothing.
-  const landed = String(res.url || url);
+  const landed = String(res.url || target);
   if (!isFederationHost(landed, allowedHost)) {
     throw new Error(`the download was redirected off ${allowedHost} (to ${safeHost(landed)})`);
   }

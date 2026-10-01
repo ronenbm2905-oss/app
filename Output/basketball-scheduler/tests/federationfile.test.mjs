@@ -8,8 +8,9 @@
 
 import assert from "node:assert/strict";
 import * as XLSX from "xlsx";
+import { readFileSync } from "node:fs";
 import {
-  validateSheet, sheetRows, downloadSheet, isFederationHost,
+  validateSheet, sheetRows, downloadSheet, isFederationHost, withCacheBuster, sheetGeneratedAt,
   REQUIRED_COLUMNS, FEDERATION_XLSX_URL,
 } from "../src/utils/federationFile.js";
 
@@ -175,6 +176,88 @@ await T("the real club file — 40KB from the federation's own host — still pa
   });
   const out = await downloadSheet({ fetchImpl: impl });
   assert.equal(Buffer.compare(Buffer.from(out), Buffer.from(bytes)), 0);
+});
+
+await T("THE CACHE BUSTER: every request carries a value nobody has asked for before", () => {
+  const a = withCacheBuster(FEDERATION_XLSX_URL, 111);
+  assert.match(a, /[?&]_=111(&|$)/, "the parameter must be in the query string");
+  assert.match(a, /feed=xlsx/, "and the feed parameter must survive");
+  assert.match(a, /club_id=715510/, "and so must the club id");
+  assert.notEqual(withCacheBuster(FEDERATION_XLSX_URL, 111), withCacheBuster(FEDERATION_XLSX_URL, 112));
+});
+
+await T("the cache buster does not move the request off the federation", () => {
+  // If it did, the host check would reject every download and the sync would die quietly.
+  assert.equal(isFederationHost(withCacheBuster(FEDERATION_XLSX_URL, 7)), true);
+});
+
+await T("a second call replaces the parameter instead of stacking another", () => {
+  const once = withCacheBuster(FEDERATION_XLSX_URL, 1);
+  const twice = withCacheBuster(once, 2);
+  assert.match(twice, /_=2/);
+  assert.equal(/_=1/.test(twice), false, "the old stamp must be gone");
+  assert.equal((twice.match(/_=/g) || []).length, 1, "exactly one stamp");
+});
+
+await T("rubbish in, rubbish back — never an invented URL", () => {
+  assert.equal(withCacheBuster("not a url", 5), "not a url");
+});
+
+await T("THE STAMP REACHES THE WIRE — the fetch is given the busted URL", async () => {
+  // The whole fix is worthless if the parameter is computed and then not sent.
+  const bytes = book([HEAD, ROW]);
+  let asked = "";
+  const impl = async (u) => {
+    asked = u;
+    return {
+      ok: true, status: 200, statusText: "OK", url: u,
+      headers: new Map([["content-length", String(bytes.length)]]),
+      arrayBuffer: async () => bytes,
+    };
+  };
+  await downloadSheet({ fetchImpl: impl, stamp: 424242 });
+  assert.match(asked, /_=424242/, "the request must carry the stamp");
+});
+
+await T("THE FILE'S OWN TIMESTAMP is read out of it, and it is what separates two nights", () => {
+  // "the bytes are identical" means either "the federation published nothing" or "we were
+  // handed a cached copy". Those are opposite situations and this field is the only thing
+  // in the file that tells them apart.
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([HEAD, ROW]), "S");
+  const props = { CreatedDate: new Date("2026-09-23T17:32:25Z") };
+  const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx", Props: props });
+  assert.equal(sheetGeneratedAt(bytes), "2026-09-23T17:32:25.000Z");
+});
+
+await T("a file with NO timestamp reads as unknown — never as fresh, never as ancient", () => {
+  // Both wrong directions are dangerous: "fresh" hides the fault, "ancient" cries wolf over
+  // a file that is fine. So it is empty, and the screen renders no judgement at all.
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([HEAD, ROW]), "S");
+  assert.equal(sheetGeneratedAt(XLSX.write(wb, { type: "buffer", bookType: "xlsx" })), "");
+});
+
+await T("garbage and an empty buffer read as unknown rather than throwing", () => {
+  // This runs inside the nightly job. Throwing here would turn a cosmetic unknown into a
+  // failed sync.
+  assert.equal(sheetGeneratedAt(Buffer.from("<html>sign in</html>")), "");
+  assert.equal(sheetGeneratedAt(Buffer.alloc(0)), "");
+  assert.equal(sheetGeneratedAt(undefined), "");
+});
+
+await T("THE REAL FROZEN FILE: the evidence from 1.10.2026, if it is still on this machine", () => {
+  // `federation-inbox/` is gitignored, so this is an assertion where the file exists and a
+  // printed note where it does not — rather than a test that fails on a clean checkout.
+  let bytes;
+  try {
+    bytes = readFileSync(new URL("../federation-inbox/latest.xlsx", import.meta.url));
+  } catch {
+    console.log("      (federation-inbox/latest.xlsx is not here — skipped)");
+    return;
+  }
+  // Downloaded 27.9 at 10:00, generated 23.9 at 17:32. Four days of cache in one assertion.
+  assert.equal(sheetGeneratedAt(bytes), "2026-09-23T17:32:25.000Z");
 });
 
 console.log(`

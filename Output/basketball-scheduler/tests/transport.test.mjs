@@ -65,7 +65,7 @@ t("the away game of that week is picked up", () =>
 console.log("\n" + pass + " tests passed");
 
 // ---- appended after Adi's gate #7 ----
-const { driverLine, clearStaleDrivers } = await import(
+const { driverLine, clearStaleDrivers, sweepStaleDrivers } = await import(
   "../src/utils/transport.js"
 );
 const { isPastGame } = await import(
@@ -121,6 +121,49 @@ t("clearStaleDrivers leaves games without a driver untouched", () => {
   const games = [{ federationCode: "a", date: "11-09-2026" }];
   const { cleared } = clearStaleDrivers(games, NOW);
   assert.equal(cleared, 0);
+});
+
+// THE RULE WAS WRITTEN AND NEVER CALLED. Found in gate #26 on 1.10.2026: `clearStaleDrivers`
+// had existed since the field was added and the deletion procedure had described the
+// fourteen-day rule for just as long, but the only caller in the whole repository was the
+// test above. On the live club that meant one away game from 17.9 still carrying a driver's
+// name and phone — a bus company's employee, who never gave either to us.
+t("THE DOCUMENT-LEVEL SWEEP strips the finished trip and leaves everything else alone", () => {
+  const doc = {
+    sessions: [{ id: "s1" }],
+    teams: [{ id: "t1" }],
+    games: [
+      { federationCode: "a", date: "11-09-2026", driverName: "משה", driverPhone: "052-1" },
+      { federationCode: "b", date: "20-10-2026", driverName: "דן", driverPhone: "052-3" },
+    ],
+  };
+  const out = sweepStaleDrivers(doc, NOW);
+  assert.equal(out.games[0].driverName, undefined);
+  assert.equal(out.games[0].driverPhone, undefined);
+  assert.equal(out.games[0].federationCode, "a", "the fixture itself must survive");
+  assert.equal(out.games[1].driverPhone, "052-3");
+  assert.equal(out.sessions, doc.sessions, "nothing else in the document may be rebuilt");
+  assert.equal(out.teams, doc.teams);
+});
+
+t("a save that sweeps NOTHING returns the very same object", () => {
+  // Identity, not just equality. A no-op sweep must be invisible to everything downstream —
+  // the change log, the board diff — or every save starts looking like a games edit.
+  const doc = { games: [{ federationCode: "b", date: "20-10-2026", driverName: "דן" }] };
+  assert.equal(sweepStaleDrivers(doc, NOW), doc);
+});
+
+t("a document with no games at all is handed back untouched", () => {
+  // It runs on EVERY save, including the first one on an empty club.
+  const doc = { sessions: [] };
+  assert.equal(sweepStaleDrivers(doc, NOW), doc);
+  assert.equal(sweepStaleDrivers(null, NOW), null);
+  assert.equal(sweepStaleDrivers(undefined, NOW), undefined);
+});
+
+t("a game whose date cannot be read keeps its driver — never delete on a guess", () => {
+  const doc = { games: [{ federationCode: "x", date: "", driverName: "משה", driverPhone: "052-9" }] };
+  assert.equal(sweepStaleDrivers(doc, NOW).games[0].driverPhone, "052-9");
 });
 
 console.log("- the gathering time, shared by the vendor's sheet and the coach's board -");

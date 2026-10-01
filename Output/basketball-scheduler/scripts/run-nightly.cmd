@@ -107,5 +107,13 @@ rem
 rem This writes one heartbeat per run: the runs that found nothing, and the ones that broke.
 rem Its own failure is swallowed on purpose - the real work is already done by the time it
 rem runs, and a missing heartbeat must not turn a good night into a failed one.
-node scripts\record-sync.mjs --cups %CUPSTATE% --league %LEAGUESTATE% >> federation-inbox\log.txt 2>&1
+rem
+rem And it carries WHEN THE FEDERATION GENERATED the file, which fetch-federation.mjs left in
+rem source-at.txt. Without it this heartbeat would DELETE the freshness field the cloud wrote
+rem - the write is deliberately not a merge - and the age of the file would vanish from the
+rem screen at exactly the moment someone is running this by hand because they suspect it.
+rem An empty or missing file reads as "not measured", which is the safe answer, not "fresh".
+set SOURCEAT=
+if exist federation-inbox\source-at.txt set /p SOURCEAT=<federation-inbox\source-at.txt
+node scripts\record-sync.mjs --cups %CUPSTATE% --league %LEAGUESTATE% --source-at "%SOURCEAT%" >> federation-inbox\log.txt 2>&1
 exit /b %CODE%

@@ -5,6 +5,7 @@ import { db, CLUB_ID, isFirebaseConfigured } from "../firebase";
 import { EMPTY, STORAGE_KEY } from "../constants";
 import { DOC_FULL_MESSAGE, isTooLarge } from "../utils/access";
 import { withScheduleChanges } from "../utils/scheduleChanges";
+import { sweepStaleDrivers } from "../utils/transport";
 import { isNotifyPaused } from "../utils/notifyPause";
 import {
   revOf, commitWithVersion, isConflict, CONFLICT_MESSAGE,
@@ -193,8 +194,17 @@ export function useClubData(user) {
   const cloud = useCloudClubData(user);
   const base = isFirebaseConfigured ? cloud : local;
 
+  // And the driver sweep rides in the same place, for the same reason — see
+  // `sweepStaleDrivers`. The fourteen-day rule has been written in the deletion procedure
+  // since the field was added and had no caller until 1.10.2026; a live club document was
+  // still holding a driver's name and phone from a trip on 17.9.
+  //
+  // Before `withScheduleChanges` and not after, so the log diffs the document that is
+  // actually about to be written. The order is invisible today — the log reads `sessions`
+  // and the sweep touches `games` — and relying on that would be a trap for whoever makes
+  // the log read games.
   const save = useCallback(
-    (next) => base.save(withScheduleChanges(base.data, next)),
+    (next) => base.save(withScheduleChanges(base.data, sweepStaleDrivers(next))),
     [base.data, base.save]
   );
 

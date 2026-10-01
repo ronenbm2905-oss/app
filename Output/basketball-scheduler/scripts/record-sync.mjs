@@ -68,6 +68,15 @@ async function main() {
     cups: status(value("--cups", "skipped")),
     league: status(value("--league", "skipped")),
     note: String(value("--note", "")).slice(0, 200),
+    // WHEN THE FEDERATION GENERATED THE FILE this run read — not when the run happened.
+    //
+    // It has to be passed in, because the `set` below is deliberately not a merge and would
+    // otherwise DELETE the field the cloud wrote last night. That is the trap: a manual run
+    // is what someone does when they suspect the sync is lying, and without this it would
+    // switch off the staleness indicator at exactly that moment. Absent is still safe —
+    // `sourceFreshness` reads a missing value as "unknown" and colours nothing — but safe
+    // and useless is not the bargain here.
+    sourceAt: /^\d{4}-\d{2}-\d{2}T/.test(String(value("--source-at", ""))) ? String(value("--source-at", "")) : "",
   };
 
   // `set` without merge, on purpose: this document is a snapshot of the LAST run and not a

@@ -19,7 +19,7 @@ import {
   CUP_LEAGUES, eventToDraft, classify, scanOutcome, scanSummary, mayOverwriteScan,
 } from "./shared/utils/cupScan.js";
 import { createFederationApi, scanCompetitions } from "./shared/utils/federationApi.js";
-import { downloadSheet, sheetRows } from "./shared/utils/federationFile.js";
+import { downloadSheet, sheetRows, sheetGeneratedAt } from "./shared/utils/federationFile.js";
 import { prepareProposal, trim, NEEDED, mayOverwriteProposal } from "./shared/utils/federationImport.js";
 
 // Phone notifications for schedule changes. This is the only thing that runs in the cloud.
@@ -443,10 +443,16 @@ export const nightlyLeagueSync = onSchedule(
       const syncRef = db.collection("clubs").doc(clubId).collection("sync");
       let league = "failed";
       let note = "";
+      // WHEN THE FEDERATION MADE THE FILE, as opposed to when we asked for it. Declared out
+      // here because it has to reach `sync/nightly` on EVERY path — including the one that
+      // short-circuits on an unchanged hash, which is precisely the path that hid nine days
+      // of changes between 24.9 and 1.10.2026.
+      let sourceAt = "";
 
       try {
         const buffer = await downloadSheet();
         const sourceHash = createHash("sha256").update(buffer).digest("hex");
+        sourceAt = sheetGeneratedAt(buffer);
 
         const seen = await syncRef.doc("league").get();
         const previous = seen.exists ? seen.data()?.sourceHash || "" : "";
@@ -493,6 +499,7 @@ export const nightlyLeagueSync = onSchedule(
           // and the next night would short-circuit on it and skip the whole thing.
           await syncRef.doc("league").set({
             sourceHash,
+            sourceAt,
             at: new Date().toISOString(),
             bytes: buffer.length,
             where: "cloud",
@@ -513,7 +520,12 @@ export const nightlyLeagueSync = onSchedule(
         note = "שגיאה — הפרטים ביומן הריצה";
       }
 
-      console.log(`league sync ${clubId}: ${league}${note ? ` — ${note}` : ""}`);
+      // The file's own age goes in the log line too. A timestamp carries no personal data,
+// and the whole point is that "unchanged" alone was never enough to read a night by.
+      const age = sourceAt
+        ? ` · generated ${sourceAt} (${Math.round((Date.now() - Date.parse(sourceAt)) / 3600000)}h old)`
+        : "";
+      console.log(`league sync ${clubId}: ${league}${note ? ` — ${note}` : ""}${age}`);
 
       // NOW `sync/nightly` may be written, and only now. Until both halves ran in the cloud
       // this document was left alone on purpose: its `at` is what `nightsMissed` counts, and
@@ -525,6 +537,10 @@ export const nightlyLeagueSync = onSchedule(
         cups: cups.exists ? cups.data()?.state || "skipped" : "skipped",
         league,
         note,
+        // Read by `sourceFreshness` in syncHealth.js against `at` above. Written even when
+        // the download failed, as "" — an unknown age must read as unknown on the screen and
+        // not inherit last night's.
+        sourceAt,
         where: "cloud",
       });
     }

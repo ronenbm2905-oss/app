@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { downloadSheet, FEDERATION_XLSX_URL } from "../src/utils/federationFile.js";
+import { downloadSheet, sheetGeneratedAt, FEDERATION_XLSX_URL } from "../src/utils/federationFile.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const INBOX = process.env.FEDERATION_INBOX || path.join(ROOT, "federation-inbox");
@@ -76,7 +76,18 @@ async function main() {
   writeAtomic(latest, buffer);
   prune();
 
-  log(`${changed ? "NEW" : "unchanged"}  ${buffer.length} bytes  sha ${hash.slice(0, 12)}  → ${path.basename(target)}`);
+  // WHEN THE FEDERATION GENERATED IT, not when we asked. Written to a file of its own so
+  // run-nightly.cmd can hand it to record-sync.mjs — without it the manual path DELETES the
+  // freshness field the cloud wrote, and the screen stops showing the age of the file at
+  // exactly the moment someone is running this by hand because they suspect it.
+  const madeAt = sheetGeneratedAt(buffer);
+  try {
+    fs.writeFileSync(path.join(INBOX, "source-at.txt"), madeAt, "utf8");
+  } catch {
+    /* a missing hint is "not measured", which is the safe reading — never fail the run */
+  }
+
+  log(`${changed ? "NEW" : "unchanged"}  ${buffer.length} bytes  sha ${hash.slice(0, 12)}  generated ${madeAt || "unknown"}  → ${path.basename(target)}`);
   // Set rather than called: process.exit() during an in-flight fetch tears the event loop
   // down mid-operation and Node aborts with 127, which is exactly the code the nightly
   // batch file would then misread.

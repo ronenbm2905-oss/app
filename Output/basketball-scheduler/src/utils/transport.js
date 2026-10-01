@@ -196,6 +196,35 @@ export function clearStaleDrivers(games, today = new Date(), days = 14) {
   return { games: next, cleared };
 }
 
+// The same rule at the level of the whole document, so the one save path can call one
+// function — and so the rule can be tested without mounting a React hook.
+//
+// WHY THIS EXISTS AT ALL, and it is the finding of gate #26 rather than anything to do with
+// the federation's cache. `clearStaleDrivers` above was written on the day the driver field
+// was added, and `docs/data-deletion-procedure.md` §7 has described the fourteen-day rule
+// ever since — but NOTHING EVER CALLED IT. The only code that dropped a driver was the
+// `keepDriver` test inside the weekly import, which runs when the federation's file has
+// changed AND a manager approves the proposal AND that particular game is in it. Measured
+// on the live club on 1.10.2026: one away game from 17.9 still carrying a driver's name and
+// phone number, a fortnight past the rule the procedure states.
+//
+// It is called from the single `save` in useClubData.js, next to the change-log trim, and
+// for the identical reason that trim gives in its own comment: tying a deletion to a
+// particular kind of edit makes it a function of activity rather than of the clock. A save
+// costs nothing extra — the whole document is written either way.
+//
+// It is NOT in the nightly Cloud Function, and that is deliberate: nothing automated writes
+// the club document. That rule was paid for on 30.9 and it is worth more than a tidier
+// schedule. What this gives instead is honest and should be described that way — swept on
+// every save a manager makes, which in practice is several times a week, not a timer.
+export function sweepStaleDrivers(doc, today = new Date(), days = 14) {
+  if (!doc || !Array.isArray(doc.games)) return doc;
+  const { games, cleared } = clearStaleDrivers(doc.games, today, days);
+  // Unchanged means unchanged, down to object identity: a save that sweeps nothing must not
+  // look to anything downstream like a save that touched the games.
+  return cleared === 0 ? doc : { ...doc, games };
+}
+
 // Row object -> array of cells in TRANSPORT_HEADERS order (shared by xlsx + image).
 export function transportRowToCells(r) {
   return [
