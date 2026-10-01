@@ -24,7 +24,7 @@ export function PushToggle({ coachId, coachName, email }) {
         <h3 className="text-sm font-semibold text-stone-800">התראה בטלפון על שינוי בלו״ז שלך</h3>
         <p className="text-xs text-stone-600 mt-1">
           כדי לשלוח אותה, המערכת תשמור <span className="font-medium">מזהה טכני של המכשיר הזה</span>{" "}
-          לצד השם והדוא״ל שלך. ההתראה מציגה יום, שעה ואולם —{" "}
+          לצד השם והדוא״ל שלך. ההתראה מציגה סוג מפגש, יום, תאריך, שעה ומקום, וגם ביטול —{" "}
           <span className="font-medium">בלי שמות שחקנים ובלי טקסט חופשי</span>.
         </p>
         <p className="text-xs text-stone-600 mt-1">

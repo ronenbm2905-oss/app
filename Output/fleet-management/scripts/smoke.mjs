@@ -942,7 +942,11 @@ ok("D1 — אין monthlyCost על מסמך הרכב", built.vehicles.every((v) 
 eq("העלות יושבת במסמך הפרטי", built.vehiclesPrivate.filter((p) => p.monthlyCost > 0).length, 3);
 ok("כל הרכבים קושרו לחברת הליסינג",
   built.vehicles.every((v) => v.leaseCompanyId === built.leaseCompanies[0].id));
-eq("פרטי הספק נשמרו על חברת הליסינג", built.leaseCompanies[0].phone, "052-3866645");
+// ⚠️ **מנורמל בקליטה** (1.10.2026, עדי §5.2 נקודת קריאה 5): הגיליון מספק
+// "052-3866645", ומה שנשמר הוא הצורה הקנונית. זה מה שמנטרל את מלכודת הגרש
+// המוביל של אקסל ('0523866645) — מספר אחד, צורה אחת, בכל נקודות הקריאה.
+eq("פרטי הספק נשמרו על חברת הליסינג (מנורמל)", built.leaseCompanies[0].phone, "+972523866645");
+eq("ודוח החילוץ מציג את המקור כפי שהוא", lc0.contact.phone, "052-3866645");
 ok("כל ההחזקות מסומנות fromDateInferred", built.assignments.every((a) => a.fromDateInferred));
 eq("9 החזקות עם needsReview", built.assignments.filter((a) => a.needsReview).length, 9);
 ok("החזקות needsReview הן בלי נהג", built.assignments.filter((a) => a.needsReview).every((a) => !a.driverId));
@@ -2136,6 +2140,369 @@ for (const k of [
 ]) {
   ok(`מפתח ${k} קיים בעברית`, Boolean(dict.he[k]));
   ok(`מפתח ${k} קיים באנגלית`, Boolean(dict.en[k]));
+}
+
+// ============================================================================
+section("30. עוגן הזהות של הנהג — נייד (1.10.2026)");
+// ============================================================================
+// למה הפרוסה הזו קיימת בכלל: מסלול הכניסה במייל היה **תקין** — 328 בדיקות
+// כללים, חמישה תנאי תביעה, בידוד לפי uid — ובכל זאת `portalStatus` של כל 27
+// הנהגים נשאר `none`. אין לחברה חשבונות Google ארגוניים, ולכן הכניסה דרשה
+// גימייל **פרטי**, ואף עובד לא נתן אותו. מסלול שאיש אינו עובר בו אינו מסלול.
+//
+// מה שנבדק כאן הוא לא "האם המספר מתנרמל" אלא ארבעת הדברים שעדי סימנה
+// כחוסמים בסקירת 1.10.2026, וכל אחד מהם הוא חור אם הוא נופל.
+const {
+  canonicalPhone,
+  isLinkablePhone,
+  samePhone,
+  formatPhoneIl,
+  phoneQueryForms,
+  canonicalPhonesIn,
+} = await import("../src/utils/phone.js");
+const {
+  isLinkable,
+  linkFields,
+  unlinkFields,
+  validateDriverLinkPhone,
+  phoneCollisions,
+  LINK_WRITABLE_KEYS,
+} = await import("../src/utils/driverLink.js");
+const { IDENTIFIER_BEARING_FIELDS, redactDriverIdentifiersEverywhere } = await import(
+  "../src/utils/retention.js"
+);
+
+// -- (א) canonicalPhone: צורה אחת, חמש נקודות קריאה -----------------------
+// ⚠️ הטבלה הזו היא **החוזה** בין הקוד ל-firestore.rules. מקטע (ח)
+// ב-scripts/rules-test.mjs מריץ את אותו מערך קלט מול האמולטור ומשווה; אם
+// שני המימושים ייפרדו, זו "הרשאה שלא עובדת" או הרשאת יתר.
+const PHONE_CASES = [
+  ["0540000017", "+972540000017"],
+  ["054-000-0017", "+972540000017"],
+  ["054 000 0017", "+972540000017"],
+  ["054-0000017", "+972540000017"],
+  ["+972540000017", "+972540000017"],
+  ["+972-54-000-0017", "+972540000017"],
+  ["972540000017", "+972540000017"],
+  ["00972540000017", "+972540000017"],
+  ["(054) 000-0017", "+972540000017"],
+  ["'0540000017", "+972540000017"], // ⬅ גרש מוביל מאקסל — מלכודת ייבוא אמיתית
+  [" 0540000017 ", "+972540000017"],
+  ["03-0000017", ""], // ⬅ **קו נייח** — פרט קשר תקין, לא עוגן זהות
+  ["02-6295555", ""],
+  // ⬅ **10 ספרות ואינו נייד.** נוסף אחרי שמוטציה ב-rules ("כל קידומת בת 10
+  //   ספרות") שרדה את כל החבילה: קו נייח ישראלי הוא 9 ספרות, ולכן אף שורה
+  //   לא בחנה את המקרה הזה. 07X הוא בדיוק הוא.
+  ["073-7222333", ""],
+  ["+972737222333", ""],
+  ["0000017", ""], // ⬅ שבע ספרות לבדן — לעולם לא
+  ["054000001", ""], // ספרה חסרה
+  ["05400000177", ""], // ספרה עודפת
+  ["12345678", ""], // לוחית רישוי
+  ["30092026", ""], // תאריך בלי מפרידים
+  ["+447911123456", ""], // מספר זר
+  ["", ""],
+  [null, ""],
+];
+for (const [input, expected] of PHONE_CASES) {
+  eq(`canonicalPhone(${JSON.stringify(input)})`, canonicalPhone(input), expected);
+}
+ok("קו נייח אינו ניתן לקישור", !isLinkablePhone("03-0000017"));
+ok("ונייד כן", isLinkablePhone("054-000-0017"));
+ok("samePhone מאחד שתי צורות כתיבה", samePhone("054-000-0017", "+972540000017"));
+ok("ושני ריקים אינם אותו אדם", !samePhone("", ""));
+ok("ושני קווים נייחים אינם אותו אדם", !samePhone("03-0000017", "03-0000017"));
+eq("תצוגה מקומית", formatPhoneIl("+972540000017"), "054-000-0017");
+eq("ומספר שאינו נייד מוצג כפי שהוא", formatPhoneIl("03-0000017"), "03-0000017");
+ok("phoneQueryForms כולל את הצורה הקנונית", phoneQueryForms("0540000017").includes("+972540000017"));
+ok("ואת הצורה המקומית", phoneQueryForms("0540000017").includes("0540000017"));
+ok("ואת הצורה עם מקף", phoneQueryForms("0540000017").includes("054-0000017"));
+ok("וכולן מתקננות לאותו מספר",
+  phoneQueryForms("0540000017").every((x) => canonicalPhone(x) === "+972540000017"));
+eq("ולקו נייח אין צורות חיפוש בכלל", phoneQueryForms("03-0000017").length, 0);
+
+// -- (ב) ⛔ ייחודיות: אינוריאנט נתונים, לא בקרת rules ---------------------
+// ⚠️ **זה החוסם המעשי של הסקירה (§2.1).** `isSelfLinkClaim` בודק זהות מול
+// המסמך הספציפי, **וב-rules אין שאילתות** — הכלל אינו יכול לדעת שעוד רשומה
+// נושאת את אותו מספר. ולכן אם שלוש רשומות נושאות אותו מספר, מחזיק ה-SIM
+// יכול לתבוע **כל אחת מהשלוש**, בהצלחה, ולראות רכב/קנסות/היסטוריה של עובד
+// אחר. אין שכבה מתחת — ולכן השכבה היא כאן.
+{
+  const mk = (id, phone, over = {}) => ({ id, fullName: `נ-${id}`, phone, status: "active", ...over });
+
+  // דפוס "מילוי-חוסר" — שלוש רשומות עם אותן שבע ספרות, בשלוש צורות כתיבה.
+  // בדיקה שמשווה **מחרוזות** הייתה מוצאת כאן אפס התנגשויות.
+  const collide = [mk("d1", "054-000-0017"), mk("d2", "0540000017"), mk("d3", "+972540000017")];
+  eq("שלוש צורות כתיבה = התנגשות אחת", phoneCollisions(collide).length, 1);
+  eq("ושלושת הנהגים מדווחים", phoneCollisions(collide)[0].driverIds.length, 3);
+  eq("והמספר מדווח בצורתו הקנונית", phoneCollisions(collide)[0].phone, "+972540000017");
+
+  // ⬅ **קו נייח עם אותן שבע ספרות אינו התנגשות** — וזו בדיוק הרשומה
+  //   שבנתוני המקור (03-0000017). הוא אינו עוגן זהות, ולכן אין מה להתנגש בו.
+  eq("קו נייח אינו משתתף בהתנגשות",
+    phoneCollisions([mk("d1", "054-000-0017"), mk("d2", "03-0000017")]).length, 0);
+
+  // ⬅ ועובד **מאורכב** אינו מתנגש: המספר שלו מתפנה למחליף.
+  eq("מאורכב אינו מתנגש",
+    phoneCollisions([mk("d1", "0540000017"), mk("d2", "0540000017", { status: "archived" })]).length, 0);
+  eq("וצי תקין מחזיר אפס", phoneCollisions([mk("d1", "0540000017"), mk("d2", "0501112222")]).length, 0);
+
+  // -- והשכבה שחוסמת את ההקלדה הבאה, מקבילה ל-validateDriverLinkEmail -----
+  const fleet = [mk("d1", "054-000-0017"), mk("d2", ""), mk("d9", "0501112222", { status: "archived" })];
+  eq("שמירת מספר שכבר יושב על נהג אחר נחסמת",
+    validateDriverLinkPhone(fleet, "d2", "0540000017")[0], "driverLink.err.duplicate");
+  eq("גם בצורת כתיבה אחרת לגמרי",
+    validateDriverLinkPhone(fleet, "d2", "+972-54-000-0017")[0], "driverLink.err.duplicate");
+  eq("קו נייח נחסם כעוגן", validateDriverLinkPhone(fleet, "d2", "03-0000017")[0], "driverLink.err.phone");
+  eq("מספר חסר ספרה נחסם", validateDriverLinkPhone(fleet, "d2", "054000001")[0], "driverLink.err.phone");
+  eq("מספר ריק תקין (נהג בלי נייד)", validateDriverLinkPhone(fleet, "d2", "").length, 0);
+  eq("עריכת הנהג עצמו אינה מתנגשת בעצמו",
+    validateDriverLinkPhone(fleet, "d1", "054-000-0017").length, 0);
+  eq("ומספר של מי שעזב פנוי למחליף",
+    validateDriverLinkPhone(fleet, "d2", "0501112222").length, 0);
+}
+
+// -- (ג) התאמת הקישור, ושדות הכתיבה --------------------------------------
+{
+  const drv = { id: "d1", phone: "054-000-0017", userId: null, portalStatus: "none", status: "active" };
+  ok("טוקן בצורה קנונית תואם מספר שהוקלד עם מקפים",
+    isLinkable(drv, { phoneNumber: "+972540000017" }));
+  ok("טוקן בלי מספר אינו תואם כלום", !isLinkable(drv, { phoneNumber: null }));
+  ok("מספר אחר אינו תואם", !isLinkable(drv, { phoneNumber: "+972501112222" }));
+  ok("רשומה מקושרת אינה נתפסת מחדש",
+    !isLinkable({ ...drv, userId: "other" }, { phoneNumber: "+972540000017" }));
+  ok("'revoked' אינו ניתן לתביעה",
+    !isLinkable({ ...drv, portalStatus: "revoked" }, { phoneNumber: "+972540000017" }));
+  ok("ומאורכב אינו ניתן לתביעה",
+    !isLinkable({ ...drv, status: "archived" }, { phoneNumber: "+972540000017" }));
+  ok("וקו נייח ברשומה אינו ניתן לתביעה גם מטוקן תקין",
+    !isLinkable({ ...drv, phone: "03-0000017" }, { phoneNumber: "+972000001700" }));
+
+  // ⚠️ **§5.3 פריטים 1-2.** אם אחד מהם ייפול, כל קישור יידחה ב-rules וזה
+  // ייראה כבאג הרשאות — או גרוע מכך, יעבור וישאיר שדה PII נטוש.
+  const lf = linkFields("uid1", "054-000-0017", "2026-10-01");
+  eq("linkFields שומר את המספר בצורה קנונית", lf.portalLinkedPhone, "+972540000017");
+  eq("וקובע portalStatus=active", lf.portalStatus, "active");
+  eq("LINK_WRITABLE_KEYS הוא בדיוק מה ש-rules מתירות",
+    [...LINK_WRITABLE_KEYS].sort().join(","),
+    ["portalStatus", "portalLinkedPhone", "updatedAt", "userId"].sort().join(","));
+  ok("ואין בו portalLinkedEmail (אין dual-anchor)",
+    !LINK_WRITABLE_KEYS.includes("portalLinkedEmail"));
+  ok("unlinkFields מנקה את עקבת הזהות", unlinkFields("x").portalLinkedPhone === null);
+  eq("ומאפס את ה-uid", unlinkFields("x").userId, null);
+  eq("וצורב revoked", unlinkFields("x").portalStatus, "revoked");
+  ok("ושדות הכתיבה של הקישור הם בדיוק מה ש-linkFields מייצר",
+    Object.keys(lf).every((k) => LINK_WRITABLE_KEYS.includes(k)));
+}
+
+// -- (ד) ⛔ M1 על הנייד: השוואה **קנונית**, לא מחרוזת ---------------------
+// ⚠️ §5.4 בסקירה: *"אם הבדיקה מחפשת את המחרוזת 0540000017, היא תעבור
+// בהצלחה גם כשבטקסט יושב 054-000-0017. אותו אדם, אותו מזהה, שתי מחרוזות.
+// **בדיקה שעוברת כשהדליפה קיימת גרועה מהיעדר בדיקה.**"*
+//
+// לכן הבדיקה כאן **מחלצת כל רצף ספרות, מקננת כל אחד, ומשווה** — ולא מחפשת
+// מחרוזת. והיא מורצת כ**מוטציה מאומתת**: קודם מוכיחים שהיא **נופלת** על
+// הדליפה, ורק אחר כך שהיא עוברת אחרי האנונימיזציה. בדיקה שלא ראו אותה
+// נכשלת אינה בדיקה.
+{
+  eq("שדות המזהים של נהג כוללים את שני שדות הנייד",
+    [...IDENTIFIER_BEARING_FIELDS.drivers].sort().join(","),
+    ["email", "phone", "portalLinkedEmail", "portalLinkedPhone"].sort().join(","));
+
+  const TARGET = "+972540000017";
+  const leaker = createDriver({
+    orgId: ORG, fullName: "אורית לוי", phone: "054-000-0017", email: "o.levy@gmail.test",
+  });
+  const other = createDriver({ orgId: ORG, fullName: "בנימין כהן", phone: "03-0000017" });
+  const leakData = {
+    ...EMPTY,
+    drivers: [{ ...leaker, portalLinkedPhone: TARGET, userId: "uidL", portalStatus: "active" }, other],
+    vehicles: [{ ...V1, notes: "לוחית 12345678 · טופל בטלפון 054 000 0017" }],
+    assignments: [
+      {
+        ...A1,
+        driverId: leaker.id,
+        // ⬅ **עקבת ביקורת.** הנייד יושב בה בצורה עם מקפים, ולצידו לוחית
+        //   רישוי, תאריך ומספר ק"מ שחייבים לשרוד.
+        importRaw: "החל מ 28.4.2026 עבר לאורית לוי 054-000-0017, רכב 12345678, 105000 ק\"מ",
+      },
+    ],
+    fines: [createFine({ orgId: ORG, vehicleId: V1.id, driverId: leaker.id, amount: 250,
+        violationDate: "2026-03-01", authority: "משטרה 34567890", violationType: "חניה" })],
+  };
+
+  // -- המוטציה: מוכיחים שהגלאי **תופס** את הצורה עם המקפים ---------------
+  const leaks = (data) => {
+    const found = [];
+    const walk = (val, path) => {
+      if (typeof val === "string") {
+        if (canonicalPhonesIn(val).has(TARGET)) found.push(path);
+      } else if (Array.isArray(val)) val.forEach((v, i) => walk(v, `${path}[${i}]`));
+      else if (val && typeof val === "object") {
+        for (const [k, v] of Object.entries(val)) walk(v, `${path}.${k}`);
+      }
+    };
+    walk(data, "");
+    return found;
+  };
+  const naive = JSON.stringify(leakData).includes("0540000017");
+  ok("⚠️ מוטציה: חיפוש מחרוזת **אינו** מוצא את 054-000-0017", !naive);
+  ok("⚠️ ואילו הגלאי הקנוני כן מוצא אותו (הבדיקה נופלת על הדליפה)",
+    leaks(leakData).length >= 3);
+
+  // -- ואחרי האנונימיזציה: אפס ------------------------------------------
+  const { data: cleaned } = anonymizeDriver(leakData, leaker.id);
+  const cleanDriver = cleaned.drivers.find((d) => d.id === leaker.id);
+  eq("אנונימיזציה: phone נוקה", cleanDriver.phone, "");
+  eq("אנונימיזציה: portalLinkedPhone נוקה", cleanDriver.portalLinkedPhone, null);
+  eq("אנונימיזציה: portalLinkedEmail נוקה", cleanDriver.portalLinkedEmail, null);
+  eq("⬅ ואין אף רצף ספרות שצורתו הקנונית היא הנייד של העובד",
+    leaks(cleaned).join("|"), "");
+
+  // -- ⚠️ ומה ש**חייב לשרוד**: regex תמים היה הופך את זה לגבינה ----------
+  const rawAfter = cleaned.assignments[0].importRaw;
+  ok("לוחית הרישוי שרדה את הרדקציה", rawAfter.includes("12345678"));
+  ok("התאריך שרד", rawAfter.includes("28.4.2026"));
+  ok("מספר הק\"מ שרד", rawAfter.includes("105000"));
+  ok("והנייד הוחלף בטוקן", rawAfter.includes("#"));
+  ok("מספר האסמכתא של הקנס שרד", cleaned.fines[0].authority.includes("34567890"));
+  ok("הלוחית בהערת הרכב שרדה", cleaned.vehicles[0].notes.includes("12345678"));
+  ok("והנייד בהערת הרכב — לא", !canonicalPhonesIn(cleaned.vehicles[0].notes).has(TARGET));
+  // ⬅ **הקו הנייח של העובד האחר** — אותן שבע ספרות, אדם אחר. לא נוגעים בו.
+  eq("הקו הנייח של עובד אחר לא נמחק",
+    cleaned.drivers.find((d) => d.id === other.id).phone, "03-0000017");
+
+  // -- והרדקציה כפונקציה עצמאית, על קלט ממוקד ---------------------------
+  const r = redactDriverIdentifiersEverywhere(
+    { ...EMPTY, drivers: [{ ...leaker, portalLinkedPhone: TARGET }],
+      assignments: [{ ...A1, driverId: leaker.id, importRaw: "0540000017 ו-12345678" }] },
+    leaker.id, "A17"
+  );
+  ok("redactDriverIdentifiersEverywhere דיווח על שדות", r.redacted > 0);
+  ok("ושמר את הלוחית", r.data.assignments[0].importRaw.includes("12345678"));
+}
+
+// -- (ה) ארכוב: עקבת הזהות מתאפסת מיד, פרט הקשר נשאר ---------------------
+// ⚠️ §5.5 — שינוי מכוון מול הגימייל: `portalLinkedEmail` נשאר עד ה-retention,
+// `portalLinkedPhone` **לא**. מספרי נייד ממוחזרים: מספר של עובד שעזב עשוי
+// להיות של אדם אחר בעוד שנה, ואז זו עקבת זהות של מישהו שאיננו יודעים מי.
+{
+  const d = createDriver({ orgId: ORG, fullName: "עוזב", phone: "054-000-0017" });
+  const before = {
+    ...EMPTY,
+    drivers: [{ ...d, userId: "uidX", portalStatus: "active", portalLinkedPhone: "+972540000017" }],
+    assignments: [{ ...A1, driverId: d.id, toDate: null }],
+  };
+  const after = archiveDriver(before, d.id, "2026-10-01").drivers.find((x) => x.id === d.id);
+  eq("ארכוב: portalLinkedPhone מתאפס מיד", after.portalLinkedPhone, null);
+  eq("ארכוב: phone **נשאר** (קנס שיגיע באיחור)", after.phone, "054-000-0017");
+  eq("ארכוב: הסטטוס", after.status, "archived");
+  eq("ארכוב: עקבת הביטול נשארת", after.portalStatus, "revoked");
+  ok("ארכוב: ה-uid מנותק", after.userId === null);
+}
+
+// -- (ו) ⛔ אין dual-anchor: מסלול המייל הוסר מפורטל הנהג -----------------
+// ⚠️ זו הדרישה שאינה "סדר": שני עוגנים = שני סעיפי read ושני סעיפי claim
+// ב-rules, כלומר משטח כפול — בלי להוסיף נהג אחד. ואפס נהגים מקושרים, ולכן
+// אין מה להגר ואין את מי לשבור.
+{
+  const dlSrc = readFileSync(join(SRC, "utils", "driverLink.js"), "utf8");
+  const dlCode = dlSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  ok("driverLink אינו משווה מיילים יותר", !/canonicalEmail|normalizeEmail|sameEmail/.test(dlCode));
+  ok("ואין בו validateDriverLinkEmail", !/validateDriverLinkEmail/.test(dlCode));
+  ok("והוא כן נשען על canonicalPhone", /canonicalPhone/.test(dlCode));
+
+  const hookSrc = readFileSync(join(SRC, "hooks", "useDriverPortal.js"), "utf8");
+  const hookCode = hookSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  ok("הפורטל מחפש נהג לפי phone", /where\("phone", "==", form\)/.test(hookCode));
+  ok("ולא לפי email", !/where\("email"/.test(hookCode));
+  ok("ו-emailVerified אינו תנאי בפורטל יותר", !/emailVerified/.test(hookCode));
+
+  // ⬅ **והאדמינים לא נגעו.** זו החלוקה שחייבת להישמר.
+  const adminsSrc = readFileSync(join(SRC, "utils", "admins.js"), "utf8");
+  ok("admins.js ממשיך לעבוד על מייל", /canonicalEmail/.test(adminsSrc));
+  ok("ועל email_verified", /emailVerified/.test(adminsSrc));
+  ok("ואין בו טלפון בכלל", !/phone/i.test(adminsSrc.replace(/\/\/.*$/gm, "")));
+
+  // ⬅ ומימוש אחד בלבד לנרמול — לא שני שמות לאותו דבר (§5.2).
+  const phoneSrc = readFileSync(join(SRC, "utils", "phone.js"), "utf8");
+  const phoneCode = phoneSrc.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  eq("canonicalPhone מוגדר פעם אחת",
+    (phoneCode.match(/export function canonicalPhone[(]/g) || []).length, 1);
+  ok("ואין normalizePhone מתחרה", !/function normalizePhone/.test(phoneCode));
+}
+
+// -- (ז) rules: ארבעת הדברים שאם ייפלו, הקישור נשבר בשקט ------------------
+{
+  const rulesSrc = readFileSync(join(SRC, "..", "firestore.rules"), "utf8");
+  // §5.3 פריט 3 — **אם לא יתעדכן, כל קישור יידחה.**
+  ok("hasOnly כולל portalLinkedPhone",
+    /hasOnly\(\['userId', 'portalStatus', 'portalLinkedPhone', 'updatedAt'\]\)/.test(rulesSrc));
+  ok("ואינו כולל portalLinkedEmail", !/hasOnly\(\[[^\]]*portalLinkedEmail/.test(rulesSrc));
+  // §5.3 פריט 4
+  ok("isSelfLinkClaim אוכף portalLinkedPhone == token",
+    /portalLinkedPhone', ''\) == tokenPhone\(\)/.test(rulesSrc));
+  ok("ה-rules נשענות על token.phone_number", /request\.auth\.token\.get\('phone_number', ''\)/.test(rulesSrc));
+  ok("ויש בהן canonPhone", /function canonPhone\(raw\)/.test(rulesSrc));
+  ok("שמקבל רק 05X/9725X", /\^05\[0-9\]\{8\}\$/.test(rulesSrc) && /\^9725\[0-9\]\{8\}\$/.test(rulesSrc));
+  ok("סעיף הנהגים משווה phone ולא email",
+    /phoneMatchesToken\(resource\.data\.get\('phone', ''\)\)/.test(rulesSrc));
+  ok("ואין יותר השוואת מייל בסעיף הנהג",
+    !/canonEmail\(resource\.data\.get\('email'/.test(rulesSrc));
+  // ⬅ והאדמינים — כפי שהיו, אות באות.
+  ok("emailIsAllowed לאדמינים לא נגע",
+    /tokenEmailVerified\(\)[\s\S]{0,200}adminEmails/.test(rulesSrc));
+  // ⬅ בדיקת הפרדת האוכלוסיות: ל-tokenPhone אין שום קשר ל-adminEmails.
+  ok("tokenPhone אינו מופיע בשום סעיף אדמין",
+    !/adminEmails[\s\S]{0,120}tokenPhone/.test(rulesSrc));
+}
+
+// -- (ח) הנגזרת: שדות הזהות מתכנסים לצורה אחת ----------------------------
+// ⚠️ זו השכבה שמביאה את 27 הרשומות שבענן — שהוקלדו ביד לפני שלמספר היה
+// תפקיד — לצורה אחת, **בלי סקריפט הגירה**: היא רצה בכל כתיבה של אדמין,
+// דרך אותו מסלול שכבר נרמל את כתובות המייל.
+{
+  const { normalizeDriverIdentities, portalPublishNeeded } = await import("../src/utils/portal.js");
+  const messy = [
+    createDriver({ orgId: ORG, fullName: "א", phone: "054-000-0017", email: "A.B@Gmail.COM" }),
+    createDriver({ orgId: ORG, fullName: "ב", phone: "03-0000017" }),
+    createDriver({ orgId: ORG, fullName: "ג", phone: "" }),
+    createDriver({ orgId: ORG, fullName: "ד", phone: "+972501110007" }),
+  ];
+  const tidy = normalizeDriverIdentities(messy);
+  eq("נייד מוקלד-ביד מתכנס ל-E.164", tidy[0].phone, "+972540000017");
+  eq("והמייל ל-lowercase", tidy[0].email, "a.b@gmail.com");
+  eq("⚠️ קו נייח נשאר כפי שהוא (פרט קשר תקין)", tidy[1].phone, "03-0000017");
+  eq("ריק נשאר ריק", tidy[2].phone, "");
+  ok("ומה שכבר קנוני אינו נוגע באובייקט", tidy[3] === messy[3]);
+  // אידמפוטנטי — אחרת כל טעינה הייתה כותבת שוב, בלולאה.
+  ok("הנרמול אידמפוטנטי", normalizeDriverIdentities(tidy).every((d, i) => d === tidy[i]));
+  // והנגזרת מצדיקה פרסום כל עוד יש מה לנרמל, ולא אחרי.
+  ok("רשומה לא-מנורמלת מצדיקה פרסום", portalPublishNeeded({ ...EMPTY, drivers: messy }, "2026-06-01"));
+}
+
+// -- (ח) i18n parity למפתחות שהפרוסה הזו הוסיפה --------------------------
+for (const k of [
+  "auth.adminSection", "auth.phone.label", "auth.phone.placeholder", "auth.phone.hint",
+  "auth.phone.send", "auth.phone.sending", "auth.phone.sentTo", "auth.phone.codeLabel",
+  "auth.phone.verify", "auth.phone.verifying", "auth.phone.resend", "auth.phone.changeNumber",
+  "auth.phone.err.number", "auth.phone.err.code", "auth.phone.err.expired",
+  "auth.phone.err.tooMany", "auth.phone.err.captcha", "auth.phone.err.disabled",
+  "auth.phone.err.failed", "portalLogin.purposeNote",
+  "noAccess.bodyPhone", "noAccess.hintPhone",
+  "driverLink.phoneHint", "driverLink.noPhone", "driverLink.err.phone", "driverLink.err.duplicate",
+]) {
+  ok(`מפתח ${k} קיים בעברית`, Boolean(dict.he[k]));
+  ok(`מפתח ${k} קיים באנגלית`, Boolean(dict.en[k]));
+}
+// ⬅ ושלושת החלקים של הגילוי (עדי §4.4): מה הוא עושה · מה לא · ושיש דרך אחרת.
+ok("הגילוי אומר שהמספר משמש לקוד בלבד", dict.he["portalLogin.purposeNote"].includes("קוד הכניסה בלבד"));
+ok("ושאיננו ניגשים לטלפון", dict.he["portalLogin.purposeNote"].includes("לא ניגשים לטלפון"));
+ok("ושיש דרך אחרת לדווח", dict.he["portalLogin.purposeNote"].includes("אפשר לדווח גם בטלפון"));
+// ⬅ ושמפתחות מסלול המייל של הנהג **נמחקו** ולא נשארו כשאריות.
+for (const k of ["driverLink.emailHint", "driverLink.noEmail", "driverLink.err.email"]) {
+  ok(`מפתח ${k} הוסר מעברית`, !dict.he[k]);
+  ok(`מפתח ${k} הוסר מאנגלית`, !dict.en[k]);
 }
 
 // ============================================================================

@@ -44,6 +44,7 @@
 
 import { useEffect, useState } from 'react';
 import { ExplainerScreen } from './components/ExplainerScreen';
+import { ReconcileView } from './components/ReconcileView';
 import { OrdersView } from './components/OrdersView';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { RefreshOrders } from './components/RefreshOrders';
@@ -58,6 +59,41 @@ import { cloudRunResult } from './utils/cloudView';
 import { isFirebaseConfigured } from './firebase';
 import { STORAGE_KEYS } from './constants';
 import { t } from './i18n';
+
+/**
+ * ★★ שני מסכים, ולשונית אחת ביניהם — ולא חמש.
+ *
+ * ההערה בראש הקובץ עדיין תקפה מילה במילה: לשוניות נמחקו כאן פעם אחת כי
+ * "מסך אחד שחשוב וארבעה שלא" הוא מסך שבו הדבר החשוב הוא אחד מחמישה
+ * שווי-מראה. מה שחוזר עכשיו אינו אותו דבר — זה **מסך שני שמישהי ביקשה**,
+ * והוא מסך של פעם בחודש. לכן ההזמנות נשארות ברירת המחדל, והלשונית השנייה
+ * לא מתחרה בהן על תשומת הלב.
+ */
+type ViewKey = 'orders' | 'reconcile';
+
+function ViewTabs({ view, onView }: { view: ViewKey; onView: (next: ViewKey) => void }) {
+  const tab = (key: ViewKey, label: string) => (
+    <button
+      type="button"
+      onClick={() => onView(key)}
+      aria-pressed={view === key}
+      className={`min-h-[44px] rounded-lg border px-4 text-sm font-medium ${
+        view === key
+          ? 'border-slate-900 bg-slate-900 text-white'
+          : 'border-slate-400 bg-white text-slate-700 hover:bg-slate-50'
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <nav className="mb-4 flex flex-wrap gap-2" aria-label="מסכים">
+      {tab('orders', t('navOrders'))}
+      {tab('reconcile', t('navReconcile'))}
+    </nav>
+  );
+}
 
 export function App() {
   const localOrders = useOrders();
@@ -84,6 +120,9 @@ export function App() {
   });
 
   const [connecting, setConnecting] = useState(false);
+
+  /** ★ ברירת המחדל היא ההזמנות. ראו ההערה מעל `ViewTabs`. */
+  const [view, setView] = useState<ViewKey>('orders');
 
   const orders = localOrders;
 
@@ -216,7 +255,7 @@ export function App() {
 
         {/* ★ מעל הרשימה ולא מתחתיה: זו השאלה שנשאלת **לפני** שמסתכלים על
             מה שיש, ובמובייל "מתחת לרשימה" הוא מקום שלא רואים. */}
-        {!mustExplain ? (
+        {!mustExplain && view === 'orders' ? (
           <RefreshOrders
             phase={refresh.phase}
             newCount={refresh.newCount}
@@ -228,9 +267,15 @@ export function App() {
           />
         ) : null}
 
+        {/* ★ הניווט מופיע רק אחרי ההסבר. מסך ההסבר הוא שער, ולשונית שמאפשרת
+            לדלג ממנו הופכת אותו להצעה. */}
+        {!mustExplain ? <ViewTabs view={view} onView={setView} /> : null}
+
         <main>
           {mustExplain ? (
             <ExplainerScreen onContinue={dismissExplainer} reopened={reopened} />
+          ) : view === 'reconcile' ? (
+            <ReconcileView />
           ) : cloud.loading ? (
             <div className="p-8 text-center text-slate-500">רגע…</div>
           ) : cloud.errorHe ? (
@@ -253,7 +298,7 @@ export function App() {
         </main>
 
         {/* ★★ B3′ — המתג, הבאנר והיומן. */}
-        {!mustExplain ? (
+        {!mustExplain && view === 'orders' ? (
           <SupportModePanel
             state={cloud.supportMode}
             active={cloud.supportModeActive}
@@ -303,9 +348,15 @@ export function App() {
         </Banner>
       </div>
 
+      {seenExplainer !== null && !showExplainer ? (
+        <ViewTabs view={view} onView={setView} />
+      ) : null}
+
       <main>
         {seenExplainer === null ? null : showExplainer ? (
           <ExplainerScreen onContinue={dismissExplainer} reopened={reopened} />
+        ) : view === 'reconcile' ? (
+          <ReconcileView />
         ) : loadFailed ? (
           <FriendlyError whatHappened="לא הצלחתי לטעון את נתוני הדוגמה." whatToDo={null} />
         ) : (

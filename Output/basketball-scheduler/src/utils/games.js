@@ -521,6 +521,36 @@ export function syncGamesToSessions(nextGames, data) {
       // Carried onto the row so the board can strike it through without looking the game
       // up again, and so the transport and calendar exports can drop it.
       ...(g.cancelled ? { cancelled: true } : {}),
+      // WHERE AN AWAY FIXTURE IS PLAYED, as a field of its own — and only for away fixtures.
+      //
+      // A home game's place is `hallId`, which the change log already watches. An away game's
+      // `hallId` is always "" (see above), so until 1.10.2026 the place existed ONLY inside
+      // `notes` — and `notes` is deliberately not diffed, because it is free text and the one
+      // place a child's name turns up. The result: the federation moves an away fixture to a
+      // different hall, every watched field is identical, and the coach drives to the wrong
+      // town with no notice. The parents, meanwhile, ARE told — `boardChanges` compares
+      // `where`. That asymmetry is what settled it.
+      //
+      // THE CONDITION IS `!hallId` AND NOT `!g.isHome`, and the difference is a real case.
+      //
+      // The first version of this said "away only", which costs the same and misses a
+      // fixture type documented seven lines above: a HOME game whose hall cannot be matched
+      // gets `hallId: ""` — and under "away only" it got no `venue` either, so it had no
+      // watched place field at all while the board still showed it a place. That is not
+      // hypothetical; see the comment on `hallByName` for the day every home fixture in
+      // "עלומים" landed with no hall, and note that this club has two names for one hall.
+      //
+      // Keyed on `hallId`, the two fields become genuinely exclusive rather than nearly so:
+      // a place is carried here exactly when `hallId` cannot carry it, so a hall change is
+      // never announced twice and a place change is never announced not at all. The extra
+      // rows are home fixtures with an unmatched hall — none today — so the ~11KB measured
+      // for away fixtures is still the cost.
+      // WRITTEN ON EVERY GAME ROW, empty string and all — not only where there is something
+      // to put in it. The field has to be PRESENT so that "we do not track this" and "there
+      // is no venue" stay distinguishable: the change log skips the comparison when either
+      // side lacks the key, and that exemption must apply to records written before
+      // 1.10.2026 and to nothing else. Costs about 3KB across the season's fixtures.
+      venue: !hallId && venue ? venue : "",
       notes: `נגד: ${g.opponent}${venue ? ` | ${venue}` : ""} | חימום ${start} · משחק ${gameTime}`,
       weekOf: weekStartOfDMY(g.date),
       fromGame: true,

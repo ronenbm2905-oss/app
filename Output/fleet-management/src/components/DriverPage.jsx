@@ -18,6 +18,7 @@ import {
 } from "../utils/notice.js";
 import { vehicleLabel, driverName, DRIVER_STATUS_TONE } from "../utils/options.js";
 import { formatDate, formatNumber } from "../utils/format.js";
+import { formatPhoneIl } from "../utils/phone.js";
 import { cmpDay, todayIso } from "../utils/dates.js";
 
 // מסך 4b — דף נהג: רכב נוכחי, היסטוריית רכבים, קנסות, דיווחי ק"מ.
@@ -92,7 +93,7 @@ export function DriverPage({ driverId, data, orgId, actions, onBack, onOpenVehic
             )}
           </div>
           <p className="num text-xs text-slate-500">
-            {[driver.department, driver.employeeNumber, driver.phone, driver.email]
+            {[driver.department, driver.employeeNumber, formatPhoneIl(driver.phone), driver.email]
               .filter(Boolean)
               .join(" · ") || "—"}
           </p>

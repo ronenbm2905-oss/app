@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import {
-  duplicateSessionGroups, duplicateRowCount, withoutSessions,
+  duplicateSessionGroups, duplicateRowCount, withoutSessions, splitDuplicates,
 } from "../src/utils/duplicateSessions.js";
+import {
+  acceptKeyOf, isAccepted, accept, unaccept, pruneAccepted,
+} from "../src/utils/acceptedChecks.js";
 import { seasonHallClashes } from "../src/utils/hallClashes.js";
 import { teamLabel } from "../src/utils/teams.js";
 
@@ -154,3 +157,93 @@ console.log(`\n${count} duplicate-row tests passed`);
 
   console.log("\n4 label tests passed");
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// "THIS ONE IS DELIBERATE" — answering the report instead of re-reading it.
+//
+// Ronen, 1.10.2026: "let me delete it or approve that it is fine, so I do not have to go
+// through it again and again." A duplicate is not always a fault — a squad can genuinely
+// train twice in one slot — and a report that cannot be answered is one people stop opening.
+console.log("- a duplicate a person has already decided about -");
+
+T("approving a group hides it from the open list and keeps it in reach", () => {
+  const [g] = duplicateSessionGroups(data, { from: BEFORE });
+  const next = accept(data, g, BEFORE);
+  const split = splitDuplicates(next, { from: BEFORE });
+  assert.equal(split.open.length, 0, "it must stop asking");
+  assert.equal(split.accepted.length, 1, "and it must still be findable — never silently dropped");
+  assert.deepEqual(split.accepted[0].dropIds, ["s2"]);
+});
+
+T("and the decision can be taken back", () => {
+  const [g] = duplicateSessionGroups(data, { from: BEFORE });
+  const accepted = accept(data, g, BEFORE);
+  const undone = unaccept(accepted, g);
+  assert.deepEqual(undone.acceptedChecks, []);
+  assert.equal(splitDuplicates(undone, { from: BEFORE }).open.length, 1);
+});
+
+T("A GROUP THAT GROWS COMES BACK — approving two is not approving three", () => {
+  // The count is part of the key on purpose. A third identical row appearing weeks later is
+  // new information, and inheriting an old "it is fine" would bury it for the season.
+  const [g] = duplicateSessionGroups(data, { from: BEFORE });
+  const accepted = accept(data, g, BEFORE);
+  const grown = {
+    ...accepted,
+    sessions: [...data.sessions, { ...data.sessions[0], id: "s5" }],
+  };
+  const split = splitDuplicates(grown, { from: BEFORE });
+  assert.equal(split.open.length, 1, "three identical rows must be asked about again");
+  assert.equal(split.open[0].count, 3);
+});
+
+T("the stored key carries ids and clock times — no name of a person, team or child", () => {
+  const [g] = duplicateSessionGroups(data, { from: BEFORE });
+  const key = acceptKeyOf(g);
+  // Both of this club's "ילדים ב" squads, and both coaches, must be absent from it.
+  for (const name of ["ילדים ב", "עומר", "סהר", "רימונים"]) {
+    assert.equal(key.includes(name), false, name);
+  }
+  assert.ok(key.startsWith(W), "the week leads, which is what lets an old decision be pruned");
+  assert.ok(key.includes("t1"), "the team is identified by id");
+});
+
+T("a decision about a week that has passed is dropped, not kept for ever", () => {
+  // It lives on a document with a size ceiling, and it can never match again — the week is
+  // part of the key.
+  const old = ["2026-01-05|t1|c1|h1|שני|17:00|18:30||x2"];
+  assert.deepEqual(pruneAccepted(old, new Date("2026-10-01T00:00:00")), []);
+  assert.deepEqual(pruneAccepted([`${W2}|x2`], new Date("2026-10-01T00:00:00")), [`${W2}|x2`]);
+});
+
+T("PRUNING EARLY IN THE MONTH does not wipe every decision", () => {
+  // `getDate() - 7` on the 3rd of the month produces the string "2026-11--4", which sorts
+  // below every real key and throws the lot away — every decision the manager ever made,
+  // on a date that has nothing to do with any of them. Date arithmetic goes through a Date.
+  const from = new Date("2026-11-03T00:00:00"); // cutoff: 27.10
+  assert.deepEqual(pruneAccepted(["2026-10-28|x2"], from), ["2026-10-28|x2"], "inside the window");
+  assert.deepEqual(pruneAccepted(["2026-10-26|x2"], from), [], "and outside it is still dropped");
+  // The first of the month is the sharpest case: the subtraction crosses into the previous
+  // month AND goes negative.
+  const first = new Date("2026-10-01T00:00:00"); // cutoff: 24.9
+  assert.deepEqual(pruneAccepted(["2026-09-27|x2"], first), ["2026-09-27|x2"]);
+});
+
+T("a key that is not a date is kept — unreadable is not the same as stale", () => {
+  assert.deepEqual(pruneAccepted(["rubbish"], new Date("2026-10-01T00:00:00")), ["rubbish"]);
+});
+
+T("approving the same group twice stores it once", () => {
+  const [g] = duplicateSessionGroups(data, { from: BEFORE });
+  const twice = accept(accept(data, g, BEFORE), g, BEFORE);
+  assert.equal(twice.acceptedChecks.length, 1);
+});
+
+T("nothing throws on a group with no key, and nothing is stored", () => {
+  assert.equal(acceptKeyOf(null), "");
+  assert.equal(acceptKeyOf({}), "");
+  assert.equal(accept(data, {}, BEFORE), data, "same object back");
+  assert.equal(isAccepted(undefined, { key: "k", count: 2 }), false);
+});
+
+console.log(`\n${count} tests passed`);

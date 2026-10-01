@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { DAYS } from "../src/constants.js";
 import {
   splitTitle, decodeTitle, matchesClub, splitDateTime, eventToDraft,
-  classify, draftToGame, cupCode, CUP_LEAGUES, scanOutcome, scanSummary, SCAN_EXIT,
+  classify, draftToGame, cupCode, CUP_LEAGUES, scanOutcome, scanSummary, SCAN_EXIT, applyMove,
+  movedCandidates, trimForScan,
   mayOverwriteScan,
 } from "../src/utils/cupScan.js";
 
@@ -299,3 +301,192 @@ T("anything truthy in `resolved` stops the overwrite — failing the safe way", 
   assert.equal(mayOverwriteScan({ resolved: undefined }), true);
   assert.equal(mayOverwriteScan({}), true);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// THE SAME FIXTURE, MOVED — the real event of 1.10.2026, and the shape of the gap.
+//
+// One SportsPress event, 1502072, followed through two scans of the club's own data:
+//
+//   18.9   cup-1502072   04-11-2026 20:30   ->  shown beside the club's record 779711
+//   1.10   cup-1502072   16-10-2026 14:00   ->  offered as a BRAND NEW fixture
+//
+// The federation moved נערים א from a November evening to an October afternoon. Nothing in
+// the old recognition survives that: the club's code is the xlsx one and the draft's is the
+// cup one, and date, hour and venue are exactly what changed. Approving the "new" fixture
+// would have left two games against one opponent, and the duplicate guard in the weekly
+// import matches on date — the one thing that moved.
+console.log("  — a fixture the federation moved —");
+
+const CUP = "גביע המדינה לנערים א";
+// The club's record: came from the weekly xlsx, so it wears the federation's own code.
+const ours = (over = {}) => ({
+  federationCode: "779711", teamId: "t-na", date: "04-11-2026", time: "20:30",
+  isHome: true, opponent: "מכבי רמת גן ליאור", league: CUP,
+  venue: "אולם עלומים, רח' הכפר 2, קריית אונו", hallId: "h-alumim", weekDay: "יום רביעי", ...over,
+});
+const movedDraft = (over = {}) => ({
+  federationCode: "cup-1502072", eventId: 1502072, date: "16-10-2026", time: "14:00",
+  isHome: true, opponent: "מכבי רמת גן ליאור", league: CUP,
+  venue: "אולם עלומים, רח' הכפר 2, קריית אונו", ...over,
+});
+
+T("THE MOVE IS RECOGNISED, not offered as a new fixture", () => {
+  const r = classify([movedDraft()], [ours()]);
+  assert.equal(r.fresh.length, 0, "this was offered as new until 1.10.2026");
+  assert.equal(r.moved.length, 1);
+  assert.equal(r.moved[0].existing.federationCode, "779711");
+  assert.equal(r.moved[0].draft.date, "16-10-2026");
+});
+
+T("a fixture already carrying the cup id is recognised when it moves too", () => {
+  // Known BY ID used to end the question — "recognised" and "unchanged" were one statement.
+  // A fixture adopted from an earlier scan would move and never be mentioned again.
+  const adopted = ours({ federationCode: "779878", scannedCode: "cup-1502072" });
+  const r = classify([movedDraft()], [adopted]);
+  assert.equal(r.known.length, 0);
+  assert.equal(r.moved.length, 1);
+  assert.equal(r.moved[0].existing.federationCode, "779878");
+});
+
+T("and a fixture that has NOT moved is still silent", () => {
+  // The whole value of `known` is that a quiet competition says nothing at all.
+  const r = classify([movedDraft({ date: "04-11-2026", time: "20:30" })], [ours({ scannedCode: "cup-1502072" })]);
+  assert.equal(r.known.length, 1);
+  assert.equal(r.moved.length + r.fresh.length + r.possible.length, 0);
+});
+
+T("IDENTITY IS COMPETITION + OPPONENT + SIDE — never two of the three", () => {
+  // Each of these is a DIFFERENT fixture and must not be swallowed into the first one.
+  assert.equal(classify([movedDraft({ league: "גביע המדינה לנערים ב" })], [ours()]).moved.length, 0);
+  assert.equal(classify([movedDraft({ opponent: "הפועל חולון" })], [ours()]).moved.length, 0);
+  assert.equal(classify([movedDraft({ isHome: false })], [ours()]).moved.length, 0, "the away leg is its own game");
+});
+
+T("TWO CANDIDATES ARE NOT A MATCH — a person decides, nothing is guessed", () => {
+  // A replay, a two-legged tie, or a competition that does not behave the way this assumes.
+  // Moving the wrong fixture silently is worse than offering a duplicate somebody can see.
+  const r = classify([movedDraft()], [ours(), ours({ federationCode: "779712", date: "11-11-2026" })]);
+  assert.equal(r.moved.length, 0);
+  assert.equal(r.possible.length, 1, "shown side by side instead");
+  assert.equal(r.possible[0].existing.length, 2);
+});
+
+T("a cancelled fixture is not a candidate for a move", () => {
+  assert.equal(classify([movedDraft()], [ours({ cancelled: true })]).moved.length, 0);
+});
+
+T("APPLYING A MOVE KEEPS THE FEDERATION'S OWN CODE", () => {
+  // `replaceGame` hands the record the cup id, which is right when adopting a hand-typed
+  // fixture and wrong here: overwrite 779711 and the next weekly import finds it missing
+  // from the sheet and reports it CANCELLED — the false cancellation of 17.9, reversed.
+  const out = applyMove(ours(), movedDraft(), DAYS);
+  assert.equal(out.federationCode, "779711");
+  assert.equal(out.scannedCode, "cup-1502072", "the scanned id rides along, so the next scan knows it");
+  assert.equal(out.date, "16-10-2026");
+  assert.equal(out.time, "14:00");
+});
+
+T("...and everything the manager owns", () => {
+  const mine = ours({
+    teamId: "t-na", hallId: "h-alumim", addressOverride: "כתובת שהזנתי",
+    driverName: "משה", driverPhone: "052-1", ourScore: 61, theirScore: 58, timeOverride: { start: "19:00" },
+  });
+  const out = applyMove(mine, movedDraft(), DAYS);
+  for (const k of ["teamId", "hallId", "addressOverride", "driverName", "driverPhone", "ourScore", "theirScore"]) {
+    assert.deepEqual(out[k], mine[k], k);
+  }
+  assert.deepEqual(out.timeOverride, mine.timeOverride);
+});
+
+T("the weekday is recomputed, or the next import would offer to fix it", () => {
+  // 16.10.2026 is a Friday; the record said Wednesday. Left stale it reads wrong on the
+  // board AND shows up in the next weekly proposal as a field that disagrees with the sheet.
+  assert.equal(applyMove(ours(), movedDraft(), DAYS).weekDay, "יום שישי");
+  // With no day table to hand, the old value is kept rather than a wrong one invented.
+  assert.equal(applyMove(ours(), movedDraft()).weekDay, "יום רביעי");
+});
+
+T("a move never mutates the record it was given", () => {
+  const mine = ours();
+  const before = JSON.stringify(mine);
+  applyMove(mine, movedDraft(), DAYS);
+  assert.equal(JSON.stringify(mine), before);
+});
+
+console.log(`\n${n} cup-scan tests passed`);
+
+console.log("  — what the gate found in the first version —");
+
+T("GATE #28 B3: A FIXTURE THAT WAS PLAYED IS NEVER DRAGGED FORWARD", () => {
+  // "Only one candidate" assumes both legs of a tie are ours. In the three FRIENDLY
+  // competitions a second meeting with the same club is the ordinary thing — and when only
+  // one leg is ours, the guard never fires. The October fixture would have been moved to
+  // December, carrying its score, with no undo.
+  const today = new Date("2026-11-01T00:00:00");
+  const withScore = ours({ date: "10-10-2026", ourScore: 61, theirScore: 58 });
+  assert.equal(movedCandidates([withScore], movedDraft(), today).length, 0, "a result rules it out");
+  const inThePast = ours({ date: "10-10-2026" });
+  assert.equal(movedCandidates([inThePast], movedDraft(), today).length, 0, "so does a date gone by");
+  assert.equal(classify([movedDraft()], [inThePast], { today }).moved.length, 0);
+  // And it is not silently dropped — a person is shown it.
+  assert.equal(classify([movedDraft()], [inThePast], { today }).fresh.length, 1);
+});
+
+T("...and a fixture still ahead with no score is still a candidate", () => {
+  assert.equal(movedCandidates([ours()], movedDraft(), new Date("2026-10-01T00:00:00")).length, 1);
+});
+
+T("GATE #28: THE SCAN DOCUMENT NEVER CARRIES A DRIVER'S NAME OR NUMBER", () => {
+  // The first version pushed the whole club record into `cupScans`, which is written nightly
+  // and kept until the season is cleared — outside the fourteen-day driver sweep entirely.
+  // The same finding as gate #26's, in a new place, a week after it was closed.
+  const withDriver = ours({ driverName: "משה", driverPhone: "052-1234567", notes: "טקסט חופשי" });
+  const r = classify([movedDraft()], [withDriver]);
+  const stored = JSON.stringify(r.moved[0].existing);
+  assert.equal(stored.includes("052-1234567"), false, stored);
+  assert.equal(stored.includes("משה"), false, stored);
+  assert.equal(stored.includes("טקסט חופשי"), false, stored);
+  // And what the screen needs is still there.
+  assert.equal(r.moved[0].existing.federationCode, "779711");
+  assert.equal(r.moved[0].existing.date, "04-11-2026");
+  assert.equal(r.moved[0].existing.hallId, "h-alumim");
+});
+
+T("a projection, not a list of fields to strip", () => {
+  // A strip-list has to be updated whenever a field is added, and the one that gets
+  // forgotten is the one that matters. Anything unnamed never leaves the club document.
+  const odd = ours({ somethingAddedNextYear: "secret", playerNotes: "x" });
+  const stored = JSON.stringify(classify([movedDraft()], [odd]).moved[0].existing);
+  assert.equal(stored.includes("secret"), false);
+  assert.equal(stored.includes("playerNotes"), false);
+});
+
+T("the screen is told HOW the match was made", () => {
+  // A match by id is the same fixture beyond doubt; a match by competition+opponent+side is
+  // an inference. The screen says different things about the two and cannot tell them apart
+  // from the outside.
+  assert.equal(classify([movedDraft()], [ours({ scannedCode: "cup-1502072" })]).moved[0].by, "id");
+  assert.equal(classify([movedDraft()], [ours()]).moved[0].by, "fixture");
+});
+
+console.log(`\n${n} cup-scan tests passed`);
+
+T("GATE #28 B2: a move can carry the hall and clear a hand-typed address", () => {
+  // `venue` is text. What decides where people drive is `hallId` for a home fixture and
+  // `addressOverride` for an away one — and keeping both untouched, which is right when only
+  // the clock moved, sent a squad to the OLD hall under the new date while the screen above
+  // the button displayed the new one.
+  const mine = ours({ hallId: "h-old", addressOverride: "כתובת ישנה שהזנתי" });
+  const kept = applyMove(mine, movedDraft(), DAYS);
+  assert.equal(kept.hallId, "h-old", "silence still means keep");
+  assert.equal(kept.addressOverride, "כתובת ישנה שהזנתי");
+
+  const moved = applyMove(mine, movedDraft(), DAYS, { hallId: "h-new", clearAddressOverride: true });
+  assert.equal(moved.hallId, "h-new");
+  assert.equal(moved.addressOverride, "");
+  // And everything else the manager owns is still untouched.
+  assert.equal(moved.teamId, mine.teamId);
+  assert.equal(moved.federationCode, "779711");
+});
+
+console.log(`\n${n} cup-scan tests passed`);

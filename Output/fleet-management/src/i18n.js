@@ -65,10 +65,41 @@ const dict = {
     "common.demoBadge": "דמו מקומי",
 
     // -- כניסה / מצב מקומי --
-    "auth.signInGoogle": "כניסה עם Google",
+    "auth.signInGoogle": "כניסה עם Google (מנהלי צי)",
     "auth.signInTitle": "כניסה למערכת",
     "auth.signInSub":
-      "מנהלי הצי נכנסים לניהול; עובד שכתובת המייל שלו רשומה בכרטיס הנהג שלו נכנס לפורטל שלו.",
+      "עובד שמספר הנייד שלו רשום בכרטיס הנהג שלו נכנס עם קוד SMS; מנהלי הצי נכנסים עם Google.",
+    "auth.adminSection": "מנהלי צי",
+
+    // ========================================================================
+    // כניסת נהג בנייד (1.10.2026) — העוגן שהחליף את המייל
+    // ========================================================================
+    // ⚠️ כל שגיאה כאן אומרת **מה לעשות**, ולא "ההתחברות נכשלה": עובד שלא
+    // יודע אם הקוד שגוי, פג תוקף, או שהמספר אינו בכרטיס — מתקשר לאדמין,
+    // וזה בדיוק מה שהמסלול הזה נועד למנוע.
+    // ⚠️ גילוי התכלית בנקודת האיסוף (עדי §4.4). שלושת החלקים נחוצים:
+    // מה המספר עושה · מה הוא לא עושה · **ושיש דרך אחרת** — כי בחירה שהעובד
+    // אינו יודע עליה אינה בחירה.
+    "portalLogin.purposeNote":
+      "המספר משמש לשליחת קוד הכניסה בלבד. אנחנו לא שולחים לנייד שלך דבר אחר, ולא ניגשים לטלפון. לא רוצה להיכנס כך? אפשר לדווח גם בטלפון למנהל הצי.",
+    "auth.phone.label": "מספר נייד",
+    "auth.phone.placeholder": "050-123-4567",
+    "auth.phone.hint": "נייד ישראלי בלבד. יישלח אליו קוד חד-פעמי ב-SMS.",
+    "auth.phone.send": "שלחו לי קוד ב-SMS",
+    "auth.phone.sending": "שולח קוד…",
+    "auth.phone.sentTo": "שלחנו קוד בן 6 ספרות ל-{phone}",
+    "auth.phone.codeLabel": "קוד מה-SMS",
+    "auth.phone.verify": "אימות וכניסה",
+    "auth.phone.verifying": "מאמת…",
+    "auth.phone.resend": "שליחת קוד מחדש",
+    "auth.phone.changeNumber": "שינוי מספר",
+    "auth.phone.err.number": "זה אינו מספר נייד ישראלי תקין. הקלידו מספר בצורה 050-123-4567.",
+    "auth.phone.err.code": "הקוד שהוקלד שגוי. בדקו את ה-SMS והקלידו שוב.",
+    "auth.phone.err.expired": "הקוד פג תוקף. בקשו קוד חדש.",
+    "auth.phone.err.tooMany": "יותר מדי ניסיונות מהמספר הזה. המתינו כמה דקות ונסו שוב.",
+    "auth.phone.err.captcha": "בדיקת האבטחה של הדפדפן נכשלה. רעננו את הדף ונסו שוב.",
+    "auth.phone.err.disabled": "כניסה בנייד אינה מופעלת בפרויקט הזה. פנו למנהל המערכת.",
+    "auth.phone.err.failed": "שליחת הקוד נכשלה. בדקו חיבור לאינטרנט ונסו שוב.",
     "auth.localMode": "מצב מקומי",
     "auth.localModeNote":
       "אין קונפיג Firebase — הנתונים נשמרים בדפדפן הזה בלבד (localStorage) ואין התחברות. להפעלת ענן: מלא .env לפי .env.example.",
@@ -94,6 +125,12 @@ const dict = {
     "noAccess.recheck": "בדוק שוב",
     "noAccess.hint":
       "הקריאו למנהל המערכת את הכתובת שמופיעה למעלה במדויק — היא צריכה להתווסף בדיוק כך.",
+    // ⚠️ נהג שנכנס בנייד מגיע לאותו מסך מסיבה **אחרת** לגמרי: לא "המייל
+    // אינו ב-allowlist", אלא "אין כרטיס נהג עם המספר הזה".
+    "noAccess.bodyPhone":
+      "המספר שאיתו נכנסתם אינו מופיע בכרטיס נהג פעיל בצי הזה. בקשו ממנהל הצי להזין אותו בכרטיס שלכם, ואז לחצו על הכפתור למטה.",
+    "noAccess.hintPhone":
+      "הקריאו למנהל הצי את המספר שמופיע למעלה. אם הגישה שלכם נותקה בעבר, הוא צריך ללחוץ \"אפשר קישור מחדש\" בכרטיס שלכם.",
     "noAccess.errorTitle": "לא הצלחנו לבדוק את ההרשאה",
     "noAccess.errorBody": "בדקו חיבור לאינטרנט ולחצו על הכפתור למטה. אם זה נמשך, פנו למנהל המערכת.",
 
@@ -217,7 +254,7 @@ const dict = {
     "driver.portal.active": "פעיל",
     "driver.portal.disabled": "מושבת",
     "driver.portalHint":
-      "הכתובת שכאן היא מפתח הכניסה של העובד לפורטל. אחרי שהוא נכנס בפעם הראשונה, שינוי הכתובת אינו מעביר את הגישה — לשם כך יש \"ניתוק קישור\" בכרטיס הנהג.",
+      "מספר הנייד שכאן הוא מפתח הכניסה של העובד לפורטל. אחרי שהוא נכנס בפעם הראשונה, שינוי המספר אינו מעביר את הגישה — לשם כך יש \"ניתוק קישור\" בכרטיס הנהג.",
     "driver.searchPh": "חיפוש לפי שם, מחלקה, מס' עובד…",
     "driver.status.archived": "אורכב",
     "driver.portal.revoked": "בוטל",
@@ -425,10 +462,10 @@ const dict = {
 
     // -- ניהול הקישור בכרטיס הנהג (צד האדמין) ------------------------------
     "driverLink.title": "גישה לפורטל הנהג",
-    "driverLink.emailHint": "הכתובת שאיתה העובד יתחבר. הוא ייכנס בעצמו — המערכת אינה שולחת מייל.",
-    "driverLink.linked": "מקושר · נכנס עם {email}",
-    "driverLink.waiting": "ממתין לכניסה ראשונה של {email}",
-    "driverLink.noEmail": "לא הוזנה כתובת מייל — בלעדיה אין דרך לקשר חשבון.",
+    "driverLink.phoneHint": "הנייד שאיתו העובד יתחבר. הוא ייכנס בעצמו ויבקש קוד SMS — המערכת אינה שולחת לו דבר.",
+    "driverLink.linked": "מקושר · נכנס עם {phone}",
+    "driverLink.waiting": "ממתין לכניסה ראשונה של {phone}",
+    "driverLink.noPhone": "לא הוזן מספר נייד תקין — בלעדיו אין דרך לקשר חשבון.",
     "driverLink.revoked": "הגישה נותקה. כדי להחזיר אותה — לחצו \"אפשר קישור מחדש\".",
     "driverLink.unlink": "ניתוק קישור",
     "driverLink.unlinkConfirm":
@@ -436,8 +473,8 @@ const dict = {
     "driverLink.invite": "אפשר קישור מחדש",
     "driverLink.note":
       "הבידוד נאכף בשרת: מרגע הניתוק העובד אינו קורא דבר, גם אם החשבון שלו עדיין מחובר במכשיר.",
-    "driverLink.err.email": "כתובת מייל לא תקינה",
-    "driverLink.err.duplicate": "הכתובת הזו כבר משויכת לנהג אחר",
+    "driverLink.err.phone": "זה אינו מספר נייד ישראלי תקין (למשל 050-123-4567)",
+    "driverLink.err.duplicate": "המספר הזה כבר משויך לנהג אחר",
 
     "km.title": "מכסת ק\"מ",
     "km.allowance": "מכסה שנתית",
@@ -851,10 +888,33 @@ const dict = {
     "common.unassigned": "Unassigned",
     "common.demoBadge": "Local demo",
 
-    "auth.signInGoogle": "Sign in with Google",
+    "auth.signInGoogle": "Sign in with Google (fleet managers)",
     "auth.signInTitle": "Sign in",
     "auth.signInSub":
-      "Fleet managers reach the admin app; an employee whose email is on their driver record reaches their own portal.",
+      "An employee whose mobile number is on their driver record signs in with an SMS code; fleet managers sign in with Google.",
+    "auth.adminSection": "Fleet managers",
+
+    // -- driver sign-in by mobile (1.10.2026) --
+    "portalLogin.purposeNote":
+      "The number is used only to send your sign-in code. We do not send you anything else and we do not access your phone. Prefer not to sign in this way? You can also report by phone to the fleet manager.",
+    "auth.phone.label": "Mobile number",
+    "auth.phone.placeholder": "050-123-4567",
+    "auth.phone.hint": "Israeli mobile numbers only. A one-time code will be sent by SMS.",
+    "auth.phone.send": "Send me an SMS code",
+    "auth.phone.sending": "Sending code…",
+    "auth.phone.sentTo": "We sent a 6-digit code to {phone}",
+    "auth.phone.codeLabel": "Code from the SMS",
+    "auth.phone.verify": "Verify and sign in",
+    "auth.phone.verifying": "Verifying…",
+    "auth.phone.resend": "Send the code again",
+    "auth.phone.changeNumber": "Change number",
+    "auth.phone.err.number": "That is not a valid Israeli mobile number. Enter it as 050-123-4567.",
+    "auth.phone.err.code": "That code is wrong. Check the SMS and type it again.",
+    "auth.phone.err.expired": "The code has expired. Request a new one.",
+    "auth.phone.err.tooMany": "Too many attempts from this number. Wait a few minutes and try again.",
+    "auth.phone.err.captcha": "The browser security check failed. Refresh the page and try again.",
+    "auth.phone.err.disabled": "Mobile sign-in is not enabled on this project. Contact your administrator.",
+    "auth.phone.err.failed": "Could not send the code. Check your internet connection and try again.",
     "auth.localMode": "Local mode",
     "auth.localModeNote":
       "No Firebase config — data is stored in this browser only (localStorage) and there is no sign-in. To enable the cloud, fill .env from .env.example.",
@@ -877,6 +937,10 @@ const dict = {
     "noAccess.recheck": "Check again",
     "noAccess.hint":
       "Read the address above to your administrator exactly as shown — it has to be added exactly like that.",
+    "noAccess.bodyPhone":
+      "The number you signed in with is not on an active driver record in this fleet. Ask the fleet administrator to add it to your record, then press the button below.",
+    "noAccess.hintPhone":
+      "Read the number above to your fleet administrator. If your access was revoked earlier, they need to press \"Allow linking again\" on your record.",
     "noAccess.errorTitle": "We could not check your access",
     "noAccess.errorBody": "Check your internet connection and press the button below. If it persists, contact your administrator.",
 
@@ -995,7 +1059,7 @@ const dict = {
     "driver.portal.active": "Active",
     "driver.portal.disabled": "Disabled",
     "driver.portalHint":
-      "This address is the employee's key to the portal. Once they have signed in, changing the address does not move their access — use \"Revoke access\" on the driver card for that.",
+      "This mobile number is the employee's key to the portal. Once they have signed in, changing the number does not move their access — use \"Revoke access\" on the driver card for that.",
     "driver.searchPh": "Search by name, department, employee no.…",
     "driver.status.archived": "Archived",
     "driver.portal.revoked": "Revoked",
@@ -1191,10 +1255,10 @@ const dict = {
       "This reading is lower than the previous one. If it is what the odometer shows, send it — both readings are kept.",
 
     "driverLink.title": "Driver portal access",
-    "driverLink.emailHint": "The address the employee will sign in with. They sign in themselves — no email is sent.",
-    "driverLink.linked": "Linked · signed in with {email}",
-    "driverLink.waiting": "Waiting for the first sign-in by {email}",
-    "driverLink.noEmail": "No email address entered — an account cannot be linked without one.",
+    "driverLink.phoneHint": "The mobile the employee will sign in with. They sign in themselves and request an SMS code — nothing is sent to them by the system.",
+    "driverLink.linked": "Linked · signed in with {phone}",
+    "driverLink.waiting": "Waiting for the first sign-in by {phone}",
+    "driverLink.noPhone": "No valid mobile number entered — an account cannot be linked without one.",
     "driverLink.revoked": "Access was revoked. To restore it, press \"Allow linking again\".",
     "driverLink.unlink": "Revoke access",
     "driverLink.unlinkConfirm":
@@ -1202,8 +1266,8 @@ const dict = {
     "driverLink.invite": "Allow linking again",
     "driverLink.note":
       "Isolation is enforced on the server: once revoked, the employee can read nothing, even if their account is still signed in on the device.",
-    "driverLink.err.email": "Invalid email address",
-    "driverLink.err.duplicate": "This address is already assigned to another driver",
+    "driverLink.err.phone": "That is not a valid Israeli mobile number (e.g. 050-123-4567)",
+    "driverLink.err.duplicate": "This number is already assigned to another driver",
 
     "km.title": "Km allowance",
     "km.allowance": "Annual allowance",

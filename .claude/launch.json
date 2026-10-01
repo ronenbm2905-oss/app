@@ -189,6 +189,20 @@
       ],
       "cwd": ".saas-review/Output/basketball-scheduler",
       "port": 5194
+    },
+    {
+      "name": "fleet-management",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5195",
+        "--strictPort"
+      ],
+      "cwd": "Output/fleet-management",
+      "port": 5195
     }
   ]
 }

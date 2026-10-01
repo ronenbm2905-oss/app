@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isFirebaseConfigured, db, CONFIGURED_ORG_ID } from "../firebase.js";
-import { canonicalEmail } from "../utils/admins.js";
+import { canonicalPhone, phoneQueryForms } from "../utils/phone.js";
 import { linkFields } from "../utils/driverLink.js";
 import { createDriverReading, validateDriverReading } from "../utils/portal.js";
 import { newId } from "../utils/id.js";
@@ -26,18 +26,26 @@ import { todayIso } from "../utils/dates.js";
 // ממילא הכל.
 //
 // ============================================================================
-// הקישור — האירוע החד-פעמי
+// הקישור — האירוע החד-פעמי (1.10.2026: **נייד**, לא מייל)
 // ============================================================================
 // 1. מחפשים רשומה שכבר קשורה ל-uid:  where('userId','==',uid)
-// 2. אם אין — מחפשים רשומה **לא מקושרת** עם המייל שלנו, ותובעים אותה.
+// 2. אם אין — מחפשים רשומה **לא מקושרת** עם הנייד שלנו, ותובעים אותה.
 //
 // שתי השאילתות נשענות על שני סעיפי ה-read השונים ב-firestore.rules, ולכן
 // הסדר אינו שרירותי: (1) חייבת לרוץ ראשונה, כי אחרי הקישור התנאי של (2)
 // (`userId == null`) כבר אינו מתקיים והשאילתה תידחה.
 //
-// ⚠️ **אין כאן שום הנחה על Google.** `user.email` ו-`user.emailVerified`
-// מגיעים מ-`onAuthStateChanged` וקיימים זהים בכל ספק. החלפה ל-Microsoft היא
-// הפעלת ספק בקונסולה + ניתוק/חיבור מחדש — לא שינוי בקובץ הזה.
+// ⚠️ **למה כמה צורות כתיבה ולא שאילתה אחת.** `user.phoneNumber` חוזר תמיד
+// בפורמט E.164 (`+9725…`), אבל שאילתת Firestore היא השוואת מחרוזות מדויקת
+// **בלי נרמול**, ו-27 הרשומות שבענן הוקלדו ביד לפני שלמספר היה תפקיד:
+// `050-1234567`, `050 123 4567`, `0501234567`. הכלל בצד השרת כן מנרמל
+// (canonPhone), ולכן מסמך כזה **מותר** לקריאה — אבל שאילתה על E.164 לבדה
+// לא תחזיר אותו בכלל. זה אותו דפוס בדיוק כמו שתי צורות המייל (raw + canon)
+// שהיה כאן קודם. ריבוי הצורות אינו מרחיב הרשאה: שאילתה שאינה תואמת מחזירה
+// ריק, וכל מסמך שכן חוזר עובר את אותו כלל.
+//
+// ⚠️ אין כאן פרמטר "מאומת" מקביל ל-`emailVerified`: ב-Firebase Auth אין
+// טלפון לא-מאומת. `user.phoneNumber` מאוכלס **רק** אחרי אימות קוד SMS.
 // ============================================================================
 const LOADING = { status: "loading", driver: null, error: null };
 
@@ -73,26 +81,25 @@ export function useDriverPortal(user, { enabled = true } = {}) {
       // (1) כבר מקושר?
       let driver = await first(query(col, where("userId", "==", user.uid)));
 
-      // (2) לא — רשומה לא מקושרת עם המייל שלי.
-      if (!driver && user.email && user.emailVerified) {
-        // שתי צורות: מה שהאדמין הקליד, ומה שגימייל מתקנן אליו. השאילתה היא
-        // התאמה מדויקת, ולכן צורה אחת אינה מספיקה (3.2.4 בהכוונת עדי).
-        const forms = [...new Set([String(user.email).trim().toLowerCase(), canonicalEmail(user.email)])];
-        for (const form of forms) {
-          const candidate = await first(query(col, where("email", "==", form)));
+      // (2) לא — רשומה לא מקושרת עם הנייד שלי.
+      const myPhone = canonicalPhone(user.phoneNumber);
+      if (!driver && myPhone) {
+        // הערכים נבנים **פעם אחת**, כדי שמה שנכתב לרשומה יהיה בדיוק מה
+        // שמוחזר ל-state. (קודם נבנה פעמיים, ו-todayIso() בין חצות לחצות
+        // היה יכול להחזיר שני תאריכים.)
+        const fields = linkFields(user.uid, myPhone, todayIso());
+        for (const form of phoneQueryForms(myPhone)) {
+          const candidate = await first(query(col, where("phone", "==", form)));
           if (!candidate) continue;
           if (candidate.userId) continue; // מקושרת למישהו אחר — לא נוגעים
           if (linkAttemptedRef.current === user.uid) break;
           linkAttemptedRef.current = user.uid;
           try {
-            await updateDoc(
-              doc(db, "orgs", orgId, "drivers", candidate.id),
-              linkFields(user.uid, user.email, todayIso())
-            );
-            driver = { ...candidate, ...linkFields(user.uid, user.email, todayIso()) };
+            await updateDoc(doc(db, "orgs", orgId, "drivers", candidate.id), fields);
+            driver = { ...candidate, ...fields };
           } catch (err) {
-            // הכלל דחה — סטטוס 'revoked', מייל לא מאומת, או מירוץ. זה מצב
-            // תקין שמסתיים ב"אין הרשאה", לא שגיאה שצריך להציג באדום.
+            // הכלל דחה — סטטוס 'revoked', מספר שאינו תואם אחרי נרמול, או
+            // מירוץ. זה מצב תקין שמסתיים ב"אין הרשאה", לא שגיאה באדום.
             console.warn("driver link rejected", err?.code || err);
           }
           break;
@@ -114,7 +121,7 @@ export function useDriverPortal(user, { enabled = true } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [user?.uid, user?.email, enabled, orgId, attempt]);
+  }, [user?.uid, user?.phoneNumber, enabled, orgId, attempt]);
 
   // -- ההיטל והדיווחים: מאזינים **רק** אחרי שהקישור אומת -------------------
   const driverId = state.status === "linked" ? state.driver.id : null;

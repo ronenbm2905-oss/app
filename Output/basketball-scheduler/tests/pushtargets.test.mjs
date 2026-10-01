@@ -193,4 +193,84 @@ t("a network blip is not a dead device", () => {
   assert.equal(isDeadToken(null), false);
 });
 
+console.log("- the lock screen says WHAT, not just THAT -");
+
+t("THE TITLE IS NOT THE SAME FOUR WORDS FOR EVERYTHING ANY MORE", () => {
+  // Until 1.10.2026 every notification was titled "שינוי בלו״ז שלך" — a cancelled fixture,
+  // a hall change and a training moved by half an hour, all identical on the one line most
+  // people read without unlocking the phone.
+  const base = { day: "שבת", start: "11:30", end: "13:30", hallId: "", type: "משחק חוץ", weekOf: "2026-10-11" };
+  const cancelled = e("2026-09-16T08:00:00.000Z", "c1", {
+    before: base, after: { ...base, cancelled: true },
+  });
+  const [out] = notificationsFor([cancelled], names);
+  assert.equal(out.title, "ביטול משחק חוץ", "home or away is kept — §2ז promises the coach the type");
+  // And the body carries the date, which was never there at all.
+  assert.ok(out.body.includes("17.10"), out.body);
+});
+
+t("the title and the body do not repeat each other", () => {
+  const moved = e("2026-09-16T08:00:00.000Z", "c1", {
+    before: { day: "שבת", start: "11:30", end: "13:30", hallId: "", type: "משחק חוץ", weekOf: "2026-10-11" },
+    after: { day: "שבת", start: "12:30", end: "14:30", hallId: "", type: "משחק חוץ", weekOf: "2026-10-11" },
+  });
+  const [out] = notificationsFor([moved], names);
+  assert.equal(out.title, "שינוי משחק חוץ");
+  assert.equal(out.body.includes("שינוי משחק"), false, "the headline belongs to the title alone");
+  assert.ok(out.body.includes("12:30–14:30 (במקום 11:30–13:30)"), out.body);
+});
+
+t("several changes keep a general title — naming one would mislabel the rest", () => {
+  const list = ["c1", "c1"].map((c, i) => e(`2026-09-16T1${i}:00:00.000Z`, c));
+  const [out] = notificationsFor(list, names);
+  assert.equal(out.title, "שינויים בלו״ז שלך");
+  assert.ok(out.body.startsWith("2 שינויים"));
+});
+
+t("and the date on the lock screen is still not a person or a child", () => {
+  const [out] = notificationsFor([e("2026-09-16T08:00:00.000Z", "c1")], names);
+  assert.equal(out.body.includes("נערים א"), false);
+  assert.equal(out.body.includes("t1"), false);
+  assert.equal(out.title.includes("נערים א"), false);
+});
+
+
+t("GATE #27 B1: A BATCH THAT CONTAINS A CANCELLATION MUST NAME THE CANCELLATION", () => {
+  // The body used to be `list[0]`, and that order is the order of the sessions array —
+  // arbitrary with respect to how much anything matters. Reproduced on the real shape of
+  // 1.10.2026: a coach with a training nudged and a game cancelled in one federation import
+  // was told "2 שינויים. שינוי אימון · …" and the cancellation appeared nowhere.
+  //
+  // This is worse than the silence it replaced. Every protection in this project guards
+  // against a change going UNANNOUNCED; here we interrupt someone, say there are two
+  // changes, name one, and the one we name is not the one that means do not come.
+  const game = { day: "שבת", start: "11:30", end: "13:30", hallId: "", type: "משחק חוץ", weekOf: "2026-10-11" };
+  const training = { day: "רביעי", start: "16:00", end: "17:30", hallId: "h1", type: "אימון", weekOf: "2026-08-30" };
+  const list = [
+    // The training comes FIRST, exactly as the array ordering delivered it.
+    e("2026-09-16T08:00:00.000Z", "c1", { before: training, after: { ...training, start: "17:30" } }),
+    e("2026-09-16T08:00:01.000Z", "c1", { before: game, after: { ...game, cancelled: true } }),
+  ];
+  const [out] = notificationsFor(list, names);
+  assert.ok(out.body.includes("ביטול"), "the cancellation must be the one named: " + out.body);
+  assert.ok(out.body.startsWith("2 שינויים"), out.body);
+});
+
+t("...and a removal outranks a mere change, which outranks an addition", () => {
+  const base = { day: "רביעי", start: "16:00", end: "17:30", hallId: "h1", type: "אימון", weekOf: "2026-08-30" };
+  const added = e("2026-09-16T08:00:00.000Z", "c1", { before: undefined, after: base, kind: "added" });
+  const changed = e("2026-09-16T08:00:01.000Z", "c1", { before: base, after: { ...base, start: "17:00" } });
+  const removed = e("2026-09-16T08:00:02.000Z", "c1", { before: base, after: undefined, kind: "removed" });
+  assert.ok(notificationsFor([added, changed, removed], names)[0].body.includes("ביטול"));
+  assert.ok(notificationsFor([added, changed], names)[0].body.includes("17:00"));
+});
+
+t("equal severity keeps the diff's own order — the sentence must not wander", () => {
+  const base = { day: "רביעי", start: "16:00", end: "17:30", hallId: "h1", type: "אימון", weekOf: "2026-08-30" };
+  const a = e("2026-09-16T08:00:00.000Z", "c1", { before: base, after: { ...base, start: "15:00" } });
+  const b = e("2026-09-16T08:00:01.000Z", "c1", { before: base, after: { ...base, start: "14:00" } });
+  assert.ok(notificationsFor([a, b], names)[0].body.includes("15:00"));
+  assert.ok(notificationsFor([a, b], names)[0].body.includes("15:00"), "stable across calls");
+});
+
 console.log("\n" + pass + " tests passed");

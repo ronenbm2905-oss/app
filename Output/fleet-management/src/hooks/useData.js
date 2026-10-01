@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { isFirebaseConfigured, db } from "../firebase.js";
 import { EMPTY } from "../constants.js";
 import { startOrgSync, writeOrgDiff } from "../utils/firestoreSync.js";
-import { buildDriverPortal, normalizeDriverEmails } from "../utils/portal.js";
+import { buildDriverPortal, normalizeDriverIdentities } from "../utils/portal.js";
 import { todayIso } from "../utils/dates.js";
 
 const LOCAL_KEY = "fleet_data";
@@ -199,9 +199,11 @@ export function useData(user, orgId = null) {
   // ==========================================================================
   // withDerived — הנגזרות שנכתבות **בכל** שמירה, ולא בכל מקום בנפרד.
   //
-  //   1. `drivers[].email` מנורמל. השאילתה שהפורטל שולח היא התאמה מדויקת,
-  //      ורשומה שנשמרה "Hilda@…" פשוט לא תימצא — והעובד יראה "אין הרשאה"
-  //      בלי שאף אחד יבין למה.
+  //   1. `drivers[].phone` מנורמל ל-**E.164** ו-`drivers[].email` ל-lowercase.
+  //      השאילתה שהפורטל שולח היא התאמה מדויקת **בלי נרמול**, ורשומה שנשמרה
+  //      בצורה אחרת פשוט לא תימצא — והעובד יראה "אין הרשאה" בלי שאף אחד
+  //      יבין למה. מאז 1.10.2026 `phone` הוא עוגן הקישור, ולכן הנגזרת הזו
+  //      היא גם מה שמביא את 27 הרשומות שהוקלדו ביד לצורה אחת.
   //   2. `driverPortal` — ההיטל לכל נהג (utils/portal.js).
   //
   // למה כאן ולא ב-useActions: **כל** מסלול כתיבה עובר דרך `update` — טפסים,
@@ -210,7 +212,7 @@ export function useData(user, orgId = null) {
   // `writeOrgDiff` כותב רק מסמכים שהשתנו, ולכן העלות היא אפס כשאין הפרש.
   // ==========================================================================
   const withDerived = useCallback((next) => {
-    const drivers = normalizeDriverEmails(next.drivers);
+    const drivers = normalizeDriverIdentities(next.drivers);
     const base = drivers === next.drivers ? next : { ...next, drivers };
     return { ...base, driverPortal: buildDriverPortal(base, todayIso()) };
   }, []);

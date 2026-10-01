@@ -24,6 +24,7 @@
 // ============================================================================
 
 import { normalizeEmail } from "./admins.js";
+import { canonicalPhone } from "./phone.js";
 import { todayIso } from "./dates.js";
 import { inRange } from "./dates.js";
 
@@ -96,17 +97,30 @@ export function portalEntryForDriver(portal, driverId) {
 }
 
 // ============================================================================
-// normalizeDriverEmails — הכתובת ב-`Driver.email` חייבת להיות lowercase.
+// normalizeDriverIdentities — **שדות הזהות של הנהג מוחזקים בצורה אחת.**
 //
-// לא קוסמטיקה: הקישור מתבצע בשאילתה `where('email','==', <המייל מהטוקן>)`,
-// שהיא **התאמה מדויקת**. רשומה שנשמרה "Hilda@…" פשוט לא תימצא, והעובד יראה
-// "אין לך הרשאה" בלי שאף אחד יבין למה. אותה מלכודת בדיוק כמו ב-allowlist של
-// האדמינים (admins.js), רק שכאן אין מסך שמראה את הרשימה.
+// לא קוסמטיקה: הקישור מתבצע בשאילתת שוויון, שהיא **התאמה מדויקת ובלי נרמול**.
+// רשומה שנשמרה בצורה אחרת פשוט לא תימצא, והעובד יראה "אין לך הרשאה" בלי
+// שאף אחד יבין למה.
+//
+//   • `email` → lowercase. היה עוגן הקישור עד 1.10.2026, ונשאר שדה קשר.
+//   • `phone` → **E.164** (`050-123-4567` → `+972501234567`). זה עוגן הקישור
+//     מ-1.10.2026, וזו הנגזרת שגורמת ל-27 הרשומות שהוקלדו ביד להתכנס לצורה
+//     אחת ברגע שאדמין פותח את האפליקציה — בלי סקריפט הגירה.
+//
+// ⚠️ **מספר שאינו נייד ישראלי נשאר כפי שהוא.** קו נייח הוא פרט קשר תקין
+// לחלוטין (`canonicalPhone` מחזיר '' עליו), ואנחנו לא ממציאים לו קידומת ולא
+// מוחקים אותו. הנרמול נוגע **רק** במה שהוא באמת עוגן זהות אפשרי.
+//
+// ⚠️ ולמה זה לא מייתר את `phoneQueryForms`: הנגזרת רצה כשאדמין **כותב**.
+// נהג שייכנס לפני הכתיבה הראשונה צריך למצוא את עצמו גם בצורה הגולמית.
 // ============================================================================
-export function normalizeDriverEmails(drivers) {
+export function normalizeDriverIdentities(drivers) {
   return (drivers || []).map((d) => {
     const e = normalizeEmail(d?.email);
-    return e === (d?.email ?? "") ? d : { ...d, email: e };
+    const p = canonicalPhone(d?.phone) || (d?.phone ?? "");
+    if (e === (d?.email ?? "") && p === (d?.phone ?? "")) return d;
+    return { ...d, email: e, phone: p };
   });
 }
 
@@ -123,7 +137,13 @@ export function portalPublishNeeded(data, today = todayIso()) {
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0
   );
   if (JSON.stringify(next) !== JSON.stringify(prev)) return true;
-  return (data?.drivers || []).some((d) => normalizeEmail(d?.email) !== (d?.email ?? ""));
+  // ⬅ וגם: רשומה שהזהות בה אינה בצורה הקנונית מצדיקה פרסום בטעינה — זה מה
+  //   שמביא את הנתונים שבענן לצורה אחת בלי סקריפט הגירה.
+  return (data?.drivers || []).some(
+    (d) =>
+      normalizeEmail(d?.email) !== (d?.email ?? "") ||
+      (canonicalPhone(d?.phone) || (d?.phone ?? "")) !== (d?.phone ?? "")
+  );
 }
 
 // ============================================================================

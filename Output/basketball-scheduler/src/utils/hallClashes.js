@@ -84,6 +84,19 @@ export function seasonHallClashes(data, { from = new Date() } = {}) {
         date,
         day: a.day,
         hall: hallName(a.hallId),
+        // A NAME FOR THIS FINDING THAT SURVIVES A RE-IMPORT, so a manager's "this one is
+        // deliberate" is not forgotten the next time the board is rebuilt. Session ids are
+        // regenerated on every sync; team ids, hall ids and clock times are not. Sorted, so
+        // the same pair keys the same whichever of the two is listed first.
+        // The KIND is part of it: "two squads in one gym" and "the same row twice" are
+        // different findings about the same pair of rows, they are shown with different
+        // words, and a decision about one must not silence the other.
+        key: [
+          date,
+          a.hallId,
+          Boolean(a.teamId) && a.teamId === b.teamId && a.start === b.start && a.end === b.end ? "dup" : "clash",
+          [first, second].map((s) => `${s.teamId || ""}@${s.start}-${s.end}`).sort().join("+"),
+        ].join("|"),
         // TWO DIFFERENT PROBLEMS COME OUT OF THE SAME TEST, and calling both "a hall clash"
         // makes the tool look broken. One squad against ANOTHER squad in one gym is a
         // booking to move. One squad against ITSELF, at the very same hours, is not a

@@ -8,7 +8,8 @@ import { EmptyState } from "./ui/Card.jsx";
 import Field, { TextInput, Select, TextArea } from "./ui/Field.jsx";
 import NoticeDeliveryModal from "./NoticeDeliveryModal.jsx";
 import { createDriver } from "../schema.js";
-import { validateDriverLinkEmail } from "../utils/driverLink.js";
+import { validateDriverLinkPhone } from "../utils/driverLink.js";
+import { canonicalPhone, formatPhoneIl } from "../utils/phone.js";
 import { normalizeEmail } from "../utils/admins.js";
 import { driverStatusOptions, vehicleLabel, driverName, DRIVER_STATUS_TONE } from "../utils/options.js";
 import { currentVehicleIdForDriver } from "../utils/assignments.js";
@@ -126,7 +127,9 @@ export function DriversScreen({ data, orgId, actions, onOpenDriver }) {
                 </td>
                 <td className="table-cell">{d.department || "—"}</td>
                 <td className="table-cell num">{d.employeeNumber || "—"}</td>
-                <td className="table-cell num">{d.phone || "—"}</td>
+                {/* ⚠️ הנייד נשמר קנוני (+9725…) כי זה עוגן הזהות של הפורטל,
+                    אבל אף אחד בארץ לא קורא E.164 בעין. */}
+                <td className="table-cell num">{d.phone ? formatPhoneIl(d.phone) : "—"}</td>
                 <td className="table-cell num">
                   {vehicleId ? vehicleLabel(data.vehicles, vehicleId) : <span className="text-slate-400">—</span>}
                 </td>
@@ -168,7 +171,7 @@ export function DriverForm({ orgId, driver, drivers = [], onClose, onSave }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState(() => driver || createDriver({ orgId }));
   const [err, setErr] = useState(false);
-  const [mailErr, setMailErr] = useState(null);
+  const [phoneErr, setPhoneErr] = useState(null);
   const set = (k) => (e) => setDraft({ ...draft, [k]: e.target.value });
 
   return (
@@ -185,17 +188,25 @@ export function DriverForm({ orgId, driver, drivers = [], onClose, onSave }) {
           <Button
             onClick={() => {
               const nameMissing = !String(draft.fullName).trim();
-              // ⚠️ הכתובת היא מפתח הקישור לפורטל, ולכן היא נשמרת **מנורמלת**
-              // ונבדקת מול נהגים אחרים. שתי רשומות עם אותה כתובת = שני עובדים
-              // שנלחמים על אותה תביעה, והראשון שנכנס זוכה. השוואה קנונית,
-              // כי אצל גימייל נקודות ו-+alias אינן מבדילות בין תיבות.
-              const mail = validateDriverLinkEmail(drivers, draft.id, draft.email);
+              // ⚠️ **הנייד הוא מפתח הקישור לפורטל** (1.10.2026), ולכן הוא
+              // נשמר **מנורמל ל-E.164** ונבדק מול נהגים אחרים. שתי רשומות עם
+              // אותו מספר = שני עובדים שנלחמים על אותה תביעה, והראשון שנכנס
+              // זוכה. ההשוואה קנונית, אחרת 050-1234567 ו-0501234567 היו
+              // עוברים כשני אנשים.
+              //
+              // ⚠️ הנרמול בשמירה הוא מה שמייצר **צורה אחת** בבסיס הנתונים,
+              // וזה מה שמאפשר לפורטל למצוא את הרשומה בשאילתת שוויון אחת.
+              // רשומות שהוקלדו לפני השינוי נמצאות דרך phoneQueryForms.
+              const ph = validateDriverLinkPhone(drivers, draft.id, draft.phone);
               setErr(nameMissing);
-              setMailErr(mail[0] || null);
-              if (nameMissing || mail.length) return;
+              setPhoneErr(ph[0] || null);
+              if (nameMissing || ph.length) return;
               onSave({
                 ...draft,
                 fullName: draft.fullName.trim(),
+                // מספר שאינו נייד ישראלי נשמר כפי שהוקלד — הוא מספר קשר
+                // לגיטימי, הוא פשוט אינו ניתן לקישור.
+                phone: canonicalPhone(draft.phone) || String(draft.phone || "").trim(),
                 email: normalizeEmail(draft.email),
               });
               onClose();
@@ -213,17 +224,25 @@ export function DriverForm({ orgId, driver, drivers = [], onClose, onSave }) {
         <Field label={t("driver.department")}>
           <TextInput value={draft.department} onChange={set("department")} />
         </Field>
-        <Field label={t("driver.phone")}>
-          <TextInput dir="ltr" value={draft.phone} onChange={set("phone")} />
-        </Field>
-        {/* ⚠️ זו הכתובת שהעובד יתחבר איתה לפורטל. שינוי שלה כשהחשבון כבר
-            מקושר **אינו** מעביר את הקישור — הקישור לפי uid (F1), והחלפת
+        {/* ⚠️ זה המספר שהעובד יתחבר איתו לפורטל (קוד SMS). שינוי שלו כשהחשבון
+            כבר מקושר **אינו** מעביר את הקישור — הקישור לפי uid (F1), והחלפת
             בעלים דורשת ניתוק מפורש בכרטיס הנהג. */}
         <Field
-          label={t("driver.email")}
-          hint={t("driverLink.emailHint")}
-          error={mailErr ? t(mailErr) : null}
+          label={t("driver.phone")}
+          hint={t("driverLink.phoneHint")}
+          error={phoneErr ? t(phoneErr) : null}
         >
+          <TextInput
+            dir="ltr"
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            value={draft.phone}
+            onChange={set("phone")}
+          />
+        </Field>
+        {/* המייל נשאר שדה **קשר** בלבד — הוא אינו משתתף בכניסה לפורטל יותר. */}
+        <Field label={t("driver.email")}>
           <TextInput
             dir="ltr"
             type="email"

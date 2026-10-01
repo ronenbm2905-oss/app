@@ -41,7 +41,10 @@
       "PowerShell($d=Get-Date; \"TODAY: $\\($d.ToString\\('yyyy-MM-dd'\\)\\) $\\($d.DayOfWeek\\)\"; Get-ChildItem -Recurse \"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\" -File | Select-Object FullName,Length,LastWriteTime | Format-Table -AutoSize)",
       "PowerShell($p=\"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\\\\Ledgers\\\\dealflow.csv\"; $b=[System.IO.File]::ReadAllBytes\\($p\\); \"First3: $\\($b[0..2] -join ','\\)\"; \"Last4: $\\($b[-4..-1] -join ','\\)\")",
       "PowerShell($p=\"C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\\\\Ledgers\\\\dealflow.csv\"; $b=[System.IO.File]::ReadAllBytes\\($p\\); \"BOM: \" + \\($b[0..2] -join ','\\); $s=[System.Text.Encoding]::UTF8.GetString\\($b\\); \"CRLF: \" + \\([regex]::Matches\\($s,\"`r`n\"\\)\\).Count; \"LF: \" + \\([regex]::Matches\\($s,\"`n\"\\)\\).Count; \"LastByte: \" + $b[$b.Length-1])",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(node -e \"console.log\\(new Date\\(2026,8,18\\).toDateString\\(\\)\\)\")",
+      "PowerShell($p='C:\\\\Users\\\\RONEN\\\\Desktop\\\\us-investments\\\\Ledgers\\\\'; foreach\\($f in 'transactions.csv','invoices.csv','dealflow.csv'\\){ $b=[System.IO.File]::ReadAllBytes\\($p+$f\\); \"$f BOM=$\\($b[0]\\),$\\($b[1]\\),$\\($b[2]\\) tail=$\\($b[-1]\\)\" })",
+      "Bash(node append-ledgers.js)"
     ]
   }
 }

@@ -1,35 +1,45 @@
-import { Smartphone, Link2Off, MailPlus, ShieldOff, Info } from "lucide-react";
+import { Smartphone, Link2Off, MessageSquarePlus, ShieldOff, Info } from "lucide-react";
 import { useI18n } from "../hooks/useI18n.jsx";
 import Card from "./ui/Card.jsx";
 import Button from "./ui/Button.jsx";
 import Pill from "./ui/Pill.jsx";
-import { normalizeEmail } from "../utils/admins.js";
+import { canonicalPhone, formatPhoneIl } from "../utils/phone.js";
 
 // ============================================================================
 // DriverPortalCard — ניהול הגישה של עובד אחד לפורטל, בכרטיס הנהג.
 //
+// ⚠️ 1.10.2026 — **העוגן הוא הנייד, לא המייל.** מסלול המייל הוסר מפורטל הנהג
+// (ראה utils/driverLink.js): הוא היה תקין ועבר 328 בדיקות, אבל אף נהג לא
+// נקשר בפועל, כי אין לחברה חשבונות Google ארגוניים והעובדים לא נתנו גימייל
+// פרטי. הנייד כבר יושב בכרטיס. האדמינים ממשיכים ב-Google ובמייל.
+//
 // שלושה מצבים בלבד, כי יותר מזה אף אחד לא זוכר:
-//   אין מייל   → אין דרך לקשר. אומרים את זה במפורש ולא מציגים כפתורים.
-//   ממתין      → המייל הוזן, העובד עוד לא נכנס. **המערכת אינה שולחת מייל** —
-//                מישהו צריך לשלוח לו את הקישור. זה כתוב על המסך.
+//   אין נייד   → אין דרך לקשר. אומרים את זה במפורש ולא מציגים כפתורים.
+//   ממתין      → המספר הוזן, העובד עוד לא נכנס. **המערכת אינה שולחת כלום** —
+//                העובד נכנס מעצמו ומקיש קוד SMS שהוא מבקש במסך הכניסה. זה
+//                כתוב על המסך, כי אדמין שמחכה ש"תישלח הזמנה" מחכה לנצח.
 //   מקושר      → נכנס. יש כפתור ניתוק.
 //   נותק       → 'revoked'. הרשומה **אינה** ניתנת לתביעה מחדש עד פעולה
 //                מפורשת, אחרת עובד שעזב היה מקשר את עצמו בחזרה בלחיצה.
 //
 // ⚠️ הכפתור הזה הוא **אמצעי הביטול היחיד שקיים** (3.3 בהכוונת עדי): לחברה
-// אין חשבונות Google ארגוניים, ולכן אי אפשר לכבות את החשבון של מי שעזב.
-// אפשר רק לחסום אותו אצלנו — ומכיוון שהחסימה נאכפת ב-firestore.rules ולא
-// בקומפוננטה, היא תופסת גם כשהסשן שלו עדיין חי במכשיר.
+// אין שליטה על מספר הנייד הפרטי של העובד, בדיוק כפי שלא הייתה לה שליטה על
+// חשבון הגימייל שלו. אפשר רק לחסום אותו אצלנו — ומכיוון שהחסימה נאכפת
+// ב-firestore.rules ולא בקומפוננטה, היא תופסת גם כשהסשן שלו עדיין חי במכשיר.
 // ============================================================================
 export function DriverPortalCard({ driver, actions }) {
   const { t } = useI18n();
   if (!driver) return null;
 
-  const email = normalizeEmail(driver.email);
+  // ⚠️ הקישור אפשרי **רק** למספר שעובר נרמול: מספר קווי או חסר ספרה אינו
+  // מקבל SMS בכלל (ה-region policy נעולה לישראל), ולכן הוא שקול ל"אין נייד".
+  // זה אותו תנאי בדיוק שהכלל בודק (canonPhone != '').
+  const phone = canonicalPhone(driver.phone);
   const status = driver.portalStatus || "none";
   const linked = Boolean(driver.userId) && status === "active";
   const revoked = status === "revoked";
   const archived = driver.status === "archived";
+  const shown = formatPhoneIl(driver.portalLinkedPhone || phone);
 
   return (
     <Card
@@ -39,18 +49,16 @@ export function DriverPortalCard({ driver, actions }) {
       <div className="flex flex-wrap items-start gap-3">
         <Smartphone size={16} className={linked ? "mt-0.5 text-emerald-600" : "mt-0.5 text-slate-400"} aria-hidden="true" />
         <div className="min-w-0 flex-1 text-sm">
-          {!email && <p className="text-amber-800">{t("driverLink.noEmail")}</p>}
-          {email && linked && (
-            <p className="num text-slate-700">
-              {t("driverLink.linked", { email: driver.portalLinkedEmail || email })}
-            </p>
+          {!phone && <p className="text-amber-800">{t("driverLink.noPhone")}</p>}
+          {phone && linked && (
+            <p className="num text-slate-700">{t("driverLink.linked", { phone: shown })}</p>
           )}
-          {email && !linked && !revoked && (
-            <p className="num text-slate-700">{t("driverLink.waiting", { email })}</p>
+          {phone && !linked && !revoked && (
+            <p className="num text-slate-700">{t("driverLink.waiting", { phone: shown })}</p>
           )}
-          {email && revoked && <p className="text-slate-700">{t("driverLink.revoked")}</p>}
-          {email && !linked && !revoked && (
-            <p className="mt-1 text-xs text-slate-600">{t("driverLink.emailHint")}</p>
+          {phone && revoked && <p className="text-slate-700">{t("driverLink.revoked")}</p>}
+          {phone && !linked && !revoked && (
+            <p className="mt-1 text-xs text-slate-600">{t("driverLink.phoneHint")}</p>
           )}
         </div>
 
@@ -67,9 +75,9 @@ export function DriverPortalCard({ driver, actions }) {
                 <Link2Off size={13} aria-hidden="true" /> {t("driverLink.unlink")}
               </Button>
             )}
-            {revoked && email && (
+            {revoked && phone && (
               <Button size="sm" variant="secondary" onClick={() => actions.inviteDriverPortal(driver.id)}>
-                <MailPlus size={13} aria-hidden="true" /> {t("driverLink.invite")}
+                <MessageSquarePlus size={13} aria-hidden="true" /> {t("driverLink.invite")}
               </Button>
             )}
           </div>

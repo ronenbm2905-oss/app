@@ -120,24 +120,159 @@ const sameFixture = (g, d) =>
   String(g?.time) === String(d.time) &&
   decodeTitle(g?.opponent) === decodeTitle(d.opponent);
 
-export function classify(drafts, existingGames) {
+// ---------------------------------------------------------------------------------------
+// THE SAME FIXTURE, ON A DIFFERENT DAY — the gap this file had until 1.10.2026.
+//
+// Everything above recognises a fixture by things the federation is free to change. Follow
+// one real event through three scans and the hole is plain:
+//
+//   18.9   cup-1502072   04-11-2026 20:30   ->  offered beside the club's own 779711
+//   1.10   cup-1502072   16-10-2026 14:00   ->  offered as a BRAND NEW fixture
+//
+// One game. One SportsPress id, unchanged. The federation moved נערים א from a Wednesday
+// evening in November to a Friday afternoon in October, and the scan had nothing to say
+// except "here is a game you do not have" — while the game it had moved still sat on the
+// board under its old date. Approving that would have produced two fixtures against one
+// opponent, and the duplicate guard in the weekly import cannot catch it, because that one
+// matches on date and the date is precisely what moved.
+//
+// WHAT IS STABLE WHEN A FIXTURE MOVES: the competition, the opponent, and which side we are.
+// Not the date, not the hour, not the venue, and — for a record that came from the weekly
+// file — not the id either. So that triple is the identity, and it is deliberately narrow:
+// a club meets one opponent once per side in a cup round.
+//
+// AND IT ONLY EVER CLAIMS A MATCH WHEN THERE IS EXACTLY ONE. Two candidates mean a replay,
+// a two-legged tie, or a competition that does not behave the way this assumes — and the
+// honest answer there is the one this file already gives everywhere else: show them both to
+// a person. Guessing would move the wrong fixture, silently, which is worse than offering a
+// duplicate that a human can see.
+const norm = (v) => decodeTitle(v).replace(/\s+/g, " ").trim();
+
+// WHAT OF AN EXISTING RECORD IS ALLOWED INTO THE SCAN DOCUMENT.
+//
+// `cupScans/{date}` is written by the nightly job and kept until the season is cleared. The
+// first version of the move detection pushed the WHOLE club record into it — and a game
+// record carries `driverName` and `driverPhone`, a bus company employee who never gave
+// either to us. That copy sits outside `sweepStaleDrivers`, which only ever looks at the
+// club document, so the fourteen-day rule written in the deletion procedure would have been
+// broken through a copy nobody knew existed.
+//
+// It is the same finding as gate #26's, in a new place, a week after it was closed — which
+// is why this is a PROJECTION and not a strip-these-two-fields: a list of what to remove has
+// to be updated every time a field is added, and the field that gets forgotten is the one
+// that matters. Here, anything not named simply never leaves the club document.
+//
+// Everything listed is needed by the screen that shows the move: what the fixture is, when
+// it was, where it was, and the code to quote on the phone.
+export const SCAN_SAFE = [
+  "federationCode", "scannedCode", "teamId", "hallId",
+  "date", "time", "weekDay", "isHome", "opponent", "venue", "league", "round",
+];
+
+export function trimForScan(game) {
+  if (!game) return game;
+  const out = {};
+  SCAN_SAFE.forEach((k) => {
+    if (game[k] !== undefined) out[k] = game[k];
+  });
+  return out;
+}
+
+// Has this fixture actually moved, or does our copy simply say less than the site does?
+//
+// The date decides. The HOUR only counts when we hold one: a fixture typed by hand before
+// the time was known carries no `time`, and reading that absence as "the federation moved
+// it" would put a record in front of the manager every single night with nothing to do about
+// it — which is how a banner becomes something people close without reading.
+// Each field is compared only where WE hold a value. A record missing a date or an hour says
+// nothing about whether the fixture moved — and reading an absence as a move would put the
+// same row in front of the manager every night with nothing to do about it, which is how a
+// banner becomes something people close without reading.
+const hasMoved = (g, d) =>
+  (String(g?.date || "") !== "" && String(g.date) !== String(d?.date)) ||
+  (String(g?.time || "") !== "" && String(g.time) !== String(d?.time));
+
+// Has this fixture already happened, or does it carry a result? Either way it is not a
+// candidate to be moved.
+//
+// THE GUARD THAT "ONLY ONE CANDIDATE" DOES NOT PROVIDE. That rule assumes both legs of a tie
+// are ours, so two candidates appear and nothing is guessed. When only ONE is ours it never
+// fires — and `CUP_LEAGUES` carries three FRIENDLY competitions, where a second meeting with
+// the same club is the ordinary thing. The fixture that was played in October would be
+// dragged onto a date in December, taking its score with it, with no undo.
+// A SCORE IS A VALUE SOMEBODY ENTERED, and `null` is not one. Every fixture in the club
+// carries `ourScore: null` until it is played, and `Number(null)` is 0 — which is finite,
+// and would have marked the entire season as already played.
+const hasScore = (v) => v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
+
+const played = (g, today) => {
+  if (hasScore(g?.ourScore) || hasScore(g?.theirScore)) return true;
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(String(g?.date || ""));
+  if (!m || !today) return false;
+  return new Date(+m[3], +m[2] - 1, +m[1]) < today;
+};
+
+export function movedCandidates(games, draft, today = null) {
+  return arr(games).filter(
+    (g) =>
+      g &&
+      !g.cancelled &&
+      !played(g, today) &&
+      norm(g.league) === norm(draft.league) &&
+      norm(g.opponent) === norm(draft.opponent) &&
+      Boolean(g.isHome) === Boolean(draft.isHome) &&
+      // Something has to have actually moved, or this is the fixture sitting where it was.
+      hasMoved(g, draft)
+  );
+}
+
+// Does this draft describe a record we already hold, under either id it may wear?
+const identityOf = (games, draft) =>
+  arr(games).find(
+    (g) =>
+      String(g?.federationCode) === String(draft.federationCode) ||
+      (g?.scannedCode && String(g.scannedCode) === String(draft.federationCode))
+  ) || null;
+
+export function classify(drafts, existingGames, { today = null } = {}) {
   const games = arr(existingGames);
-  const byCode = new Set(games.map((g) => String(g?.federationCode)));
-  // Both ids count: the one the record wears now, and the one it was first seen under.
-  const byScanned = new Set(games.map((g) => String(g?.scannedCode || "")).filter(Boolean));
-  const out = { known: [], possible: [], fresh: [] };
+  const out = { known: [], moved: [], possible: [], fresh: [] };
 
   arr(drafts).forEach((d) => {
     if (!d) return;
-    if (byCode.has(String(d.federationCode)) || byScanned.has(String(d.federationCode))) {
-      out.known.push(d);
+
+    // Known BY ID — and that is not the end of the question any more. A fixture adopted from
+    // an earlier scan carries `cup-<id>`, and the federation can move it afterwards; before
+    // this, that landed in `known` and was never mentioned again. "Recognised" and "unchanged"
+    // are two different statements and this used to make only the first one.
+    const mine = identityOf(games, d);
+    if (mine) {
+      // `by` travels with it: "id" is the same fixture beyond doubt, "fixture" is an inference
+      // from competition, opponent and side. The screen says different things about the two,
+      // and it cannot tell them apart from the outside.
+      if (hasMoved(mine, d)) out.moved.push({ draft: d, existing: trimForScan(mine), by: "id" });
+      else out.known.push(d);
       return;
     }
+
     // Already here under a different id entirely — adopted before this was tracked.
     if (games.some((g) => sameFixture(g, d))) { out.known.push(d); return; }
+
+    // The same competition, the same opponent, the same side — on another day.
+    const candidates = movedCandidates(games, d, today);
+    if (candidates.length === 1) {
+      out.moved.push({ draft: d, existing: trimForScan(candidates[0]), by: "fixture" });
+      return;
+    }
+
     const sameDay = games.filter((g) => String(g?.date) === d.date);
-    if (sameDay.length > 0) out.possible.push({ draft: d, existing: sameDay });
-    else out.fresh.push(d);
+    // More than one candidate is not a match, but it IS worth a person's eye — shown beside
+    // whatever else is on that day rather than offered as something entirely new.
+    if (sameDay.length > 0 || candidates.length > 1) {
+      out.possible.push({ draft: d, existing: (sameDay.length > 0 ? sameDay : candidates).map(trimForScan) });
+      return;
+    }
+    out.fresh.push(d);
   });
 
   return out;
@@ -192,6 +327,56 @@ export function withScannedCode(game, code) {
   const from = String(code || "");
   if (!from.startsWith("cup-")) return game;
   return { ...game, scannedCode: from };
+}
+
+// Moving a fixture we already hold — NOT the same operation as adopting one.
+//
+// `replaceGame` below rebuilds the record from the draft and so hands it the `cup-<id>`
+// code. That is right when the club's own record was hand-entered, and WRONG here: the
+// record this is called on usually carries the federation's official code from the weekly
+// file (779711, say). Overwrite that with `cup-1502072` and the next weekly import finds
+// 779711 missing from the sheet and reports it CANCELLED — the duplicate-and-false-
+// cancellation of 17.9.2026, arriving from the other direction.
+//
+// So this keeps the record and changes only what actually moved. The scanned id is recorded
+// alongside rather than instead, which is what lets the next scan recognise the fixture by
+// identity instead of guessing at it again.
+export function applyMove(existing, draft, days = [], { hallId, clearAddressOverride = false } = {}) {
+  const date = String(draft?.date || existing?.date || "");
+  // `weekDay` is ours and is derived from the date. Left as it was it would read "יום חמישי"
+  // over a Friday, and — worse — the next weekly import would see it as a field that
+  // disagrees with the sheet and offer the correction as a change the manager must approve.
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(date);
+  // WRITTEN THE WAY THE FEDERATION WRITES IT — "יום שישי", not "שישי". `DAYS` carries the
+  // bare names because that is what the board's columns need; the weekly sheet's own column
+  // carries the prefix, and this field is compared against that sheet on the next import.
+  // Bare, it would show up there as a field that disagrees and be offered as a correction.
+  // An existing value in the other style is matched rather than overruled.
+  const bare = m && days.length === 7 ? days[new Date(+m[3], +m[2] - 1, +m[1]).getDay()] : "";
+  const keepsPrefix = !existing?.weekDay || String(existing.weekDay).startsWith("יום ");
+  const weekDay = bare ? (keepsPrefix ? `יום ${bare}` : bare) : existing?.weekDay;
+  return {
+    ...existing,
+    date,
+    time: String(draft?.time || existing?.time || ""),
+    ...(weekDay ? { weekDay } : {}),
+    // The federation's venue for the new date.
+    ...(draft?.venue ? { venue: draft.venue } : {}),
+    // AND THE TWO FIELDS THAT ACTUALLY DECIDE WHERE PEOPLE DRIVE.
+    //
+    // `venue` is text. What the board, the transport sheet and the parents' page read is
+    // `hallId` for a home fixture and `addressOverride` for an away one — and keeping both
+    // untouched, which is right when only the clock moved, means a fixture sent to another
+    // hall keeps the OLD one under the new date. The screen was even showing the new place
+    // above a button whose tooltip promised the hall was preserved.
+    //
+    // So they move only when the caller says so, after asking. Silence still means keep.
+    ...(hallId === undefined ? {} : { hallId }),
+    ...(clearAddressOverride ? { addressOverride: "" } : {}),
+    ...(existing?.scannedCode || String(draft?.federationCode || "").startsWith("cup-")
+      ? { scannedCode: existing?.scannedCode || draft.federationCode }
+      : {}),
+  };
 }
 
 export function replaceGame(draft, existing) {

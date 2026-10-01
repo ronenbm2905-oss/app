@@ -82,6 +82,9 @@ export const EMPTY = {
   archivedMonths: [],
   // Fold the fixed teams away on the weekly board — club-wide, set by a manager.
   hideFixedTeams: false,
+  // Duplicate board rows a manager has looked at and judged deliberate. Keys only — week,
+  // team id, coach id, hall id, hours — never a name. See utils/duplicateSessions.js.
+  acceptedChecks: [],
   // Minutes before tip-off that a squad gathers for an away game. Club-wide, because the
   // transport export and the coach's own board both have to quote the same time.
   departBeforeMin: 90,

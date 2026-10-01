@@ -5,6 +5,7 @@ import Pill from "../ui/Pill.jsx";
 import { formatCurrency, formatDate, formatNumber, telLink, whatsappLink } from "../../utils/format.js";
 import { byId, monthlyCostOf, VEHICLE_STATUS_TONE } from "../../utils/options.js";
 import { daysUntil, todayIso } from "../../utils/dates.js";
+import { formatPhoneIl } from "../../utils/phone.js";
 
 function Row({ label, children }) {
   return (
@@ -85,7 +86,7 @@ export function DetailsTab({ vehicle, data }) {
                     className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
                   >
                     <Phone size={13} /> {t("lease.call")}
-                    <span className="num ms-1 text-slate-500">{company.phone}</span>
+                    <span className="num ms-1 text-slate-500">{formatPhoneIl(company.phone)}</span>
                   </a>
                   <a
                     href={whatsappLink(company.phone)}

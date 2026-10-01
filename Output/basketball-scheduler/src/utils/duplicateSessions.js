@@ -1,4 +1,5 @@
 import { sessionKey } from "./rowCopy.js";
+import { splitAccepted, FIELD } from "./acceptedChecks.js";
 import { teamLabel } from "./teams.js";
 import { sessionDate } from "./hallClashes.js";
 
@@ -32,11 +33,14 @@ export function duplicateSessionGroups(data, { from = null } = {}) {
     ? `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}-${String(from.getDate()).padStart(2, "0")}`
     : "";
 
-  return [...groups.values()]
-    .filter((rows) => rows.length > 1)
-    .map((rows) => {
+  return [...groups.entries()]
+    .filter(([, rows]) => rows.length > 1)
+    .map(([key, rows]) => {
       const first = rows[0];
       return {
+        // The group's own identity, carried out so a manager's decision about it can be
+        // recorded. `weekOf` leads, which is what lets an old decision be pruned by date.
+        key,
         date: sessionDate(first),
         day: first.day,
         start: first.start,
@@ -65,4 +69,11 @@ export function withoutSessions(data, ids) {
   const drop = new Set(arr(ids));
   if (drop.size === 0) return data;
   return { ...data, sessions: arr(data?.sessions).filter((s) => !s || !drop.has(s.id)) };
+}
+
+// Answering the report instead of re-reading it — see utils/acceptedChecks.js, which the
+// hall-clash report on the same card shares. A duplicate is not always a fault: a squad can
+// genuinely train twice in one slot, and the check cannot tell.
+export function splitDuplicates(data, { from = null } = {}) {
+  return splitAccepted(duplicateSessionGroups(data, { from }), data?.[FIELD]);
 }

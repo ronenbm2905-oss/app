@@ -40,6 +40,17 @@
 //     • קוד הגישה האמיתי (resolveOrgAccess/addAdminEmail/removeAdminEmail) —
 //       'none' לפני ההוספה, 'member' אחריה, ו-orgId שהוא הארגון ולא ה-uid.
 //
+// (ח) נוסף ב-1.10.2026 עם מעבר **עוגן הזהות של הנהג ממייל לנייד**:
+//   מסלול המייל היה תקין ועבר 328 בדיקות — ובכל זאת אף נהג לא נקשר, כי אין
+//   לחברה חשבונות Google ארגוניים והעובדים לא נתנו גימייל פרטי. מקטע (ז)
+//   הוסב במלואו לנייד, ומקטע (ח) הוא **בדיקת התאום** שעדי דרשה (§5.2):
+//     • `canonPhone` ב-rules ו-`canonicalPhone` ב-JS הן שתי מימושות של אותו
+//       כלל. כל סטייה ביניהן = "הרשאה שלא עובדת" או הרשאת יתר — בדיוק
+//       המלכודת של canonEmail, שחוזרת כאן.
+//     • ולכן **אותו מערך קלט בדיוק** (phone.js:PHONE_PARITY) מורץ בשני
+//       הצדדים: ה-JS מחשב את הצורה הקנונית, והאמולטור מכריע אם הקישור עובר.
+//     • כולל קו נייח (שאינו עוגן זהות), גרש מוביל מאקסל, ולוחית רישוי.
+//
 // ✅ 16.8.2026 — הורצו מול האמולטור: 66/66 עברו (JDK 21 הותקן).
 // ✅ 17.8.2026 — 179/179 עברו, כולל מקטע (ו).
 //    JAVA_HOME אינו מוגדר גלובלית — להריץ עם:
@@ -53,6 +64,15 @@ import { fileURLToPath } from "node:url";
 import net from "node:net";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// ============================================================================
+// RULES_FILE — `firestore.rules` כברירת מחדל, ומשתנה סביבה כשהחבילה מורצת
+// על **כללים ממוטטים** (scripts/rules-mutate.mjs).
+//
+// ⚠️ למה זה קיים: חבילת בדיקות ירוקה אומרת "לא תפסנו כלום", ולא "אין מה
+// לתפוס. הדרך היחידה לדעת שהבדיקות **באמת** שומרות על הכללים היא לשבור
+// את הכללים בכוונה ולראות אותן נופלות. בדיקה שלא ראו אותה נכשלת אינה בדיקה.
+// ============================================================================
+const RULES_FILE = process.env.FLEET_RULES_FILE || join(ROOT, "firestore.rules");
 const PROJECT_ID = "fleet-rules-test";
 const FIRESTORE_PORT = 8080;
 const STORAGE_PORT = 9199;
@@ -108,6 +128,12 @@ const { resolveOrgAccess, addAdminEmail, removeAdminEmail } = await import(
 // מקטע (ז) — הביטוי הבדיק של מודל הגישה, מול הכללים בפועל. אם השניים
 // נפרדים, זו בדיוק הדליפה שאיש לא יראה.
 const { canonicalEmail } = await import("../src/utils/admins.js");
+// ⚠️ **הפונקציה שמקטע (ח) מודד מולה.** היא חייבת להגיע לאותה תשובה כמו
+// `canonPhone` ב-firestore.rules על כל קלט — ולא "בדרך כלל".
+const { canonicalPhone, phoneQueryForms } = await import("../src/utils/phone.js");
+const { linkFields, unlinkFields, LINK_WRITABLE_KEYS } = await import(
+  "../src/utils/driverLink.js"
+);
 const { buildDriverPortal } = await import("../src/utils/portal.js");
 const {
   ownedByDriver,
@@ -121,7 +147,7 @@ const emptyData = () => JSON.parse(JSON.stringify(EMPTY));
 const testEnv = await initializeTestEnvironment({
   projectId: PROJECT_ID,
   firestore: {
-    rules: readFileSync(join(ROOT, "firestore.rules"), "utf8"),
+    rules: readFileSync(RULES_FILE, "utf8"),
     host: HOST,
     port: FIRESTORE_PORT,
   },
@@ -924,14 +950,26 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
   const ORG = "orgDrv";
   const AD_MAIL = "fleet.admin@promall.example";
 
-  const DA = "drvA";   const UIDA = "uidDriverA"; const MAIL_A = "driver.a@promall.example";
-  const DB = "drvB";   const UIDB = "uidDriverB"; const MAIL_B = "driver.b@promall.example";
-  // ⬅ גימייל **אמיתי** בכוונה: canonEmail מוחל רק על gmail.com/googlemail.com,
-  //   ולכן דומיין .example לא היה בודק את הנרמול בכלל.
-  const DC = "drvC";   const UIDC = "uidDriverC"; const MAIL_C = "hilda.v@gmail.com";
-  const DR = "drvRev"; const UIDR = "uidDriverR"; const MAIL_R = "left.us@promall.example";
-  // נהג שכתובתו בדומיין ארגוני עם נקודה — הבקרה השלילית לנרמול.
-  const DD = "drvDot"; const MAIL_D = "first.last@promall.example";
+  // ========================================================================
+  // ⚠️ **1.10.2026 — העוגן הוא הנייד.** לכל נהג מספר בצורת כתיבה **אחרת
+  // בכוונה**: אם הכלל היה משווה מחרוזות, רק אחד מהם היה נכנס.
+  //   DA — E.164, כפי שה-UI שומר מעכשיו;
+  //   DB — צורה מקומית בלי מפרידים (כמו שהוקלד ביד);
+  //   DC — מקפים, הצורה הנפוצה ביותר בהקלדה אנושית;
+  //   DR — רווחים;
+  //   DD — **קו נייח**, ולכן אינו עוגן זהות בכלל (עדי §2.2.4).
+  // הטוקן, לעומת זה, חוזר **תמיד** ב-E.164 — זו ההגדרה של phone_number.
+  // ========================================================================
+  const DA = "drvA";   const UIDA = "uidDriverA"; const PH_A = "+972501110001"; const RAW_A = "+972501110001";
+  const DB = "drvB";   const UIDB = "uidDriverB"; const PH_B = "+972501110002"; const RAW_B = "0501110002";
+  const DC = "drvC";   const UIDC = "uidDriverC"; const PH_C = "+972540000017"; const RAW_C = "054-000-0017";
+  const DR = "drvRev"; const UIDR = "uidDriverR"; const PH_R = "+972501110004"; const RAW_R = "050 111 0004";
+  // קו נייח — הבקרה השלילית: שבע הספרות זהות לנייד של DC, ובכל זאת אינו
+  // ניתן לקישור בשום טוקן.
+  const DD = "drvDot"; const RAW_D = "03-0000017";
+  // ⬅ מיילים נשארים ברשומות **כפרטי קשר**, כדי לוודא שהם לא מקנים גישה.
+  const MAIL_A = "driver.a@promall.example";
+  const MAIL_C = "hilda.v@gmail.com";
 
   const VA = "vehA";   const VB = "vehB";
 
@@ -951,19 +989,19 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
       });
 
       await put(`orgs/${ORG}/drivers/${DA}`, {
-        id: DA, fullName: "נהג א", email: MAIL_A, userId: UIDA, portalStatus: "active", status: "active",
+        id: DA, fullName: "נהג א", phone: RAW_A, email: MAIL_A, userId: UIDA, portalStatus: "active", status: "active",
       });
       await put(`orgs/${ORG}/drivers/${DB}`, {
-        id: DB, fullName: "נהג ב", email: MAIL_B, userId: UIDB, portalStatus: "active", status: "active",
+        id: DB, fullName: "נהג ב", phone: RAW_B, userId: UIDB, portalStatus: "active", status: "active",
       });
       await put(`orgs/${ORG}/drivers/${DC}`, {
-        id: DC, fullName: "נהג ג", email: MAIL_C, userId: null, portalStatus: "none", status: "active",
+        id: DC, fullName: "נהג ג", phone: RAW_C, email: MAIL_C, userId: null, portalStatus: "none", status: "active",
       });
       await put(`orgs/${ORG}/drivers/${DR}`, {
-        id: DR, fullName: "עזב", email: MAIL_R, userId: null, portalStatus: "revoked", status: "active",
+        id: DR, fullName: "עזב", phone: RAW_R, userId: null, portalStatus: "revoked", status: "active",
       });
       await put(`orgs/${ORG}/drivers/${DD}`, {
-        id: DD, fullName: "נקודה", email: MAIL_D, userId: null, portalStatus: "none", status: "active",
+        id: DD, fullName: "נייח", phone: RAW_D, userId: null, portalStatus: "none", status: "active",
       });
 
       await put(`orgs/${ORG}/vehicles/${VA}`, { id: VA, plate: "111-11-111", model: "דגם א", leaseCompanyId: "lc1" });
@@ -1043,12 +1081,24 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
 
   await seed();
 
+  // ctxOf — זהות **אדמין**: מייל + email_verified. לא נגענו בזה.
   const ctxOf = (uid, email, verified = true) =>
     testEnv.authenticatedContext(uid, email ? { email, email_verified: verified } : {});
 
+  // ========================================================================
+  // ctxDrv — זהות **נהג**: טוקן עם `phone_number` בלבד.
+  //
+  // ⚠️ ואין כאן `phone_number_verified`, כי **אין דבר כזה**: ב-Firebase Auth
+  // הקליים `phone_number` קיים בטוקן רק אחרי שקוד ה-SMS אומת בפועל. זה
+  // ההבדל המבני מול המייל, ששם `email_verified` הוא תנאי שחייבים לזכור
+  // לבדוק — ובלעדיו כל אחד נרשם עם הכתובת של כל אחד.
+  // ========================================================================
+  const ctxDrv = (uid, phone) =>
+    testEnv.authenticatedContext(uid, phone ? { phone_number: phone } : {});
+
   const dbAdminD = ctxOf("fleetAdminUid", AD_MAIL).firestore();
-  const dbA = ctxOf(UIDA, MAIL_A).firestore();
-  const dbB = ctxOf(UIDB, MAIL_B).firestore();
+  const dbA = ctxDrv(UIDA, PH_A).firestore();
+  const dbB = ctxDrv(UIDB, PH_B).firestore();
 
   const P = (rest) => `orgs/${ORG}/${rest}`;
   const col = (db, name) => collection(db, `orgs/${ORG}/${name}`);
@@ -1118,8 +1168,19 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
     getDocs(query(col(dbA, "fines"), where("driverId", "==", DB)))
   );
   await expectDenied(
-    "ז.3 ולא בשאילתה על רשומת הנהג של B לפי המייל שלו",
-    getDocs(query(col(dbA, "drivers"), where("email", "==", MAIL_B)))
+    "ז.3 ולא בשאילתה על רשומת הנהג של B לפי הנייד שלו",
+    getDocs(query(col(dbA, "drivers"), where("phone", "==", RAW_B)))
+  );
+  // ⬅ וגם לא בצורה הקנונית של אותו מספר. שתי מחרוזות, אותו אדם, אותה דחייה.
+  await expectDenied(
+    "ז.3 ולא בצורה הקנונית של הנייד של B",
+    getDocs(query(col(dbA, "drivers"), where("phone", "==", PH_B)))
+  );
+  // ⬅ **והמייל אינו מקנה שום גישה יותר.** הכתובת עדיין יושבת ברשומה כפרט
+  //   קשר, ו-A מחזיק טוקן בלי מייל בכלל — ובכל זאת שאילתה לפי מייל נדחית.
+  await expectDenied(
+    "ז.3 ושאילתה לפי מייל אינה מקנה גישה (העוגן אינו מייל)",
+    getDocs(query(col(dbA, "drivers"), where("email", "==", MAIL_A)))
   );
 
   // ======================================================================
@@ -1248,81 +1309,143 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
   );
 
   // ======================================================================
-  // ז.7 — **הקישור.** האירוע החד-פעמי שבו מייל הופך ל-uid.
+  // ז.7 — **הקישור.** האירוע החד-פעמי שבו נייד מאומת הופך ל-uid.
   // ======================================================================
+  // ⚠️ 1.10.2026 — המקטע הזה היה כולו בצורת מייל. ההסבה אינה "החלפת שם
+  // שדה": `email_verified` היה **תנאי** שהכלל חייב לבדוק, ואילו
+  // `phone_number` קיים בטוקן רק אחרי אימות SMS — כלומר התנאי עבר מ"בדיקה
+  // שאנחנו עושים" ל"תכונה של הספק". ובכל זאת `tokenPhone() != ''` נבדק כאן
+  // מפורשות, כי כלל שמסתמך על הנחה שאינה כתובה נשבר בשקט ביום שהספק ישתנה.
   const linkWrite = (db, driverId, fields) => updateDoc(doc(db, P(`drivers/${driverId}`)), fields);
 
-  // 7א. מייל תואם ומאומת — ובצורה **שונה** מזו שנשמרה: הכתובת ברשומה היא
-  //     hilda.v@gmail.com, והטוקן מגיע כ-Hilda.V+fleet@GMail.com. אצל Google
-  //     זו אותה תיבה, ובלי canonEmail הכניסה הייתה נכשלת בלי שאיש יבין למה.
-  const TOKEN_C = "Hilda.V+fleet@GMail.com";
-  expectEq("ז.7 canonicalEmail מאחד את שתי הצורות", canonicalEmail(TOKEN_C), canonicalEmail(MAIL_C));
-  const dbC = ctxOf(UIDC, TOKEN_C).firestore();
+  // 7א. נייד תואם — ובצורת כתיבה **שונה** מזו שנשמרה: ברשומה יושב
+  //     054-000-0017, והטוקן מגיע כ-+972540000017. אותו אדם, שתי מחרוזות,
+  //     ובלי canonPhone הכניסה הייתה נכשלת בלי שאיש יבין למה.
+  expectEq("ז.7 canonicalPhone מאחד את שתי הצורות", canonicalPhone(RAW_C), PH_C);
+  const dbC = ctxDrv(UIDC, PH_C).firestore();
+  // ⬅ הפורטל מחפש בכמה צורות כתיבה (phone.js:phoneQueryForms), וכל אחת מהן
+  //   חייבת להיות **מותרת** — או להחזיר ריק. שתיהן תוצאה תקינה.
   await expectAllowed(
-    "ז.7 A רשומה לא מקושרת נמצאת בשאילתה לפי המייל הקנוני",
-    getDocs(query(col(dbC, "drivers"), where("email", "==", canonicalEmail(TOKEN_C))))
+    "ז.7 רשומה לא מקושרת נמצאת בשאילתה לפי הצורה שנשמרה",
+    getDocs(query(col(dbC, "drivers"), where("phone", "==", RAW_C)))
   );
   await expectAllowed(
-    "ז.7 מייל תואם + מאומת ⇒ הקישור מתבצע",
-    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "2026-06-01" })
+    "ז.7 וגם שאילתה בצורה הקנונית אינה נדחית (מחזירה ריק)",
+    getDocs(query(col(dbC, "drivers"), where("phone", "==", PH_C)))
   );
+
+  // ======================================================================
+  // ⚠️ **הבדיקה שמונעת את צורת הכשל הגרועה מכולן: אף נהג לא נקשר.**
+  // ======================================================================
+  // זה בדיוק מה שקרה במסלול המייל — הכללים היו תקינים, 328 בדיקות עברו,
+  // ואפס נהגים נקשרו. הסיבה שם הייתה חברתית (אין גימייל ארגוני); כאן
+  // הסיבה המקבילה תהיה **טכנית ושקטה**: שאילתת Firestore היא השוואת
+  // מחרוזות מדויקת בלי נרמול, והמספר שבכרטיס הוקלד ביד. אם אף אחת מצורות
+  // החיפוש אינה תואמת את מה ששמור — הפורטל פשוט לא מוצא את הרשומה,
+  // ואף כלל לא נדחה, ואין שגיאה באף לוג.
+  //
+  // ולכן: **הצורות נלקחות מהקוד האמיתי** (phone.js:phoneQueryForms), כל
+  // אחת מהן חייבת להיות מותרת (שאילתה שנדחית = באנר שגיאה לעובד), ולפחות
+  // אחת מהן חייבת **באמת למצוא** את הרשומה.
+  {
+    const forms = phoneQueryForms(PH_C);
+    expectTrue(`ז.7 יש צורות חיפוש (${forms.length})`, forms.length >= 4);
+    let found = 0;
+    for (const form of forms) {
+      try {
+        const snap = await getDocs(query(col(dbC, "drivers"), where("phone", "==", form)));
+        if (!snap.empty) found++;
+        pass++;
+      } catch (err) {
+        failed++;
+        failures.push(`ז.7 צורת החיפוש ${form} נדחתה`);
+        console.error("  FAIL (שאילתה נדחתה):", form, "·", err?.code || err);
+      }
+    }
+    expectTrue(
+      `ז.7 ולפחות צורה אחת מצאה את הרשומה שנשמרה כ-${RAW_C} (נמצאו ${found})`,
+      found >= 1
+    );
+  }
+  // ⬅ **והקישור עצמו נבנה מהקוד האמיתי** (driverLink.js:linkFields), ולא
+  //   נכתב ביד. אחרת הבדיקה מאשרת את מה שכתבתי בבדיקה, ולא את מה שהאפליקציה
+  //   שולחת — וזו בדיוק הדרך שבה `hasOnly` נשבר בשקט.
+  const CLAIM_C = linkFields(UIDC, PH_C, "2026-10-01");
+  expectEq("ז.7 linkFields שולח בדיוק את מה ש-hasOnly מתיר",
+    Object.keys(CLAIM_C).sort().join(","), [...LINK_WRITABLE_KEYS].sort().join(","));
+  await expectAllowed("ז.7 נייד תואם ⇒ הקישור מתבצע", linkWrite(dbC, DC, CLAIM_C));
   await expectAllowed("ז.7 ומכאן הוא קורא את ההיטל שלו", getDoc(doc(dbC, P(`driverPortal/${DC}`))));
 
   // 7ב. **השיניים של הקישור** — כל תנאי בנפרד, על רשומה נקייה בכל פעם.
   const resetDC = () =>
     testEnv.withSecurityRulesDisabled(async (ctx) =>
       setDoc(doc(ctx.firestore(), P(`drivers/${DC}`)), {
-        id: DC, orgId: ORG, fullName: "נהג ג", email: MAIL_C, userId: null,
+        id: DC, orgId: ORG, fullName: "נהג ג", phone: RAW_C, email: MAIL_C, userId: null,
         portalStatus: "none", status: "active",
       })
     );
 
   await resetDC();
-  const dbWrongMail = ctxOf("uidWrong", "someone.else@gmail.com").firestore();
+  const PH_X = "+972509998888";
+  const dbWrongPhone = ctxDrv("uidWrong", PH_X).firestore();
   await expectDenied(
-    "ז.7 נדחה — מייל שאינו תואם",
-    linkWrite(dbWrongMail, DC, { userId: "uidWrong", portalStatus: "active", portalLinkedEmail: "someone.else@gmail.com", updatedAt: "x" })
+    "ז.7 נדחה — נייד שאינו תואם",
+    linkWrite(dbWrongPhone, DC, linkFields("uidWrong", PH_X, "x"))
   );
   await expectDenied(
     "ז.7 נדחה — וגם לא קורא את הרשומה",
-    getDoc(doc(dbWrongMail, P(`drivers/${DC}`)))
+    getDoc(doc(dbWrongPhone, P(`drivers/${DC}`)))
   );
 
-  const dbUnverified = ctxOf("uidUnv", TOKEN_C, false).firestore();
+  // ⬅ **טוקן בלי נייד בכלל** — זה בדיוק האדמין שנכנס ב-Google. בלי התנאי
+  //   `tokenPhone() != ''` הוא היה מותאם לכל רשומה שאין בה טלפון.
+  const dbNoPhone = ctxDrv("uidNoPhone", null).firestore();
   await expectDenied(
-    "ז.7 נדחה — הכתובת נכונה אבל **לא מאומתת**",
-    linkWrite(dbUnverified, DC, { userId: "uidUnv", portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+    "ז.7 נדחה — טוקן בלי נייד בכלל",
+    linkWrite(dbNoPhone, DC, { userId: "uidNoPhone", portalStatus: "active", portalLinkedPhone: "", updatedAt: "x" })
   );
-  await expectDenied("ז.7 ולא קורא את הרשומה", getDoc(doc(dbUnverified, P(`drivers/${DC}`))));
-
-  const dbNoMail = ctxOf("uidNoMail", null).firestore();
+  await expectDenied("ז.7 ולא קורא את הרשומה", getDoc(doc(dbNoPhone, P(`drivers/${DC}`))));
+  // ⬅ ואותו טוקן מול רשומה **בלי טלפון** — שני צדדים ריקים אינם "התאמה".
+  await testEnv.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), P("drivers/drvNoPhone")), {
+      id: "drvNoPhone", orgId: ORG, fullName: "בלי נייד", phone: "", userId: null,
+      portalStatus: "none", status: "active",
+    })
+  );
   await expectDenied(
-    "ז.7 נדחה — טוקן בלי מייל בכלל",
-    linkWrite(dbNoMail, DC, { userId: "uidNoMail", portalStatus: "active", portalLinkedEmail: "", updatedAt: "x" })
+    "ז.7 נדחה — טוקן בלי נייד מול רשומה בלי נייד (שני ריקים ≠ התאמה)",
+    linkWrite(dbNoPhone, "drvNoPhone", { userId: "uidNoPhone", portalStatus: "active", portalLinkedPhone: "", updatedAt: "x" })
   );
-
-  // ⬅ **הבקרה השלילית לנרמול**: בדומיין ארגוני נקודה היא תו משמעותי.
-  //   first.last@promall.example ו-firstlast@promall.example הם שני אנשים.
-  const dbDotAttack = ctxOf("uidDot", "firstlast@promall.example").firestore();
   await expectDenied(
-    "ז.7 נדחה — הסרת נקודה **אינה** חלה על דומיין ארגוני",
-    linkWrite(dbDotAttack, DD, { userId: "uidDot", portalStatus: "active", portalLinkedEmail: "firstlast@promall.example", updatedAt: "x" })
-  );
-  expectTrue(
-    "ז.7 וגם canonicalEmail בקוד אינו מאחד אותם",
-    canonicalEmail("first.last@promall.example") !== canonicalEmail("firstlast@promall.example")
+    "ז.7 ורשומה בלי נייד אינה נקראת גם ע\"י מי שיש לו נייד",
+    getDoc(doc(dbC, P("drivers/drvNoPhone")))
   );
 
-  // רשומה **שכבר מקושרת** אינה ניתנת לתפיסה, גם ע"י מי שהמייל שלו תואם.
+  // ⬅ **הבקרה השלילית של הקו הנייח** (עדי §2.2.4). שבע הספרות של DD זהות
+  //   לנייד של DC: `03-0000017` מול `054-000-0017`. בלי החסימה הזו,
+  //   התנגשות בנתונים הייתה הופכת לגישה לרשומה של עובד אחר.
+  const dbLandline = ctxDrv("uidLand", "+972000001700").firestore();
+  await expectDenied(
+    "ז.7 נדחה — קו נייח אינו עוגן זהות, גם בטוקן שנראה דומה",
+    linkWrite(dbLandline, DD, { userId: "uidLand", portalStatus: "active", portalLinkedPhone: "+972000001700", updatedAt: "x" })
+  );
+  await expectDenied(
+    "ז.7 ומי שיש לו את אותן שבע ספרות כנייד אינו תובע את רשומת הנייח",
+    linkWrite(dbC, DD, linkFields(UIDC, PH_C, "x"))
+  );
+  await expectDenied("ז.7 וגם אינו קורא אותה", getDoc(doc(dbC, P(`drivers/${DD}`))));
+  expectEq("ז.7 וגם canonicalPhone בקוד דוחה קו נייח", canonicalPhone(RAW_D), "");
+
+  // רשומה **שכבר מקושרת** אינה ניתנת לתפיסה, גם ע"י מי שהמספר שלו תואם.
   await testEnv.withSecurityRulesDisabled(async (ctx) =>
     setDoc(doc(ctx.firestore(), P(`drivers/${DC}`)), {
-      id: DC, orgId: ORG, fullName: "נהג ג", email: MAIL_C, userId: "someoneElseUid",
+      id: DC, orgId: ORG, fullName: "נהג ג", phone: RAW_C, userId: "someoneElseUid",
       portalStatus: "active", status: "active",
     })
   );
   await expectDenied(
     "ז.7 נדחה — הרשומה כבר מקושרת למישהו אחר",
-    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+    linkWrite(dbC, DC, linkFields(UIDC, PH_C, "x"))
   );
   await expectDenied("ז.7 וגם לא קורא אותה", getDoc(doc(dbC, P(`drivers/${DC}`))));
 
@@ -1335,38 +1458,50 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
     ["הערות", { notes: "מגיע לי רכב אחר" }],
     ["רשומת היידוע (D8)", { notice: { policyVersion: "9.9", deliveredAt: "2026-01-01" } }],
     ["סטטוס העובד", { status: "inactive" }],
-    ["המייל עצמו", { email: "new.address@gmail.com" }],
+    ["הנייד עצמו", { phone: "+972509998888" }],
+    // ⬅ **השדה שהוסר מ-hasOnly ב-1.10.2026.** בלי הדחייה הזו, נהג היה כותב
+    //   לעצמו כתובת מייל שרירותית ברשומה שלו, ואף אחד לא היה בודק אותה.
+    ["כתובת המייל (אינה ב-hasOnly יותר)", { portalLinkedEmail: "whatever@gmail.com" }],
   ]) {
     await expectDenied(
       `ז.7 נדחה — הקישור נוגע גם ב${label}`,
-      linkWrite(dbC, DC, {
-        userId: UIDC, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x", ...extra,
-      })
+      linkWrite(dbC, DC, { ...linkFields(UIDC, PH_C, "x"), ...extra })
     );
   }
   await expectDenied(
     "ז.7 נדחה — portalStatus שאינו active",
-    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "invited", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+    linkWrite(dbC, DC, { ...linkFields(UIDC, PH_C, "x"), portalStatus: "invited" })
   );
   await expectDenied(
     "ז.7 נדחה — קישור ל-uid של מישהו אחר",
-    linkWrite(dbC, DC, { userId: UIDB, portalStatus: "active", portalLinkedEmail: TOKEN_C.toLowerCase(), updatedAt: "x" })
+    linkWrite(dbC, DC, { ...linkFields(UIDC, PH_C, "x"), userId: UIDB })
   );
   await expectDenied(
-    "ז.7 נדחה — portalLinkedEmail שאינו הכתובת שבטוקן",
-    linkWrite(dbC, DC, { userId: UIDC, portalStatus: "active", portalLinkedEmail: "someone.else@gmail.com", updatedAt: "x" })
+    "ז.7 נדחה — portalLinkedPhone שאינו המספר שבטוקן",
+    linkWrite(dbC, DC, { ...linkFields(UIDC, PH_C, "x"), portalLinkedPhone: "+972509998888" })
+  );
+  // ⬅ וגם לא "המספר הנכון בצורה הלא-קנונית": הכלל אוכף E.164, אחרת השדה
+  //   התיעודי הזה היה הופך למחרוזת חופשית שאי אפשר להשוות לכלום.
+  await expectDenied(
+    "ז.7 נדחה — portalLinkedPhone בצורה מקומית ולא E.164",
+    linkWrite(dbC, DC, { ...linkFields(UIDC, PH_C, "x"), portalLinkedPhone: RAW_C })
+  );
+  await expectDenied(
+    "ז.7 נדחה — portalLinkedPhone ריק",
+    linkWrite(dbC, DC, { ...linkFields(UIDC, PH_C, "x"), portalLinkedPhone: "" })
   );
   await expectDenied(
     "ז.7 נדחה — נהג מקושר משנה את רשומת נהג אחר",
-    linkWrite(dbA, DC, { userId: UIDA, portalStatus: "active", portalLinkedEmail: MAIL_A, updatedAt: "x" })
+    linkWrite(dbA, DC, linkFields(UIDA, PH_A, "x"))
   );
 
   // 7ד. **'revoked' אינו ניתן לתביעה מחדש.** זה מה שהופך את כפתור הניתוק
   //     לאפקטיבי: בלעדיו עובד שעזב היה מקשר את עצמו בחזרה בלחיצה אחת.
-  const dbLeft = ctxOf(UIDR, MAIL_R).firestore();
+  const dbLeft = ctxDrv(UIDR, PH_R).firestore();
+  expectEq("ז.7 והמספר שלו שמור עם רווחים — אותו אדם", canonicalPhone(RAW_R), PH_R);
   await expectDenied(
     "ז.7 נדחה — רשומה שנותקה ('revoked') אינה ניתנת לקישור מחדש",
-    linkWrite(dbLeft, DR, { userId: UIDR, portalStatus: "active", portalLinkedEmail: MAIL_R, updatedAt: "x" })
+    linkWrite(dbLeft, DR, linkFields(UIDR, PH_R, "x"))
   );
   await expectDenied("ז.7 ומי שנותק גם לא קורא את הרשומה שלו", getDoc(doc(dbLeft, P(`drivers/${DR}`))));
   // ורק אחרי שהאדמין מזמין מחדש ('invited') — הקישור אפשרי שוב.
@@ -1376,29 +1511,82 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
   );
   await expectAllowed(
     "ז.7 ואז הקישור מתבצע",
-    linkWrite(dbLeft, DR, { userId: UIDR, portalStatus: "active", portalLinkedEmail: MAIL_R, updatedAt: "x" })
+    linkWrite(dbLeft, DR, linkFields(UIDR, PH_R, "x"))
+  );
+
+  // ======================================================================
+  // 7ו. ⚠️ **מצב-הביניים שריצת המוטציות חשפה.**
+  // ======================================================================
+  // שתי מוטציות **שרדו את כל החבילה** בריצה הראשונה:
+  //   • הוצאת `userId == null` מ-`isSelfLinkClaim`  (תביעת רשומה מקושרת);
+  //   • הוצאת אותו תנאי מסעיף ה-read של `drivers`  (קריאת רשומה מקושרת).
+  //
+  // הסיבה היא בדיוק הלקח של ז.8ב: בבדיקה שהייתה כאן, הרשומה המקושרת היא
+  // גם `portalStatus: 'active'` — ולכן התנאי `in ['none','invited']` חסם
+  // ממילא, ו-`userId == null` **מעולם לא נבחן לבדו**. בדיקה שעוברת כי
+  // משהו אחר חסם אינה בדיקה.
+  //
+  // והמצב הזה אמיתי לגמרי, לא מלאכתי: `userId` ו-`portalStatus` נכתבים
+  // באותה כתיבה, אבל רשומה יכולה להגיע למצב שבו uid נצרב וה-status לא —
+  // uid שהוזן ידנית בקונסולת Firestore, ייבוא, או שארית ממירוץ. ואם זה
+  // קורה, **המספר התואם לבדו** היה מספיק כדי לתבוע ולקרוא רשומה של עובד
+  // אחר: שם, טלפון, מחלקה, מספר עובד, הערות ורשומת היידוע.
+  await testEnv.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), P(`drivers/${DC}`)), {
+      id: DC, orgId: ORG, fullName: "נהג ג", phone: RAW_C, userId: "someoneElseUid",
+      portalStatus: "none", status: "active",
+    })
+  );
+  await expectDenied(
+    "ז.7ו נדחה — רשומה שכבר נתפסה, גם כשה-portalStatus נשאר 'none'",
+    linkWrite(dbC, DC, linkFields(UIDC, PH_C, "x"))
+  );
+  await expectDenied(
+    "ז.7ו וגם אינה נקראת — userId != null לבדו חוסם",
+    getDoc(doc(dbC, P(`drivers/${DC}`)))
+  );
+  // ⬅ ואותו דבר ב-'invited': זה המצב שאדמין מייצר בלחיצה על "אפשר קישור
+  //   מחדש", והוא לא אמור לפתוח רשומה שמישהו אחר כבר מחזיק.
+  await testEnv.withSecurityRulesDisabled(async (ctx) =>
+    setDoc(doc(ctx.firestore(), P(`drivers/${DC}`)), {
+      id: DC, orgId: ORG, fullName: "נהג ג", phone: RAW_C, userId: "someoneElseUid",
+      portalStatus: "invited", status: "active",
+    })
+  );
+  await expectDenied(
+    "ז.7ו נדחה — אותו מצב גם ב-'invited'",
+    linkWrite(dbC, DC, linkFields(UIDC, PH_C, "x"))
+  );
+  await expectDenied(
+    "ז.7ו ואינה נקראת גם ב-'invited'",
+    getDoc(doc(dbC, P(`drivers/${DC}`)))
   );
 
   // 7ה. נהג בארכיון — לא מקשר, ולא קורא.
   await testEnv.withSecurityRulesDisabled(async (ctx) =>
     setDoc(doc(ctx.firestore(), P(`drivers/${DD}`)), {
-      id: DD, orgId: ORG, fullName: "נקודה", email: MAIL_D, userId: null,
+      id: DD, orgId: ORG, fullName: "בארכיון", phone: "0501110009", userId: null,
       portalStatus: "invited", status: "archived",
     })
   );
-  const dbArch = ctxOf("uidArch", MAIL_D).firestore();
+  const dbArch = ctxDrv("uidArch", "+972501110009").firestore();
   await expectDenied(
     "ז.7 נדחה — נהג בארכיון אינו מקשר חשבון",
-    linkWrite(dbArch, DD, { userId: "uidArch", portalStatus: "active", portalLinkedEmail: MAIL_D, updatedAt: "x" })
+    linkWrite(dbArch, DD, linkFields("uidArch", "+972501110009", "x"))
   );
+  await expectDenied("ז.7 וגם אינו קורא את הרשומה", getDoc(doc(dbArch, P(`drivers/${DD}`))));
 
   // ======================================================================
   // ז.8 — **הניתוק.** יום העזיבה, בסדר שעדי הגדירה (3.3): קודם כל ה-rules.
   // ======================================================================
   await expectAllowed("ז.8 לפני הניתוק — A קורא את ההיטל שלו", getDoc(doc(dbA, P(`driverPortal/${DA}`))));
+  // ⬅ הניתוק נבנה מ-`unlinkFields` האמיתי, ולא ביד: אם מישהו יסיר ממנו את
+  //   איפוס `portalLinkedPhone`, הבדיקה למטה תתפוס עקבת זהות שנשארה.
+  const UNLINK = unlinkFields("2026-10-01");
+  expectEq("ז.8 unlinkFields מאפס את עקבת הזהות", UNLINK.portalLinkedPhone, null);
   await expectAllowed(
     "ז.8 האדמין מנתק",
-    updateDoc(doc(dbAdminD, P(`drivers/${DA}`)), { userId: null, portalStatus: "revoked", portalLinkedEmail: null })
+    updateDoc(doc(dbAdminD, P(`drivers/${DA}`)), UNLINK)
   );
   // ⬅ **הבדיקה שמצדיקה את כל המקטע.** לא נגענו באף מסמך קנס, החזקה או דיווח —
   //   ובכל זאת אף אחד מהם אינו קריא יותר. זו הסיבה שהבידוד חייב לשבת ב-rules:
@@ -1413,7 +1601,7 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
   // ⬅ ולא ניתן לתבוע את הרשומה מחדש עם אותו מייל.
   await expectDenied(
     "ז.8 ומי שנותק לא מקשר את עצמו בחזרה",
-    linkWrite(dbA, DA, { userId: UIDA, portalStatus: "active", portalLinkedEmail: MAIL_A, updatedAt: "x" })
+    linkWrite(dbA, DA, linkFields(UIDA, PH_A, "x"))
   );
   // B, שלא נגעו בו, ממשיך לעבוד — הניתוק ממוקד ולא כללי.
   await expectAllowed("ז.8 ו-B אינו מושפע", getDoc(doc(dbB, P(`driverPortal/${DB}`))));
@@ -1441,7 +1629,7 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
       testEnv.withSecurityRulesDisabled(async (ctx) => {
         const db = ctx.firestore();
         await setDoc(doc(db, P(`drivers/${id}`)), {
-          id, orgId: ORG, fullName: "ביניים", email: `${id}@promall.example`,
+          id, orgId: ORG, fullName: "ביניים", phone: `+97250111${id === "drvSusp" ? "0011" : "0012"}`,
           portalStatus: "active", status: "active", ...over,
         });
         await setDoc(doc(db, P(`driverPortal/${id}`)), {
@@ -1454,7 +1642,7 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
 
     // (1) קישור פעיל, אבל הגישה **מושהית**.
     await mk(DS, { userId: UIDS, portalStatus: "disabled" });
-    const dbSusp = ctxOf(UIDS, `${DS}@promall.example`).firestore();
+    const dbSusp = ctxDrv(UIDS, "+972501110011").firestore();
     await expectDenied("ז.8ב portalStatus='disabled' — אין היטל", getDoc(doc(dbSusp, P(`driverPortal/${DS}`))));
     await expectDenied("ז.8ב ואין קנסות", getDoc(doc(dbSusp, P(`fines/fin_${DS}`))));
     await expectDenied(
@@ -1473,7 +1661,7 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
 
     // (2) קישור פעיל, אבל העובד **בארכיון** (3.3.7).
     await mk(DZ, { userId: UIDZ, portalStatus: "active", status: "archived" });
-    const dbArch2 = ctxOf(UIDZ, `${DZ}@promall.example`).firestore();
+    const dbArch2 = ctxDrv(UIDZ, "+972501110012").firestore();
     await expectDenied("ז.8ב עובד בארכיון עם קישור פעיל — אין היטל", getDoc(doc(dbArch2, P(`driverPortal/${DZ}`))));
     await expectDenied("ז.8ב ואין קנסות", getDoc(doc(dbArch2, P(`fines/fin_${DZ}`))));
     await mk(DZ, { userId: UIDZ, portalStatus: "active", status: "active" });
@@ -1502,6 +1690,169 @@ section("(ז) פורטל הנהג — הבידוד, הקישור, והדיווח
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     for (const c of ["drivers", "vehicles", "assignments", "fines", "fineScans", "odometerReadings", "driverPortal"]) {
+      const snap = await getDocs(collection(db, `orgs/${ORG}/${c}`));
+      for (const d of snap.docs) await deleteDoc(d.ref);
+    }
+  });
+}
+
+
+// ============================================================================
+section("(ח) canonPhone ב-rules מול canonicalPhone בקוד — אותו קלט, שני הצדדים");
+// ============================================================================
+// למה המקטע הזה קיים, ולמה הוא לא "עוד בדיקות נרמול":
+//
+// `canonEmail` ב-firestore.rules ו-`canonicalEmail` ב-admins.js הן שתי
+// מימושות של אותו כלל, בשתי שפות, בשני קבצים. ההערה שם מזהירה מזה במפורש:
+// *"כל שינוי כאן = שינוי שם"*. מהרגע שעוגן הזהות של הנהג הוא נייד, **אותה
+// מלכודת חוזרת** — והפעם היא מסוכנת יותר, כי מספר נכתב בחמש צורות שונות
+// ולא בשתיים.
+//
+// ניסוח עדי (§5.2): *"כל סטייה ביניהן = הרשאה שלא עובדת או הרשאת יתר. ולכן
+// צריכות להיות בדיקות אמולטור שמריצות את אותו מערך קלט בשני הצדדים."*
+//
+// וזה מה שקורה כאן, ולא קריאה בעיניים:
+//   • עבור כל קלט, `canonicalPhone` (JS) מחשב את הצורה הקנונית;
+//   • נזרעת רשומת נהג שהטלפון בה הוא **הקלט הגולמי**;
+//   • והאמולטור מכריע: טוקן עם הצורה הקנונית — האם הוא מצליח לקשר?
+//   • אם ה-JS אמר "זהו המספר" והכלל דחה → **הרשאה שלא עובדת**: נהג שלא ייכנס.
+//   • אם ה-JS אמר "זה לא נייד" והכלל אישר → **הרשאת יתר**: קו נייח, לוחית
+//     רישוי או מספר פגום שהופכים למפתח של רשומת עובד.
+// ============================================================================
+{
+  const ORG = "orgParity";
+  const AD = "parity.admin@promall.example";
+
+  // ⚠️ **מערך הקלט המשותף.** הוא כתוב פעם אחת, ומורץ בשני הצדדים. כל שורה
+  // כאן היא צורה שראינו או שסביר לראות בכרטיס נהג שהוקלד ביד או הודבק
+  // מאקסל. השדה השני הוא מה ש-JS מחזיר — **לא** מה שאנחנו מקווים שהכלל
+  // יחזיר; אם הם נפרדים, הבדיקה נופלת ולא "מסתדרת".
+  const PHONE_PARITY = [
+    "0540000017",        // צורה מקומית, בלי מפרידים
+    "054-000-0017",      // מקפים — הצורה האנושית הנפוצה
+    "054-0000017",       // מקף אחד
+    "054 000 0017",      // רווחים
+    "+972540000017",     // E.164 — מה שה-UI שומר מעכשיו
+    "+972-54-000-0017",  // E.164 עם מפרידים
+    "972540000017",      // בלי '+'
+    "00972540000017",    // קידומת יציאה
+    "(054) 000-0017",    // סוגריים
+    "'0540000017",       // ⬅ **גרש מוביל מאקסל** — מלכודת ייבוא אמיתית
+    " 0540000017 ",      // רווחים בקצוות
+    "0501110007",        // נייד אחר, כבקרה חיובית נוספת
+    "03-0000017",        // ⬅ **קו נייח** — אותן שבע ספרות, ואינו עוגן זהות
+    "02-6295555",        // קו נייח אחר
+    // ⚠️ **שתי השורות הבאות נוספו אחרי ריצת מוטציות.** בלעדיהן שרדו שתי
+    // מוטציות: אחת שהחליפה את בדיקת הקידומת ב-'^0[0-9]{9}$', והשנייה
+    // ב-'^972[0-9]{9}$'. הסיבה שלא נתפסו היא **חור במערך הקלט**, לא בכלל:
+    // קו נייח ישראלי הוא **9 ספרות** (0X + 7), ולכן אף שורה כאן לא בחנה
+    // מספר בן **10 ספרות שאינו נייד**. 07X הוא בדיוק זה — ובלעדיו "כל
+    // קידומת בת 10 ספרות" נראתה שקולה ל-05X.
+    "073-7222333",       // ⬅ 10 ספרות, ואינו נייד (קו 07X)
+    "+972737222333",     // ⬅ ואותו מספר בצורה בינלאומית
+    "0000017",           // ⬅ שבע ספרות לבדן — לעולם לא
+    "054000001",         // ספרה חסרה
+    "05400000177",       // ספרה עודפת
+    "+9720540000017",    // ⬅ קידומת כפולה — מספר פגום, לא "כמעט נכון"
+    "12345678",          // ⬅ לוחית רישוי מהצי
+    "30092026",          // תאריך בלי מפרידים
+    "+447911123456",     // מספר זר (ה-region policy נעולה לישראל ממילא)
+    "",                  // ריק
+  ];
+
+  // uid/doc ייחודיים לכל שורה — אחרת הקישור הראשון היה "מלכלך" את הבא.
+  const rows = PHONE_PARITY.map((input, i) => {
+    const expected = canonicalPhone(input);
+    const digits = String(input).replace(/[^0-9]/g, "");
+    // ========================================================================
+    // לשורות הפסולות: **לא טוקן אחד, אלא כל הטוקנים ה"סבירים"** שנגזרים מאותן
+    // ספרות — ושכולם חייבים להידחות.
+    //
+    // ⚠️ זו אינה קפדנות יתר, זה ממצא מריצת מוטציות: עם טוקן בודד
+    // (`+972` + תשע הספרות האחרונות), מוטציה שהחליפה את בדיקת האורך
+    // ב-`{7,9}` **שרדה את כל החבילה**. הסיבה: 05400000177 הפך תחת המוטציה
+    // ל-+972540000017, והטוקן הבודד שבדקנו היה +972400000177 — כלומר הכלל
+    // דחה, אבל **לא בגלל התנאי שנשבר.** בדיקה שעוברת כי משהו אחר חסם אינה
+    // בדיקה; זה בדיוק הלקח של ז.8ב.
+    // ========================================================================
+    const tokens = expected
+      ? [expected]
+      : [...new Set([
+          `+972${digits.slice(-9) || "000000000"}`, // תשע אחרונות
+          `+972${digits.slice(1, 10) || "000000000"}`, // מה שהתעלמות מה-0 הייתה מייצרת
+          `+972${digits.slice(0, 9) || "000000000"}`, // מה שחיתוך מהתחלה היה מייצר
+          `+${digits || "000000000"}`, // הספרות כפי שהן
+        ])];
+    return { id: `pd${i}`, uid: `puid${i}`, input, expected, tokens };
+  });
+
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, `orgs/${ORG}`), {
+      org: { id: ORG, name: "תאום נרמול", adminEmails: [AD], members: {} },
+      settings: { onboarded: true },
+      schemaVersion: 2,
+    });
+    for (const r of rows) {
+      await setDoc(doc(db, `orgs/${ORG}/drivers/${r.id}`), {
+        id: r.id, orgId: ORG, fullName: "תאום", phone: r.input,
+        userId: null, portalStatus: "none", status: "active",
+      });
+      // היטל, כדי שההצלחה תהיה מלאה ולא "כתיבה שעברה אבל אין מה לקרוא".
+      await setDoc(doc(db, `orgs/${ORG}/driverPortal/${r.id}`), {
+        id: r.id, driverId: r.id, orgId: ORG, vehicleId: "pv1", plate: "11-111-11",
+      });
+    }
+  });
+
+  let valid = 0;
+  let invalid = 0;
+  for (const r of rows) {
+    const label = `ח ${JSON.stringify(r.input)} → ${r.expected || "''"}`;
+    if (r.expected) {
+      valid++;
+      const db = testEnv.authenticatedContext(r.uid, { phone_number: r.expected }).firestore();
+      const ref = doc(db, `orgs/${ORG}/drivers/${r.id}`);
+      // שני הצדדים מסכימים שזה מספר: הכלל **חייב** לאשר, אחרת זהו נהג
+      // שמקליד את המספר הנכון ולא נכנס.
+      await expectAllowed(`${label} · הכלל מאשר קישור`, updateDoc(ref, {
+        userId: r.uid, portalStatus: "active", portalLinkedPhone: r.expected, updatedAt: "2026-10-01",
+      }));
+      await expectAllowed(`${label} · ואז קורא את ההיטל`, getDoc(doc(db, `orgs/${ORG}/driverPortal/${r.id}`)));
+    } else {
+      invalid++;
+      // שני הצדדים מסכימים שזה **אינו** נייד: הכלל חייב לדחות **כל** טוקן
+      // מועמד, אחרת לוחית רישוי או קו נייח הופכים למפתח של רשומת עובד.
+      for (const [j, token] of r.tokens.entries()) {
+        const uid = `${r.uid}_${j}`;
+        const db = testEnv.authenticatedContext(uid, { phone_number: token }).firestore();
+        const ref = doc(db, `orgs/${ORG}/drivers/${r.id}`);
+        await expectDenied(`${label} · נדחה גם מטוקן ${token}`, updateDoc(ref, {
+          userId: uid, portalStatus: "active", portalLinkedPhone: token, updatedAt: "2026-10-01",
+        }));
+        await expectDenied(`${label} · ואינו קורא את הרשומה (${token})`, getDoc(ref));
+      }
+    }
+  }
+  expectTrue(`ח מערך הקלט מכיל גם תקפים (${valid}) וגם פסולים (${invalid})`, valid >= 10 && invalid >= 8);
+
+  // ⬅ **ובכיוון ההפוך**: מספר תקף, אבל טוקן של מספר תקף **אחר**. בלי זה כל
+  //   מה שהוכחנו הוא "הכלל מאשר כשהכול נכון", וזו אינה בדיקת בידוד.
+  {
+    const a = rows.find((r) => r.expected === "+972540000017");
+    const other = testEnv.authenticatedContext("puidX", { phone_number: "+972501110007" }).firestore();
+    await expectDenied(
+      "ח נייד תקף אחר אינו תובע את הרשומה",
+      updateDoc(doc(other, `orgs/${ORG}/drivers/${a.id}`), {
+        userId: "puidX", portalStatus: "active", portalLinkedPhone: "+972501110007", updatedAt: "x",
+      })
+    );
+  }
+
+  // ניקוי, כדי שהמקטע הבא יתחיל נקי.
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    for (const c of ["drivers", "driverPortal"]) {
       const snap = await getDocs(collection(db, `orgs/${ORG}/${c}`));
       for (const d of snap.docs) await deleteDoc(d.ref);
     }

@@ -22,6 +22,11 @@ const out = join(here, "shared");
 const FILES = [
   ["constants.js", "constants.js"],
   ["utils/scheduleChanges.js", "utils/scheduleChanges.js"],
+  // Pulled in by scheduleChanges.js for `sessionKey` — one definition of "the same row"
+  // for the app and the cloud alike.
+  ["utils/rowCopy.js", "utils/rowCopy.js"],
+  // Pulled in by scheduleChanges.js so the prune runs wherever a save does.
+  ["utils/acceptedChecks.js", "utils/acceptedChecks.js"],
   ["utils/pushTargets.js", "utils/pushTargets.js"],
   ["utils/notifyPause.js", "utils/notifyPause.js"],
   ["utils/boardChanges.js", "utils/boardChanges.js"],

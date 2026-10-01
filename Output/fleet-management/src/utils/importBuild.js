@@ -14,7 +14,26 @@ import {
   createLeaseCompany,
 } from "../schema.js";
 import { nameKey } from "./importExcel.js";
+import { canonicalPhone } from "./phone.js";
 import { nowIso } from "./id.js";
+
+// ============================================================================
+// intakePhone — **נרמול טלפון בקליטה** (עדי §5.2, נקודת קריאה 5 מתוך 5).
+//
+// ⚠️ אקסל שומר מספר שמתחיל ב-0 כטקסט עם **גרש מוביל** (`'0523866645`), כדי
+// שהאפס לא ייעלם. גרש כזה שנכנס לבסיס הנתונים הופך את המספר למחרוזת שאינה
+// שווה לשום דבר — וזו מלכודת ייבוא אמיתית, לא תיאורטית. `canonicalPhone`
+// מפרק אותו, ולכן מספר שנקלט מהגיליון נשמר **בצורה אחת**.
+//
+// מספר שאינו נייד ישראלי (קו נייח של חברת ליסינג — הרוב כאן) נשמר **כפי
+// שהוא**: הוא פרט קשר תקין לחלוטין, והנרמול היחיד שמותר לעשות עליו הוא
+// קיצוץ רווחים. אנחנו לא ממציאים קידומות למספר שאיננו מכירים.
+//
+// ⚠️ זו **אינה** נקודת כניסה לזהות: הייבוא אינו יוצר נהגים עם טלפון (רק עם
+// שם — ראה למטה), ולכן אין כאן דרך ליצור עוגן קישור. הנרמול כאן הוא עקביות
+// נתונים, לא בקרת גישה.
+// ============================================================================
+const intakePhone = (raw) => canonicalPhone(raw) || String(raw || "").trim();
 
 // ============================================================================
 // M3 (שער עדי, 2026-08-13) — **הצהרת הייבוא נשמרת.**
@@ -62,7 +81,7 @@ export function buildImportWrite(plan, { orgId = null, data = {}, at = null } = 
         orgId,
         name: c.name,
         contactName: contact.contactName || "",
-        phone: contact.phone || "",
+        phone: intakePhone(contact.phone),
         email: contact.email || "",
         notes: contact.notes || "",
       });
@@ -76,7 +95,7 @@ export function buildImportWrite(plan, { orgId = null, data = {}, at = null } = 
         const patch = {
           ...existing,
           contactName: existing.contactName || contact.contactName || "",
-          phone: existing.phone || contact.phone || "",
+          phone: existing.phone || intakePhone(contact.phone),
           email: existing.email || contact.email || "",
           notes: existing.notes || contact.notes || "",
         };

@@ -357,12 +357,12 @@ export const nightlyCupScan = onSchedule(
         onFailure: (league, err) => console.warn(`cup scan: ${league.name}: ${err.message}`),
       });
 
-      const result = reached === 0 ? { fresh: [], possible: [], known: [] } : classify(drafts, games);
-      const outcome = scanOutcome({
-        total: CUP_LEAGUES.length,
-        reached,
-        filed: result.fresh.length > 0 || result.possible.length > 0,
-      });
+      const result =
+        reached === 0
+          ? { fresh: [], possible: [], moved: [], known: [] }
+          : classify(drafts, games, { today: new Date() });
+      const found = result.fresh.length + result.possible.length + (result.moved?.length || 0);
+      const outcome = scanOutcome({ total: CUP_LEAGUES.length, reached, filed: found > 0 });
 
       console.log(
         `cup scan ${club.id}: ${scanSummary({ total: CUP_LEAGUES.length, reached, fixtures: seen, ours: drafts.length })} -> ${outcome.state}`
@@ -370,7 +370,7 @@ export const nightlyCupScan = onSchedule(
 
       const id = new Date().toISOString().slice(0, 10);
       const ref = db.collection("clubs").doc(club.id).collection("cupScans").doc(id);
-      const existing = (result.fresh.length > 0 || result.possible.length > 0) ? await ref.get() : null;
+      const existing = found > 0 ? await ref.get() : null;
 
       // A manager who dealt with today's proposal wrote their decision ONTO this document.
       // Rewriting it whole would put the dismissed fixture back on the banner and delete the
@@ -388,6 +388,10 @@ export const nightlyCupScan = onSchedule(
           fixturesSeen: seen,
           fresh: result.fresh,
           possible: result.possible,
+          // A fixture the club already holds that the federation has since moved. Its own
+          // list because the manager's action differs from both of the others: nothing is
+          // added and nothing is replaced — one record changes date. See classify().
+          moved: result.moved || [],
           resolved: false,
         });
       }

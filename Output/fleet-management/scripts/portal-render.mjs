@@ -37,6 +37,7 @@ import DriverPortal from ${p("src/components/portal/DriverPortal.jsx")};
 import MyVehicleScreen from ${p("src/components/portal/MyVehicleScreen.jsx")};
 import OdometerReportScreen from ${p("src/components/portal/OdometerReportScreen.jsx")};
 import DriverPortalCard from ${p("src/components/DriverPortalCard.jsx")};
+import LoginPage from ${p("src/components/LoginPage.jsx")};
 import { I18nProvider } from ${p("src/hooks/useI18n.jsx")};
 
 const wrap = (lang, node) =>
@@ -52,6 +53,11 @@ export const renderReport = (props, lang) =>
 
 export const renderCard = (driver, lang) =>
   wrap(lang, <DriverPortalCard driver={driver} actions={{ unlinkDriverPortal: () => {}, inviteDriverPortal: () => {} }} />);
+
+// ⚠️ מסך הכניסה נכנס ל-harness הזה ב-1.10.2026, כשהוא הפך למסלול **הנהג**:
+// הוא נקודת האיסוף של מספר הנייד, ולכן גם נקודת הגילוי של התכלית.
+export const renderLogin = (props, lang) =>
+  wrap(lang, <LoginPage onSignIn={() => {}} onStartPhone={async () => ({ ok: true })} onConfirmCode={async () => ({ ok: true })} onResetPhone={() => {}} {...props} />);
 `
 );
 
@@ -251,34 +257,100 @@ for (const lang of ["he", "en"]) {
 }
 
 // ============================================================================
-section("6. כרטיס ניהול הגישה (צד האדמין) — ארבעת המצבים");
+section("6. כרטיס ניהול הגישה (צד האדמין) — ארבעת המצבים, **בנייד**");
 // ============================================================================
+// ⚠️ 1.10.2026: ארבעת המצבים נשארו בדיוק כפי שהיו — מה שהתחלף הוא העוגן.
+// מספר הבדיקה הקשה כאן היא **קו נייח**: מספר תקין לחלוטין כפרט קשר, שאינו
+// עוגן זהות (אינו מקבל SMS), ולכן הכרטיס חייב להציג אותו כ"אין נייד" ולא
+// להציע כפתורי קישור שלא יעבדו לעולם.
+const MOBILE = "054-000-0017";
+const MOBILE_E164 = "+972540000017";
+const LANDLINE = "03-0000017";
+
 for (const lang of ["he", "en"]) {
   const base = { id: "d1", fullName: "עובדת בדיקה", status: "active" };
-  const noMail = R.renderCard({ ...base, email: "", portalStatus: "none" }, lang);
-  ok(`(${lang}) בלי מייל — נאמר במפורש`, has(noMail, dict[lang]["driverLink.noEmail"]));
-  ok(`(${lang}) ואין כפתור ניתוק`, !has(noMail, dict[lang]["driverLink.unlink"]));
+  const noPhone = R.renderCard({ ...base, phone: "", portalStatus: "none" }, lang);
+  ok(`(${lang}) בלי נייד — נאמר במפורש`, has(noPhone, dict[lang]["driverLink.noPhone"]));
+  ok(`(${lang}) ואין כפתור ניתוק`, !has(noPhone, dict[lang]["driverLink.unlink"]));
 
-  const waiting = R.renderCard({ ...base, email: "worker@gmail.test", portalStatus: "none" }, lang);
-  ok(`(${lang}) ממתין — הכתובת מוצגת`, has(waiting, "worker@gmail.test"));
-  ok(`(${lang}) והמסך אומר שהמערכת אינה שולחת מייל`, has(waiting, dict[lang]["driverLink.emailHint"]));
+  // ⬅ **קו נייח = אין נייד.** זו הדרישה של עדי §2.2.4 על המסך, לא רק בלוגיקה.
+  const landline = R.renderCard({ ...base, phone: LANDLINE, portalStatus: "none" }, lang);
+  ok(`(${lang}) קו נייח — מוצג כ"אין נייד"`, has(landline, dict[lang]["driverLink.noPhone"]));
+  ok(`(${lang}) ואינו מוצג כמספר שממתין לכניסה`, !has(landline, LANDLINE));
+
+  const waiting = R.renderCard({ ...base, phone: MOBILE, portalStatus: "none" }, lang);
+  ok(`(${lang}) ממתין — המספר מוצג`, has(waiting, MOBILE));
+  ok(`(${lang}) והמסך אומר שהמערכת אינה שולחת כלום`, has(waiting, dict[lang]["driverLink.phoneHint"]));
   ok(`(${lang}) ועדיין אין ניתוק`, !has(waiting, dict[lang]["driverLink.unlink"]));
+  // ⬅ המספר מוצג בצורה מקומית ולא כ-E.164, גם כשהוא שמור קנוני.
+  const waitingCanon = R.renderCard({ ...base, phone: MOBILE_E164, portalStatus: "none" }, lang);
+  ok(`(${lang}) מספר קנוני מוצג בצורה מקומית`, has(waitingCanon, MOBILE) && !has(waitingCanon, MOBILE_E164));
 
   const linked = R.renderCard(
-    { ...base, email: "worker@gmail.test", userId: "uid1", portalStatus: "active", portalLinkedEmail: "worker@gmail.test" },
+    { ...base, phone: MOBILE, userId: "uid1", portalStatus: "active", portalLinkedPhone: MOBILE_E164 },
     lang
   );
   ok(`(${lang}) מקושר — יש כפתור ניתוק`, has(linked, dict[lang]["driverLink.unlink"]));
   ok(`(${lang}) וההסבר שהחסימה בשרת`, has(linked, dict[lang]["driverLink.note"]));
+  ok(`(${lang}) והמספר שאיתו נכנס בפועל מוצג`, has(linked, MOBILE));
 
-  const revoked = R.renderCard({ ...base, email: "worker@gmail.test", userId: null, portalStatus: "revoked" }, lang);
+  const revoked = R.renderCard({ ...base, phone: MOBILE, userId: null, portalStatus: "revoked" }, lang);
   ok(`(${lang}) נותק — מוסבר שצריך פעולה מפורשת`, has(revoked, dict[lang]["driverLink.revoked"]));
   ok(`(${lang}) ויש "אפשר קישור מחדש"`, has(revoked, dict[lang]["driverLink.invite"]));
   ok(`(${lang}) ואין כפתור ניתוק`, !has(revoked, dict[lang]["driverLink.unlink"]));
 
-  const archived = R.renderCard({ ...base, email: "worker@gmail.test", userId: "uid1", portalStatus: "active", status: "archived" }, lang);
+  const archived = R.renderCard({ ...base, phone: MOBILE, userId: "uid1", portalStatus: "active", status: "archived" }, lang);
   ok(`(${lang}) בארכיון — אין כפתורים`, !has(archived, dict[lang]["driverLink.unlink"]) && !has(archived, dict[lang]["driverLink.invite"]));
   noRawKeys(linked, `Card/${lang}`);
+  // ⬅ ואין שאריות של מסלול המייל על המסך הזה.
+  ok(`(${lang}) אין "מייל" בכרטיס הגישה`, !has(linked, "מייל") && !has(linked, "email"));
+}
+
+// ============================================================================
+section("6ב. מסך הכניסה — זרימת הנייד, הגילוי, ומסלול האדמין");
+// ============================================================================
+// למה זה כאן ולא ב-smoke: `npm run build` עובר מצוין גם כשמסך הכניסה מרנדר
+// מפתח i18n חסר כטקסט, וגם כשהגילוי שעדי דרשה בנקודת האיסוף (§4.4) נשמט
+// בשקט. אלה בדיקות **של מה שהעובד רואה**.
+for (const lang of ["he", "en"]) {
+  const step1 = R.renderLogin({ phoneStep: "number" }, lang);
+  ok(`(${lang}) שדה הנייד קיים`, /data-testid="login-phone"/.test(step1));
+  ok(`(${lang}) ויש לו label מקושר`, /<label[^>]*for="login-phone"/.test(step1));
+  ok(`(${lang}) type=tel ו-inputMode`, /id="login-phone"[^>]*type="tel"/.test(step1));
+  ok(`(${lang}) כפתור שליחת הקוד`, has(step1, dict[lang]["auth.phone.send"]));
+  ok(`(${lang}) מושבת כשהשדה ריק`, /<button[^>]*type="submit"[^>]*disabled/.test(step1));
+  // ⬅ **הגילוי של עדי §4.4** — ובגודל גוף רגיל, לא text-[11px].
+  ok(`(${lang}) הגילוי בנקודת האיסוף מוצג`, has(step1, dict[lang]["portalLogin.purposeNote"]));
+  ok(`(${lang}) והוא לא ב-11px`, !/text-\[11px\][^>]*>\s*[^<]*קוד הכניסה/.test(step1));
+  // ⬅ מסלול האדמין נשאר, אבל משני.
+  ok(`(${lang}) כפתור Google לאדמינים`, has(step1, dict[lang]["auth.signInGoogle"]));
+  ok(`(${lang}) מתחת לכותרת "מנהלי צי"`, has(step1, dict[lang]["auth.adminSection"]));
+  // ⬅ ה-reCAPTCHA חייב להיות ב-DOM לפני הקריאה שמייצרת את ה-verifier.
+  ok(`(${lang}) יש מכל ל-reCAPTCHA`, /id="recaptcha-container"/.test(step1));
+  ok(`(${lang}) אין שדה מייל לנהג`, !/type="email"/.test(step1));
+  ok(`(${lang}) אפס מפתחות i18n גולמיים`, !/\b(auth|portalLogin)\.[a-zA-Z.]+/.test(step1));
+
+  const step2 = R.renderLogin({ phoneStep: "code", phoneSentTo: MOBILE_E164 }, lang);
+  ok(`(${lang}) שלב הקוד — שדה הקוד`, /data-testid="login-code"/.test(step2));
+  ok(`(${lang}) one-time-code לאוטו-מילוי`, /autocomplete="one-time-code"/i.test(step2));
+  ok(`(${lang}) המספר מוצג בצורה מקומית`, has(step2, MOBILE));
+  ok(`(${lang}) ואפשר לשנות מספר`, has(step2, dict[lang]["auth.phone.changeNumber"]));
+  ok(`(${lang}) ואפשר לבקש קוד מחדש`, has(step2, dict[lang]["auth.phone.resend"]));
+  ok(`(${lang}) ואין שדה נייד בשלב הזה`, !/data-testid="login-phone"/.test(step2));
+
+  // ⬅ שגיאה מובנית ולא "ההתחברות נכשלה": arr/live כדי שקורא מסך יקריא אותה.
+  const errHtml = R.renderLogin({ phoneStep: "code", phoneSentTo: MOBILE_E164, error: "auth.phone.err.code" }, lang);
+  ok(`(${lang}) שגיאת קוד שגוי מוצגת במלואה`, has(errHtml, dict[lang]["auth.phone.err.code"]));
+  ok(`(${lang}) ובאזור aria-live`, /aria-live="polite"/.test(errHtml));
+}
+
+// -- יעדי מגע: כל שדה וכפתור במסלול הנהג הוא לפחות 48px -------------------
+// ⚠️ זה מסך מובייל שמשתמשים בו ביד אחת ליד רכב. בדיקה על קוד המקור ולא על
+// הרינדור, כי מה שחשוב הוא שהמחלקה לא תיעלם בעריכה הבאה.
+{
+  const loginSrc = readFileSync(join(SRC, "components", "LoginPage.jsx"), "utf8");
+  const touchTargets = (loginSrc.match(/min-h-12/g) || []).length;
+  ok(`מסך הכניסה: ${touchTargets} יעדי מגע של 48px`, touchTargets >= 5);
 }
 
 // ============================================================================

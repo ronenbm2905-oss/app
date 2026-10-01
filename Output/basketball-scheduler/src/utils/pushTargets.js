@@ -1,4 +1,4 @@
-import { changeLabel } from "./scheduleChanges.js";
+import { changeLabel, changeKindLabel, changeDetail } from "./scheduleChanges.js";
 
 // Who gets a phone notification, and what it says.
 //
@@ -105,15 +105,67 @@ export function notificationsFor(entries, names = {}) {
     byCoach.get(coachId).push(e);
   });
 
-  return [...byCoach.entries()].map(([coachId, list]) => ({
-    coachId,
-    title: "שינוי בלו״ז שלך",
-    body:
-      list.length === 1
-        ? changeLabel(list[0], names)
-        : `${list.length} שינויים באימונים שלך. ${changeLabel(list[0], names)}`,
-    count: list.length,
-  }));
+  // WHICH ONE OF FIVE CHANGES GETS NAMED — and it must not be whichever happened to be first
+  // in the array.
+  //
+  // It was `list[0]`, and that order comes from `diffSessions` walking the sessions list,
+  // which is arbitrary with respect to how much any of them matters. Reproduced on the real
+  // shape of 1.10.2026 — a coach with a training nudged and a GAME CANCELLED in one import:
+  //
+  //     שינויים בלו״ז שלך · "2 שינויים. שינוי אימון · יום רביעי 2.9: 17:30–19:00 …"
+  //
+  // The cancellation is nowhere — not in the title, not in the body, not hinted at. And a
+  // batch of twenty-six changes with twelve cancellations spread across coaches is the
+  // ORDINARY shape of a federation import, not an edge case.
+  //
+  // This is worse than the silence it replaced, and the difference is the whole point. Every
+  // protection this project has built — §5, §2ז, the banner's "הודעה בשירות בלבד" — guards
+  // against a change going UNANNOUNCED. Here we interrupt someone, tell them there are two
+  // changes, name one, and the one we name is not the one that means do not come.
+  //
+  // So the sample is the most consequential entry, not the first: not coming at all beats
+  // coming at a different time, which beats something new appearing.
+  const WEIGHT = { cancelled: 0, removed: 1, changed: 2, restored: 3, added: 4, bulk: 5 };
+
+  // Read in the SAME ORDER as `changeKindLabel`, and not off `kind` alone. The entry that
+  // gets picked is the one whose sentence the coach will read, so if this ranked by one rule
+  // and the sentence were written by another, the two would eventually disagree and the
+  // disagreement would be invisible — a notification that leads with the wrong thing.
+  const severity = (e) => {
+    if (!e) return WEIGHT.bulk;
+    if (e.kind === "bulk") return WEIGHT.bulk;
+    if (e.kind === "added") return WEIGHT.added;
+    if (e.kind === "removed") return WEIGHT.removed;
+    if (e.after?.cancelled && !e.before?.cancelled) return WEIGHT.cancelled;
+    if (e.before?.cancelled && !e.after?.cancelled) return WEIGHT.restored;
+    return WEIGHT.changed;
+  };
+
+  // Stable: equal severity keeps the order the diff produced, so the sentence does not move
+  // around between two saves that changed the same things.
+  const mostImportant = (list) => list.slice().sort((a, b) => severity(a) - severity(b))[0];
+
+  // THE TITLE IS THE PART MOST PEOPLE READ, AND UNTIL 1.10.2026 IT WAS THE SAME FOUR WORDS
+  // FOR EVERYTHING. "שינוי בלו״ז שלך" sat above a cancelled fixture, a hall change and a
+  // training moved by half an hour alike — so the one line a coach sees without unlocking
+  // the phone carried no information at all. Now the headline says what happened and the
+  // body says when; `changeKindLabel` and `changeDetail` are split for exactly this, so the
+  // two halves do not repeat each other on the lock screen.
+  //
+  // Several changes at once keep a general title: naming one of them in the headline would
+  // make the other four look like the same thing.
+  return [...byCoach.entries()].map(([coachId, list]) => {
+    const lead = mostImportant(list);
+    return {
+      coachId,
+      title: list.length === 1 ? changeKindLabel(lead) || "שינוי בלו״ז שלך" : "שינויים בלו״ז שלך",
+      body:
+        list.length === 1
+          ? changeDetail(lead, names)
+          : `${list.length} שינויים. ${changeLabel(lead, names)}`,
+      count: list.length,
+    };
+  });
 }
 
 // The device rows to send to, for one coach.

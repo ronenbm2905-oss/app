@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { seasonHallClashes, clashesByDate, formatDayMonth, clashKindLabel } from "../utils/hallClashes";
-import { duplicateSessionGroups, duplicateRowCount, withoutSessions } from "../utils/duplicateSessions";
+import { duplicateRowCount, withoutSessions, splitDuplicates } from "../utils/duplicateSessions";
+import { accept, unaccept, splitAccepted, FIELD } from "../utils/acceptedChecks";
 import { exportClashesXlsx } from "../utils/clashExport";
 import { IconAlert, IconCheck, IconDownload } from "./ui/icons";
 import {
@@ -20,7 +21,14 @@ import clubLogo from "../assets/club-logo.jpg";
 // in one quiet line rather than disappearing — "no clashes" and "the check did not run"
 // have to look different, the lesson the sync indicator was built on.
 
-function Row({ clash }) {
+// "This one is deliberate." Measured on the live board on 1.10.2026: twenty-two clashes in
+// the rest of the season, and nearly all of them two squads sharing a gym on purpose — two
+// קטסל groups, two נערים ב groups. Scrolling past the same twenty-two after every import is
+// how a report stops being read, and then it is worth nothing on the day it finds a real one.
+//
+// There is no bulk "accept all" on purpose. Approving in one click is the same as not
+// looking, and this report exists precisely so that somebody looks once.
+function Row({ clash, onAccept, onUndo, canEdit }) {
   const tone = clash.duplicate
     ? "border-amber-300 bg-amber-50"
     : "border-red-200 bg-red-50";
@@ -43,6 +51,26 @@ function Row({ clash }) {
           {r.opponent && <span className="text-stone-700"> · נגד {r.opponent}</span>}
         </div>
       ))}
+      {canEdit && (onAccept || onUndo) && (
+        <div className="mt-1.5">
+          {onAccept ? (
+            <button
+              onClick={() => onAccept(clash)}
+              title="לא תוצג שוב בבדיקה. אפשר להחזיר אותה בכל רגע"
+              className="px-2.5 py-1 text-xs rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50"
+            >
+              שיתוף מכוון — לא להציג שוב
+            </button>
+          ) : (
+            <button
+              onClick={() => onUndo(clash)}
+              className="px-2.5 py-1 text-xs rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50"
+            >
+              להחזיר לבדיקה
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -53,16 +81,75 @@ function Row({ clash }) {
 // It reports zero out loud. A check that is silent when it finds nothing is
 // indistinguishable from a check that never ran — the lesson the sync indicator was built
 // on, one screen over.
+function DupeLine({ g }) {
+  return (
+    <>
+      <span className="font-semibold tabular-nums">{formatDayMonth(g.date)}</span>
+      <span className="text-stone-500"> · {g.day} · </span>
+      <span className="font-semibold tabular-nums">{g.start}–{g.end}</span>
+      {"  "}
+      {g.team}
+      <span className="text-stone-500"> · {g.label}</span>
+      {g.count > 2 && <span className="text-amber-800 font-medium"> ×{g.count}</span>}
+    </>
+  );
+}
+
 function DuplicateRows({ data, save, canEdit }) {
   const [confirming, setConfirming] = useState(false);
-  const groups = duplicateSessionGroups(data, { from: new Date() });
-  const extra = duplicateRowCount(groups);
+  const [showAccepted, setShowAccepted] = useState(false);
+  const now = new Date();
+  const { open, accepted } = splitDuplicates(data, { from: now });
+  const extra = duplicateRowCount(open);
 
+  // "This one is deliberate." Ronen, 1.10.2026: a duplicate is not always a fault — a squad
+  // can genuinely train twice in one slot — and a report that can only be obeyed or ignored
+  // gets ignored. Deciding once is what keeps the check worth opening on the day it finds
+  // something real.
+  const acceptOne = (g) => save(accept(data, g, now));
+  const dropOne = (g) => save(withoutSessions(data, g.dropIds));
+
+  // The approved ones are never hidden outright — a count, and one click to see them. A
+  // check that quietly suppresses part of what it found is the same fault as one that says
+  // nothing when it finds nothing.
+  const AcceptedBlock = accepted.length > 0 && (
+    <div className="pt-1">
+      <button
+        onClick={() => setShowAccepted((v) => !v)}
+        className="text-xs text-stone-600 hover:text-stone-800 underline decoration-dotted py-0.5"
+      >
+        {accepted.length === 1 ? "כפילות אחת שאישרת" : `${accepted.length} כפילויות שאישרת`}
+        {showAccepted ? " — הסתר" : " — הצג"}
+      </button>
+      {showAccepted && (
+        <div className="space-y-1 mt-1">
+          {accepted.map((g) => (
+            <div key={g.key} className="text-xs text-stone-500 flex items-center gap-2 flex-wrap">
+              <span><DupeLine g={g} /></span>
+              {canEdit && (
+                <button
+                  onClick={() => save(unaccept(data, g))}
+                  className="px-2.5 py-1 rounded border border-stone-300 text-stone-600 hover:bg-stone-50"
+                >
+                  להחזיר לבדיקה
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const hasSetAside = accepted.length > 0;
   if (extra === 0) {
     return (
-      <div className="text-xs text-stone-500 flex items-center gap-1.5">
-        <IconCheck size={13} className="opacity-60" />
-        אין שורות כפולות בלוח בהמשך העונה.
+      <div className="text-xs text-stone-500 space-y-1">
+        <div className="flex items-center gap-1.5">
+          {hasSetAside ? <IconAlert size={13} className="opacity-70" /> : <IconCheck size={13} className="opacity-60" />}
+          אין שורות כפולות פתוחות בלוח בהמשך העונה.
+        </div>
+        {AcceptedBlock}
       </div>
     );
   }
@@ -77,16 +164,31 @@ function DuplicateRows({ data, save, canEdit }) {
           אותה קבוצה, אותו מאמן, אותו אולם, אותן שעות, באותו שבוע — כלומר אותה שורה נכנסה פעמיים.
         </p>
       </div>
-      <div className="space-y-1">
-        {groups.map((g, i) => (
-          <div key={i} className="text-xs text-stone-700">
-            <span className="font-semibold tabular-nums">{formatDayMonth(g.date)}</span>
-            <span className="text-stone-500"> · {g.day} · </span>
-            <span className="font-semibold tabular-nums">{g.start}–{g.end}</span>
-            {"  "}
-            {g.team}
-            <span className="text-stone-500"> · {g.label}</span>
-            {g.count > 2 && <span className="text-amber-800 font-medium"> ×{g.count}</span>}
+      <div className="space-y-1.5">
+        {open.map((g) => (
+          <div key={g.key} className="text-xs text-stone-700 flex items-start gap-2 flex-wrap">
+            <span className="flex-1 min-w-0"><DupeLine g={g} /></span>
+            {canEdit && (
+              <span className="flex items-center gap-1.5 shrink-0">
+                {/* Deleting one row needs no confirmation step the way deleting all of them
+                    does: the line it belongs to is on screen, and one row is undoable by
+                    re-entering it. The bulk button keeps its question. */}
+                <button
+                  onClick={() => dropOne(g)}
+                  title={g.count > 2 ? `מוחק ${g.count - 1} שורות ומשאיר אחת` : "מוחק את העותק הכפול ומשאיר שורה אחת"}
+                  className="px-2.5 py-1 rounded-lg border border-red-300 text-red-700 bg-white hover:bg-red-50"
+                >
+                  {g.count > 2 ? `מחיקת ${g.count - 1} העותקים` : "מחיקת העותק הכפול"}
+                </button>
+                <button
+                  onClick={() => acceptOne(g)}
+                  title="לא תוצג שוב בבדיקה. אפשר להחזיר אותה בכל רגע"
+                  className="px-2.5 py-1 rounded-lg border border-stone-300 text-stone-600 bg-white hover:bg-stone-50"
+                >
+                  מכוון — לא להציג שוב
+                </button>
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -101,7 +203,7 @@ function DuplicateRows({ data, save, canEdit }) {
             <button
               onClick={() => {
                 setConfirming(false);
-                save(withoutSessions(data, groups.flatMap((g) => g.dropIds)));
+                save(withoutSessions(data, open.flatMap((g) => g.dropIds)));
               }}
               className="px-2.5 py-1 text-xs rounded-lg bg-red-600 text-white hover:bg-red-700"
             >
@@ -119,10 +221,11 @@ function DuplicateRows({ data, save, canEdit }) {
             onClick={() => setConfirming(true)}
             className="px-3 py-1.5 text-xs rounded-lg border border-amber-400 bg-white text-amber-900 hover:bg-amber-100"
           >
-            נקה כפילויות
+            מחיקת כל הכפילויות
           </button>
         )
       )}
+      {AcceptedBlock}
     </div>
   );
 }
@@ -131,11 +234,29 @@ export function HallClashesCard({ data, save, canEdit }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [showAcceptedClashes, setShowAcceptedClashes] = useState(false);
   const sheetRef = useRef(null);
   if (!canEdit) return null;
 
-  const clashes = seasonHallClashes(data);
+  const now = new Date();
+  const all = seasonHallClashes(data);
+  // HOW MANY ROWS THIS FINDING ACTUALLY INVOLVES — not the constant 2.
+  //
+  // A clash is reported per PAIR. Three identical rows produce three pairs that all share one
+  // key, so a fixed count meant one click approved all three; a fourth row produces six, and
+  // every one of them would have been approved in silence. That is the "approve all" button
+  // this card deliberately does not have, arriving through the back door.
+  //
+  // Counting the pairs that share a key makes the stored value grow with the finding, so a
+  // row added later brings it back for a second look — which is what the duplicate report
+  // already does, and the two must not disagree about the same rows.
+  const perKey = new Map();
+  all.forEach((c) => perKey.set(c.key, (perKey.get(c.key) || 0) + 1));
+  const withCount = all.map((c) => ({ ...c, count: (perKey.get(c.key) || 1) + 1 }));
+  const { open: clashes, accepted: acceptedClashes } = splitAccepted(withCount, data?.[FIELD]);
   const days = clashesByDate(clashes);
+  const acceptClash = (c) => save(accept(data, c, now));
+  const undoClash = (c) => save(unaccept(data, c));
   // Counted separately because they are dealt with differently: one is a booking to move,
   // the other is a row to delete.
   const dupes = clashes.filter((c) => c.duplicate).length;
@@ -182,13 +303,37 @@ export function HallClashesCard({ data, save, canEdit }) {
     }
   };
 
+  const hasSetAside = acceptedClashes.length > 0;
   if (clashes.length === 0) {
     return (
       <div className="space-y-2" dir="rtl">
-        <div className="text-xs text-stone-500 flex items-center gap-1.5">
-          <IconCheck size={13} className="opacity-60" />
-          אין התנגשויות אולם בהמשך העונה.
+        <div className="text-xs text-stone-500 flex items-center gap-1.5 flex-wrap">
+          {hasSetAside ? <IconAlert size={13} className="opacity-70" /> : <IconCheck size={13} className="opacity-60" />}
+          אין התנגשויות אולם פתוחות בהמשך העונה.
+          {/* "None left" and "none, because you approved all of them" are different
+              sentences, and the second one has to say so — the same reason the sync
+              indicator reports a quiet night differently from a night that never ran. */}
+          {acceptedClashes.length > 0 && (
+            <button
+              onClick={() => setShowAcceptedClashes((v) => !v)}
+              className="text-stone-600 hover:text-stone-800 underline decoration-dotted"
+            >
+              ({acceptedClashes.length} שאישרת — {showAcceptedClashes ? "הסתר" : "הצג"})
+            </button>
+          )}
         </div>
+        {acceptedClashes.length > 0 && showAcceptedClashes && (
+          <div className="space-y-1.5">
+            {acceptedClashes.map((c, i) => (
+              <div key={c.key || i}>
+                <div className="text-xs font-semibold text-stone-600">
+                  {formatDayMonth(c.date)} · יום {c.day}
+                </div>
+                <Row clash={c} canEdit={canEdit} onUndo={undoClash} />
+              </div>
+            ))}
+          </div>
+        )}
         <DuplicateRows data={data} save={save} canEdit={canEdit} />
       </div>
     );
@@ -250,9 +395,37 @@ export function HallClashesCard({ data, save, canEdit }) {
               <div className="text-xs font-semibold text-stone-600">
                 {formatDayMonth(d.date)} · יום {d.day}
               </div>
-              {d.items.map((c, i) => <Row key={i} clash={c} />)}
+              {d.items.map((c, i) => (
+                <Row key={c.key || i} clash={c} canEdit={canEdit} onAccept={acceptClash} />
+              ))}
             </div>
           ))}
+          {/* Approved findings are shown, not hidden: a check that quietly suppresses part of
+              what it found is the same fault as one that says nothing when it finds nothing,
+              and a decision made in a hurry a month ago has to be reversible. */}
+          {acceptedClashes.length > 0 && (
+            <div className="pt-1">
+              <button
+                onClick={() => setShowAcceptedClashes((v) => !v)}
+                className="text-xs text-stone-600 hover:text-stone-800 underline decoration-dotted py-0.5"
+              >
+                {acceptedClashes.length === 1 ? "התנגשות אחת שאישרת" : `${acceptedClashes.length} התנגשויות שאישרת`}
+                {showAcceptedClashes ? " — הסתר" : " — הצג"}
+              </button>
+              {showAcceptedClashes && (
+                <div className="space-y-1.5 mt-1.5">
+                  {acceptedClashes.map((c, i) => (
+                    <div key={c.key || i}>
+                      <div className="text-xs font-semibold text-stone-600">
+                        {formatDayMonth(c.date)} · יום {c.day}
+                      </div>
+                      <Row clash={c} canEdit={canEdit} onUndo={undoClash} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {/* What the screen cannot do for them, said plainly rather than implied by the
               absence of a button. Moving a fixture is a phone call to the federation; this
               only finds them. */}

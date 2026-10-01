@@ -26,6 +26,7 @@
 import { nowIso } from "./id.js";
 import { emptyNotice } from "./notice.js";
 import { canonicalEmail } from "./admins.js";
+import { canonicalPhone, mapNumericRuns } from "./phone.js";
 import { normText, compareKey, words } from "./importExcel.js";
 
 // מפתח i18n שמסמן שם מאונן. נשמר בתוך fullName כ-"<prefix>|<token>".
@@ -67,16 +68,35 @@ export const REDACTABLE_TEXT_FIELDS = {
 const MIN_NAME_WORD = 2;
 
 // ============================================================================
-// שדות שמחזיקים **כתובת מייל של נהג** ולכן נכנסים לאנונימיזציה.
+// שדות שמחזיקים **מזהה ישיר של נהג** ולכן נכנסים לאנונימיזציה.
 //
 // 3.3.4 בהכוונת עדי (17.8): M1 כפי שהיה אכף ששם העובד אינו שורד באף שדה —
 // והחמיץ את הכתובת. אצל עובד שנכנס לפורטל מגימייל **פרטי**, הכתובת היא
 // מזהה חזק יותר מהשם: היא ייחודית, קבועה, וניתנת לחיפוש. עובד שעזב, עבר
 // אנונימיזציה, וכתובתו נשארה ב-`portalLinkedEmail` — לא עבר אנונימיזציה.
+//
 // ============================================================================
-export const EMAIL_BEARING_FIELDS = {
-  drivers: ["email", "portalLinkedEmail"],
-  leaseCompanies: ["email"],
+// ⚠️ 1.10.2026 — **הנייד נכנס לרשימה, וזה לא היה "עוד שדה".**
+// ============================================================================
+// עד כאן הרשימה הייתה `["email", "portalLinkedEmail"]`. הנייד **לא היה בה**
+// בכלל — לא כי מישהו החליט שהוא אינו מזהה, אלא כי הוא לא היה *שם*: הסריקה
+// נבנתה סביב שדה שהוא "מייל", והטלפון היה שדה קשר משני שאיש לא נכנס איתו
+// לשום מקום.
+//
+// מהרגע שעוגן הזהות של הפורטל הוא הנייד, זו **ההחמצה הגדולה ביותר שאפשר**:
+//   • נייד הוא מזהה חזק יותר מכתובת מייל — הוא ייחודי, הוא לא מתחלף כשעובד
+//     מחליף מקום עבודה, והוא המזהה שאיתו מוצאים אדם בכל מערכת אחרת;
+//   • `phone` הוא עכשיו **המפתח** שהעובד נכנס איתו, בדיוק כפי שהמייל היה;
+//   • ועובד שעבר אנונימיזציה ומספרו שרד ב-`portalLinkedPhone` או בהערה
+//     חופשית כלשהי — **לא עבר אנונימיזציה**. הטוקן בשם הוא קוסמטיקה אם
+//     המספר נשאר לידו.
+//
+// `portalLinkedEmail` נשאר ברשימה למרות שמסלול המייל הוסר: יש רשומות בענן
+// ועדיין עלול לשבת בהן PII, וסריקה שמפסיקה לחפש משהו שכבר נכתב אינה סריקה.
+// ============================================================================
+export const IDENTIFIER_BEARING_FIELDS = {
+  drivers: ["email", "portalLinkedEmail", "phone", "portalLinkedPhone"],
+  leaseCompanies: ["email", "phone"],
 };
 
 const getPath = (obj, path) =>
@@ -156,29 +176,60 @@ export function protectedNameWords(data, driverId) {
 // נשמר במלואו: הוא העקבה האמיתית, ואין בו PII.
 // ============================================================================
 // ============================================================================
-// redactDriverEmailEverywhere — אותה סריקה, על כתובת המייל.
+// redactDriverIdentifiersEverywhere — אותה סריקה, על **המזהים**: מייל ונייד.
 //
-// המייל אינו "מילה בשם" ולכן אינו עובר ב-redactNameFromText: הוא מחרוזת
-// אחת שיש להחליף כשלמותה, והוא מופיע גם בצורות שקולות (גימייל מתעלם
-// מנקודות ומ-+alias). ההשוואה היא על הצורה הקנונית משני הצדדים.
+// מזהה אינו "מילה בשם" ולכן אינו עובר ב-redactNameFromText: הוא מחרוזת אחת
+// שיש להחליף כשלמותה, והוא מופיע גם בצורות שקולות — גימייל מתעלם מנקודות
+// ומ-+alias, ונייד נכתב כ-050-1234567 / 0501234567 / +972-50-123-4567.
+//
 // ============================================================================
-export function redactDriverEmailEverywhere(data, driverId, token, at = null) {
+// ⛔ ולמה **אין כאן regex של טלפון** (עדי §5.1 — חוסם)
+// ============================================================================
+// לכתובת מייל יש תבנית שאינה מתנגשת בכלום (`משהו@משהו.משהו`), ולכן גרסת
+// המייל של הפונקציה הזו יכולה לחפש "כל מה שנראה כמו כתובת" ולהחליף.
+// **לטלפון אין מקבילה.** רצף של 8-10 ספרות בטקסט חופשי הוא גם:
+//   • לוחית רישוי — שמונה ספרות (הדוגמאות כאן בדויות: `12345678`);
+//   • מספר אסמכתא של קנס;
+//   • קריאת מד-אוץ';
+//   • מספר עובד;
+//   • תאריך בלי מפרידים — `30092026`.
+// regex תמים היה הופך את `Assignment.importRaw` — שהוא **עקבת ביקורת** —
+// לגבינה, והכי גרוע: זה היה נראה כאילו האנונימיזציה עבדה.
+//
+// לכן המימוש הוא **השוואה קנונית מדויקת על רצף ספרות שלם**
+// (phone.js:mapNumericRuns), וארבע ההגנות נגזרות ממנו ישירות:
+//   1. מחליפים **רק** רצף שהצורה הקנונית שלו שווה בדיוק למספר המטרה;
+//   2. הרצף חייב להיות **נייד ישראלי תקף** (05X+7 / +9725X) — לוחית בת 8
+//      ספרות ומספר אסמכתא שאינו מתחיל ב-05 מתקננים ל-'' ולכן אינם מושווים;
+//   3. **אין התאמה חלקית** — שבע הספרות של נייד לעולם אינן נבדקות לבדן,
+//      גם כשהן יושבות בתוך **קו נייח של עובד אחר** (וזה מצב אמיתי בנתונים
+//      שלנו: קו נייח ששבע הספרות שלו זהות לנייד של אדם אחר);
+//   4. **גבולות רצף ספרות** — `0540000017` בתוך `+9720540000017` אינו רצף
+//      שלם ולכן אינו מטופל (ובטח שלא פעמיים).
+// ============================================================================
+const EMAIL_LIKE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+
+export function redactDriverIdentifiersEverywhere(data, driverId, token, at = null) {
   const driver = (data?.drivers || []).find((d) => d.id === driverId) || null;
   const targets = new Set(
-    [driver?.email, driver?.portalLinkedEmail]
-      .map((e) => canonicalEmail(e))
-      .filter(Boolean)
+    [driver?.email, driver?.portalLinkedEmail].map((e) => canonicalEmail(e)).filter(Boolean)
   );
-  if (!targets.size) return { data, redacted: 0, fields: [] };
+  // ⬅ **המזהה המרכזי מאז 1.10.2026.** שני השדות, ולא רק זה שהאדמין הקליד:
+  //   `phone` הוא מה שהוקלד, `portalLinkedPhone` הוא מה שאומת ב-SMS, והם
+  //   נבדלים לגיטימית בצורת הכתיבה.
+  const phoneTargets = new Set(
+    [driver?.phone, driver?.portalLinkedPhone].map((p) => canonicalPhone(p)).filter(Boolean)
+  );
+  if (!targets.size && !phoneTargets.size) return { data, redacted: 0, fields: [] };
 
   const stamp = at || nowIso();
   const mark = `[${token}]`;
   const out = { ...data };
   const fields = [];
 
-  // כל שדה טקסט חופשי שסורקים ממילא ל-M1, ובנוסף שדות המייל הייעודיים.
+  // כל שדה טקסט חופשי שסורקים ממילא ל-M1, ובנוסף שדות המזהים הייעודיים.
   const paths = { ...REDACTABLE_TEXT_FIELDS };
-  for (const [c, list] of Object.entries(EMAIL_BEARING_FIELDS)) {
+  for (const [c, list] of Object.entries(IDENTIFIER_BEARING_FIELDS)) {
     paths[c] = [...new Set([...(paths[c] || []), ...list])];
   }
 
@@ -193,9 +244,12 @@ export function redactDriverEmailEverywhere(data, driverId, token, at = null) {
       for (const path of keys) {
         const cur = getPath(entity, path);
         if (typeof cur !== "string" || !cur) continue;
-        // מחליפים רק אם **מופע שלם** בטקסט מתקנן לאותה כתובת.
-        const replaced = cur.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) =>
-          targets.has(canonicalEmail(m)) ? mark : m
+        // מחליפים רק אם **מופע שלם** בטקסט מתקנן לאותו מזהה — כתובת או נייד.
+        const replaced = mapNumericRuns(
+          cur.replace(EMAIL_LIKE, (m) => (targets.has(canonicalEmail(m)) ? mark : m)),
+          // null = "זה אינו המספר שלו, אל תיגע" — וזה הערך שמחזיר כל רצף
+          // ספרות שאינו נייד תקף: לוחית, אסמכתא, ק"מ, תאריך.
+          (run) => (phoneTargets.has(canonicalPhone(run)) ? mark : null)
         );
         if (replaced === cur) continue;
         next = setPath(next, path, replaced);
@@ -249,14 +303,35 @@ export function redactDriverNameEverywhere(data, driverId, token, at = null) {
   return { data: out, redacted: fields.length, fields };
 }
 
+// ============================================================================
 // ארכוב: העובד מפסיק להיות פעיל, הקישור לפורטל מנותק — אבל המידע נשאר.
 // זה הצעד הראשון; האנונימיזציה מגיעה במועד ה-retention.
+//
+// ⚠️ **1.10.2026 — `portalLinkedPhone` מתאפס כאן ומיד, ולא ממתין ל-retention.**
+// זו הבחנה שלא הייתה קיימת בגימייל (שם `portalLinkedEmail` נשאר עד מועד
+// השמירה), ועדי משנה אותה כאן במכוון (§5.5):
+//   • `phone` **נשאר** — הוא פרט **קשר**, ואחרי עזיבה עוד מגיע קנס באיחור
+//     שצריך לטפל בו;
+//   • `portalLinkedPhone` הוא פרט **זהות**, והוא אינו משרת שום מטרה אחרי
+//     הניתוק. ומעבר לזה: **מספרי נייד ממוחזרים.** מספר של עובד שעזב עשוי
+//     להיות של אדם אחר לגמרי בעוד שנה — כלומר זו עקבת זהות של מישהו
+//     שאיננו יודעים מי הוא. אין לה שימוש, ויש לה סיכון.
+// העקבה שכן נשארת (3.3.5) היא "גישת פורטל התקיימה ובוטלה" — `portalStatus`
+// ו-`updatedAt`, **בלי המספר**.
+// ============================================================================
 export function archiveDriver(data, driverId, today) {
   return {
     ...data,
     drivers: (data.drivers || []).map((d) =>
       d.id === driverId
-        ? { ...d, status: "archived", portalStatus: "revoked", userId: null, updatedAt: nowIso() }
+        ? {
+            ...d,
+            status: "archived",
+            portalStatus: "revoked",
+            userId: null,
+            portalLinkedPhone: null,
+            updatedAt: nowIso(),
+          }
         : d
     ),
     // סוגר החזקות פתוחות — עובד שעזב לא ממשיך להחזיק רכב.
@@ -284,15 +359,16 @@ export function anonymizeDriver(data, driverId) {
   );
   data = redactedData;
 
-  // 3.3.4 — ואותו דבר לכתובת המייל, מאותה סיבה בדיוק ובאותו חלון זמן.
-  const { data: mailRedacted, fields: mailFields } = redactDriverEmailEverywhere(
+  // 3.3.4 — ואותו דבר למזהים (מייל **ונייד**), מאותה סיבה בדיוק ובאותו
+  // חלון זמן: אחרי שנאפס את השדות ברשומה כבר לא יהיה מול מה לחפש.
+  const { data: idRedacted, fields: idFields } = redactDriverIdentifiersEverywhere(
     data,
     driverId,
     token,
     at
   );
-  data = mailRedacted;
-  redactedFields.push(...mailFields);
+  data = idRedacted;
+  redactedFields.push(...idFields);
 
   const drivers = (data.drivers || []).map((d) =>
     d.id === driverId
@@ -301,9 +377,15 @@ export function anonymizeDriver(data, driverId) {
           fullName: `${ANON_PREFIX}|${token}`, // מפתח i18n + טוקן, מפורק בתצוגה
           phone: "",
           email: "",
-          // 3.3.4 — הכתובת שאיתה נכנס לפורטל היא מזהה ישיר, ולכן היא נמחקת
-          // ברשומה **וגם** נסרקת מכל טקסט חופשי (redactDriverEmailEverywhere).
+          // 3.3.4 — המזהים שאיתם נכנס לפורטל הם מזהים ישירים, ולכן הם נמחקים
+          // ברשומה **וגם** נסרקים מכל טקסט חופשי
+          // (redactDriverIdentifiersEverywhere).
           portalLinkedEmail: null,
+          // ⚠️ 1.10.2026 — הנייד הוא עוגן הזהות של הפורטל, ולכן השדה הזה הוא
+          // המקביל המדויק של portalLinkedEmail. בלי האיפוס הזה "עובד מאונן"
+          // היה רשומה עם טוקן בשם ומספר נייד מלא לידו. (בפועל הוא מתאפס כבר
+          // בארכוב — זו חגורה שנייה, לרשומות שהגיעו לכאן בדרך אחרת.)
+          portalLinkedPhone: null,
           employeeNumber: "",
           userId: null,
           portalStatus: "revoked",

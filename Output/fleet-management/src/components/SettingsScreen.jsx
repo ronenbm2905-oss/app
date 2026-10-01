@@ -9,6 +9,7 @@ import TeamCard from "./TeamCard.jsx";
 import { createLeaseCompany } from "../schema.js";
 import { isFirebaseConfigured } from "../firebase.js";
 import { formatDate } from "../utils/format.js";
+import { formatPhoneIl } from "../utils/phone.js";
 
 export function SettingsScreen({ data, orgId, actions, onResetLocal, user = null, team = null }) {
   const { t, lang } = useI18n();
@@ -141,7 +142,7 @@ export function SettingsScreen({ data, orgId, actions, onResetLocal, user = null
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="table-cell font-medium">{c.name}</td>
                   <td className="table-cell">{c.contactName || "—"}</td>
-                  <td className="table-cell num">{c.phone || "—"}</td>
+                  <td className="table-cell num">{c.phone ? formatPhoneIl(c.phone) : "—"}</td>
                   <td className="table-cell num">{c.email || "—"}</td>
                   <td className="table-cell">
                     <div className="flex gap-1">
